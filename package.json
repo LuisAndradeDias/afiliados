@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "collect": "tsx src/robo/buscador.ts",
+    "amazon:test": "tsx src/robo/amazon-teste.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
