@@ -2,6 +2,7 @@ import "dotenv/config";
 import { rm } from "node:fs/promises";
 import { formatarOfertaWhatsapp } from "../mensagens/whatsapp.js";
 import { PublicadorArquivo } from "../publicadores/arquivo.js";
+import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { buscarMelhorOferta } from "./pipeline.js";
 
 await rm("data/ultima-mensagem-whatsapp.txt", { force: true });
@@ -27,3 +28,4 @@ console.log(mensagem);
 console.log("\n------------------------\n");
 
 await new PublicadorArquivo().publicar(mensagem);
+await salvarPacoteWhatsapp(resultado.melhor, mensagem);

@@ -7,3 +7,8 @@ test-results/
 data/*.txt
 data/whatsapp-profile/
 data/whatsapp-profile-test/
+data/*.json
+data/*.jpg
+data/*.jpeg
+data/*.png
+data/*.gif

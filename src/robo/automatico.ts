@@ -2,6 +2,7 @@ import "dotenv/config";
 import { setTimeout as esperar } from "node:timers/promises";
 import { formatarOfertaWhatsapp } from "../mensagens/whatsapp.js";
 import { PublicadorArquivo } from "../publicadores/arquivo.js";
+import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { buscarMelhorOferta } from "./pipeline.js";
 
 const intervaloMinutos = Number(
@@ -27,6 +28,7 @@ async function ciclo(): Promise<void> {
   }
   const mensagem = formatarOfertaWhatsapp(resultado.melhor);
   await new PublicadorArquivo().publicar(mensagem);
+  await salvarPacoteWhatsapp(resultado.melhor, mensagem);
 
   console.log("\nOferta candidata:");
   console.log(mensagem);

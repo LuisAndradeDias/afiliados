@@ -126,10 +126,10 @@ npm run whatsapp:preparar -- "Nome exato do grupo"
 ```
 
 O programa abre o WhatsApp Web usando a sessão salva, pesquisa o grupo,
-abre a conversa e preenche `data/ultima-mensagem-whatsapp.txt` no campo
-de mensagem. Ele não pressiona Enter e não clica no botão Enviar.
+baixa a imagem da oferta quando disponível, anexa a foto e preenche a mensagem
+como legenda. Se não houver imagem, usa somente texto. Ele não pressiona Enter nem clica no botão Enviar imagem.
 
-Você revisa o conteúdo no Chrome e faz o envio manualmente.
+Você revisa a foto e a legenda no Chrome e faz o envio manualmente.
 Também é possível salvar o nome em `WHATSAPP_GROUP_NAME` no `.env` e
 executar apenas `npm run whatsapp:preparar`.
 
@@ -145,15 +145,15 @@ Abra `http://localhost:3030` no navegador. No Windows, também é possível
 dar duplo clique em `Abrir Painel.bat`, que inicia o painel e abre a página.
 
 O painel mostra grupo, sessão do WhatsApp, situação da tag de afiliado,
-filtro de desconto, consultas monitoradas, última mensagem e logs.
+filtro de desconto, consultas monitoradas, foto da última oferta, mensagem e logs.
 
 Principais botões:
 
-- **Buscar + preparar no WhatsApp**: busca uma oferta e, se encontrar, abre o
-  grupo configurado com a mensagem preenchida. O envio continua manual.
+- **Buscar + preparar imagem no WhatsApp**: busca uma oferta e, se encontrar, abre o
+  grupo com a foto anexada e a mensagem como legenda. O envio continua manual.
 - **Buscar oferta agora**: gera uma nova mensagem sem abrir o WhatsApp.
-- **Preparar última mensagem**: abre o grupo e preenche a última mensagem.
+- **Preparar imagem + mensagem**: abre o grupo, anexa a foto e preenche a legenda.
 - **Abrir login do WhatsApp**: abre a sessão persistente para autenticação.
 - **Iniciar/Parar monitoramento**: controla o robô periódico em modo preview.
 
-O painel não clica no botão Enviar e não pressiona Enter no WhatsApp.
+O painel não clica no botão Enviar/Enviar imagem e não pressiona Enter no WhatsApp.

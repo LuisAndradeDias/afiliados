@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
+const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
 const perfilPath = resolve(raiz, "data", "whatsapp-profile");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
 const porta = Number(process.env.PAINEL_PORT ?? 3030);
@@ -79,6 +80,10 @@ async function existe(path: string): Promise<boolean> {
 
 async function estado() {
   const mensagem = await readFile(mensagemPath, "utf8").catch(() => "");
+  const pacote = await readFile(pacotePath, "utf8")
+    .then((texto) => JSON.parse(texto) as { imagemUrl?: string })
+    .catch(() => ({ imagemUrl: undefined as string | undefined }));
+
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME || "Não configurado",
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
@@ -87,6 +92,7 @@ async function estado() {
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
     mensagem,
+    imagemUrl: pacote.imagemUrl,
     logs
   };
 }

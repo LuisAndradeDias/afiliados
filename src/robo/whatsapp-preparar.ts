@@ -1,9 +1,10 @@
 import "dotenv/config";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
+const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
 const modoTeste = process.env.WHATSAPP_PREPARE_TEST === "true";
 const canal = process.env.WHATSAPP_BROWSER_CHANNEL ?? "chrome";
 
@@ -21,6 +22,61 @@ const mensagem = await readFile(mensagemPath, "utf8").catch(() => {
     "Mensagem não encontrada. Rode npm run whatsapp:preview ou npm run automatico primeiro."
   );
 });
+
+const pacote = await readFile(pacotePath, "utf8")
+  .then((texto) => JSON.parse(texto) as { imagemUrl?: string })
+  .catch(() => ({ imagemUrl: undefined as string | undefined }));
+
+async function baixarImagemOferta(url?: string): Promise<string | undefined> {
+  if (!url) return undefined;
+
+  try {
+    const resposta = await fetch(url, {
+      headers: {
+        accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "user-agent": "Mozilla/5.0"
+      }
+    });
+
+    if (!resposta.ok) {
+      throw new Error(`HTTP ${resposta.status}`);
+    }
+
+    const tipo = (resposta.headers.get("content-type") ?? "").toLowerCase();
+    if (!tipo.startsWith("image/")) {
+      throw new Error(`Conteúdo inesperado: ${tipo || "sem content-type"}`);
+    }
+
+    const extensao = tipo.includes("png")
+      ? "png"
+      : tipo.includes("gif")
+        ? "gif"
+        : "jpg";
+    const caminho = resolve("data", `ultima-imagem-whatsapp.${extensao}`);
+
+    for (const ext of ["jpg", "png", "gif"]) {
+      if (ext !== extensao) {
+        await rm(resolve("data", `ultima-imagem-whatsapp.${ext}`), { force: true });
+      }
+    }
+
+    const bytes = Buffer.from(await resposta.arrayBuffer());
+    if (bytes.length < 500) throw new Error("Arquivo de imagem muito pequeno.");
+
+    await writeFile(caminho, bytes);
+    console.log(`Imagem da oferta baixada: ${caminho}`);
+    return caminho;
+  } catch (error) {
+    const mensagemErro = error instanceof Error ? error.message : String(error);
+    console.warn(`Não foi possível baixar a imagem da oferta: ${mensagemErro}`);
+    return undefined;
+  }
+}
+
+const imagemPath = modoTeste
+  ? undefined
+  : await baixarImagemOferta(pacote.imagemUrl);
+
 async function primeiroVisivel(
   candidatos: Locator[],
   timeoutPorSeletor = 4_000
@@ -95,6 +151,55 @@ async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
   return page;
 }
 
+
+async function prepararImagemComLegenda(
+  page: Page,
+  caminhoImagem: string,
+  legenda: string
+): Promise<void> {
+  let inputImagem = page.locator(
+    'input[type="file"][accept*="image/jpeg"], input[type="file"][accept="image/*"]'
+  ).first();
+
+  if ((await inputImagem.count()) === 0) {
+    const anexar = await primeiroVisivel([
+      page.getByRole("button", { name: /anexar|attach/i }),
+      page.locator('button[data-tab="10"]')
+    ]);
+    await anexar.click();
+    inputImagem = page.locator(
+      'input[type="file"][accept*="image/jpeg"], input[type="file"][accept="image/*"]'
+    ).first();
+  }
+
+  await inputImagem.setInputFiles(caminhoImagem);
+
+  const botaoEnviar = await primeiroVisivel(
+    [
+      page.getByRole("button", { name: /enviar imagem|send image/i }),
+      page.getByLabel(/enviar imagem|send image/i)
+    ],
+    15_000
+  );
+
+  const campoLegenda = await primeiroVisivel(
+    [
+      page.getByRole("textbox", {
+        name: /digite uma mensagem para o grupo|type a message to the group/i
+      }),
+      page.locator('[contenteditable="true"][role="textbox"]').last()
+    ],
+    8_000
+  );
+
+  await campoLegenda.fill(legenda.trim());
+
+  await botaoEnviar.waitFor({ state: "visible", timeout: 8_000 });
+
+  console.log("Imagem anexada e legenda preenchida.");
+  console.log("O botão Enviar imagem ficou aguardando sua confirmação manual.");
+}
+
 async function localizarCompositor(page: Page): Promise<Locator> {
   return primeiroVisivel([
     page.locator('footer div[contenteditable="true"][role="textbox"]'),
@@ -165,12 +270,22 @@ try {
   );
   await resultadoGrupo.click();
 
-  const compositor = await localizarCompositor(page);
-  await compositor.fill(mensagem.trim());
+  await localizarCompositor(page);
+  await page.waitForTimeout(2_000);
 
-  const textoPreparado = (await compositor.textContent())?.trim() ?? "";
-  if (!textoPreparado) {
-    throw new Error("A mensagem não foi inserida no campo de conversa.");
+  let preparouImagem = false;
+
+  if (imagemPath) {
+    await prepararImagemComLegenda(page, imagemPath, mensagem);
+    preparouImagem = true;
+  } else {
+    const compositor = await localizarCompositor(page);
+    await compositor.fill(mensagem.trim());
+
+    const textoPreparado = (await compositor.textContent())?.trim() ?? "";
+    if (!textoPreparado) {
+      throw new Error("A mensagem não foi inserida no campo de conversa.");
+    }
   }
 
   if (!modoTeste) {
@@ -181,7 +296,11 @@ try {
     );
   }
 
-  console.log(`Mensagem preparada no grupo: ${nomeGrupo}`);
+  console.log(
+    preparouImagem
+      ? `Imagem + legenda preparadas no grupo: ${nomeGrupo}`
+      : `Mensagem preparada no grupo: ${nomeGrupo}`
+  );
   console.log("Nenhuma tecla de envio foi acionada.");
 
   if (modoTeste) {
@@ -190,7 +309,11 @@ try {
     process.exit(0);
   }
 
-  console.log("Revise a mensagem no Chrome e clique em Enviar manualmente.");
+  console.log(
+    preparouImagem
+      ? "Revise a foto e a legenda no Chrome e clique em Enviar imagem manualmente."
+      : "Revise a mensagem no Chrome e clique em Enviar manualmente."
+  );
   console.log("Feche a janela do Chrome quando terminar.");
 
   await new Promise<void>((resolveClose) => {
