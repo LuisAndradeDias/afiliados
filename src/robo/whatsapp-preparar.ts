@@ -38,11 +38,15 @@ async function primeiroVisivel(
 }
 
 async function localizarBusca(page: Page): Promise<Locator> {
-  return primeiroVisivel([
-    page.getByRole("textbox", { name: /pesquisar|search/i }),
-    page.locator('div[contenteditable="true"][data-tab="3"]'),
-    page.locator('div[contenteditable="true"][role="textbox"]')
-  ]);
+  return primeiroVisivel(
+    [
+      page.getByRole("textbox", { name: /pesquisar|search/i }),
+      page.locator('#side div[contenteditable="true"][role="textbox"]'),
+      page.locator('div[contenteditable="true"][data-tab="3"]'),
+      page.locator('div[contenteditable="true"][aria-label*="Pesquisar"]')
+    ],
+    30_000
+  );
 }
 
 async function localizarCompositor(page: Page): Promise<Locator> {
@@ -85,6 +89,9 @@ if (modoTeste) {
     waitUntil: "domcontentloaded",
     timeout: 60_000
   });
+
+  console.log("Aguardando o WhatsApp Web ficar pronto...");
+  console.log("Se aparecer QR Code, faça o login pelo celular. O programa continuará sozinho.");
 }
 try {
   const busca = await localizarBusca(page);
