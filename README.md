@@ -116,3 +116,19 @@ aguarde as conversas carregarem e então feche a janela do Chrome.
 A sessão fica salva localmente e não é enviada ao GitHub.
 Nos próximos módulos, esse mesmo perfil será reutilizado para localizar
 o grupo configurado e preparar o envio.
+
+## Preparar mensagem no grupo
+
+Depois de gerar uma oferta e autenticar o WhatsApp, execute:
+
+```bash
+npm run whatsapp:preparar -- "Nome exato do grupo"
+```
+
+O programa abre o WhatsApp Web usando a sessão salva, pesquisa o grupo,
+abre a conversa e preenche `data/ultima-mensagem-whatsapp.txt` no campo
+de mensagem. Ele não pressiona Enter e não clica no botão Enviar.
+
+Você revisa o conteúdo no Chrome e faz o envio manualmente.
+Também é possível salvar o nome em `WHATSAPP_GROUP_NAME` no `.env` e
+executar apenas `npm run whatsapp:preparar`.

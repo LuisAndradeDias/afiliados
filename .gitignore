@@ -6,3 +6,4 @@ playwright-report/
 test-results/
 data/*.txt
 data/whatsapp-profile/
+data/whatsapp-profile-test/

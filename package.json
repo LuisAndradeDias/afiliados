@@ -9,6 +9,7 @@
     "amazon:test": "tsx src/robo/amazon-teste.ts",
     "whatsapp:preview": "tsx src/robo/whatsapp-preview.ts",
     "whatsapp:login": "tsx src/robo/whatsapp-login.ts",
+    "whatsapp:preparar": "tsx src/robo/whatsapp-preparar.ts",
     "automatico": "tsx src/robo/automatico.ts",
     "typecheck": "tsc --noEmit"
   },
