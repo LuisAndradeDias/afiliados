@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Central de Ofertas</title>
+  <style>
+    :root {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      color: #172033;
+      background: #f5f7fb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #111827, #1f2937);
+      color: white; padding: 28px 32px;
+    }
+    header h1 { margin: 0 0 6px; font-size: 28px; }
+    header p { margin: 0; color: #cbd5e1; }
+    main { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px; box-shadow: 0 4px 16px #0f172a0d; }
+    .card h2 { margin: 0 0 12px; font-size: 16px; }
+    .value { font-size: 22px; font-weight: 750; }
+    .muted { color: #64748b; font-size: 13px; }
+    .ok { color: #087f5b; }
+    .warn { color: #b45309; }
+    .bad { color: #b91c1c; }
+  </style>
+</head>
+<body>  <style>
+    .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+    button {
+      border: 0; border-radius: 12px; padding: 14px 16px;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+      background: #111827; color: white; transition: .15s ease;
+    }
+    button:hover { transform: translateY(-1px); background: #0f172a; }
+    button.secondary { background: #e2e8f0; color: #172033; }
+    button.danger { background: #b91c1c; }
+    button.hero { background: #2563eb; }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .section { margin-top: 18px; }
+    .two { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
+    pre {
+      margin: 0; white-space: pre-wrap; word-break: break-word;
+      background: #0f172a; color: #dbeafe; border-radius: 12px;
+      padding: 16px; min-height: 260px; max-height: 420px; overflow: auto;
+      font: 13px/1.55 Consolas, monospace;
+    }
+    .message {
+      min-height: 260px; white-space: pre-wrap; background: #f8fafc;
+      border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
+      font-size: 14px; line-height: 1.55;
+    }
+    .pill { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; font-weight: 700; }
+    #toast { margin-top: 12px; min-height: 20px; font-size: 14px; font-weight: 600; }
+    @media (max-width: 850px) { .grid, .actions, .two { grid-template-columns: 1fr; } }
+  </style>
+  <header>
+    <h1>Central de Ofertas</h1>
+    <p>Amazon → análise → mensagem → WhatsApp, com confirmação manual do envio.</p>
+  </header>
+  <main>    <section class="grid">
+      <div class="card">
+        <h2>Grupo do WhatsApp</h2>
+        <div id="grupo" class="value">...</div>
+        <div class="muted">Destino das mensagens preparadas</div>
+      </div>
+      <div class="card">
+        <h2>Sessão do WhatsApp</h2>
+        <div id="sessao" class="value">...</div>
+        <div class="muted">Perfil local reutilizado pelo Chrome</div>
+      </div>
+      <div class="card">
+        <h2>Afiliado Amazon</h2>
+        <div id="afiliado" class="value">...</div>
+        <div class="muted">Sem tag, o link não gera comissão</div>
+      </div>
+      <div class="card">
+        <h2>Filtro mínimo</h2>
+        <div id="desconto" class="value">...</div>
+        <div class="muted">Desconto mínimo para considerar oferta</div>
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>Controles</h2>
+      <div class="actions">
+        <button class="hero" data-action="fluxo">▶ Buscar + preparar no WhatsApp</button>
+        <button data-action="buscar">🔎 Buscar oferta agora</button>
+        <button data-action="preparar">💬 Preparar última mensagem</button>
+        <button class="secondary" data-action="login">🔐 Abrir login do WhatsApp</button>
+        <button class="secondary" data-action="automatico-start">⏱ Iniciar monitoramento</button>
+        <button class="danger" data-action="automatico-stop">■ Parar monitoramento</button>
+      </div>
+      <div id="toast"></div>
+    </section>
+
+    <section class="card section">
+      <h2>O que está sendo monitorado</h2>
+      <div><span class="pill">Consultas</span> <span id="consultas">...</span></div>
+      <div style="margin-top:10px"><span class="pill">Em execução</span> <span id="execucao">Nenhuma tarefa</span></div>
+    </section>
+    <section class="two section">
+      <div class="card">
+        <h2>Última mensagem gerada</h2>
+        <div id="mensagem" class="message">Ainda não há mensagem gerada.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <h2 style="margin:0">Atividade do sistema</h2>
+          <button class="secondary" data-action="limpar-logs" style="padding:8px 10px">Limpar</button>
+        </div>
+        <pre id="logs">Aguardando atividade...</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const buttons = [...document.querySelectorAll("button[data-action]")];
+
+    function classeStatus(el, tipo) {
+      el.classList.remove("ok", "warn", "bad");
+      el.classList.add(tipo);
+    }
+
+    async function atualizar() {
+      try {
+        const r = await fetch("/api/status", { cache: "no-store" });
+        const s = await r.json();
+
+        $("grupo").textContent = s.grupo;
+        $("sessao").textContent = s.sessaoWhatsapp ? "Sessão criada" : "Não conectada";
+        classeStatus($("sessao"), s.sessaoWhatsapp ? "ok" : "warn");
+
+        $("afiliado").textContent = s.afiliadoConfigurado ? "Configurado" : "Não configurado";
+        classeStatus($("afiliado"), s.afiliadoConfigurado ? "ok" : "warn");
+
+        $("desconto").textContent = s.descontoMinimo + "%";
+        $("consultas").textContent = s.consultas;
+        $("execucao").textContent = s.executando.length ? s.executando.join(", ") : "Nenhuma tarefa";
+        $("mensagem").textContent = s.mensagem || "Ainda não há mensagem gerada.";
+        $("logs").textContent = s.logs.length ? s.logs.join("\n") : "Aguardando atividade...";
+        $("logs").scrollTop = $("logs").scrollHeight;
+
+        const ocupado = s.executando.length > 0;
+        for (const b of buttons) {
+          if (b.dataset.action === "limpar-logs") continue;
+          b.disabled = false;
+        }
+      } catch (e) {
+        $("toast").textContent = "Não foi possível atualizar o painel.";
+        $("toast").className = "bad";
+      }
+    }
+    async function acao(nome) {
+      $("toast").textContent = "Executando...";
+      $("toast").className = "warn";
+      try {
+        const r = await fetch("/api/action", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: nome })
+        });
+        const data = await r.json();
+        $("toast").textContent = data.mensagem;
+        $("toast").className = data.ok ? "ok" : "warn";
+      } catch {
+        $("toast").textContent = "Falha ao executar a ação.";
+        $("toast").className = "bad";
+      }
+      await atualizar();
+    }
+
+    for (const button of buttons) {
+      button.addEventListener("click", () => acao(button.dataset.action));
+    }
+
+    atualizar();
+    setInterval(atualizar, 1500);
+  </script>
+</body>
+</html>

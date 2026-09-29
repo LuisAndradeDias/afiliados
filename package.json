@@ -11,6 +11,7 @@
     "whatsapp:login": "tsx src/robo/whatsapp-login.ts",
     "whatsapp:preparar": "tsx src/robo/whatsapp-preparar.ts",
     "automatico": "tsx src/robo/automatico.ts",
+    "painel": "tsx src/painel/server.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

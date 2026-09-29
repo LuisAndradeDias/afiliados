@@ -1,7 +1,10 @@
 import "dotenv/config";
+import { rm } from "node:fs/promises";
 import { formatarOfertaWhatsapp } from "../mensagens/whatsapp.js";
 import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { buscarMelhorOferta } from "./pipeline.js";
+
+await rm("data/ultima-mensagem-whatsapp.txt", { force: true });
 
 const resultado = await buscarMelhorOferta();
 
@@ -14,7 +17,7 @@ if (!resultado.melhor) {
   console.log(
     `Nenhuma oferta atingiu o desconto mínimo de ${minimo}%. Tente aumentar AMAZON_LIMIT, alterar AMAZON_QUERY ou usar AMAZON_QUERIES.`
   );
-  process.exit(0);
+  process.exit(2);
 }
 
 const mensagem = formatarOfertaWhatsapp(resultado.melhor);

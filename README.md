@@ -132,3 +132,28 @@ de mensagem. Ele não pressiona Enter e não clica no botão Enviar.
 Você revisa o conteúdo no Chrome e faz o envio manualmente.
 Também é possível salvar o nome em `WHATSAPP_GROUP_NAME` no `.env` e
 executar apenas `npm run whatsapp:preparar`.
+
+## Painel local
+
+Para usar o projeto sem decorar comandos, execute:
+
+```bash
+npm run painel
+```
+
+Abra `http://localhost:3030` no navegador. No Windows, também é possível
+dar duplo clique em `Abrir Painel.bat`, que inicia o painel e abre a página.
+
+O painel mostra grupo, sessão do WhatsApp, situação da tag de afiliado,
+filtro de desconto, consultas monitoradas, última mensagem e logs.
+
+Principais botões:
+
+- **Buscar + preparar no WhatsApp**: busca uma oferta e, se encontrar, abre o
+  grupo configurado com a mensagem preenchida. O envio continua manual.
+- **Buscar oferta agora**: gera uma nova mensagem sem abrir o WhatsApp.
+- **Preparar última mensagem**: abre o grupo e preenche a última mensagem.
+- **Abrir login do WhatsApp**: abre a sessão persistente para autenticação.
+- **Iniciar/Parar monitoramento**: controla o robô periódico em modo preview.
+
+O painel não clica no botão Enviar e não pressiona Enter no WhatsApp.
