@@ -1,33 +1,23 @@
 import "dotenv/config";
-import { aplicarAfiliadoAmazon } from "../afiliados/amazon.js";
-import { AmazonBrowserFonte } from "../fontes/amazon/browser.js";
 import { formatarOfertaWhatsapp } from "../mensagens/whatsapp.js";
-import { calcularScore } from "../ofertas/score.js";
 import { PublicadorArquivo } from "../publicadores/arquivo.js";
+import { buscarMelhorOferta } from "./pipeline.js";
 
-const consulta = process.env.AMAZON_QUERY ?? "ofertas";
-const limite = Number(process.env.AMAZON_LIMIT ?? 10);
-const tag = process.env.AMAZON_ASSOCIATE_TAG;
-const descontoMinimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
+const resultado = await buscarMelhorOferta();
 
-const fonte = new AmazonBrowserFonte(consulta, limite);
-const ofertas = await fonte.buscar();
+console.log(
+  `Produtos analisados: ${resultado.analisadas} | Elegíveis: ${resultado.elegiveis} | Melhor desconto encontrado: ${resultado.melhorDesconto}%`
+);
 
-const melhores = ofertas
-  .filter(
-    (oferta) =>
-      (oferta.descontoPercentual ?? 0) >= descontoMinimo
-  )
-  .map((oferta) => ({ oferta, score: calcularScore(oferta) }))
-  .sort((a, b) => b.score - a.score);
-
-if (melhores.length === 0) {
-  console.log("Nenhuma oferta encontrada.");
+if (!resultado.melhor) {
+  const minimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
+  console.log(
+    `Nenhuma oferta atingiu o desconto mínimo de ${minimo}%. Tente aumentar AMAZON_LIMIT, alterar AMAZON_QUERY ou usar AMAZON_QUERIES.`
+  );
   process.exit(0);
 }
 
-const escolhida = aplicarAfiliadoAmazon(melhores[0].oferta, tag);
-const mensagem = formatarOfertaWhatsapp(escolhida);
+const mensagem = formatarOfertaWhatsapp(resultado.melhor);
 
 console.log("\n--- PREVIA WHATSAPP ---\n");
 console.log(mensagem);

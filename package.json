@@ -8,6 +8,7 @@
     "collect": "tsx src/robo/buscador.ts",
     "amazon:test": "tsx src/robo/amazon-teste.ts",
     "whatsapp:preview": "tsx src/robo/whatsapp-preview.ts",
+    "automatico": "tsx src/robo/automatico.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

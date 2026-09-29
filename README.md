@@ -76,3 +76,27 @@ O envio automático para grupos comuns do WhatsApp não é ativado nesta
 etapa. O próximo módulo será o publicador, separado do motor de ofertas,
 para que possamos escolher entre integração oficial quando elegível e
 automação assistida do WhatsApp Web.
+
+## Robô automático
+
+O comando abaixo executa buscas repetidas, aplica os filtros e gera a melhor
+candidata em `data/ultima-mensagem-whatsapp.txt`:
+
+```bash
+npm run automatico
+```
+
+Por segurança, esta etapa ainda funciona em modo preview e não envia mensagens
+ao WhatsApp. Para testar apenas um ciclo, defina `RUN_ONCE=true` no `.env`.
+
+Você pode pesquisar várias expressões com:
+
+```env
+AMAZON_QUERIES=ofertas,echo dot,air fryer
+AMAZON_LIMIT=15
+MIN_DISCOUNT_PERCENT=20
+COLLECT_INTERVAL_MINUTES=10
+```
+
+Se nenhuma oferta atingir o desconto mínimo, o programa informa quantos produtos
+foram analisados e qual foi o melhor desconto encontrado.
