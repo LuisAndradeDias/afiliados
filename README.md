@@ -100,3 +100,19 @@ COLLECT_INTERVAL_MINUTES=10
 
 Se nenhuma oferta atingir o desconto mínimo, o programa informa quantos produtos
 foram analisados e qual foi o melhor desconto encontrado.
+
+## Login do WhatsApp Web
+
+Para autenticar o WhatsApp no projeto:
+
+```bash
+npm run whatsapp:login
+```
+
+O comando abre o Google Chrome usando um perfil separado em
+`data/whatsapp-profile`. Se aparecer o QR Code, escaneie com o celular,
+aguarde as conversas carregarem e então feche a janela do Chrome.
+
+A sessão fica salva localmente e não é enviada ao GitHub.
+Nos próximos módulos, esse mesmo perfil será reutilizado para localizar
+o grupo configurado e preparar o envio.
