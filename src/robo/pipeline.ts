@@ -3,6 +3,30 @@ import { AmazonBrowserFonte } from "../fontes/amazon/browser.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
 
+
+async function buscarAmazonComRetry(
+  consulta: string,
+  limite: number
+): Promise<Oferta[]> {
+  let ultimoErro: unknown;
+
+  for (let tentativa = 1; tentativa <= 2; tentativa += 1) {
+    try {
+      return await new AmazonBrowserFonte(consulta, limite).buscar();
+    } catch (error) {
+      ultimoErro = error;
+      const mensagem = error instanceof Error ? error.message : String(error);
+      console.warn(`Amazon "${consulta}" falhou (${tentativa}/2): ${mensagem}`);
+      if (tentativa < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+      }
+    }
+  }
+
+  console.warn(`Pulando "${consulta}" após duas falhas.`, ultimoErro);
+  return [];
+}
+
 export interface ResultadoBusca {
   analisadas: number;
   elegiveis: number;
@@ -25,8 +49,7 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
 
   for (const consulta of consultas) {
     console.log(`Buscando Amazon: "${consulta}"`);
-    const fonte = new AmazonBrowserFonte(consulta, limite);
-    const ofertas = await fonte.buscar();
+    const ofertas = await buscarAmazonComRetry(consulta, limite);
 
     for (const oferta of ofertas) {
       const existente = porId.get(oferta.produtoId);
