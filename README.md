@@ -186,3 +186,15 @@ As categorias são rotacionadas entre eletrônicos, cozinha, casa, beleza, ferra
 Cada rodada pesquisa quatro categorias a partir do ponto onde a rodada anterior parou.
 
 Os controles de login, monitoramento, busca isolada e histórico ficam em **Mais opções**.
+
+## Amazon Associados
+
+O painel permite configurar `AMAZON_ASSOCIATE_TAG` sem editar arquivos manualmente.
+
+1. Entre no Portal de Associados da Amazon Brasil.
+2. Copie um ID de Associado/Tracking ID vinculado à sua conta.
+3. No painel, cole o ID em **Amazon Associados** e clique em **Salvar e ativar**.
+4. As próximas ofertas passam a usar `?tag=SEU_ID` automaticamente.
+
+O campo também aceita um link de associado completo; o painel extrai o parâmetro `tag`.
+A oferta atual é atualizada imediatamente quando a tag é salva.

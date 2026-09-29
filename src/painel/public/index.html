@@ -34,6 +34,19 @@
     .primary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     details { margin-top: 16px; }
     summary { cursor: pointer; font-weight: 700; color: #475569; }
+    .affiliate-config {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
+    }
+    input[type="text"] {
+      width: 100%; border: 1px solid #cbd5e1; border-radius: 10px;
+      padding: 12px 14px; font: inherit; color: #172033; background: white;
+    }
+    .link-preview {
+      margin-top: 12px; padding: 12px; background: #f8fafc;
+      border: 1px solid #e2e8f0; border-radius: 10px;
+      word-break: break-all; font-size: 13px;
+    }
+    .link-preview a { color: #2563eb; }
     button {
       border: 0; border-radius: 12px; padding: 14px 16px;
       font-weight: 700; font-size: 14px; cursor: pointer;
@@ -65,7 +78,7 @@
     }
     .pill { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; font-weight: 700; }
     #toast { margin-top: 12px; min-height: 20px; font-size: 14px; font-weight: 600; }
-    @media (max-width: 850px) { .grid, .actions, .two { grid-template-columns: 1fr; } }
+    @media (max-width: 850px) { .grid, .actions, .two, .primary-actions, .affiliate-config { grid-template-columns: 1fr; } }
   </style>
   <header>
     <h1>Central de Ofertas</h1>
@@ -91,6 +104,24 @@
         <h2>Filtro mínimo</h2>
         <div id="desconto" class="value">...</div>
         <div class="muted">Desconto mínimo para considerar oferta</div>
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>Amazon Associados</h2>
+      <div class="affiliate-config">
+        <input id="amazonTag" type="text" placeholder="Cole seu Tracking ID, ex.: minha-loja-20" />
+        <button class="success" data-action="afiliado-save">Salvar e ativar</button>
+        <a href="https://associados.amazon.com.br/" target="_blank" rel="noreferrer">
+          Abrir Portal de Associados
+        </a>
+      </div>
+      <div class="muted" style="margin-top:8px">
+        Você pode colar o Tracking ID ou um link de associado completo que contenha ?tag=.
+      </div>
+      <div id="linkAfiliadoBox" class="link-preview" style="display:none">
+        <strong>Link da última oferta:</strong>
+        <a id="linkAfiliado" target="_blank" rel="noreferrer"></a>
       </div>
     </section>
 
@@ -157,8 +188,26 @@
         $("sessao").textContent = s.sessaoWhatsapp ? "Sessão criada" : "Não conectada";
         classeStatus($("sessao"), s.sessaoWhatsapp ? "ok" : "warn");
 
-        $("afiliado").textContent = s.afiliadoConfigurado ? "Configurado" : "Não configurado";
+        $("afiliado").textContent = s.afiliadoConfigurado
+          ? s.afiliadoTag
+          : "Não configurado";
         classeStatus($("afiliado"), s.afiliadoConfigurado ? "ok" : "warn");
+
+        if (document.activeElement !== $("amazonTag")) {
+          $("amazonTag").value = s.afiliadoTag || "";
+        }
+
+        const linkBox = $("linkAfiliadoBox");
+        const linkAfiliado = $("linkAfiliado");
+        if (s.linkAfiliadoAtual) {
+          linkAfiliado.href = s.linkAfiliadoAtual;
+          linkAfiliado.textContent = s.linkAfiliadoAtual;
+          linkBox.style.display = "block";
+        } else {
+          linkAfiliado.removeAttribute("href");
+          linkAfiliado.textContent = "";
+          linkBox.style.display = "none";
+        }
 
         $("desconto").textContent = s.descontoMinimo + "%";
         $("consultas").textContent = s.consultas;
@@ -221,14 +270,14 @@
         $("toast").className = "bad";
       }
     }
-    async function acao(nome) {
+    async function acao(nome, extras = {}) {
       $("toast").textContent = "Executando...";
       $("toast").className = "warn";
       try {
         const r = await fetch("/api/action", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ action: nome })
+          body: JSON.stringify({ action: nome, ...extras })
         });
         const data = await r.json();
         $("toast").textContent = data.mensagem;
@@ -241,8 +290,21 @@
     }
 
     for (const button of buttons) {
-      button.addEventListener("click", () => acao(button.dataset.action));
+      button.addEventListener("click", () => {
+        const nome = button.dataset.action;
+        if (nome === "afiliado-save") {
+          acao(nome, { tag: $("amazonTag").value });
+        } else {
+          acao(nome);
+        }
+      });
     }
+
+    $("amazonTag").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        acao("afiliado-save", { tag: $("amazonTag").value });
+      }
+    });
 
     atualizar();
     setInterval(atualizar, 1500);

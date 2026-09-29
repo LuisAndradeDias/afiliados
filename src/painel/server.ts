@@ -2,7 +2,7 @@ import "dotenv/config";
 import { spawn, type ChildProcess } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   cooldownHoras,
@@ -32,6 +32,78 @@ function registrar(origem: string, texto: string): void {
     logs.push(`[${horario}] [${origem}] ${linha}`);
   }
   if (logs.length > 300) logs.splice(0, logs.length - 300);
+}
+
+
+function normalizarTagAmazon(valor: string): string {
+  const recebido = valor.trim();
+  if (!recebido) return "";
+
+  try {
+    const url = new URL(recebido);
+    const tag = url.searchParams.get("tag");
+    if (tag) return tag.trim();
+  } catch {
+    // O usuário informou somente a tag.
+  }
+
+  return recebido;
+}
+
+function validarTagAmazon(tag: string): boolean {
+  return /^[A-Za-z0-9_-]{3,64}$/.test(tag);
+}
+
+async function salvarVariavelEnv(nome: string, valor: string): Promise<void> {
+  const envPath = resolve(raiz, ".env");
+  const atual = await readFile(envPath, "utf8").catch(() => "");
+  const linhas = atual.split(/\r?\n/);
+  const prefixo = `${nome}=`;
+  const indice = linhas.findIndex((linha) => linha.startsWith(prefixo));
+  const novaLinha = `${nome}=${valor}`;
+
+  if (indice >= 0) {
+    linhas[indice] = novaLinha;
+  } else {
+    linhas.push(novaLinha);
+  }
+
+  const conteudo = linhas.filter((linha, i, arr) =>
+    linha.length > 0 || i < arr.length - 1
+  ).join("\n");
+
+  await writeFile(envPath, `${conteudo.trimEnd()}\n`, "utf8");
+  process.env[nome] = valor;
+}
+
+interface PacotePainel {
+  mensagem?: string;
+  urlProduto?: string;
+  urlAfiliado?: string;
+  imagemUrl?: string;
+}
+
+async function atualizarOfertaAtualComTag(tag: string): Promise<void> {
+  const pacote = await readFile(pacotePath, "utf8")
+    .then((texto) => JSON.parse(texto) as PacotePainel)
+    .catch(() => null);
+
+  if (!pacote?.urlProduto) return;
+
+  const url = new URL(pacote.urlProduto);
+  if (tag) url.searchParams.set("tag", tag);
+  else url.searchParams.delete("tag");
+
+  const novoLink = tag ? url.toString() : pacote.urlProduto;
+  const anterior = pacote.urlAfiliado || pacote.urlProduto;
+  const mensagemAtual = pacote.mensagem || "";
+  const novaMensagem = mensagemAtual.replace(anterior, novoLink);
+
+  pacote.urlAfiliado = tag ? novoLink : undefined;
+  pacote.mensagem = novaMensagem;
+
+  await writeFile(pacotePath, JSON.stringify(pacote, null, 2), "utf8");
+  if (novaMensagem) await writeFile(mensagemPath, novaMensagem, "utf8");
 }
 
 function arquivoDo(script: string): string {
@@ -105,12 +177,24 @@ async function existe(path: string): Promise<boolean> {
 async function estado() {
   const mensagem = await readFile(mensagemPath, "utf8").catch(() => "");
   const pacote = await readFile(pacotePath, "utf8")
-    .then((texto) => JSON.parse(texto) as { imagemUrl?: string })
-    .catch(() => ({ imagemUrl: undefined as string | undefined }));
+    .then((texto) =>
+      JSON.parse(texto) as {
+        imagemUrl?: string;
+        urlProduto?: string;
+        urlAfiliado?: string;
+      }
+    )
+    .catch(() => ({
+      imagemUrl: undefined as string | undefined,
+      urlProduto: undefined as string | undefined,
+      urlAfiliado: undefined as string | undefined
+    }));
 
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME || "Não configurado",
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
+    afiliadoTag: process.env.AMAZON_ASSOCIATE_TAG?.trim() ?? "",
+    linkAfiliadoAtual: pacote.urlAfiliado ?? "",
     sessaoWhatsapp: await existe(perfilPath),
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
@@ -134,7 +218,37 @@ async function lerJson(req: import("node:http").IncomingMessage) {
   return corpo ? JSON.parse(corpo) : {};
 }
 
-async function executarAcao(acao: string): Promise<{ ok: boolean; mensagem: string }> {
+async function executarAcao(
+  acao: string,
+  dados: Record<string, unknown> = {}
+): Promise<{ ok: boolean; mensagem: string }> {
+  if (acao === "afiliado-save") {
+    const tag = normalizarTagAmazon(String(dados.tag ?? ""));
+
+    if (!tag) {
+      await salvarVariavelEnv("AMAZON_ASSOCIATE_TAG", "");
+      await atualizarOfertaAtualComTag("");
+      registrar("painel", "ID de associado Amazon removido.");
+      return { ok: true, mensagem: "ID de associado removido." };
+    }
+
+    if (!validarTagAmazon(tag)) {
+      return {
+        ok: false,
+        mensagem:
+          "ID inválido. Cole somente o Tracking ID da Amazon ou um link de associado que contenha ?tag=."
+      };
+    }
+
+    await salvarVariavelEnv("AMAZON_ASSOCIATE_TAG", tag);
+    await atualizarOfertaAtualComTag(tag);
+    registrar("painel", `ID de associado Amazon configurado: ${tag}`);
+    return {
+      ok: true,
+      mensagem: `Amazon vinculada com o ID ${tag}. As próximas ofertas usarão seu link de associado.`
+    };
+  }
+
   if (acao === "buscar") {
     const ok = iniciar("buscar", "buscar");
     return { ok, mensagem: ok ? "Busca iniciada." : "Já existe uma busca em andamento." };
@@ -275,7 +389,10 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && req.url === "/api/action") {
       const corpo = await lerJson(req);
-      const resultado = await executarAcao(String(corpo.action ?? ""));
+      const resultado = await executarAcao(
+        String(corpo.action ?? ""),
+        corpo as Record<string, unknown>
+      );
       json(res, resultado.ok ? 200 : 409, resultado);
       return;
     }
