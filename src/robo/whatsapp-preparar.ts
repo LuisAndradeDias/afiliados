@@ -5,6 +5,7 @@ import { chromium, type BrowserContext, type Locator, type Page } from "playwrig
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
+const fecharSignalPath = resolve("data", "fechar-whatsapp.signal");
 const modoTeste = process.env.WHATSAPP_PREPARE_TEST === "true";
 const canal = process.env.WHATSAPP_BROWSER_CHANNEL ?? "chrome";
 
@@ -77,6 +78,8 @@ const imagemPath = modoTeste
   ? undefined
   : await baixarImagemOferta(pacote.imagemUrl);
 
+await rm(fecharSignalPath, { force: true });
+
 async function primeiroVisivel(
   candidatos: Locator[],
   timeoutPorSeletor = 4_000
@@ -116,6 +119,24 @@ async function fecharAbasExtras(
   }
 
   await principal.bringToFront();
+}
+
+
+async function aguardarFinalizacao(context: BrowserContext): Promise<void> {
+  while (context.pages().length > 0) {
+    const solicitado = await readFile(fecharSignalPath, "utf8")
+      .then(() => true)
+      .catch(() => false);
+
+    if (solicitado) {
+      await rm(fecharSignalPath, { force: true });
+      console.log("Finalização solicitada pelo painel.");
+      await context.close().catch(() => undefined);
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
@@ -299,14 +320,17 @@ try {
 
   console.log(
     preparouImagem
-      ? "Revise a foto e a legenda no Chrome e clique em Enviar imagem manualmente."
+      ? "Revise a foto e a legenda no Chrome e clique em Enviar manualmente."
       : "Revise a mensagem no Chrome e clique em Enviar manualmente."
   );
-  console.log("Feche a janela do Chrome quando terminar.");
 
-  await new Promise<void>((resolveClose) => {
-    context.on("close", () => resolveClose());
-  });
+  console.log(
+    preparouImagem
+      ? "Depois de enviar, clique em Finalizar preparação no painel ou feche a janela do Chrome."
+      : "Quando terminar, clique em Finalizar preparação no painel ou feche a janela do Chrome."
+  );
+
+  await aguardarFinalizacao(context);
 } catch (error) {
   await context.close();
   throw error;

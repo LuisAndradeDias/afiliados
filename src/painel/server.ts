@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { spawn, type ChildProcess } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -9,6 +10,7 @@ const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
 const perfilPath = resolve(raiz, "data", "whatsapp-profile");
+const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
 const porta = Number(process.env.PAINEL_PORT ?? 3030);
 
@@ -113,12 +115,36 @@ function executarAcao(acao: string): { ok: boolean; mensagem: string } {
     return { ok, mensagem: ok ? "Busca iniciada." : "Já existe uma busca em andamento." };
   }
 
-  if (acao === "login" || acao === "preparar") {
-    if (whatsappOcupado()) {
-      return { ok: false, mensagem: "O WhatsApp já está sendo usado por outra tarefa." };
+  if (acao === "preparar") {
+    if (processos.has("preparar")) {
+      return {
+        ok: false,
+        mensagem:
+          "Já existe uma oferta aberta no WhatsApp. Envie ou cancele a prévia atual; o painel será liberado automaticamente."
+      };
     }
-    const ok = iniciar(acao, acao);
-    return { ok, mensagem: ok ? "WhatsApp aberto." : "A tarefa já está em andamento." };
+
+    if (processos.has("login")) {
+      return {
+        ok: false,
+        mensagem: "Feche a janela de login do WhatsApp antes de preparar a oferta."
+      };
+    }
+
+    const ok = iniciar("preparar", "preparar");
+    return { ok, mensagem: ok ? "Preparando oferta no WhatsApp." : "A tarefa já está em andamento." };
+  }
+
+  if (acao === "login") {
+    if (whatsappOcupado()) {
+      return {
+        ok: false,
+        mensagem: "O WhatsApp já está aberto pelo projeto. Finalize a janela atual primeiro."
+      };
+    }
+
+    const ok = iniciar("login", "login");
+    return { ok, mensagem: ok ? "Login do WhatsApp aberto." : "A tarefa já está em andamento." };
   }
 
   if (acao === "fluxo") {
@@ -146,6 +172,16 @@ function executarAcao(acao: string): { ok: boolean; mensagem: string } {
     child.kill();
     registrar("automatico", "Parada solicitada pelo painel.");
     return { ok: true, mensagem: "Parando monitoramento." };
+  }
+
+  if (acao === "preparar-stop") {
+    if (!processos.has("preparar")) {
+      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
+    }
+
+    writeFileSync(fecharWhatsappPath, "fechar", "utf8");
+    registrar("preparar", "Finalização solicitada pelo painel.");
+    return { ok: true, mensagem: "Finalizando a preparação do WhatsApp." };
   }
 
   if (acao === "limpar-logs") {

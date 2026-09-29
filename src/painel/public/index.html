@@ -39,6 +39,7 @@
     button:hover { transform: translateY(-1px); background: #0f172a; }
     button.secondary { background: #e2e8f0; color: #172033; }
     button.danger { background: #b91c1c; }
+    button.success { background: #087f5b; }
     button.hero { background: #2563eb; }
     button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
     .section { margin-top: 18px; }
@@ -99,6 +100,7 @@
         <button class="secondary" data-action="login">🔐 Abrir login do WhatsApp</button>
         <button class="secondary" data-action="automatico-start">⏱ Iniciar monitoramento</button>
         <button class="danger" data-action="automatico-stop">■ Parar monitoramento</button>
+        <button class="success" data-action="preparar-stop">✓ Finalizar preparação</button>
       </div>
       <div id="toast"></div>
     </section>
@@ -147,7 +149,19 @@
 
         $("desconto").textContent = s.descontoMinimo + "%";
         $("consultas").textContent = s.consultas;
-        $("execucao").textContent = s.executando.length ? s.executando.join(", ") : "Nenhuma tarefa";
+
+        const preparando = s.executando.includes("preparar");
+        const logando = s.executando.includes("login");
+        const buscando = s.executando.includes("buscar");
+        const automatico = s.executando.includes("automatico");
+        const whatsappOcupado = preparando || logando;
+
+        $("execucao").textContent = preparando
+          ? "Aguardando sua confirmação no WhatsApp"
+          : s.executando.length
+            ? s.executando.join(", ")
+            : "Nenhuma tarefa";
+
         $("mensagem").textContent = s.mensagem || "Ainda não há mensagem gerada.";
 
         const imagem = $("imagemOferta");
@@ -162,10 +176,25 @@
         $("logs").textContent = s.logs.length ? s.logs.join("\n") : "Aguardando atividade...";
         $("logs").scrollTop = $("logs").scrollHeight;
 
-        const ocupado = s.executando.length > 0;
         for (const b of buttons) {
-          if (b.dataset.action === "limpar-logs") continue;
-          b.disabled = false;
+          const acao = b.dataset.action;
+          if (acao === "limpar-logs") continue;
+
+          if (acao === "preparar" || acao === "login") {
+            b.disabled = whatsappOcupado;
+          } else if (acao === "preparar-stop") {
+            b.disabled = !preparando;
+          } else if (acao === "fluxo") {
+            b.disabled = whatsappOcupado || buscando;
+          } else if (acao === "buscar") {
+            b.disabled = buscando;
+          } else if (acao === "automatico-start") {
+            b.disabled = automatico;
+          } else if (acao === "automatico-stop") {
+            b.disabled = !automatico;
+          } else {
+            b.disabled = false;
+          }
         }
       } catch (e) {
         $("toast").textContent = "Não foi possível atualizar o painel.";

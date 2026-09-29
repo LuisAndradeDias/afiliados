@@ -153,6 +153,7 @@ Principais botões:
   grupo com a foto anexada e a mensagem como legenda. O envio continua manual.
 - **Buscar oferta agora**: gera uma nova mensagem sem abrir o WhatsApp.
 - **Preparar imagem + mensagem**: abre o grupo, anexa a foto e preenche a legenda.
+- **Finalizar preparação**: depois do envio manual, fecha a janela do WhatsApp do projeto e libera a próxima oferta.
 - **Abrir login do WhatsApp**: abre a sessão persistente para autenticação.
 - **Iniciar/Parar monitoramento**: controla o robô periódico em modo preview.
 
