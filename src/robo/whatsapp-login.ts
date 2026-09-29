@@ -1,29 +1,10 @@
 import "dotenv/config";
-import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright";
 
 const modoTeste = process.env.WHATSAPP_LOGIN_TEST === "true";
 const profileDir = resolve("data", modoTeste ? "whatsapp-profile-test" : "whatsapp-profile");
 const canal = process.env.WHATSAPP_BROWSER_CHANNEL ?? "chrome";
-
-async function limparRestauracaoAbas(perfil: string): Promise<void> {
-  if (modoTeste) return;
-
-  await rm(resolve(perfil, "Default", "Sessions"), {
-    recursive: true,
-    force: true
-  });
-
-  for (const nome of [
-    "Current Session",
-    "Current Tabs",
-    "Last Session",
-    "Last Tabs"
-  ]) {
-    await rm(resolve(perfil, "Default", nome), { force: true });
-  }
-}
 
 async function fecharAbasExtras(
   context: BrowserContext,
@@ -55,8 +36,6 @@ async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
 
 console.log("Abrindo WhatsApp Web com perfil persistente...");
 console.log(`Perfil: ${profileDir}`);
-
-await limparRestauracaoAbas(profileDir);
 
 const context = await chromium.launchPersistentContext(profileDir, {
   channel: canal,

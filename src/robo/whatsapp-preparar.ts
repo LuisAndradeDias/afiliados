@@ -106,24 +106,6 @@ async function localizarBusca(page: Page): Promise<Locator> {
 }
 
 
-async function limparRestauracaoAbas(perfil: string): Promise<void> {
-  if (modoTeste) return;
-
-  await rm(resolve(perfil, "Default", "Sessions"), {
-    recursive: true,
-    force: true
-  });
-
-  for (const nome of [
-    "Current Session",
-    "Current Tabs",
-    "Last Session",
-    "Last Tabs"
-  ]) {
-    await rm(resolve(perfil, "Default", nome), { force: true });
-  }
-}
-
 async function fecharAbasExtras(
   context: BrowserContext,
   principal: Page
@@ -157,43 +139,51 @@ async function prepararImagemComLegenda(
   caminhoImagem: string,
   legenda: string
 ): Promise<void> {
-  let inputImagem = page.locator(
-    'input[type="file"][accept*="image/jpeg"], input[type="file"][accept="image/*"]'
-  ).first();
+  const anexar = await primeiroVisivel([
+    page.getByRole("button", { name: /anexar|attach/i }),
+    page.locator('button[aria-label="Anexar"]')
+  ]);
 
-  if ((await inputImagem.count()) === 0) {
-    const anexar = await primeiroVisivel([
-      page.getByRole("button", { name: /anexar|attach/i }),
-      page.locator('button[data-tab="10"]')
-    ]);
-    await anexar.click();
-    inputImagem = page.locator(
-      'input[type="file"][accept*="image/jpeg"], input[type="file"][accept="image/*"]'
-    ).first();
-  }
+  await anexar.click();
 
-  await inputImagem.setInputFiles(caminhoImagem);
-
-  const botaoEnviar = await primeiroVisivel(
+  const fotosVideos = await primeiroVisivel(
     [
-      page.getByRole("button", { name: /enviar imagem|send image/i }),
-      page.getByLabel(/enviar imagem|send image/i)
-    ],
-    15_000
-  );
-
-  const campoLegenda = await primeiroVisivel(
-    [
-      page.getByRole("textbox", {
-        name: /digite uma mensagem para o grupo|type a message to the group/i
-      }),
-      page.locator('[contenteditable="true"][role="textbox"]').last()
+      page.getByText(/fotos e vídeos|photos and videos/i, { exact: true }),
+      page.getByText(/fotos e videos|photos and videos/i, { exact: true })
     ],
     8_000
   );
 
-  await campoLegenda.fill(legenda.trim());
+  const fileChooserPromise = page.waitForEvent("filechooser", {
+    timeout: 8_000
+  });
 
+  await fotosVideos.click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles(caminhoImagem);
+
+  console.log("Imagem selecionada pelo menu Fotos e vídeos.");
+
+  const campoLegenda = await primeiroVisivel(
+    [
+      page.getByRole("textbox", {
+        name: /^digite uma mensagem$|^type a message$/i
+      }),
+      page.locator('[contenteditable="true"][role="textbox"]').first()
+    ],
+    8_000
+  );
+
+  const botaoEnviar = await primeiroVisivel(
+    [
+      page.locator('[aria-label*="Enviar"]').first(),
+      page.locator('[aria-label*="Send"]').first(),
+      page.getByRole("button", { name: /enviar|send/i })
+    ],
+    15_000
+  );
+
+  await campoLegenda.fill(legenda.trim());
   await botaoEnviar.waitFor({ state: "visible", timeout: 8_000 });
 
   console.log("Imagem anexada e legenda preenchida.");
@@ -211,8 +201,6 @@ const pastaPerfil = resolve(
   "data",
   modoTeste ? "whatsapp-profile-test" : "whatsapp-profile"
 );
-
-await limparRestauracaoAbas(pastaPerfil);
 
 let context;
 try {
