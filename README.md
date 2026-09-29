@@ -55,3 +55,24 @@ e não deve ser tratado como a integração de produção.
 Quando a conta estiver elegível, a fonte Amazon será substituída pela Creators API,
 mantendo a mesma interface `FonteDeOfertas`. Assim, filtros, histórico, score e
 divulgação não precisarão ser reescritos.
+
+## WhatsApp - preparação de mensagem
+
+O comando abaixo busca ofertas da Amazon, aplica o desconto mínimo,
+seleciona a melhor candidata e gera a mensagem pronta para WhatsApp:
+
+```bash
+npm run whatsapp:preview
+```
+
+A mensagem também é salva em:
+
+`data/ultima-mensagem-whatsapp.txt`
+
+Se `AMAZON_ASSOCIATE_TAG` estiver configurada, o link recebe a tag
+de Associado. Sem tag, o projeto usa o link normal do produto.
+
+O envio automático para grupos comuns do WhatsApp não é ativado nesta
+etapa. O próximo módulo será o publicador, separado do motor de ofertas,
+para que possamos escolher entre integração oficial quando elegível e
+automação assistida do WhatsApp Web.

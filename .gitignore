@@ -4,3 +4,5 @@ dist/
 data/*.db
 playwright-report/
 test-results/
+data/*.txt
+data/whatsapp-profile/
