@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright";
 
@@ -50,32 +50,47 @@ async function localizarBusca(page: Page): Promise<Locator> {
 }
 
 
-async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+async function limparRestauracaoAbas(perfil: string): Promise<void> {
+  if (modoTeste) return;
 
-  const paginas = context.pages();
-  let page = paginas.find((p) => p.url().startsWith("https://web.whatsapp.com"));
+  await rm(resolve(perfil, "Default", "Sessions"), {
+    recursive: true,
+    force: true
+  });
 
-  if (!page) {
-    page = paginas.find((p) => p.url() === "about:blank") ?? (await context.newPage());
-    await page.goto("https://web.whatsapp.com/", {
-      waitUntil: "domcontentloaded",
-      timeout: 60_000
-    });
+  for (const nome of [
+    "Current Session",
+    "Current Tabs",
+    "Last Session",
+    "Last Tabs"
+  ]) {
+    await rm(resolve(perfil, "Default", nome), { force: true });
   }
+}
 
-  await page.bringToFront();
-
+async function fecharAbasExtras(
+  context: BrowserContext,
+  principal: Page
+): Promise<void> {
   for (const extra of context.pages()) {
-    if (extra === page) continue;
-    const url = extra.url();
-    const descartavel =
-      url === "about:blank" ||
-      url.startsWith("chrome://newtab") ||
-      url.startsWith("https://web.whatsapp.com");
-
-    if (descartavel) await extra.close().catch(() => undefined);
+    if (extra === principal) continue;
+    await extra.close().catch(() => undefined);
   }
+
+  await principal.bringToFront();
+}
+
+async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
+  const paginas = context.pages();
+  const page = paginas[0] ?? (await context.newPage());
+
+  await page.goto("https://web.whatsapp.com/", {
+    waitUntil: "domcontentloaded",
+    timeout: 60_000
+  });
+
+  await page.waitForTimeout(1_000);
+  await fecharAbasExtras(context, page);
 
   return page;
 }
@@ -91,6 +106,8 @@ const pastaPerfil = resolve(
   "data",
   modoTeste ? "whatsapp-profile-test" : "whatsapp-profile"
 );
+
+await limparRestauracaoAbas(pastaPerfil);
 
 let context;
 try {
@@ -110,6 +127,20 @@ try {
 const page = modoTeste
   ? context.pages()[0] ?? (await context.newPage())
   : await obterPaginaWhatsapp(context);
+
+if (!modoTeste) {
+  context.on("page", async (extra) => {
+    if (extra === page) return;
+
+    await extra.waitForTimeout(400).catch(() => undefined);
+    const url = extra.url();
+
+    if (url === "about:blank" || url.startsWith("chrome://newtab")) {
+      await extra.close().catch(() => undefined);
+      await page.bringToFront().catch(() => undefined);
+    }
+  });
+}
 
 if (modoTeste) {
   await page.setContent(`
@@ -140,6 +171,14 @@ try {
   const textoPreparado = (await compositor.textContent())?.trim() ?? "";
   if (!textoPreparado) {
     throw new Error("A mensagem não foi inserida no campo de conversa.");
+  }
+
+  if (!modoTeste) {
+    await page.waitForTimeout(750);
+    await fecharAbasExtras(context, page);
+    console.log(
+      `Aba ativa: ${page.url()} | Abas abertas pelo projeto: ${context.pages().length}`
+    );
   }
 
   console.log(`Mensagem preparada no grupo: ${nomeGrupo}`);
