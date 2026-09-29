@@ -4,6 +4,7 @@ import { formatarOfertaWhatsapp } from "../mensagens/whatsapp.js";
 import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { buscarMelhorOferta } from "./pipeline.js";
+import { registrarOfertaVista } from "../ofertas/historico.js";
 
 const intervaloMinutos = Number(
   process.env.COLLECT_INTERVAL_MINUTES ?? 10
@@ -19,7 +20,7 @@ async function ciclo(): Promise<void> {
   const resultado = await buscarMelhorOferta();
 
   console.log(
-    `Analisadas: ${resultado.analisadas} | Elegíveis: ${resultado.elegiveis} | Bloqueadas: ${resultado.bloqueadas} | Disponíveis: ${resultado.disponiveis} | Melhor desconto: ${resultado.melhorDesconto}%`
+    `Analisadas: ${resultado.analisadas} | Elegíveis: ${resultado.elegiveis} | Bloqueadas: ${resultado.bloqueadas} | Disponíveis: ${resultado.disponiveis} | Categoria: ${resultado.categoriaEscolhida ?? "-"} | Melhor desconto: ${resultado.melhorDesconto}%`
   );
 
   if (!resultado.melhor) {
@@ -35,6 +36,7 @@ async function ciclo(): Promise<void> {
   const mensagem = formatarOfertaWhatsapp(resultado.melhor);
   await new PublicadorArquivo().publicar(mensagem);
   await salvarPacoteWhatsapp(resultado.melhor, mensagem);
+  await registrarOfertaVista(resultado.melhor);
 
   console.log("\nOferta candidata:");
   console.log(mensagem);

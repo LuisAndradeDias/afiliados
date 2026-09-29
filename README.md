@@ -172,3 +172,17 @@ O sistema mantém histórico em `data/historico-ofertas.json`.
 
 O painel mostra quantas ofertas estão bloqueadas no momento e os dois períodos
 de rotação.
+
+## Fluxo simplificado de envio
+
+O uso normal do painel agora precisa de poucos cliques:
+
+1. Clique em **Nova oferta** para buscar uma categoria, escolher um produto e preparar foto + legenda no WhatsApp.
+2. Revise a prévia e clique em **Enviar e carregar próxima**.
+3. O sistema envia no grupo, registra o produto como enviado e prepara outra oferta automaticamente.
+4. Repita apenas o passo 2 enquanto quiser continuar enviando.
+
+As categorias são rotacionadas entre eletrônicos, cozinha, casa, beleza, ferramentas, brinquedos, pet, escritório, informática e limpeza.
+Cada rodada pesquisa quatro categorias a partir do ponto onde a rodada anterior parou.
+
+Os controles de login, monitoramento, busca isolada e histórico ficam em **Mais opções**.

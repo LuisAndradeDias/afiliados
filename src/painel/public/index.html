@@ -31,6 +31,9 @@
 </head>
 <body>  <style>
     .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+    .primary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    details { margin-top: 16px; }
+    summary { cursor: pointer; font-weight: 700; color: #475569; }
     button {
       border: 0; border-radius: 12px; padding: 14px 16px;
       font-weight: 700; font-size: 14px; cursor: pointer;
@@ -66,7 +69,7 @@
   </style>
   <header>
     <h1>Central de Ofertas</h1>
-    <p>Amazon → análise → mensagem → WhatsApp, com confirmação manual do envio.</p>
+    <p>Amazon → seleção variada → imagem + mensagem → WhatsApp, com confirmação pelo painel.</p>
   </header>
   <main>    <section class="grid">
       <div class="card">
@@ -92,19 +95,25 @@
     </section>
 
     <section class="card section">
-      <h2>Controles</h2>
-      <div class="actions">
-        <button class="hero" data-action="fluxo">▶ Buscar + preparar imagem no WhatsApp</button>
-        <button data-action="buscar">🔎 Buscar oferta agora</button>
-        <button data-action="preparar">🖼️ Preparar imagem + mensagem</button>
-        <button class="secondary" data-action="login">🔐 Abrir login do WhatsApp</button>
-        <button class="secondary" data-action="automatico-start">⏱ Iniciar monitoramento</button>
-        <button class="danger" data-action="automatico-stop">■ Parar monitoramento</button>
-        <button class="success" data-action="preparar-stop">✓ Já enviei — finalizar</button>
-        <button class="secondary" data-action="preparar-cancel">✕ Cancelar preparação</button>
-        <button class="secondary" data-action="historico-clear">↺ Limpar histórico</button>
+      <h2>Enviar oferta</h2>
+      <div class="primary-actions">
+        <button class="hero" data-action="fluxo">✨ Nova oferta</button>
+        <button class="success" data-action="preparar-send-next">📤 Enviar e carregar próxima</button>
       </div>
       <div id="toast"></div>
+
+      <details>
+        <summary>Mais opções</summary>
+        <div class="actions">
+          <button data-action="buscar">🔎 Só buscar oferta</button>
+          <button data-action="preparar">🖼️ Reabrir última oferta</button>
+          <button class="secondary" data-action="preparar-cancel">✕ Descartar oferta aberta</button>
+          <button class="secondary" data-action="login">🔐 Login do WhatsApp</button>
+          <button class="secondary" data-action="automatico-start">⏱ Iniciar monitoramento</button>
+          <button class="danger" data-action="automatico-stop">■ Parar monitoramento</button>
+          <button class="secondary" data-action="historico-clear">↺ Limpar histórico</button>
+        </div>
+      </details>
     </section>
 
     <section class="card section">
@@ -189,18 +198,18 @@
           if (acao === "preparar" || acao === "login") {
             b.disabled = whatsappOcupado;
           } else if (
-            acao === "preparar-stop" ||
+            acao === "preparar-send-next" ||
             acao === "preparar-cancel"
           ) {
             b.disabled = !preparando;
           } else if (acao === "historico-clear") {
             b.disabled = preparando;
           } else if (acao === "fluxo") {
-            b.disabled = whatsappOcupado || buscando;
+            b.disabled = whatsappOcupado || buscando || automatico;
           } else if (acao === "buscar") {
             b.disabled = buscando;
           } else if (acao === "automatico-start") {
-            b.disabled = automatico;
+            b.disabled = automatico || preparando || buscando;
           } else if (acao === "automatico-stop") {
             b.disabled = !automatico;
           } else {

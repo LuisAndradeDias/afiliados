@@ -8,8 +8,7 @@ import {
   cooldownHoras,
   contarBloqueadas,
   limparHistoricoOfertas,
-  previewCooldownMinutos,
-  registrarOfertaEnviada
+  previewCooldownMinutos
 } from "../ofertas/historico.js";
 
 const raiz = process.cwd();
@@ -18,11 +17,13 @@ const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
 const perfilPath = resolve(raiz, "data", "whatsapp-profile");
 const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
+const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
 const porta = Number(process.env.PAINEL_PORT ?? 3030);
 
 const processos = new Map<string, ChildProcess>();
 const logs: string[] = [];
+let carregarProximaAposEnvio = false;
 
 function registrar(origem: string, texto: string): void {
   for (const linha of texto.split(/\r?\n/)) {
@@ -74,6 +75,20 @@ function iniciar(
     registrar(nome, `Finalizado com código ${codigo ?? "?"}.`);
     processos.delete(nome);
     aoFinal?.(codigo);
+
+    if (nome === "preparar" && carregarProximaAposEnvio) {
+      carregarProximaAposEnvio = false;
+
+      if (codigo === 0) {
+        registrar("fluxo", "Envio concluído. Buscando a próxima oferta...");
+        iniciar("buscar", "buscar", {}, (codigoBusca) => {
+          if (codigoBusca === 0 && !whatsappOcupado()) {
+            registrar("fluxo", "Próxima oferta pronta. Abrindo WhatsApp...");
+            iniciar("preparar", "preparar");
+          }
+        });
+      }
+    }
   });
 
   return true;
@@ -130,7 +145,7 @@ async function executarAcao(acao: string): Promise<{ ok: boolean; mensagem: stri
       return {
         ok: false,
         mensagem:
-          "Já existe uma oferta aberta no WhatsApp. Use Já enviei — finalizar ou Cancelar preparação."
+          "Já existe uma oferta aberta no WhatsApp. Use Enviar e carregar próxima ou Descartar oferta aberta."
       };
     }
 
@@ -158,6 +173,13 @@ async function executarAcao(acao: string): Promise<{ ok: boolean; mensagem: stri
   }
 
   if (acao === "fluxo") {
+    if (processos.has("automatico")) {
+      return {
+        ok: false,
+        mensagem: "Pare o monitoramento antes de iniciar a fila de envio."
+      };
+    }
+
     if (processos.has("buscar") || whatsappOcupado()) {
       return { ok: false, mensagem: "Aguarde a tarefa atual terminar." };
     }    iniciar("buscar", "buscar", {}, (codigo) => {
@@ -172,6 +194,13 @@ async function executarAcao(acao: string): Promise<{ ok: boolean; mensagem: stri
   }
 
   if (acao === "automatico-start") {
+    if (processos.has("buscar") || whatsappOcupado()) {
+      return {
+        ok: false,
+        mensagem: "Finalize a busca/preparação atual antes de iniciar o monitoramento."
+      };
+    }
+
     const ok = iniciar("automatico", "automatico", { RUN_ONCE: "false" });
     return { ok, mensagem: ok ? "Monitoramento iniciado." : "Monitoramento já está ativo." };
   }
@@ -184,39 +213,30 @@ async function executarAcao(acao: string): Promise<{ ok: boolean; mensagem: stri
     return { ok: true, mensagem: "Parando monitoramento." };
   }
 
-  if (acao === "preparar-stop") {
+  if (acao === "preparar-send" || acao === "preparar-send-next") {
     if (!processos.has("preparar")) {
-      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
+      return { ok: false, mensagem: "Não há oferta pronta para enviar." };
     }
 
-    const pacote = await readFile(pacotePath, "utf8")
-      .then((texto) => JSON.parse(texto))
-      .catch(() => null);
-
-    if (!pacote?.produtoId || !pacote?.titulo) {
-      return {
-        ok: false,
-        mensagem: "Não consegui identificar a oferta atual para registrar no histórico."
-      };
-    }
-
-    await registrarOfertaEnviada({
-      plataforma: pacote.plataforma ?? "amazon",
-      produtoId: pacote.produtoId,
-      titulo: pacote.titulo,
-      precoAtual: pacote.precoAtual,
-      descontoPercentual: pacote.descontoPercentual
-    });
-
-    writeFileSync(fecharWhatsappPath, "fechar", "utf8");
-    registrar("preparar", `Oferta ${pacote.produtoId} marcada como enviada.`);
+    carregarProximaAposEnvio = acao === "preparar-send-next";
+    writeFileSync(enviarWhatsappPath, "enviar", "utf8");
+    registrar(
+      "preparar",
+      carregarProximaAposEnvio
+        ? "Envio confirmado. A próxima oferta será carregada automaticamente."
+        : "Envio confirmado pelo painel."
+    );
     return {
       ok: true,
-      mensagem: `Oferta marcada como enviada e bloqueada por ${cooldownHoras()}h.`
+      mensagem: carregarProximaAposEnvio
+        ? "Enviando e preparando a próxima oferta..."
+        : "Enviando a oferta no WhatsApp..."
     };
   }
 
   if (acao === "preparar-cancel") {
+    carregarProximaAposEnvio = false;
+
     if (!processos.has("preparar")) {
       return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
     }

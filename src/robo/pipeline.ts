@@ -3,6 +3,7 @@ import { AmazonBrowserFonte } from "../fontes/amazon/browser.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
 import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
+import { lerIndiceRotacao, salvarIndiceRotacao } from "../ofertas/rotacao.js";
 
 
 async function buscarAmazonComRetry(
@@ -34,6 +35,8 @@ export interface ResultadoBusca {
   bloqueadas: number;
   disponiveis: number;
   melhorDesconto: number;
+  categoriaEscolhida?: string;
+  consultasUsadas: string[];
   melhor?: Oferta;
 }
 
@@ -45,19 +48,37 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
     .map((item) => item.trim())
     .filter(Boolean);
 
+  if (consultas.length === 0) {
+    throw new Error("Nenhuma consulta da Amazon foi configurada.");
+  }
+
   const limite = Number(process.env.AMAZON_LIMIT ?? 20);
   const descontoMinimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
   const tag = process.env.AMAZON_ASSOCIATE_TAG;
   const porId = new Map<string, Oferta>();
 
-  for (const consulta of consultas) {
+  const indiceInicial = await lerIndiceRotacao(consultas.length);
+  const porRodada = Math.max(
+    1,
+    Math.min(
+      consultas.length,
+      Number(process.env.AMAZON_QUERIES_PER_RUN ?? 4)
+    )
+  );
+  const consultasUsadas = Array.from(
+    { length: porRodada },
+    (_, offset) => consultas[(indiceInicial + offset) % consultas.length]
+  );
+
+  for (const consulta of consultasUsadas) {
     console.log(`Buscando Amazon: "${consulta}"`);
     const ofertas = await buscarAmazonComRetry(consulta, limite);
 
     for (const oferta of ofertas) {
+      const categorizada = { ...oferta, categoria: consulta };
       const existente = porId.get(oferta.produtoId);
       if (!existente || oferta.precoAtual < existente.precoAtual) {
-        porId.set(oferta.produtoId, oferta);
+        porId.set(oferta.produtoId, categorizada);
       }
     }
   }
@@ -74,7 +95,30 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
     ({ oferta }) => !bloqueadasIds.has(chaveOferta(oferta))
   );
 
-  const melhor = disponiveis[0]?.oferta;
+  let melhor: Oferta | undefined;
+  let categoriaEscolhida: string | undefined;
+
+  for (const consulta of consultasUsadas) {
+    const candidato = disponiveis.find(
+      ({ oferta }) => oferta.categoria === consulta
+    );
+    if (candidato) {
+      melhor = candidato.oferta;
+      categoriaEscolhida = consulta;
+      break;
+    }
+  }
+
+  if (!melhor) {
+    melhor = disponiveis[0]?.oferta;
+    categoriaEscolhida = melhor?.categoria;
+  }
+
+  const indiceEscolhido = categoriaEscolhida
+    ? consultas.indexOf(categoriaEscolhida)
+    : indiceInicial;
+  await salvarIndiceRotacao(indiceEscolhido + 1, consultas.length);
+
   const melhorDesconto = Math.max(
     0,
     ...todas.map((oferta) => oferta.descontoPercentual ?? 0)
@@ -86,6 +130,8 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
     bloqueadas: elegiveis.length - disponiveis.length,
     disponiveis: disponiveis.length,
     melhorDesconto,
+    categoriaEscolhida,
+    consultasUsadas,
     melhor: melhor ? aplicarAfiliadoAmazon(melhor, tag) : undefined
   };
 }

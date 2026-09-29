@@ -2,10 +2,12 @@ import "dotenv/config";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright";
+import { registrarOfertaEnviada } from "../ofertas/historico.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
 const fecharSignalPath = resolve("data", "fechar-whatsapp.signal");
+const enviarSignalPath = resolve("data", "enviar-whatsapp.signal");
 const modoTeste = process.env.WHATSAPP_PREPARE_TEST === "true";
 const canal = process.env.WHATSAPP_BROWSER_CHANNEL ?? "chrome";
 
@@ -24,9 +26,18 @@ const mensagem = await readFile(mensagemPath, "utf8").catch(() => {
   );
 });
 
-const pacote = await readFile(pacotePath, "utf8")
-  .then((texto) => JSON.parse(texto) as { imagemUrl?: string })
-  .catch(() => ({ imagemUrl: undefined as string | undefined }));
+interface PacotePreparar {
+  imagemUrl?: string;
+  plataforma?: string;
+  produtoId?: string;
+  titulo?: string;
+  precoAtual?: number;
+  descontoPercentual?: number;
+}
+
+const pacote: PacotePreparar = await readFile(pacotePath, "utf8")
+  .then((texto) => JSON.parse(texto) as PacotePreparar)
+  .catch(() => ({}));
 
 async function baixarImagemOferta(url?: string): Promise<string | undefined> {
   if (!url) return undefined;
@@ -79,6 +90,7 @@ const imagemPath = modoTeste
   : await baixarImagemOferta(pacote.imagemUrl);
 
 await rm(fecharSignalPath, { force: true });
+await rm(enviarSignalPath, { force: true });
 
 async function primeiroVisivel(
   candidatos: Locator[],
@@ -122,15 +134,83 @@ async function fecharAbasExtras(
 }
 
 
-async function aguardarFinalizacao(context: BrowserContext): Promise<void> {
+async function registrarEnvioAtual(): Promise<void> {
+  if (!pacote.produtoId || !pacote.titulo) {
+    throw new Error("Não foi possível identificar a oferta enviada.");
+  }
+
+  await registrarOfertaEnviada({
+    plataforma: pacote.plataforma ?? "amazon",
+    produtoId: pacote.produtoId,
+    titulo: pacote.titulo,
+    precoAtual: pacote.precoAtual,
+    descontoPercentual: pacote.descontoPercentual
+  });
+}
+
+async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
+  const dialogo = page.locator('[role="dialog"]').last();
+  const dialogoVisivel = await dialogo.isVisible().catch(() => false);
+  const raiz = dialogoVisivel ? dialogo : page;
+
+  const iconeEnviar = raiz.locator('[data-icon*="send"]').last();
+  const iconeVisivel = await iconeEnviar.isVisible().catch(() => false);
+
+  if (iconeVisivel) {
+    const botao = iconeEnviar
+      .locator('xpath=ancestor::*[@role="button" or self::button][1]')
+      .first();
+
+    await botao.click({ timeout: 5_000 });
+  } else {
+    const legenda = await primeiroVisivel(
+      [
+        raiz.getByRole("textbox", {
+          name: /^digite uma mensagem$|^type a message$/i
+        }),
+        raiz.locator('[contenteditable="true"][role="textbox"]').first()
+      ],
+      4_000
+    );
+
+    await legenda.focus();
+    await page.keyboard.press("Enter");
+  }
+
+  if (dialogoVisivel) {
+    await dialogo.waitFor({ state: "hidden", timeout: 15_000 });
+  } else {
+    await page.waitForTimeout(1_500);
+  }
+}
+
+async function aguardarFinalizacao(
+  context: BrowserContext,
+  page: Page
+): Promise<void> {
   while (context.pages().length > 0) {
-    const solicitado = await readFile(fecharSignalPath, "utf8")
+    const enviar = await readFile(enviarSignalPath, "utf8")
       .then(() => true)
       .catch(() => false);
 
-    if (solicitado) {
+    if (enviar) {
+      await rm(enviarSignalPath, { force: true });
+      console.log("Envio solicitado pelo painel.");
+
+      await enviarOfertaNoWhatsapp(page);
+      await registrarEnvioAtual();
+      console.log("ENVIO_CONFIRMADO: oferta enviada e registrada no histórico.");
+      await context.close().catch(() => undefined);
+      return;
+    }
+
+    const fechar = await readFile(fecharSignalPath, "utf8")
+      .then(() => true)
+      .catch(() => false);
+
+    if (fechar) {
       await rm(fecharSignalPath, { force: true });
-      console.log("Finalização solicitada pelo painel.");
+      console.log("Preparação cancelada pelo painel.");
       await context.close().catch(() => undefined);
       return;
     }
@@ -155,11 +235,22 @@ async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
 }
 
 
+async function localizarBotaoEnviar(page: Page): Promise<Locator> {
+  return primeiroVisivel(
+    [
+      page.locator('[aria-label*="Enviar"]').first(),
+      page.locator('[aria-label*="Send"]').first(),
+      page.getByRole("button", { name: /enviar|send/i })
+    ],
+    15_000
+  );
+}
+
 async function prepararImagemComLegenda(
   page: Page,
   caminhoImagem: string,
   legenda: string
-): Promise<void> {
+): Promise<Locator> {
   const anexar = await primeiroVisivel([
     page.getByRole("button", { name: /anexar|attach/i }),
     page.locator('button[aria-label="Anexar"]')
@@ -195,20 +286,14 @@ async function prepararImagemComLegenda(
     8_000
   );
 
-  const botaoEnviar = await primeiroVisivel(
-    [
-      page.locator('[aria-label*="Enviar"]').first(),
-      page.locator('[aria-label*="Send"]').first(),
-      page.getByRole("button", { name: /enviar|send/i })
-    ],
-    15_000
-  );
+  const botaoEnviar = await localizarBotaoEnviar(page);
 
   await campoLegenda.fill(legenda.trim());
   await botaoEnviar.waitFor({ state: "visible", timeout: 8_000 });
 
   console.log("Imagem anexada e legenda preenchida.");
-  console.log("O botão Enviar imagem ficou aguardando sua confirmação manual.");
+  console.log("Oferta pronta para envio pelo painel.");
+  return botaoEnviar;
 }
 
 async function localizarCompositor(page: Page): Promise<Locator> {
@@ -283,9 +368,10 @@ try {
   await page.waitForTimeout(2_000);
 
   let preparouImagem = false;
+  let botaoEnviar: Locator;
 
   if (imagemPath) {
-    await prepararImagemComLegenda(page, imagemPath, mensagem);
+    botaoEnviar = await prepararImagemComLegenda(page, imagemPath, mensagem);
     preparouImagem = true;
   } else {
     const compositor = await localizarCompositor(page);
@@ -295,6 +381,8 @@ try {
     if (!textoPreparado) {
       throw new Error("A mensagem não foi inserida no campo de conversa.");
     }
+
+    botaoEnviar = await localizarBotaoEnviar(page);
   }
 
   if (!modoTeste) {
@@ -310,7 +398,7 @@ try {
       ? `Imagem + legenda preparadas no grupo: ${nomeGrupo}`
       : `Mensagem preparada no grupo: ${nomeGrupo}`
   );
-  console.log("Nenhuma tecla de envio foi acionada.");
+  console.log("Aguardando sua confirmação pelo painel.");
 
   if (modoTeste) {
     console.log("Teste concluído: busca, abertura do grupo e preenchimento funcionaram.");
@@ -320,17 +408,11 @@ try {
 
   console.log(
     preparouImagem
-      ? "Revise a foto e a legenda no Chrome e clique em Enviar manualmente."
-      : "Revise a mensagem no Chrome e clique em Enviar manualmente."
+      ? "Revise a foto e a legenda. Para enviar, use Enviar e carregar próxima no painel."
+      : "Revise a mensagem. Para enviar, use o botão Enviar agora no painel."
   );
 
-  console.log(
-    preparouImagem
-      ? "Depois de enviar, clique em Finalizar preparação no painel ou feche a janela do Chrome."
-      : "Quando terminar, clique em Finalizar preparação no painel ou feche a janela do Chrome."
-  );
-
-  await aguardarFinalizacao(context);
+  await aguardarFinalizacao(context, page);
 } catch (error) {
   await context.close();
   throw error;

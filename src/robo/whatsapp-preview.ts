@@ -11,7 +11,7 @@ await rm("data/ultima-mensagem-whatsapp.txt", { force: true });
 const resultado = await buscarMelhorOferta();
 
 console.log(
-  `Produtos analisados: ${resultado.analisadas} | Elegíveis: ${resultado.elegiveis} | Bloqueadas: ${resultado.bloqueadas} | Disponíveis: ${resultado.disponiveis} | Melhor desconto encontrado: ${resultado.melhorDesconto}%`
+  `Produtos analisados: ${resultado.analisadas} | Elegíveis: ${resultado.elegiveis} | Bloqueadas: ${resultado.bloqueadas} | Disponíveis: ${resultado.disponiveis} | Categoria: ${resultado.categoriaEscolhida ?? "-"} | Melhor desconto encontrado: ${resultado.melhorDesconto}%`
 );
 
 if (!resultado.melhor) {
