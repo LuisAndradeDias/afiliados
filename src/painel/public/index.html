@@ -100,7 +100,9 @@
         <button class="secondary" data-action="login">🔐 Abrir login do WhatsApp</button>
         <button class="secondary" data-action="automatico-start">⏱ Iniciar monitoramento</button>
         <button class="danger" data-action="automatico-stop">■ Parar monitoramento</button>
-        <button class="success" data-action="preparar-stop">✓ Finalizar preparação</button>
+        <button class="success" data-action="preparar-stop">✓ Já enviei — finalizar</button>
+        <button class="secondary" data-action="preparar-cancel">✕ Cancelar preparação</button>
+        <button class="secondary" data-action="historico-clear">↺ Limpar histórico</button>
       </div>
       <div id="toast"></div>
     </section>
@@ -108,6 +110,8 @@
     <section class="card section">
       <h2>O que está sendo monitorado</h2>
       <div><span class="pill">Consultas</span> <span id="consultas">...</span></div>
+      <div style="margin-top:10px"><span class="pill">Sem repetir</span> <span id="cooldown">...</span></div>
+      <div style="margin-top:10px"><span class="pill">Já enviadas no período</span> <span id="bloqueadas">0</span></div>
       <div style="margin-top:10px"><span class="pill">Em execução</span> <span id="execucao">Nenhuma tarefa</span></div>
     </section>
     <section class="two section">
@@ -149,6 +153,8 @@
 
         $("desconto").textContent = s.descontoMinimo + "%";
         $("consultas").textContent = s.consultas;
+        $("cooldown").textContent = (s.previewCooldownMinutos / 60) + "h após busca / " + s.cooldownHoras + "h após envio";
+        $("bloqueadas").textContent = String(s.ofertasBloqueadas ?? 0);
 
         const preparando = s.executando.includes("preparar");
         const logando = s.executando.includes("login");
@@ -182,8 +188,13 @@
 
           if (acao === "preparar" || acao === "login") {
             b.disabled = whatsappOcupado;
-          } else if (acao === "preparar-stop") {
+          } else if (
+            acao === "preparar-stop" ||
+            acao === "preparar-cancel"
+          ) {
             b.disabled = !preparando;
+          } else if (acao === "historico-clear") {
+            b.disabled = preparando;
           } else if (acao === "fluxo") {
             b.disabled = whatsappOcupado || buscando;
           } else if (acao === "buscar") {

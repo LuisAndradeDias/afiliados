@@ -2,6 +2,7 @@ import { aplicarAfiliadoAmazon } from "../afiliados/amazon.js";
 import { AmazonBrowserFonte } from "../fontes/amazon/browser.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
+import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
 
 
 async function buscarAmazonComRetry(
@@ -30,6 +31,8 @@ async function buscarAmazonComRetry(
 export interface ResultadoBusca {
   analisadas: number;
   elegiveis: number;
+  bloqueadas: number;
+  disponiveis: number;
   melhorDesconto: number;
   melhor?: Oferta;
 }
@@ -60,19 +63,28 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   }
 
   const todas = [...porId.values()];
+  const bloqueadasIds = await chavesBloqueadas();
+
   const elegiveis = todas
     .filter((oferta) => (oferta.descontoPercentual ?? 0) >= descontoMinimo)
     .map((oferta) => ({ oferta, score: calcularScore(oferta) }))
     .sort((a, b) => b.score - a.score);
 
-  const melhor = elegiveis[0]?.oferta;
+  const disponiveis = elegiveis.filter(
+    ({ oferta }) => !bloqueadasIds.has(chaveOferta(oferta))
+  );
+
+  const melhor = disponiveis[0]?.oferta;
   const melhorDesconto = Math.max(
     0,
     ...todas.map((oferta) => oferta.descontoPercentual ?? 0)
   );
 
-  return {    analisadas: todas.length,
+  return {
+    analisadas: todas.length,
     elegiveis: elegiveis.length,
+    bloqueadas: elegiveis.length - disponiveis.length,
+    disponiveis: disponiveis.length,
     melhorDesconto,
     melhor: melhor ? aplicarAfiliadoAmazon(melhor, tag) : undefined
   };

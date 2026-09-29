@@ -19,11 +19,17 @@ async function ciclo(): Promise<void> {
   const resultado = await buscarMelhorOferta();
 
   console.log(
-    `Analisadas: ${resultado.analisadas} | Elegíveis: ${resultado.elegiveis} | Melhor desconto: ${resultado.melhorDesconto}%`
+    `Analisadas: ${resultado.analisadas} | Elegíveis: ${resultado.elegiveis} | Bloqueadas: ${resultado.bloqueadas} | Disponíveis: ${resultado.disponiveis} | Melhor desconto: ${resultado.melhorDesconto}%`
   );
 
   if (!resultado.melhor) {
-    console.log("Nenhuma oferta atingiu os filtros neste ciclo.");
+    if (resultado.elegiveis > 0 && resultado.disponiveis === 0) {
+      console.log(
+        "As ofertas elegíveis já foram enviadas recentemente. Aguardando novas opções."
+      );
+    } else {
+      console.log("Nenhuma oferta atingiu os filtros neste ciclo.");
+    }
     return;
   }
   const mensagem = formatarOfertaWhatsapp(resultado.melhor);

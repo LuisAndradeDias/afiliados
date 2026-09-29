@@ -158,3 +158,17 @@ Principais botões:
 - **Iniciar/Parar monitoramento**: controla o robô periódico em modo preview.
 
 O painel não clica no botão Enviar/Enviar imagem e não pressiona Enter no WhatsApp.
+
+## Controle de ofertas repetidas
+
+O sistema mantém histórico em `data/historico-ofertas.json`.
+
+- Ao usar **Buscar oferta agora**, a oferta exibida fica fora das próximas buscas
+  pelo período definido em `OFFER_PREVIEW_COOLDOWN_MINUTES` (padrão: 120 minutos).
+- Ao clicar em **Já enviei — finalizar**, a oferta fica bloqueada pelo período
+  definido em `OFFER_COOLDOWN_HOURS` (padrão: 24 horas).
+- **Cancelar preparação** fecha o WhatsApp sem marcar a oferta como enviada.
+- **Limpar histórico** libera todas as ofertas imediatamente.
+
+O painel mostra quantas ofertas estão bloqueadas no momento e os dois períodos
+de rotação.

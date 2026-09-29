@@ -4,6 +4,13 @@ import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import {
+  cooldownHoras,
+  contarBloqueadas,
+  limparHistoricoOfertas,
+  previewCooldownMinutos,
+  registrarOfertaEnviada
+} from "../ofertas/historico.js";
 
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
@@ -95,6 +102,9 @@ async function estado() {
     executando: [...processos.keys()],
     mensagem,
     imagemUrl: pacote.imagemUrl,
+    cooldownHoras: cooldownHoras(),
+    previewCooldownMinutos: previewCooldownMinutos(),
+    ofertasBloqueadas: await contarBloqueadas(),
     logs
   };
 }
@@ -109,7 +119,7 @@ async function lerJson(req: import("node:http").IncomingMessage) {
   return corpo ? JSON.parse(corpo) : {};
 }
 
-function executarAcao(acao: string): { ok: boolean; mensagem: string } {
+async function executarAcao(acao: string): Promise<{ ok: boolean; mensagem: string }> {
   if (acao === "buscar") {
     const ok = iniciar("buscar", "buscar");
     return { ok, mensagem: ok ? "Busca iniciada." : "Já existe uma busca em andamento." };
@@ -120,7 +130,7 @@ function executarAcao(acao: string): { ok: boolean; mensagem: string } {
       return {
         ok: false,
         mensagem:
-          "Já existe uma oferta aberta no WhatsApp. Envie ou cancele a prévia atual; o painel será liberado automaticamente."
+          "Já existe uma oferta aberta no WhatsApp. Use Já enviei — finalizar ou Cancelar preparação."
       };
     }
 
@@ -179,9 +189,47 @@ function executarAcao(acao: string): { ok: boolean; mensagem: string } {
       return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
     }
 
+    const pacote = await readFile(pacotePath, "utf8")
+      .then((texto) => JSON.parse(texto))
+      .catch(() => null);
+
+    if (!pacote?.produtoId || !pacote?.titulo) {
+      return {
+        ok: false,
+        mensagem: "Não consegui identificar a oferta atual para registrar no histórico."
+      };
+    }
+
+    await registrarOfertaEnviada({
+      plataforma: pacote.plataforma ?? "amazon",
+      produtoId: pacote.produtoId,
+      titulo: pacote.titulo,
+      precoAtual: pacote.precoAtual,
+      descontoPercentual: pacote.descontoPercentual
+    });
+
     writeFileSync(fecharWhatsappPath, "fechar", "utf8");
-    registrar("preparar", "Finalização solicitada pelo painel.");
-    return { ok: true, mensagem: "Finalizando a preparação do WhatsApp." };
+    registrar("preparar", `Oferta ${pacote.produtoId} marcada como enviada.`);
+    return {
+      ok: true,
+      mensagem: `Oferta marcada como enviada e bloqueada por ${cooldownHoras()}h.`
+    };
+  }
+
+  if (acao === "preparar-cancel") {
+    if (!processos.has("preparar")) {
+      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
+    }
+
+    writeFileSync(fecharWhatsappPath, "fechar", "utf8");
+    registrar("preparar", "Preparação cancelada sem registrar a oferta.");
+    return { ok: true, mensagem: "Preparação cancelada. A oferta poderá aparecer novamente." };
+  }
+
+  if (acao === "historico-clear") {
+    await limparHistoricoOfertas();
+    registrar("painel", "Histórico de repetição limpo.");
+    return { ok: true, mensagem: "Histórico de ofertas enviadas foi limpo." };
   }
 
   if (acao === "limpar-logs") {
@@ -207,7 +255,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && req.url === "/api/action") {
       const corpo = await lerJson(req);
-      const resultado = executarAcao(String(corpo.action ?? ""));
+      const resultado = await executarAcao(String(corpo.action ?? ""));
       json(res, resultado.ok ? 200 : 409, resultado);
       return;
     }
