@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium, type BrowserContext, type Locator, type Page } from "playwright";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const modoTeste = process.env.WHATSAPP_PREPARE_TEST === "true";
@@ -49,6 +49,37 @@ async function localizarBusca(page: Page): Promise<Locator> {
   );
 }
 
+
+async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const paginas = context.pages();
+  let page = paginas.find((p) => p.url().startsWith("https://web.whatsapp.com"));
+
+  if (!page) {
+    page = paginas.find((p) => p.url() === "about:blank") ?? (await context.newPage());
+    await page.goto("https://web.whatsapp.com/", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000
+    });
+  }
+
+  await page.bringToFront();
+
+  for (const extra of context.pages()) {
+    if (extra === page) continue;
+    const url = extra.url();
+    const descartavel =
+      url === "about:blank" ||
+      url.startsWith("chrome://newtab") ||
+      url.startsWith("https://web.whatsapp.com");
+
+    if (descartavel) await extra.close().catch(() => undefined);
+  }
+
+  return page;
+}
+
 async function localizarCompositor(page: Page): Promise<Locator> {
   return primeiroVisivel([
     page.locator('footer div[contenteditable="true"][role="textbox"]'),
@@ -76,7 +107,9 @@ try {
   );
 }
 
-const page = context.pages()[0] ?? (await context.newPage());
+const page = modoTeste
+  ? context.pages()[0] ?? (await context.newPage())
+  : await obterPaginaWhatsapp(context);
 
 if (modoTeste) {
   await page.setContent(`
@@ -85,11 +118,6 @@ if (modoTeste) {
     <footer><div contenteditable="true" role="textbox" data-tab="10"></div></footer>
   `);
 } else {
-  await page.goto("https://web.whatsapp.com/", {
-    waitUntil: "domcontentloaded",
-    timeout: 60_000
-  });
-
   console.log("Aguardando o WhatsApp Web ficar pronto...");
   console.log("Se aparecer QR Code, faça o login pelo celular. O programa continuará sozinho.");
 }
