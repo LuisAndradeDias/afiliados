@@ -10,6 +10,8 @@ export interface Oferta {
   urlProduto: string;
   urlAfiliado?: string;
   categoria?: string;
+  comissaoEstimadaPercentual?: number;
+  scoreOferta?: number;
   encontradoEm: Date;
 }
 

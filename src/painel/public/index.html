@@ -76,6 +76,8 @@
       background: white; border: 1px solid #e2e8f0; border-radius: 12px;
       margin-bottom: 12px;
     }
+    .offer-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .offer-meta .pill strong { margin-left: 4px; }
     .pill { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; font-weight: 700; }
     #toast { margin-top: 12px; min-height: 20px; font-size: 14px; font-weight: 600; }
     @media (max-width: 850px) { .grid, .actions, .two, .primary-actions, .affiliate-config { grid-template-columns: 1fr; } }
@@ -157,6 +159,11 @@
     <section class="two section">
       <div class="card">
         <h2>Última oferta gerada</h2>
+        <div class="offer-meta">
+          <span class="pill">Categoria <strong id="categoriaOferta">-</strong></span>
+          <span class="pill">Comissão estimada <strong id="comissaoOferta">-</strong></span>
+          <span class="pill">Score <strong id="scoreOferta">-</strong></span>
+        </div>
         <img id="imagemOferta" class="offer-image" alt="Imagem do produto" />
         <div id="mensagem" class="message">Ainda não há mensagem gerada.</div>
       </div>
@@ -226,6 +233,9 @@
             ? s.executando.join(", ")
             : "Nenhuma tarefa";
 
+        $("categoriaOferta").textContent = s.categoriaAtual || "-";
+        $("comissaoOferta").textContent = s.comissaoAtual ? s.comissaoAtual + "%" : "-";
+        $("scoreOferta").textContent = s.scoreAtual ? String(s.scoreAtual) : "-";
         $("mensagem").textContent = s.mensagem || "Ainda não há mensagem gerada.";
 
         const imagem = $("imagemOferta");

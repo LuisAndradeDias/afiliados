@@ -198,3 +198,21 @@ O painel permite configurar `AMAZON_ASSOCIATE_TAG` sem editar arquivos manualmen
 
 O campo também aceita um link de associado completo; o painel extrai o parâmetro `tag`.
 A oferta atual é atualizada imediatamente quando a tag é salva.
+
+## Prioridade por comissão Amazon
+
+O motor usa a tabela de comissões da Amazon Brasil como peso de seleção.
+A comissão exibida no painel é uma estimativa baseada na categoria de busca.
+
+Prioridade usada:
+
+- 13%: bebê, beleza, saúde/cuidados pessoais, alimentos e categorias equivalentes.
+- 11%: roupas e pet shop.
+- 10%: livros.
+- 9,5%: dispositivos Amazon (Echo, Fire TV e Kindle).
+- 8%: casa, cozinha, ferramentas, eletrônicos, informática, brinquedos e similares.
+- 7%: demais categorias mapeadas.
+
+O score final combina qualidade da promoção e comissão estimada. As categorias
+de comissão alta também aparecem mais vezes na fila de busca, sem eliminar a
+rotação de categorias nem o bloqueio de produtos repetidos.

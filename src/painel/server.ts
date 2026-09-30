@@ -81,6 +81,9 @@ interface PacotePainel {
   urlProduto?: string;
   urlAfiliado?: string;
   imagemUrl?: string;
+  categoria?: string;
+  comissaoEstimadaPercentual?: number;
+  scoreOferta?: number;
 }
 
 async function atualizarOfertaAtualComTag(tag: string): Promise<void> {
@@ -176,19 +179,9 @@ async function existe(path: string): Promise<boolean> {
 
 async function estado() {
   const mensagem = await readFile(mensagemPath, "utf8").catch(() => "");
-  const pacote = await readFile(pacotePath, "utf8")
-    .then((texto) =>
-      JSON.parse(texto) as {
-        imagemUrl?: string;
-        urlProduto?: string;
-        urlAfiliado?: string;
-      }
-    )
-    .catch(() => ({
-      imagemUrl: undefined as string | undefined,
-      urlProduto: undefined as string | undefined,
-      urlAfiliado: undefined as string | undefined
-    }));
+  const pacote: PacotePainel = await readFile(pacotePath, "utf8")
+    .then((texto) => JSON.parse(texto) as PacotePainel)
+    .catch(() => ({}));
 
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME || "Não configurado",
@@ -201,6 +194,9 @@ async function estado() {
     executando: [...processos.keys()],
     mensagem,
     imagemUrl: pacote.imagemUrl,
+    categoriaAtual: pacote.categoria ?? "",
+    comissaoAtual: pacote.comissaoEstimadaPercentual ?? 0,
+    scoreAtual: pacote.scoreOferta ?? 0,
     cooldownHoras: cooldownHoras(),
     previewCooldownMinutos: previewCooldownMinutos(),
     ofertasBloqueadas: await contarBloqueadas(),

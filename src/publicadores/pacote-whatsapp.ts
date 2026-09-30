@@ -10,6 +10,9 @@ export interface PacoteWhatsapp {
   titulo: string;
   precoAtual: number;
   descontoPercentual?: number;
+  categoria?: string;
+  comissaoEstimadaPercentual?: number;
+  scoreOferta?: number;
   urlProduto: string;
   urlAfiliado?: string;
 }
@@ -27,6 +30,9 @@ export async function salvarPacoteWhatsapp(
     titulo: oferta.titulo,
     precoAtual: oferta.precoAtual,
     descontoPercentual: oferta.descontoPercentual,
+    categoria: oferta.categoria,
+    comissaoEstimadaPercentual: oferta.comissaoEstimadaPercentual,
+    scoreOferta: oferta.scoreOferta,
     urlProduto: oferta.urlProduto,
     urlAfiliado: oferta.urlAfiliado
   };

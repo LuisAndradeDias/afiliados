@@ -4,7 +4,49 @@ import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
 import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
 import { lerIndiceRotacao, salvarIndiceRotacao } from "../ofertas/rotacao.js";
+import {
+  estimarComissaoAmazon,
+  pesoBuscaPorComissao
+} from "../ofertas/comissoes-amazon.js";
 
+
+
+function criarFilaPonderada(consultas: string[]): string[] {
+  const pesos = consultas.map((consulta) => ({
+    consulta,
+    peso: pesoBuscaPorComissao(estimarComissaoAmazon(consulta))
+  }));
+  const maiorPeso = Math.max(...pesos.map(({ peso }) => peso));
+  const fila: string[] = [];
+
+  for (let rodada = 0; rodada < maiorPeso; rodada += 1) {
+    for (const item of pesos) {
+      if (item.peso > rodada) fila.push(item.consulta);
+    }
+  }
+
+  return fila;
+}
+
+function selecionarConsultas(
+  fila: string[],
+  indiceInicial: number,
+  quantidade: number
+): { consultas: string[]; proximoIndice: number } {
+  const selecionadas: string[] = [];
+  let passos = 0;
+
+  while (selecionadas.length < quantidade && passos < fila.length) {
+    const consulta = fila[(indiceInicial + passos) % fila.length];
+    if (!selecionadas.includes(consulta)) selecionadas.push(consulta);
+    passos += 1;
+  }
+
+  return {
+    consultas: selecionadas,
+    proximoIndice: (indiceInicial + Math.max(passos, 1)) % fila.length
+  };
+}
 
 async function buscarAmazonComRetry(
   consulta: string,
@@ -57,7 +99,8 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   const tag = process.env.AMAZON_ASSOCIATE_TAG;
   const porId = new Map<string, Oferta>();
 
-  const indiceInicial = await lerIndiceRotacao(consultas.length);
+  const filaPonderada = criarFilaPonderada(consultas);
+  const indiceInicial = await lerIndiceRotacao(filaPonderada.length);
   const porRodada = Math.max(
     1,
     Math.min(
@@ -65,19 +108,33 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
       Number(process.env.AMAZON_QUERIES_PER_RUN ?? 4)
     )
   );
-  const consultasUsadas = Array.from(
-    { length: porRodada },
-    (_, offset) => consultas[(indiceInicial + offset) % consultas.length]
+  const selecao = selecionarConsultas(
+    filaPonderada,
+    indiceInicial,
+    porRodada
   );
+  const consultasUsadas = selecao.consultas;
 
   for (const consulta of consultasUsadas) {
-    console.log(`Buscando Amazon: "${consulta}"`);
+    const comissao = estimarComissaoAmazon(consulta);
+    console.log(
+      `Buscando Amazon: "${consulta}" | comissão estimada ${comissao}%`
+    );
     const ofertas = await buscarAmazonComRetry(consulta, limite);
 
     for (const oferta of ofertas) {
-      const categorizada = { ...oferta, categoria: consulta };
+      const categorizada: Oferta = {
+        ...oferta,
+        categoria: consulta,
+        comissaoEstimadaPercentual: comissao
+      };
+      categorizada.scoreOferta = calcularScore(categorizada);
+
       const existente = porId.get(oferta.produtoId);
-      if (!existente || oferta.precoAtual < existente.precoAtual) {
+      if (
+        !existente ||
+        (categorizada.scoreOferta ?? 0) > (existente.scoreOferta ?? 0)
+      ) {
         porId.set(oferta.produtoId, categorizada);
       }
     }
@@ -95,29 +152,13 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
     ({ oferta }) => !bloqueadasIds.has(chaveOferta(oferta))
   );
 
-  let melhor: Oferta | undefined;
-  let categoriaEscolhida: string | undefined;
+  const melhor = disponiveis[0]?.oferta;
+  const categoriaEscolhida = melhor?.categoria;
 
-  for (const consulta of consultasUsadas) {
-    const candidato = disponiveis.find(
-      ({ oferta }) => oferta.categoria === consulta
-    );
-    if (candidato) {
-      melhor = candidato.oferta;
-      categoriaEscolhida = consulta;
-      break;
-    }
-  }
-
-  if (!melhor) {
-    melhor = disponiveis[0]?.oferta;
-    categoriaEscolhida = melhor?.categoria;
-  }
-
-  const indiceEscolhido = categoriaEscolhida
-    ? consultas.indexOf(categoriaEscolhida)
-    : indiceInicial;
-  await salvarIndiceRotacao(indiceEscolhido + 1, consultas.length);
+  await salvarIndiceRotacao(
+    selecao.proximoIndice,
+    filaPonderada.length
+  );
 
   const melhorDesconto = Math.max(
     0,
