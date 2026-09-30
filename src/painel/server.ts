@@ -16,6 +16,7 @@ const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
 const perfilPath = resolve(raiz, "data", "whatsapp-profile");
+const perfilMercadoLivrePath = resolve(raiz, "data", "mercadolivre-profile");
 const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
 const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
@@ -113,7 +114,9 @@ function arquivoDo(script: string): string {
   const mapa: Record<string, string> = {
     buscar: "src/robo/whatsapp-preview.ts",
     login: "src/robo/whatsapp-login.ts",
-    preparar: "src/robo/whatsapp-preparar.ts",    automatico: "src/robo/automatico.ts"
+    preparar: "src/robo/whatsapp-preparar.ts",
+    "mercadolivre-login": "src/robo/mercadolivre-login.ts",
+    automatico: "src/robo/automatico.ts"
   };
   const arquivo = mapa[script];
   if (!arquivo) throw new Error(`Ação desconhecida: ${script}`);
@@ -189,6 +192,8 @@ async function estado() {
     afiliadoTag: process.env.AMAZON_ASSOCIATE_TAG?.trim() ?? "",
     linkAfiliadoAtual: pacote.urlAfiliado ?? "",
     sessaoWhatsapp: await existe(perfilPath),
+    sessaoMercadoLivre: await existe(perfilMercadoLivrePath),
+    mercadoLivreApiConfigurada: Boolean(process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()),
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
@@ -268,6 +273,16 @@ async function executarAcao(
 
     const ok = iniciar("preparar", "preparar");
     return { ok, mensagem: ok ? "Preparando oferta no WhatsApp." : "A tarefa já está em andamento." };
+  }
+
+  if (acao === "mercadolivre-login") {
+    const ok = iniciar("mercadolivre-login", "mercadolivre-login");
+    return {
+      ok,
+      mensagem: ok
+        ? "Mercado Livre aberto. Entre na sua conta e acesse Afiliados e Criadores."
+        : "A sessão do Mercado Livre já está aberta."
+    };
   }
 
   if (acao === "login") {

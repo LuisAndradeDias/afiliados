@@ -103,6 +103,11 @@
         <div class="muted">Sem tag, o link não gera comissão</div>
       </div>
       <div class="card">
+        <h2>Mercado Livre</h2>
+        <div id="mercadoLivreStatus" class="value">...</div>
+        <div id="mercadoLivreApi" class="muted">Verificando integração...</div>
+      </div>
+      <div class="card">
         <h2>Filtro mínimo</h2>
         <div id="desconto" class="value">...</div>
         <div class="muted">Desconto mínimo para considerar oferta</div>
@@ -124,6 +129,26 @@
       <div id="linkAfiliadoBox" class="link-preview" style="display:none">
         <strong>Link da última oferta:</strong>
         <a id="linkAfiliado" target="_blank" rel="noreferrer"></a>
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>Mercado Livre Afiliados</h2>
+      <div class="actions">
+        <button class="hero" data-action="mercadolivre-login">🟡 Conectar Mercado Livre</button>
+        <a href="https://www.mercadolivre.com.br/l/afiliados-home" target="_blank" rel="noreferrer">
+          Abrir Afiliados e Criadores
+        </a>
+        <a href="https://developers.mercadolivre.com.br/" target="_blank" rel="noreferrer">
+          Abrir DevCenter
+        </a>
+      </div>
+      <div class="muted" style="margin-top:12px">
+        Primeiro fazemos login e adesão ao programa. A busca por API será ativada após autorização OAuth.
+        Links de afiliado do Mercado Livre devem ser gerados pelo Gerador de Links/Barra de Afiliados.
+      </div>
+      <div class="warn" style="margin-top:10px">
+        Atenção: o Mercado Livre permite divulgação em WhatsApp/Telegram públicos, mas não em grupos privados.
       </div>
     </section>
 
@@ -200,6 +225,17 @@
           : "Não configurado";
         classeStatus($("afiliado"), s.afiliadoConfigurado ? "ok" : "warn");
 
+        $("mercadoLivreStatus").textContent = s.sessaoMercadoLivre
+          ? "Sessão criada"
+          : "Não conectado";
+        classeStatus(
+          $("mercadoLivreStatus"),
+          s.sessaoMercadoLivre ? "ok" : "warn"
+        );
+        $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada
+          ? "API autorizada"
+          : "API aguardando autorização OAuth";
+
         if (document.activeElement !== $("amazonTag")) {
           $("amazonTag").value = s.afiliadoTag || "";
         }
@@ -225,6 +261,7 @@
         const logando = s.executando.includes("login");
         const buscando = s.executando.includes("buscar");
         const automatico = s.executando.includes("automatico");
+        const mercadoLivreLogin = s.executando.includes("mercadolivre-login");
         const whatsappOcupado = preparando || logando;
 
         $("execucao").textContent = preparando
@@ -254,7 +291,9 @@
           const acao = b.dataset.action;
           if (acao === "limpar-logs") continue;
 
-          if (acao === "preparar" || acao === "login") {
+          if (acao === "mercadolivre-login") {
+            b.disabled = mercadoLivreLogin;
+          } else if (acao === "preparar" || acao === "login") {
             b.disabled = whatsappOcupado;
           } else if (
             acao === "preparar-send-next" ||

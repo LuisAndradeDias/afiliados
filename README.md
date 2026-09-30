@@ -216,3 +216,19 @@ Prioridade usada:
 O score final combina qualidade da promoção e comissão estimada. As categorias
 de comissão alta também aparecem mais vezes na fila de busca, sem eliminar a
 rotação de categorias nem o bloqueio de produtos repetidos.
+
+## Mercado Livre - segunda plataforma
+
+O projeto já possui uma base separada para Mercado Livre:
+
+- sessão persistente em `data/mercadolivre-profile`;
+- botão **Conectar Mercado Livre** no painel;
+- conector de busca via API oficial em `src/fontes/mercadolivre/api.ts`;
+- teste com `npm run mercadolivre:test`;
+- campos de ambiente `MERCADOLIVRE_ACCESS_TOKEN`, `MERCADOLIVRE_QUERY` e `MERCADOLIVRE_LIMIT`.
+
+A coleta via navegador anônimo não é usada quando o Mercado Livre apresenta a proteção anti-abuso.
+A alternativa prevista é sessão autenticada e/ou API oficial via OAuth.
+
+Os links de afiliado devem ser gerados pelo Gerador de Links ou Barra de Afiliados do Mercado Livre.
+O envio para WhatsApp deve respeitar as regras do programa; grupos privados não são habilitados para esta plataforma.
