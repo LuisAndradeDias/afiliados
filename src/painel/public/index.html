@@ -58,7 +58,9 @@
       text-decoration: none; text-align: center; display: inline-block;
     }
     button:hover, .button-link:hover { transform: translateY(-1px); background: #0f172a; }
-    button.secondary { background: #e2e8f0; color: #172033; }
+    button.secondary, .button-link.secondary {
+      background: #e2e8f0; color: #172033;
+    }
     button.danger { background: #b91c1c; }
     button.success { background: #087f5b; }
     button.hero, .button-link.hero { background: #2563eb; }
@@ -171,8 +173,9 @@
         </a>
       </div>
       <div class="muted" style="margin-top:12px">
-        Entrar no site não basta para o painel reconhecer a conta. A autorização OAuth conecta
-        oficialmente o aplicativo ao Mercado Livre e libera a API.
+        As telas do Mercado Livre abertas por este painel usam uma nova guia do mesmo navegador
+        e, portanto, reaproveitam a sessão web que já estiver conectada. A autorização OAuth
+        continua sendo a conexão oficial usada pela API.
       </div>
       <div class="warn" style="margin-top:10px">
         Atenção: o Mercado Livre permite divulgação em WhatsApp/Telegram públicos, mas não em grupos privados.
