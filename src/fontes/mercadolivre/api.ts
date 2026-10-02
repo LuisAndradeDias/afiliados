@@ -24,6 +24,13 @@ interface RespostaCompeticao {
   results?: PublicacaoCatalogo[];
 }
 
+interface UsuarioMercadoLivre {
+  id: number;
+  seller_reputation?: {
+    level_id?: string | null;
+  };
+}
+
 function desconto(
   atual: number,
   anterior?: number | null
@@ -44,6 +51,8 @@ function imagemProduto(produto: ProdutoBusca): string | undefined {
 }
 export class MercadoLivreApiFonte {
   nome = "mercadolivre-api";
+  private readonly reputacaoVerdePorVendedor = new Map<number, Promise<boolean>>();
+
   constructor(
     private readonly consulta: string,
     private readonly limite = 20,
@@ -121,16 +130,52 @@ export class MercadoLivreApiFonte {
     return dados.results ?? [];
   }
 
-  private melhorPublicacao(
+  private vendedorTemReputacaoVerde(sellerId: number): Promise<boolean> {
+    const existente = this.reputacaoVerdePorVendedor.get(sellerId);
+    if (existente) return existente;
+
+    const consulta = this.getJson<UsuarioMercadoLivre>(
+      `https://api.mercadolibre.com/users/${sellerId}`
+    )
+      .then((usuario) => {
+        const nivel = usuario.seller_reputation?.level_id;
+        return nivel === "4_light_green" || nivel === "5_green";
+      })
+      .catch((error) => {
+        const mensagem = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `Mercado Livre: reputacao do vendedor ${sellerId} indisponivel: ${mensagem}`
+        );
+        return false;
+      });
+
+    this.reputacaoVerdePorVendedor.set(sellerId, consulta);
+    return consulta;
+  }
+
+  private async melhorPublicacao(
     publicacoes: PublicacaoCatalogo[]
-  ): PublicacaoCatalogo | undefined {
-    return publicacoes
+  ): Promise<PublicacaoCatalogo | undefined> {
+    const candidatas = publicacoes
       .filter((item) => item.condition === "new" && item.price > 0)
       .sort((a, b) => {
         const da = desconto(a.price, a.original_price) ?? 0;
         const db = desconto(b.price, b.original_price) ?? 0;
         return db - da || a.price - b.price;
-      })[0];
+      });
+
+    const maximoVendedores = Math.max(
+      1,
+      Number(process.env.MERCADOLIVRE_SELLER_CHECKS_PER_PRODUCT ?? 6)
+    );
+
+    for (const item of candidatas.slice(0, maximoVendedores)) {
+      if (await this.vendedorTemReputacaoVerde(item.seller_id)) {
+        return item;
+      }
+    }
+
+    return undefined;
   }
 
   async buscar(): Promise<Oferta[]> {
@@ -166,7 +211,7 @@ export class MercadoLivreApiFonte {
         continue;
       }
 
-      const melhor = this.melhorPublicacao(publicacoes);
+      const melhor = await this.melhorPublicacao(publicacoes);
       if (!melhor) continue;
 
       const anterior =
