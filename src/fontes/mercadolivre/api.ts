@@ -31,6 +31,12 @@ interface UsuarioMercadoLivre {
   };
 }
 
+interface UsuarioBulk {
+  status_code?: number;
+  code?: number;
+  body?: UsuarioMercadoLivre;
+}
+
 function desconto(
   atual: number,
   anterior?: number | null
@@ -51,7 +57,7 @@ function imagemProduto(produto: ProdutoBusca): string | undefined {
 }
 export class MercadoLivreApiFonte {
   nome = "mercadolivre-api";
-  private readonly reputacaoVerdePorVendedor = new Map<number, Promise<boolean>>();
+  private readonly reputacaoVerdePorVendedor = new Map<number, boolean>();
 
   constructor(
     private readonly consulta: string,
@@ -130,27 +136,41 @@ export class MercadoLivreApiFonte {
     return dados.results ?? [];
   }
 
-  private vendedorTemReputacaoVerde(sellerId: number): Promise<boolean> {
-    const existente = this.reputacaoVerdePorVendedor.get(sellerId);
-    if (existente) return existente;
+  private async carregarReputacoes(
+    sellerIds: number[]
+  ): Promise<void> {
+    const pendentes = [...new Set(sellerIds)]
+      .filter((id) => !this.reputacaoVerdePorVendedor.has(id))
+      .slice(0, 20);
 
-    const consulta = this.getJson<UsuarioMercadoLivre>(
-      `https://api.mercadolibre.com/users/${sellerId}`
-    )
-      .then((usuario) => {
+    if (pendentes.length === 0) return;
+
+    try {
+      const resposta = await this.getJson<UsuarioBulk[]>(
+        `https://api.mercadolibre.com/users/bulk?ids=${pendentes.join(",")}`
+      );
+
+      for (const entrada of resposta) {
+        const usuario = entrada.body;
+        if (!usuario?.id) continue;
         const nivel = usuario.seller_reputation?.level_id;
-        return nivel === "4_light_green" || nivel === "5_green";
-      })
-      .catch((error) => {
-        const mensagem = error instanceof Error ? error.message : String(error);
-        console.warn(
-          `Mercado Livre: reputacao do vendedor ${sellerId} indisponivel: ${mensagem}`
+        this.reputacaoVerdePorVendedor.set(
+          usuario.id,
+          nivel === "4_light_green" || nivel === "5_green"
         );
-        return false;
-      });
+      }
+    } catch (error) {
+      const mensagem = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `Mercado Livre: reputacao em lote indisponivel: ${mensagem}`
+      );
+    }
 
-    this.reputacaoVerdePorVendedor.set(sellerId, consulta);
-    return consulta;
+    for (const id of pendentes) {
+      if (!this.reputacaoVerdePorVendedor.has(id)) {
+        this.reputacaoVerdePorVendedor.set(id, false);
+      }
+    }
   }
 
   private async melhorPublicacao(
@@ -166,16 +186,19 @@ export class MercadoLivreApiFonte {
 
     const maximoVendedores = Math.max(
       1,
-      Number(process.env.MERCADOLIVRE_SELLER_CHECKS_PER_PRODUCT ?? 6)
+      Math.min(
+        20,
+        Number(process.env.MERCADOLIVRE_SELLER_CHECKS_PER_PRODUCT ?? 20)
+      )
+    );
+    const consideradas = candidatas.slice(0, maximoVendedores);
+    await this.carregarReputacoes(
+      consideradas.map((item) => item.seller_id)
     );
 
-    for (const item of candidatas.slice(0, maximoVendedores)) {
-      if (await this.vendedorTemReputacaoVerde(item.seller_id)) {
-        return item;
-      }
-    }
-
-    return undefined;
+    return consideradas.find(
+      (item) => this.reputacaoVerdePorVendedor.get(item.seller_id) === true
+    );
   }
 
   async buscar(): Promise<Oferta[]> {
