@@ -58,7 +58,9 @@
       text-decoration: none; text-align: center; display: inline-block;
     }
     button:hover, .button-link:hover { transform: translateY(-1px); background: #0f172a; }
-    button.secondary { background: #e2e8f0; color: #172033; }
+    button.secondary, .button-link.secondary {
+      background: #e2e8f0; color: #172033;
+    }
     button.danger { background: #b91c1c; }
     button.success { background: #087f5b; }
     button.hero, .button-link.hero { background: #2563eb; }
@@ -158,13 +160,23 @@
         <button class="success" data-action="mercadolivre-buscar">
           🔎 Buscar oferta Mercado Livre
         </button>
-        <a href="https://www.mercadolivre.com.br/l/afiliados-home" target="_blank" rel="noreferrer">
+        <a class="button-link secondary"
+           href="https://www.mercadolivre.com.br/afiliados"
+           target="_blank" rel="noreferrer">
+          🔐 Login web Mercado Livre
+        </a>
+        <button id="mlGerarLink" class="hero" type="button">
+          🔗 Gerar link oficial
+        </button>
+        <a href="https://www.mercadolivre.com.br/afiliados"
+           target="_blank" rel="noreferrer">
           Abrir Afiliados
         </a>
       </div>
       <div class="muted" style="margin-top:12px">
-        Entrar no site não basta para o painel reconhecer a conta. A autorização OAuth conecta
-        oficialmente o aplicativo ao Mercado Livre e libera a API.
+        As telas do Mercado Livre abertas por este painel usam uma nova guia do mesmo navegador
+        e reaproveitam a sessão web que já estiver conectada. A autorização OAuth continua sendo
+        a conexão oficial usada pela API.
       </div>
       <div class="warn" style="margin-top:10px">
         Atenção: o Mercado Livre permite divulgação em WhatsApp/Telegram públicos, mas não em grupos privados.
@@ -234,6 +246,38 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const buttons = [...document.querySelectorAll("button[data-action]")];
+    const mercadoLivreAfiliadosUrl =
+      "https://www.mercadolivre.com.br/afiliados";
+
+    $("mlGerarLink").addEventListener("click", () => {
+      const urlProduto = $("mlOfertaLink").getAttribute("href") || "";
+      if (!urlProduto) {
+        $("toast").textContent =
+          "Busque uma oferta do Mercado Livre antes de gerar o link.";
+        $("toast").className = "warn";
+        return;
+      }
+
+      window.open(mercadoLivreAfiliadosUrl, "_blank");
+
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(urlProduto)
+          .then(() => {
+            $("toast").textContent =
+              "Afiliados aberto em nova guia. A URL da oferta foi copiada; cole no Gerador de Links.";
+            $("toast").className = "ok";
+          })
+          .catch(() => {
+            $("toast").textContent =
+              "Afiliados aberto em nova guia. Copie o link da oferta e cole no Gerador de Links.";
+            $("toast").className = "warn";
+          });
+      } else {
+        $("toast").textContent =
+          "Afiliados aberto em nova guia. Copie o link da oferta e cole no Gerador de Links.";
+        $("toast").className = "warn";
+      }
+    });
 
     function classeStatus(el, tipo) {
       el.classList.remove("ok", "warn", "bad");
