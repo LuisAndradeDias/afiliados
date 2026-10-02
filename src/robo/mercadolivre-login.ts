@@ -20,7 +20,7 @@ async function fecharAbasExtras(
 async function temLinkEntrar(page: Page): Promise<boolean> {
   return (
     (await page
-      .locator('a[href*="/jms/mlb/lgz/login"]')
+      .locator('a[href*="/jms/mlb/lgz/login"]:visible')
       .count()
       .catch(() => 1)) > 0
   );
@@ -56,7 +56,7 @@ if (await estaLogado(page)) {
   process.exit(0);
 }
 
-const entrar = page.locator('a[href*="/jms/mlb/lgz/login"]').first();
+const entrar = page.locator('a[href*="/jms/mlb/lgz/login"]:visible').first();
 const hrefEntrar = await entrar.getAttribute("href").catch(() => null);
 if (hrefEntrar) {
   console.log("Abrindo a tela oficial de login do Mercado Livre...");
