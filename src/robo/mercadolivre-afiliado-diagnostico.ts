@@ -61,36 +61,13 @@ if (publicacoes.length === 0) {
   throw new Error("Produto sem publicacoes novas no momento.");
 }
 
-const ids = publicacoes.slice(0, 20).map((item) => item.item_id);
-const detalhes = await fetch(
-  "https://api.mercadolibre.com/items/bulk?ids=" +
-    ids.join(","),
-  { headers }
-);
-console.log(`Items bulk: HTTP ${detalhes.status}`);
-if (!detalhes.ok) {
-  console.log((await detalhes.text()).slice(0, 300));
-  process.exit(1);
-}
+const primeiroItem = publicacoes[0];
+const urlCurtaPublicacao =
+  "https://produto.mercadolivre.com.br/" +
+  primeiroItem.item_id.replace(/^MLB/, "MLB-");
 
-const textoDetalhes = await detalhes.text();
-console.log("Items bulk resposta: " + textoDetalhes.slice(0, 1600));
-const itens = JSON.parse(textoDetalhes) as ItemBulk[];
-const primeiro = itens.find(
-  (item) => item.status_code === 200 && item.body?.permalink
-)?.body;
-
-if (!primeiro?.permalink) {
-  console.log(JSON.stringify(itens.map((x) => ({
-    status: x.status_code,
-    id: x.body?.id,
-    temPermalink: Boolean(x.body?.permalink)
-  }))));
-  throw new Error("API nao retornou permalink para as publicacoes.");
-}
-
-console.log(`Item: ${primeiro.id ?? "-"}`);
-console.log(`Permalink: ${primeiro.permalink}`);
+console.log(`Item: ${primeiroItem.item_id}`);
+console.log(`URL curta: ${urlCurtaPublicacao}`);
 
 const perfil = resolve("data", "mercadolivre-profile");
 const canal = process.env.MERCADOLIVRE_BROWSER_CHANNEL ?? "chrome";
@@ -102,7 +79,7 @@ const context = await chromium.launchPersistentContext(perfil, {
 
 try {
   const page = context.pages()[0] ?? (await context.newPage());
-  await page.goto(primeiro.permalink, {
+  await page.goto(urlCurtaPublicacao, {
     waitUntil: "domcontentloaded",
     timeout: 60_000
   });
