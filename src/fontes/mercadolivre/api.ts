@@ -150,13 +150,25 @@ export class MercadoLivreApiFonte {
         `https://api.mercadolibre.com/users/bulk?ids=${pendentes.join(",")}`
       );
 
+      let verdes = 0;
+      let semNivel = 0;
+      let outros = 0;
+
       for (const entrada of resposta) {
         const usuario = entrada.body;
         if (!usuario?.id) continue;
         const nivel = usuario.seller_reputation?.level_id;
-        this.reputacaoVerdePorVendedor.set(
-          usuario.id,
-          nivel === "4_light_green" || nivel === "5_green"
+        const verde = nivel === "4_light_green" || nivel === "5_green";
+        if (verde) verdes += 1;
+        else if (!nivel) semNivel += 1;
+        else outros += 1;
+
+        this.reputacaoVerdePorVendedor.set(usuario.id, verde);
+      }
+
+      if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
+        console.log(
+          `Mercado Livre reputacao: verdes=${verdes}, sem_nivel=${semNivel}, outros=${outros}, consultados=${pendentes.length}`
         );
       }
     } catch (error) {
