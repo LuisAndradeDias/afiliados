@@ -158,10 +158,12 @@
         <button class="success" data-action="mercadolivre-buscar">
           🔎 Buscar oferta Mercado Livre
         </button>
-        <button class="secondary" data-action="mercadolivre-login">
+        <a class="button-link secondary"
+           href="https://www.mercadolivre.com.br/afiliados"
+           target="_blank" rel="noreferrer">
           🔐 Login web Mercado Livre
-        </button>
-        <button class="hero" data-action="mercadolivre-link">
+        </a>
+        <button id="mlGerarLink" class="hero" type="button">
           🔗 Gerar link oficial
         </button>
         <a href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noreferrer">
@@ -244,11 +246,43 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const buttons = [...document.querySelectorAll("button[data-action]")];
+    const mercadoLivreAfiliadosUrl =
+      "https://www.mercadolivre.com.br/afiliados";
 
     function classeStatus(el, tipo) {
       el.classList.remove("ok", "warn", "bad");
       el.classList.add(tipo);
     }
+
+    $("mlGerarLink").addEventListener("click", () => {
+      const urlProduto = $("mlOfertaLink").getAttribute("href") || "";
+      if (!urlProduto) {
+        $("toast").textContent =
+          "Busque uma oferta do Mercado Livre antes de gerar o link.";
+        $("toast").className = "warn";
+        return;
+      }
+
+      window.open(mercadoLivreAfiliadosUrl, "_blank");
+
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(urlProduto)
+          .then(() => {
+            $("toast").textContent =
+              "Afiliados aberto em nova guia. A URL da oferta foi copiada; cole no Gerador de Links.";
+            $("toast").className = "ok";
+          })
+          .catch(() => {
+            $("toast").textContent =
+              "Afiliados aberto em nova guia. Copie o link da oferta e cole no Gerador de Links.";
+            $("toast").className = "warn";
+          });
+      } else {
+        $("toast").textContent =
+          "Afiliados aberto em nova guia. Copie o link da oferta e cole no Gerador de Links.";
+        $("toast").className = "warn";
+      }
+    });
 
     async function atualizar() {
       try {
@@ -353,8 +387,6 @@
         const logando = s.executando.includes("login");
         const buscando = s.executando.includes("buscar");
         const mlBuscando = s.executando.includes("mercadolivre-buscar");
-        const mlLogando = s.executando.includes("mercadolivre-login");
-        const mlGerandoLink = s.executando.includes("mercadolivre-link");
         const automatico = s.executando.includes("automatico");
         const whatsappOcupado = preparando || logando;
 
@@ -400,14 +432,6 @@
             b.disabled = buscando;
           } else if (acao === "mercadolivre-buscar") {
             b.disabled = mlBuscando || !s.mercadoLivreApiConfigurada;
-          } else if (acao === "mercadolivre-login") {
-            b.disabled = mlLogando || mlGerandoLink;
-          } else if (acao === "mercadolivre-link") {
-            b.disabled =
-              mlGerandoLink ||
-              mlLogando ||
-              !s.mercadoLivreOferta ||
-              !s.mercadoLivreOferta.urlProduto;
           } else if (acao === "automatico-start") {
             b.disabled = automatico || preparando || buscando;
           } else if (acao === "automatico-stop") {
