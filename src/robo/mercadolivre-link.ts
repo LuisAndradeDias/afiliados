@@ -16,7 +16,7 @@ const painelAfiliados = "https://www.mercadolivre.com.br/afiliados";
 
 const oferta = await readFile(ofertaPath, "utf8")
   .then((texto) => JSON.parse(texto) as OfertaMercadoLivre)
-  .catch(() => ({}));
+  .catch(() => ({} as OfertaMercadoLivre));
 
 if (!oferta.urlProduto) {
   throw new Error(
