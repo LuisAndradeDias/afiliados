@@ -155,11 +155,11 @@
            href="/mercadolivre/connect" target="_blank" rel="noreferrer">
           🟡 Autorizar conta Mercado Livre
         </a>
+        <button class="success" data-action="mercadolivre-buscar">
+          🔎 Buscar oferta Mercado Livre
+        </button>
         <a href="https://www.mercadolivre.com.br/l/afiliados-home" target="_blank" rel="noreferrer">
           Abrir Afiliados
-        </a>
-        <a href="https://developers.mercadolivre.com.br/" target="_blank" rel="noreferrer">
-          Abrir DevCenter
         </a>
       </div>
       <div class="muted" style="margin-top:12px">
@@ -168,6 +168,16 @@
       </div>
       <div class="warn" style="margin-top:10px">
         Atenção: o Mercado Livre permite divulgação em WhatsApp/Telegram públicos, mas não em grupos privados.
+      </div>
+      <div id="mlOfertaBox" class="link-preview" style="display:none">
+        <strong>Melhor oferta encontrada:</strong>
+        <div id="mlOfertaTitulo" style="margin-top:8px;font-weight:700"></div>
+        <div id="mlOfertaPreco" style="margin-top:6px"></div>
+        <div id="mlOfertaDesconto" style="margin-top:4px"></div>
+        <a id="mlOfertaLink" target="_blank" rel="noreferrer"></a>
+        <div class="muted" style="margin-top:8px">
+          Antes de divulgar, gere o link no Gerador de Links do Mercado Livre para confirmar a elegibilidade e atribuir sua comissão.
+        </div>
       </div>
     </section>
 
@@ -276,6 +286,24 @@
           mlConnect.removeAttribute("href");
         }
 
+        const mlOferta = s.mercadoLivreOferta || {};
+        const mlOfertaBox = $("mlOfertaBox");
+        if (mlOferta.urlProduto) {
+          $("mlOfertaTitulo").textContent = mlOferta.titulo || "Oferta";
+          $("mlOfertaPreco").textContent =
+            "Preço: " + Number(mlOferta.precoAtual || 0).toLocaleString(
+              "pt-BR",
+              { style: "currency", currency: "BRL" }
+            );
+          $("mlOfertaDesconto").textContent =
+            "Desconto: " + (mlOferta.descontoPercentual || 0) + "%";
+          $("mlOfertaLink").href = mlOferta.urlProduto;
+          $("mlOfertaLink").textContent = "Abrir produto no Mercado Livre";
+          mlOfertaBox.style.display = "block";
+        } else {
+          mlOfertaBox.style.display = "none";
+        }
+
         if (document.activeElement !== $("amazonTag")) {
           $("amazonTag").value = s.afiliadoTag || "";
         }
@@ -300,6 +328,7 @@
         const preparando = s.executando.includes("preparar");
         const logando = s.executando.includes("login");
         const buscando = s.executando.includes("buscar");
+        const mlBuscando = s.executando.includes("mercadolivre-buscar");
         const automatico = s.executando.includes("automatico");
         const whatsappOcupado = preparando || logando;
 
@@ -343,6 +372,8 @@
             b.disabled = whatsappOcupado || buscando || automatico;
           } else if (acao === "buscar") {
             b.disabled = buscando;
+          } else if (acao === "mercadolivre-buscar") {
+            b.disabled = mlBuscando || !s.mercadoLivreApiConfigurada;
           } else if (acao === "automatico-start") {
             b.disabled = automatico || preparando || buscando;
           } else if (acao === "automatico-stop") {

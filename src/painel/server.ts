@@ -16,6 +16,7 @@ const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
+const ofertaMercadoLivrePath = resolve(raiz, "data", "ultima-oferta-mercadolivre.json");
 const perfilPath = resolve(raiz, "data", "whatsapp-profile");
 const perfilMercadoLivrePath = resolve(raiz, "data", "mercadolivre-profile");
 const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
@@ -202,6 +203,7 @@ function arquivoDo(script: string): string {
     login: "src/robo/whatsapp-login.ts",
     preparar: "src/robo/whatsapp-preparar.ts",
     "mercadolivre-login": "src/robo/mercadolivre-login.ts",
+    "mercadolivre-buscar": "src/robo/mercadolivre-preview.ts",
     automatico: "src/robo/automatico.ts"
   };
   const arquivo = mapa[script];
@@ -271,6 +273,20 @@ async function estado() {
   const pacote: PacotePainel = await readFile(pacotePath, "utf8")
     .then((texto) => JSON.parse(texto) as PacotePainel)
     .catch(() => ({}));
+  const ofertaMercadoLivre = await readFile(
+    ofertaMercadoLivrePath,
+    "utf8"
+  )
+    .then((texto) => JSON.parse(texto) as {
+      titulo?: string;
+      precoAtual?: number;
+      precoAnterior?: number;
+      descontoPercentual?: number;
+      imagem?: string;
+      urlProduto?: string;
+      categoria?: string;
+    })
+    .catch(() => ({}));
 
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME || "Não configurado",
@@ -284,6 +300,7 @@ async function estado() {
     mercadoLivreUserId: process.env.MERCADOLIVRE_USER_ID?.trim() ?? "",
     mercadoLivreClientId: process.env.MERCADOLIVRE_CLIENT_ID?.trim() ?? "",
     mercadoLivreRedirectUri: redirectMercadoLivre(),
+    mercadoLivreOferta: ofertaMercadoLivre,
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
@@ -363,6 +380,19 @@ async function executarAcao(
     return {
       ok: true,
       mensagem: `Amazon vinculada com o ID ${tag}. As próximas ofertas usarão seu link de associado.`
+    };
+  }
+
+  if (acao === "mercadolivre-buscar") {
+    const ok = iniciar(
+      "mercadolivre-buscar",
+      "mercadolivre-buscar"
+    );
+    return {
+      ok,
+      mensagem: ok
+        ? "Busca de ofertas do Mercado Livre iniciada."
+        : "Já existe uma busca do Mercado Livre em andamento."
     };
   }
 

@@ -4,56 +4,81 @@ interface ProdutoBusca {
   id: string;
   name: string;
   status: string;
+  pictures?: Array<{ url?: string; secure_url?: string }>;
 }
 
 interface RespostaBuscaProdutos {
   results?: ProdutoBusca[];
 }
 
-interface ProdutoDetalhe {
-  id: string;
-  name: string;
-  status: string;
-  permalink?: string;
-  pictures?: Array<{ url?: string; secure_url?: string }>;
-  buy_box_winner?: {
-    item_id: string;
-    price: number;
-    original_price?: number | null;
-  } | null;
-}
-
-interface ItemDetalhe {
-  id: string;
-  title: string;
+interface PublicacaoCatalogo {
+  item_id: string;
+  seller_id: number;
   price: number;
   original_price?: number | null;
-  permalink?: string;
-  thumbnail?: string;
+  condition?: string;
+  available_quantity?: number | null;
 }
 
-function desconto(atual: number, anterior?: number | null): number | undefined {
+interface RespostaCompeticao {
+  results?: PublicacaoCatalogo[];
+}
+
+function desconto(
+  atual: number,
+  anterior?: number | null
+): number | undefined {
   if (!anterior || anterior <= atual) return undefined;
   return Math.round(((anterior - atual) / anterior) * 100);
 }
 
+function urlProdutoCatalogo(id: string): string {
+  return `https://www.mercadolivre.com.br/p/${id}`;
+}
+
+function imagemProduto(produto: ProdutoBusca): string | undefined {
+  return (
+    produto.pictures?.[0]?.secure_url ??
+    produto.pictures?.[0]?.url
+  );
+}
 export class MercadoLivreApiFonte {
   nome = "mercadolivre-api";
-
   constructor(
     private readonly consulta: string,
     private readonly limite = 20,
     private readonly accessToken = process.env.MERCADOLIVRE_ACCESS_TOKEN
   ) {}
 
-  private async getJson<T>(url: URL | string): Promise<T> {
-    const resposta = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${this.accessToken}`
-      }
-    });
+  private async requisicao(
+    url: URL | string
+  ): Promise<Response> {
+    let resposta: Response | undefined;
 
+    for (let tentativa = 1; tentativa <= 4; tentativa += 1) {
+      resposta = await fetch(url, {
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${this.accessToken}`
+        }
+      });
+
+      if (resposta.status !== 429) return resposta;
+
+      if (tentativa < 4) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, tentativa * 1_500)
+        );
+      }
+    }
+
+    return resposta!;
+  }
+
+  private async getJson<T>(
+    url: URL | string
+  ): Promise<T> {
+    const resposta = await this.requisicao(url);
     if (!resposta.ok) {
       const corpo = await resposta.text().catch(() => "");
       if (
@@ -61,7 +86,7 @@ export class MercadoLivreApiFonte {
         corpo.includes("PA_UNAUTHORIZED_RESULT_FROM_POLICIES")
       ) {
         throw new Error(
-          "Mercado Livre: recurso bloqueado pela permissao do aplicativo."
+          "Mercado Livre: recurso bloqueado pelas permissoes do aplicativo."
         );
       }
       throw new Error(
@@ -72,20 +97,40 @@ export class MercadoLivreApiFonte {
     return (await resposta.json()) as T;
   }
 
-  private async detalheProduto(id: string): Promise<ProdutoDetalhe> {
-    return this.getJson<ProdutoDetalhe>(
-      `https://api.mercadolibre.com/products/${encodeURIComponent(id)}`
+  private async buscarPublicacoes(
+    produtoId: string
+  ): Promise<PublicacaoCatalogo[]> {
+    const resposta = await this.requisicao(
+      `https://api.mercadolibre.com/products/${encodeURIComponent(produtoId)}/items`
     );
+    if (resposta.status === 404) return [];
+
+    if (!resposta.ok) {
+      const corpo = await resposta.text().catch(() => "");
+      if (resposta.status === 403) {
+        throw new Error(
+          "Mercado Livre: sem permissao para consultar publicacoes do catalogo."
+        );
+      }
+      throw new Error(
+        `Mercado Livre competicao HTTP ${resposta.status}: ${corpo.slice(0, 250)}`
+      );
+    }
+
+    const dados = (await resposta.json()) as RespostaCompeticao;
+    return dados.results ?? [];
   }
 
-  private async detalheItem(id: string): Promise<ItemDetalhe | undefined> {
-    try {
-      return await this.getJson<ItemDetalhe>(
-        `https://api.mercadolibre.com/items/${encodeURIComponent(id)}`
-      );
-    } catch {
-      return undefined;
-    }
+  private melhorPublicacao(
+    publicacoes: PublicacaoCatalogo[]
+  ): PublicacaoCatalogo | undefined {
+    return publicacoes
+      .filter((item) => item.condition === "new" && item.price > 0)
+      .sort((a, b) => {
+        const da = desconto(a.price, a.original_price) ?? 0;
+        const db = desconto(b.price, b.original_price) ?? 0;
+        return db - da || a.price - b.price;
+      })[0];
   }
 
   async buscar(): Promise<Oferta[]> {
@@ -93,7 +138,9 @@ export class MercadoLivreApiFonte {
       throw new Error("Mercado Livre API nao conectada.");
     }
 
-    const url = new URL("https://api.mercadolibre.com/products/search");
+    const url = new URL(
+      "https://api.mercadolibre.com/products/search"
+    );
     url.searchParams.set("status", "active");
     url.searchParams.set("site_id", "MLB");
     url.searchParams.set("q", this.consulta);
@@ -102,37 +149,48 @@ export class MercadoLivreApiFonte {
     const dados = await this.getJson<RespostaBuscaProdutos>(url);
     const produtos = dados.results ?? [];
     const ofertas: Oferta[] = [];
+    for (const produto of produtos) {
+      if (produto.status !== "active") continue;
 
-    for (const resumo of produtos) {
-      const produto = await this.detalheProduto(resumo.id);
-      const vencedor = produto.buy_box_winner;
-      if (produto.status !== "active" || !vencedor?.item_id) continue;
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
-      const item = await this.detalheItem(vencedor.item_id);
-      const atual = item?.price ?? vencedor.price;
-      const anterior = item?.original_price ?? vencedor.original_price;
-      const link =
-        item?.permalink ??
-        produto.permalink ??
-        `https://www.mercadolivre.com.br/p/${produto.id}`;
-      const imagem =
-        item?.thumbnail ??
-        produto.pictures?.[0]?.secure_url ??
-        produto.pictures?.[0]?.url;
+      let publicacoes: PublicacaoCatalogo[];
+      try {
+        publicacoes = await this.buscarPublicacoes(produto.id);
+      } catch (error) {
+        const mensagem =
+          error instanceof Error ? error.message : String(error);
+        console.warn(
+          `Mercado Livre: pulando ${produto.id}: ${mensagem}`
+        );
+        continue;
+      }
+
+      const melhor = this.melhorPublicacao(publicacoes);
+      if (!melhor) continue;
+
+      const anterior =
+        melhor.original_price && melhor.original_price > melhor.price
+          ? melhor.original_price
+          : undefined;
 
       ofertas.push({
         plataforma: "Mercado Livre",
-        produtoId: item?.id ?? vencedor.item_id,
-        titulo: item?.title ?? produto.name,
-        precoAtual: atual,
-        precoAnterior:
-          anterior && anterior > atual ? anterior : undefined,
-        descontoPercentual: desconto(atual, anterior),
-        imagem,
-        urlProduto: link,
+        produtoId: produto.id,
+        titulo: produto.name,
+        precoAtual: melhor.price,
+        precoAnterior: anterior,
+        descontoPercentual: desconto(melhor.price, anterior),
+        imagem: imagemProduto(produto),
+        urlProduto: urlProdutoCatalogo(produto.id),
         categoria: this.consulta,
         encontradoEm: new Date()
       });
+
+      const maximo = Number(
+        process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY ?? 5
+      );
+      if (ofertas.length >= maximo) break;
     }
 
     return ofertas;
