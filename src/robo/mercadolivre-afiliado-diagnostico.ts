@@ -9,8 +9,7 @@ const painelAfiliados = "https://www.mercadolivre.com.br/afiliados";
 function emFluxoLogin(page: Page): boolean {
   const url = page.url();
   return (
-    /\/jms\/mlb\/lgz\/login/i.test(url) ||
-    /registration|verification|identity/i.test(url)
+    /login|identification|challenge|verification|registration/i.test(url)
   );
 }
 
