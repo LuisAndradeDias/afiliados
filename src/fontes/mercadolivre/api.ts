@@ -8,6 +8,11 @@ interface ProdutoBusca {
 }
 
 interface RespostaBuscaProdutos {
+  paging?: {
+    total?: number;
+    offset?: number;
+    limit?: number;
+  };
   results?: ProdutoBusca[];
 }
 
@@ -22,6 +27,19 @@ interface PublicacaoCatalogo {
 
 interface RespostaCompeticao {
   results?: PublicacaoCatalogo[];
+}
+
+interface UsuarioMercadoLivre {
+  id: number;
+  seller_reputation?: {
+    level_id?: string | null;
+  };
+}
+
+interface UsuarioBulk {
+  status_code?: number;
+  code?: number;
+  body?: UsuarioMercadoLivre;
 }
 
 function desconto(
@@ -44,6 +62,9 @@ function imagemProduto(produto: ProdutoBusca): string | undefined {
 }
 export class MercadoLivreApiFonte {
   nome = "mercadolivre-api";
+  private readonly reputacaoVerdePorVendedor = new Map<number, boolean>();
+  private ultimaRequisicaoEm = 0;
+
   constructor(
     private readonly consulta: string,
     private readonly limite = 20,
@@ -54,8 +75,21 @@ export class MercadoLivreApiFonte {
     url: URL | string
   ): Promise<Response> {
     let resposta: Response | undefined;
+    const intervalo = Math.max(
+      250,
+      Number(process.env.MERCADOLIVRE_REQUEST_INTERVAL_MS ?? 500)
+    );
 
     for (let tentativa = 1; tentativa <= 4; tentativa += 1) {
+      const espera = Math.max(
+        0,
+        intervalo - (Date.now() - this.ultimaRequisicaoEm)
+      );
+      if (espera > 0) {
+        await new Promise((resolve) => setTimeout(resolve, espera));
+      }
+
+      this.ultimaRequisicaoEm = Date.now();
       resposta = await fetch(url, {
         headers: {
           accept: "application/json",
@@ -66,9 +100,11 @@ export class MercadoLivreApiFonte {
       if (resposta.status !== 429) return resposta;
 
       if (tentativa < 4) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, tentativa * 1_500)
-        );
+        const retryAfter = Number(resposta.headers.get("retry-after") ?? 0);
+        const atraso = retryAfter > 0
+          ? retryAfter * 1_000
+          : tentativa * 2_500;
+        await new Promise((resolve) => setTimeout(resolve, atraso));
       }
     }
 
@@ -121,16 +157,87 @@ export class MercadoLivreApiFonte {
     return dados.results ?? [];
   }
 
-  private melhorPublicacao(
+  private async carregarReputacoes(
+    sellerIds: number[]
+  ): Promise<void> {
+    const pendentes = [...new Set(sellerIds)]
+      .filter((id) => !this.reputacaoVerdePorVendedor.has(id))
+      .slice(0, 20);
+
+    if (pendentes.length === 0) return;
+
+    try {
+      const resposta = await this.getJson<UsuarioBulk[]>(
+        `https://api.mercadolibre.com/users/bulk?ids=${pendentes.join(",")}`
+      );
+
+      let verdes = 0;
+      let semNivel = 0;
+      let outros = 0;
+
+      for (const entrada of resposta) {
+        const usuario = entrada.body;
+        if (!usuario?.id) continue;
+        const nivel = usuario.seller_reputation?.level_id;
+        const verde = nivel === "4_light_green" || nivel === "5_green";
+        if (verde) verdes += 1;
+        else if (!nivel) semNivel += 1;
+        else outros += 1;
+
+        this.reputacaoVerdePorVendedor.set(usuario.id, verde);
+      }
+
+      if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
+        console.log(
+          `Mercado Livre reputacao: verdes=${verdes}, sem_nivel=${semNivel}, outros=${outros}, consultados=${pendentes.length}`
+        );
+      }
+    } catch (error) {
+      const mensagem = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `Mercado Livre: reputacao em lote indisponivel: ${mensagem}`
+      );
+    }
+
+    for (const id of pendentes) {
+      if (!this.reputacaoVerdePorVendedor.has(id)) {
+        this.reputacaoVerdePorVendedor.set(id, false);
+      }
+    }
+  }
+
+  private async melhorPublicacao(
     publicacoes: PublicacaoCatalogo[]
-  ): PublicacaoCatalogo | undefined {
-    return publicacoes
+  ): Promise<PublicacaoCatalogo | undefined> {
+    const candidatas = publicacoes
       .filter((item) => item.condition === "new" && item.price > 0)
       .sort((a, b) => {
         const da = desconto(a.price, a.original_price) ?? 0;
         const db = desconto(b.price, b.original_price) ?? 0;
         return db - da || a.price - b.price;
-      })[0];
+      });
+
+    if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
+      console.log(
+        `Mercado Livre publicacoes: total=${publicacoes.length}, novas=${candidatas.length}`
+      );
+    }
+
+    const maximoVendedores = Math.max(
+      1,
+      Math.min(
+        20,
+        Number(process.env.MERCADOLIVRE_SELLER_CHECKS_PER_PRODUCT ?? 20)
+      )
+    );
+    const consideradas = candidatas.slice(0, maximoVendedores);
+    await this.carregarReputacoes(
+      consideradas.map((item) => item.seller_id)
+    );
+
+    return consideradas.find(
+      (item) => this.reputacaoVerdePorVendedor.get(item.seller_id) === true
+    );
   }
 
   async buscar(): Promise<Oferta[]> {
@@ -138,59 +245,99 @@ export class MercadoLivreApiFonte {
       throw new Error("Mercado Livre API nao conectada.");
     }
 
-    const url = new URL(
-      "https://api.mercadolibre.com/products/search"
-    );
-    url.searchParams.set("status", "active");
-    url.searchParams.set("site_id", "MLB");
-    url.searchParams.set("q", this.consulta);
-    url.searchParams.set("limit", String(this.limite));
-
-    const dados = await this.getJson<RespostaBuscaProdutos>(url);
-    const produtos = dados.results ?? [];
     const ofertas: Oferta[] = [];
-    for (const produto of produtos) {
-      if (produto.status !== "active") continue;
+    const produtosVistos = new Set<string>();
+    const maximo = Math.max(
+      1,
+      Number(process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY ?? 5)
+    );
+    const paginas = Math.max(
+      1,
+      Math.min(
+        5,
+        Number(process.env.MERCADOLIVRE_SEARCH_PAGES_PER_QUERY ?? 3)
+      )
+    );
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
+    for (let pagina = 0; pagina < paginas; pagina += 1) {
+      const url = new URL(
+        "https://api.mercadolibre.com/products/search"
+      );
+      url.searchParams.set("status", "active");
+      url.searchParams.set("site_id", "MLB");
+      url.searchParams.set("q", this.consulta);
+      url.searchParams.set("limit", String(this.limite));
+      url.searchParams.set("offset", String(pagina * this.limite));
 
-      let publicacoes: PublicacaoCatalogo[];
+      let dados: RespostaBuscaProdutos;
       try {
-        publicacoes = await this.buscarPublicacoes(produto.id);
+        dados = await this.getJson<RespostaBuscaProdutos>(url);
       } catch (error) {
-        const mensagem =
-          error instanceof Error ? error.message : String(error);
-        console.warn(
-          `Mercado Livre: pulando ${produto.id}: ${mensagem}`
-        );
-        continue;
+        const mensagem = error instanceof Error ? error.message : String(error);
+        if (mensagem.includes("HTTP 429") && pagina > 0) {
+          console.warn(
+            `Mercado Livre: limite de requisicoes na pagina ${pagina + 1}; encerrando esta rodada.`
+          );
+          break;
+        }
+        throw error;
       }
 
-      const melhor = this.melhorPublicacao(publicacoes);
-      if (!melhor) continue;
+      const produtos = dados.results ?? [];
+      if (produtos.length === 0) break;
 
-      const anterior =
-        melhor.original_price && melhor.original_price > melhor.price
-          ? melhor.original_price
-          : undefined;
+      if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
+        console.log(
+          `Mercado Livre catalogo: pagina=${pagina + 1}, produtos=${produtos.length}, total=${dados.paging?.total ?? "?"}`
+        );
+      }
 
-      ofertas.push({
-        plataforma: "Mercado Livre",
-        produtoId: produto.id,
-        titulo: produto.name,
-        precoAtual: melhor.price,
-        precoAnterior: anterior,
-        descontoPercentual: desconto(melhor.price, anterior),
-        imagem: imagemProduto(produto),
-        urlProduto: urlProdutoCatalogo(produto.id),
-        categoria: this.consulta,
-        encontradoEm: new Date()
-      });
+      for (const produto of produtos) {
+        if (produto.status !== "active" || produtosVistos.has(produto.id)) {
+          continue;
+        }
+        produtosVistos.add(produto.id);
 
-      const maximo = Number(
-        process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY ?? 5
-      );
-      if (ofertas.length >= maximo) break;
+        let publicacoes: PublicacaoCatalogo[];
+        try {
+          publicacoes = await this.buscarPublicacoes(produto.id);
+        } catch (error) {
+          const mensagem =
+            error instanceof Error ? error.message : String(error);
+          console.warn(
+            `Mercado Livre: pulando ${produto.id}: ${mensagem}`
+          );
+          continue;
+        }
+
+        const melhor = await this.melhorPublicacao(publicacoes);
+        if (!melhor) continue;
+
+        const anterior =
+          melhor.original_price && melhor.original_price > melhor.price
+            ? melhor.original_price
+            : undefined;
+
+        ofertas.push({
+          plataforma: "Mercado Livre",
+          produtoId: produto.id,
+          titulo: produto.name,
+          precoAtual: melhor.price,
+          precoAnterior: anterior,
+          descontoPercentual: desconto(melhor.price, anterior),
+          imagem: imagemProduto(produto),
+          urlProduto: urlProdutoCatalogo(produto.id),
+          categoria: this.consulta,
+          encontradoEm: new Date()
+        });
+
+        if (ofertas.length >= maximo) return ofertas;
+      }
+
+      const total = dados.paging?.total;
+      if (typeof total === "number" && (pagina + 1) * this.limite >= total) {
+        break;
+      }
     }
 
     return ofertas;
