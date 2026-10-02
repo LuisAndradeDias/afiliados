@@ -47,16 +47,17 @@
       word-break: break-all; font-size: 13px;
     }
     .link-preview a { color: #2563eb; }
-    button {
+    button, .button-link {
       border: 0; border-radius: 12px; padding: 14px 16px;
       font-weight: 700; font-size: 14px; cursor: pointer;
       background: #111827; color: white; transition: .15s ease;
+      text-decoration: none; text-align: center; display: inline-block;
     }
-    button:hover { transform: translateY(-1px); background: #0f172a; }
+    button:hover, .button-link:hover { transform: translateY(-1px); background: #0f172a; }
     button.secondary { background: #e2e8f0; color: #172033; }
     button.danger { background: #b91c1c; }
     button.success { background: #087f5b; }
-    button.hero { background: #2563eb; }
+    button.hero, .button-link.hero { background: #2563eb; }
     button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
     .section { margin-top: 18px; }
     .two { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
@@ -104,8 +105,8 @@
       </div>
       <div class="card">
         <h2>Mercado Livre</h2>
-        <div id="mercadoLivreStatus" class="value">...</div>
-        <div id="mercadoLivreApi" class="muted">Verificando integração...</div>
+        <div id="mercadoLivreStatus" class="value">Portal disponível</div>
+        <div id="mercadoLivreApi" class="muted">API aguardando autorização OAuth</div>
       </div>
       <div class="card">
         <h2>Filtro mínimo</h2>
@@ -135,9 +136,10 @@
     <section class="card section">
       <h2>Mercado Livre Afiliados</h2>
       <div class="actions">
-        <button class="hero" data-action="mercadolivre-login">🟡 Conectar Mercado Livre</button>
-        <a href="https://www.mercadolivre.com.br/l/afiliados-home" target="_blank" rel="noreferrer">
-          Abrir Afiliados e Criadores
+        <a class="button-link hero"
+           href="https://www.mercadolivre.com.br/l/afiliados-home"
+           target="_blank" rel="noreferrer">
+          🟡 Conectar Mercado Livre
         </a>
         <a href="https://developers.mercadolivre.com.br/" target="_blank" rel="noreferrer">
           Abrir DevCenter
@@ -225,13 +227,8 @@
           : "Não configurado";
         classeStatus($("afiliado"), s.afiliadoConfigurado ? "ok" : "warn");
 
-        $("mercadoLivreStatus").textContent = s.sessaoMercadoLivre
-          ? "Sessão criada"
-          : "Não conectado";
-        classeStatus(
-          $("mercadoLivreStatus"),
-          s.sessaoMercadoLivre ? "ok" : "warn"
-        );
+        $("mercadoLivreStatus").textContent = "Portal disponível";
+        classeStatus($("mercadoLivreStatus"), "ok");
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada
           ? "API autorizada"
           : "API aguardando autorização OAuth";
@@ -261,7 +258,6 @@
         const logando = s.executando.includes("login");
         const buscando = s.executando.includes("buscar");
         const automatico = s.executando.includes("automatico");
-        const mercadoLivreLogin = s.executando.includes("mercadolivre-login");
         const whatsappOcupado = preparando || logando;
 
         $("execucao").textContent = preparando
@@ -291,9 +287,7 @@
           const acao = b.dataset.action;
           if (acao === "limpar-logs") continue;
 
-          if (acao === "mercadolivre-login") {
-            b.disabled = mercadoLivreLogin;
-          } else if (acao === "preparar" || acao === "login") {
+          if (acao === "preparar" || acao === "login") {
             b.disabled = whatsappOcupado;
           } else if (
             acao === "preparar-send-next" ||
