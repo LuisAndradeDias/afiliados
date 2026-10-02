@@ -1,22 +1,42 @@
 import type { Oferta } from "../types.js";
 
-interface ResultadoMercadoLivre {
+interface ProdutoBusca {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface RespostaBuscaProdutos {
+  results?: ProdutoBusca[];
+}
+
+interface ProdutoDetalhe {
+  id: string;
+  name: string;
+  status: string;
+  permalink?: string;
+  pictures?: Array<{ url?: string; secure_url?: string }>;
+  buy_box_winner?: {
+    item_id: string;
+    price: number;
+    original_price?: number | null;
+  } | null;
+}
+
+interface ItemDetalhe {
   id: string;
   title: string;
   price: number;
   original_price?: number | null;
-  permalink: string;
+  permalink?: string;
   thumbnail?: string;
-}
-
-interface RespostaBuscaMercadoLivre {
-  results?: ResultadoMercadoLivre[];
 }
 
 function desconto(atual: number, anterior?: number | null): number | undefined {
   if (!anterior || anterior <= atual) return undefined;
   return Math.round(((anterior - atual) / anterior) * 100);
 }
+
 export class MercadoLivreApiFonte {
   nome = "mercadolivre-api";
 
@@ -26,47 +46,95 @@ export class MercadoLivreApiFonte {
     private readonly accessToken = process.env.MERCADOLIVRE_ACCESS_TOKEN
   ) {}
 
-  async buscar(): Promise<Oferta[]> {
-    if (!this.accessToken?.trim()) {
-      throw new Error(
-        "Mercado Livre API não conectada. Configure MERCADOLIVRE_ACCESS_TOKEN após autorizar a aplicação."
-      );
-    }
-
-    const url = new URL("https://api.mercadolibre.com/sites/MLB/search");
-    url.searchParams.set("q", this.consulta);
-    url.searchParams.set("limit", String(this.limite));
-
+  private async getJson<T>(url: URL | string): Promise<T> {
     const resposta = await fetch(url, {
       headers: {
         accept: "application/json",
         authorization: `Bearer ${this.accessToken}`
       }
     });
+
     if (!resposta.ok) {
-      const texto = await resposta.text().catch(() => "");
+      const corpo = await resposta.text().catch(() => "");
+      if (
+        resposta.status === 403 &&
+        corpo.includes("PA_UNAUTHORIZED_RESULT_FROM_POLICIES")
+      ) {
+        throw new Error(
+          "Mercado Livre: recurso bloqueado pela permissao do aplicativo."
+        );
+      }
       throw new Error(
-        `Mercado Livre API retornou HTTP ${resposta.status}: ${texto.slice(0, 300)}`
+        `Mercado Livre API HTTP ${resposta.status}: ${corpo.slice(0, 300)}`
       );
     }
 
-    const dados = (await resposta.json()) as RespostaBuscaMercadoLivre;
-    const encontrados = dados.results ?? [];
+    return (await resposta.json()) as T;
+  }
 
-    return encontrados.map((item) => ({
-      plataforma: "Mercado Livre",
-      produtoId: item.id,
-      titulo: item.title,
-      precoAtual: item.price,
-      precoAnterior:
-        item.original_price && item.original_price > item.price
-          ? item.original_price
-          : undefined,
-      descontoPercentual: desconto(item.price, item.original_price),
-      imagem: item.thumbnail,
-      urlProduto: item.permalink,
-      categoria: this.consulta,
-      encontradoEm: new Date()
-    }));
+  private async detalheProduto(id: string): Promise<ProdutoDetalhe> {
+    return this.getJson<ProdutoDetalhe>(
+      `https://api.mercadolibre.com/products/${encodeURIComponent(id)}`
+    );
+  }
+
+  private async detalheItem(id: string): Promise<ItemDetalhe | undefined> {
+    try {
+      return await this.getJson<ItemDetalhe>(
+        `https://api.mercadolibre.com/items/${encodeURIComponent(id)}`
+      );
+    } catch {
+      return undefined;
+    }
+  }
+
+  async buscar(): Promise<Oferta[]> {
+    if (!this.accessToken?.trim()) {
+      throw new Error("Mercado Livre API nao conectada.");
+    }
+
+    const url = new URL("https://api.mercadolibre.com/products/search");
+    url.searchParams.set("status", "active");
+    url.searchParams.set("site_id", "MLB");
+    url.searchParams.set("q", this.consulta);
+    url.searchParams.set("limit", String(this.limite));
+
+    const dados = await this.getJson<RespostaBuscaProdutos>(url);
+    const produtos = dados.results ?? [];
+    const ofertas: Oferta[] = [];
+
+    for (const resumo of produtos) {
+      const produto = await this.detalheProduto(resumo.id);
+      const vencedor = produto.buy_box_winner;
+      if (produto.status !== "active" || !vencedor?.item_id) continue;
+
+      const item = await this.detalheItem(vencedor.item_id);
+      const atual = item?.price ?? vencedor.price;
+      const anterior = item?.original_price ?? vencedor.original_price;
+      const link =
+        item?.permalink ??
+        produto.permalink ??
+        `https://www.mercadolivre.com.br/p/${produto.id}`;
+      const imagem =
+        item?.thumbnail ??
+        produto.pictures?.[0]?.secure_url ??
+        produto.pictures?.[0]?.url;
+
+      ofertas.push({
+        plataforma: "Mercado Livre",
+        produtoId: item?.id ?? vencedor.item_id,
+        titulo: item?.title ?? produto.name,
+        precoAtual: atual,
+        precoAnterior:
+          anterior && anterior > atual ? anterior : undefined,
+        descontoPercentual: desconto(atual, anterior),
+        imagem,
+        urlProduto: link,
+        categoria: this.consulta,
+        encontradoEm: new Date()
+      });
+    }
+
+    return ofertas;
   }
 }
