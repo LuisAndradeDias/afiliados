@@ -17,10 +17,16 @@ try {
     waitUntil: "domcontentloaded",
     timeout: 60_000
   });
-  await page.waitForTimeout(8_000);
+  await page.waitForLoadState("domcontentloaded").catch(() => undefined);
+  await page.waitForTimeout(1_500).catch(() => undefined);
+
+  if (page.isClosed()) {
+    console.log("BROWSER_FECHADO_ANTES_DA_LEITURA");
+    process.exit(2);
+  }
 
   console.log(`URL final: ${page.url()}`);
-  console.log(`Titulo: ${await page.title()}`);
+  console.log(`Titulo: ${await page.title().catch(() => "")}`);
 
   const body = (await page.locator("body").innerText().catch(() => ""));
   const termos = [
