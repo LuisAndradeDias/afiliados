@@ -63,6 +63,7 @@ function imagemProduto(produto: ProdutoBusca): string | undefined {
 export class MercadoLivreApiFonte {
   nome = "mercadolivre-api";
   private readonly reputacaoVerdePorVendedor = new Map<number, boolean>();
+  private ultimaRequisicaoEm = 0;
 
   constructor(
     private readonly consulta: string,
@@ -74,8 +75,21 @@ export class MercadoLivreApiFonte {
     url: URL | string
   ): Promise<Response> {
     let resposta: Response | undefined;
+    const intervalo = Math.max(
+      250,
+      Number(process.env.MERCADOLIVRE_REQUEST_INTERVAL_MS ?? 500)
+    );
 
     for (let tentativa = 1; tentativa <= 4; tentativa += 1) {
+      const espera = Math.max(
+        0,
+        intervalo - (Date.now() - this.ultimaRequisicaoEm)
+      );
+      if (espera > 0) {
+        await new Promise((resolve) => setTimeout(resolve, espera));
+      }
+
+      this.ultimaRequisicaoEm = Date.now();
       resposta = await fetch(url, {
         headers: {
           accept: "application/json",
@@ -86,9 +100,11 @@ export class MercadoLivreApiFonte {
       if (resposta.status !== 429) return resposta;
 
       if (tentativa < 4) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, tentativa * 1_500)
-        );
+        const retryAfter = Number(resposta.headers.get("retry-after") ?? 0);
+        const atraso = retryAfter > 0
+          ? retryAfter * 1_000
+          : tentativa * 2_500;
+        await new Promise((resolve) => setTimeout(resolve, atraso));
       }
     }
 
@@ -253,7 +269,20 @@ export class MercadoLivreApiFonte {
       url.searchParams.set("limit", String(this.limite));
       url.searchParams.set("offset", String(pagina * this.limite));
 
-      const dados = await this.getJson<RespostaBuscaProdutos>(url);
+      let dados: RespostaBuscaProdutos;
+      try {
+        dados = await this.getJson<RespostaBuscaProdutos>(url);
+      } catch (error) {
+        const mensagem = error instanceof Error ? error.message : String(error);
+        if (mensagem.includes("HTTP 429") && pagina > 0) {
+          console.warn(
+            `Mercado Livre: limite de requisicoes na pagina ${pagina + 1}; encerrando esta rodada.`
+          );
+          break;
+        }
+        throw error;
+      }
+
       const produtos = dados.results ?? [];
       if (produtos.length === 0) break;
 
@@ -268,8 +297,6 @@ export class MercadoLivreApiFonte {
           continue;
         }
         produtosVistos.add(produto.id);
-
-        await new Promise((resolve) => setTimeout(resolve, 200));
 
         let publicacoes: PublicacaoCatalogo[];
         try {
