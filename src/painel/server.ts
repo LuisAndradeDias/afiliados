@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { spawn, type ChildProcess } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { readFile, stat, writeFile } from "node:fs/promises";
@@ -25,6 +26,7 @@ const porta = Number(process.env.PAINEL_PORT ?? 3030);
 const processos = new Map<string, ChildProcess>();
 const logs: string[] = [];
 let carregarProximaAposEnvio = false;
+let mercadoLivreOauthState = "";
 
 function registrar(origem: string, texto: string): void {
   for (const linha of texto.split(/\r?\n/)) {
@@ -75,6 +77,90 @@ async function salvarVariavelEnv(nome: string, valor: string): Promise<void> {
 
   await writeFile(envPath, `${conteudo.trimEnd()}\n`, "utf8");
   process.env[nome] = valor;
+}
+
+function redirectMercadoLivre(): string {
+  return (
+    process.env.MERCADOLIVRE_REDIRECT_URI?.trim() ||
+    `http://localhost:${porta}/oauth/mercadolivre/callback`
+  );
+}
+
+function appMercadoLivreConfigurada(): boolean {
+  return Boolean(
+    process.env.MERCADOLIVRE_CLIENT_ID?.trim() &&
+      process.env.MERCADOLIVRE_CLIENT_SECRET?.trim()
+  );
+}
+
+function urlAutorizacaoMercadoLivre(): string {
+  const clientId = process.env.MERCADOLIVRE_CLIENT_ID?.trim();
+  if (!clientId || !appMercadoLivreConfigurada()) {
+    throw new Error("Configure o App ID e a Secret Key do Mercado Livre primeiro.");
+  }
+
+  mercadoLivreOauthState = randomBytes(24).toString("hex");
+  const url = new URL("https://auth.mercadolivre.com.br/authorization");
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", redirectMercadoLivre());
+  url.searchParams.set("state", mercadoLivreOauthState);
+  return url.toString();
+}
+
+interface TokenMercadoLivre {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  user_id?: number;
+}
+
+async function trocarCodigoMercadoLivre(code: string): Promise<TokenMercadoLivre> {
+  const clientId = process.env.MERCADOLIVRE_CLIENT_ID?.trim();
+  const clientSecret = process.env.MERCADOLIVRE_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) {
+    throw new Error("Credenciais do aplicativo Mercado Livre não configuradas.");
+  }
+
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: clientId,
+    client_secret: clientSecret,
+    code,
+    redirect_uri: redirectMercadoLivre()
+  });
+
+  const resposta = await fetch("https://api.mercadolibre.com/oauth/token", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
+
+  const texto = await resposta.text();
+  if (!resposta.ok) {
+    throw new Error(`Mercado Livre OAuth HTTP ${resposta.status}: ${texto.slice(0, 300)}`);
+  }
+
+  return JSON.parse(texto) as TokenMercadoLivre;
+}
+
+async function salvarTokenMercadoLivre(token: TokenMercadoLivre): Promise<void> {
+  await salvarVariavelEnv("MERCADOLIVRE_ACCESS_TOKEN", token.access_token);
+  if (token.refresh_token) {
+    await salvarVariavelEnv("MERCADOLIVRE_REFRESH_TOKEN", token.refresh_token);
+  }
+  if (token.user_id !== undefined) {
+    await salvarVariavelEnv("MERCADOLIVRE_USER_ID", String(token.user_id));
+  }
+  if (token.expires_in) {
+    await salvarVariavelEnv(
+      "MERCADOLIVRE_TOKEN_EXPIRES_AT",
+      String(Date.now() + token.expires_in * 1000)
+    );
+  }
 }
 
 interface PacotePainel {
@@ -193,7 +279,11 @@ async function estado() {
     linkAfiliadoAtual: pacote.urlAfiliado ?? "",
     sessaoWhatsapp: await existe(perfilPath),
     sessaoMercadoLivre: await existe(perfilMercadoLivrePath),
+    mercadoLivreAppConfigurada: appMercadoLivreConfigurada(),
     mercadoLivreApiConfigurada: Boolean(process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()),
+    mercadoLivreUserId: process.env.MERCADOLIVRE_USER_ID?.trim() ?? "",
+    mercadoLivreClientId: process.env.MERCADOLIVRE_CLIENT_ID?.trim() ?? "",
+    mercadoLivreRedirectUri: redirectMercadoLivre(),
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
@@ -223,6 +313,32 @@ async function executarAcao(
   acao: string,
   dados: Record<string, unknown> = {}
 ): Promise<{ ok: boolean; mensagem: string }> {
+  if (acao === "mercadolivre-config-save") {
+    const clientId = String(dados.clientId ?? "").trim();
+    const clientSecret = String(dados.clientSecret ?? "").trim();
+
+    if (!clientId) {
+      return { ok: false, mensagem: "Informe o App ID do Mercado Livre." };
+    }
+
+    await salvarVariavelEnv("MERCADOLIVRE_CLIENT_ID", clientId);
+    if (clientSecret) {
+      await salvarVariavelEnv("MERCADOLIVRE_CLIENT_SECRET", clientSecret);
+    }
+    await salvarVariavelEnv(
+      "MERCADOLIVRE_REDIRECT_URI",
+      redirectMercadoLivre()
+    );
+
+    registrar("painel", "Credenciais do aplicativo Mercado Livre salvas localmente.");
+    return {
+      ok: true,
+      mensagem: appMercadoLivreConfigurada()
+        ? "Aplicativo Mercado Livre configurado. Agora clique em Autorizar conta."
+        : "App ID salvo. Informe também a Secret Key para autorizar."
+    };
+  }
+
   if (acao === "afiliado-save") {
     const tag = normalizarTagAmazon(String(dados.tag ?? ""));
 
@@ -386,19 +502,52 @@ async function executarAcao(
 }
 const server = createServer(async (req, res) => {
   try {
-    if (req.method === "GET" && req.url === "/") {
+    const requestUrl = new URL(req.url ?? "/", "http://localhost");
+
+    if (req.method === "GET" && requestUrl.pathname === "/mercadolivre/connect") {
+      const destino = urlAutorizacaoMercadoLivre();
+      res.writeHead(302, { location: destino });
+      res.end();
+      return;
+    }
+
+    if (
+      req.method === "GET" &&
+      requestUrl.pathname === "/oauth/mercadolivre/callback"
+    ) {
+      const code = requestUrl.searchParams.get("code");
+      const state = requestUrl.searchParams.get("state");
+
+      if (!code || !state || state !== mercadoLivreOauthState) {
+        throw new Error("Retorno OAuth do Mercado Livre inválido ou expirado.");
+      }
+
+      const token = await trocarCodigoMercadoLivre(code);
+      await salvarTokenMercadoLivre(token);
+      mercadoLivreOauthState = "";
+      registrar(
+        "mercadolivre",
+        `Conta autorizada via OAuth${token.user_id ? ` (usuário ${token.user_id})` : ""}.`
+      );
+
+      res.writeHead(302, { location: "/?mercadolivre=conectado" });
+      res.end();
+      return;
+    }
+
+    if (req.method === "GET" && requestUrl.pathname === "/") {
       const html = await readFile(paginaPath, "utf8");
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       res.end(html);
       return;
     }
 
-    if (req.method === "GET" && req.url === "/api/status") {
+    if (req.method === "GET" && requestUrl.pathname === "/api/status") {
       json(res, 200, await estado());
       return;
     }
 
-    if (req.method === "POST" && req.url === "/api/action") {
+    if (req.method === "POST" && requestUrl.pathname === "/api/action") {
       const corpo = await lerJson(req);
       const resultado = await executarAcao(
         String(corpo.action ?? ""),

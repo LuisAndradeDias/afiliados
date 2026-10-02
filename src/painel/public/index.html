@@ -37,9 +37,13 @@
     .affiliate-config {
       display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
     }
-    input[type="text"] {
+    input[type="text"], input[type="password"] {
       width: 100%; border: 1px solid #cbd5e1; border-radius: 10px;
       padding: 12px 14px; font: inherit; color: #172033; background: white;
+    }
+    .ml-config {
+      display: grid; grid-template-columns: 1fr 1fr auto;
+      gap: 10px; align-items: center;
     }
     .link-preview {
       margin-top: 12px; padding: 12px; background: #f8fafc;
@@ -58,7 +62,9 @@
     button.danger { background: #b91c1c; }
     button.success { background: #087f5b; }
     button.hero, .button-link.hero { background: #2563eb; }
-    button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    button:disabled, .button-link.disabled {
+      opacity: .45; cursor: not-allowed; transform: none; pointer-events: none;
+    }
     .section { margin-top: 18px; }
     .two { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
     pre {
@@ -81,7 +87,7 @@
     .offer-meta .pill strong { margin-left: 4px; }
     .pill { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; font-weight: 700; }
     #toast { margin-top: 12px; min-height: 20px; font-size: 14px; font-weight: 600; }
-    @media (max-width: 850px) { .grid, .actions, .two, .primary-actions, .affiliate-config { grid-template-columns: 1fr; } }
+    @media (max-width: 850px) { .grid, .actions, .two, .primary-actions, .affiliate-config, .ml-config { grid-template-columns: 1fr; } }
   </style>
   <header>
     <h1>Central de Ofertas</h1>
@@ -135,19 +141,30 @@
 
     <section class="card section">
       <h2>Mercado Livre Afiliados</h2>
+      <div class="ml-config">
+        <input id="mlClientId" type="text" placeholder="App ID do Mercado Livre" />
+        <input id="mlClientSecret" type="password" placeholder="Secret Key" autocomplete="off" />
+        <button class="success" data-action="mercadolivre-config-save">Salvar aplicativo</button>
+      </div>
+      <div class="muted" style="margin-top:8px">
+        Redirect URI para cadastrar no DevCenter:
+        <strong id="mlRedirectUri">http://localhost:3030/oauth/mercadolivre/callback</strong>
+      </div>
       <div class="actions">
-        <a class="button-link hero"
-           href="https://www.mercadolivre.com.br/l/afiliados-home"
-           target="_blank" rel="noreferrer">
-          🟡 Conectar Mercado Livre
+        <a id="mlConnect" class="button-link hero disabled"
+           href="/mercadolivre/connect" target="_blank" rel="noreferrer">
+          🟡 Autorizar conta Mercado Livre
+        </a>
+        <a href="https://www.mercadolivre.com.br/l/afiliados-home" target="_blank" rel="noreferrer">
+          Abrir Afiliados
         </a>
         <a href="https://developers.mercadolivre.com.br/" target="_blank" rel="noreferrer">
           Abrir DevCenter
         </a>
       </div>
       <div class="muted" style="margin-top:12px">
-        Primeiro fazemos login e adesão ao programa. A busca por API será ativada após autorização OAuth.
-        Links de afiliado do Mercado Livre devem ser gerados pelo Gerador de Links/Barra de Afiliados.
+        Entrar no site não basta para o painel reconhecer a conta. A autorização OAuth conecta
+        oficialmente o aplicativo ao Mercado Livre e libera a API.
       </div>
       <div class="warn" style="margin-top:10px">
         Atenção: o Mercado Livre permite divulgação em WhatsApp/Telegram públicos, mas não em grupos privados.
@@ -227,11 +244,37 @@
           : "Não configurado";
         classeStatus($("afiliado"), s.afiliadoConfigurado ? "ok" : "warn");
 
-        $("mercadoLivreStatus").textContent = "Portal disponível";
-        classeStatus($("mercadoLivreStatus"), "ok");
+        $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
+          ? (s.mercadoLivreUserId ? "Conectado · ID " + s.mercadoLivreUserId : "Conectado")
+          : s.mercadoLivreAppConfigurada
+            ? "Aplicativo configurado"
+            : "Configurar aplicativo";
+        classeStatus(
+          $("mercadoLivreStatus"),
+          s.mercadoLivreApiConfigurada ? "ok" : "warn"
+        );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada
-          ? "API autorizada"
-          : "API aguardando autorização OAuth";
+          ? "API autorizada via OAuth"
+          : s.mercadoLivreAppConfigurada
+            ? "Aguardando autorização da conta"
+            : "Informe App ID e Secret Key";
+
+        if (document.activeElement !== $("mlClientId")) {
+          $("mlClientId").value = s.mercadoLivreClientId || "";
+        }
+        $("mlClientSecret").placeholder = s.mercadoLivreAppConfigurada
+          ? "Secret Key já salva — deixe em branco para manter"
+          : "Secret Key";
+        $("mlRedirectUri").textContent = s.mercadoLivreRedirectUri;
+
+        const mlConnect = $("mlConnect");
+        if (s.mercadoLivreAppConfigurada) {
+          mlConnect.classList.remove("disabled");
+          mlConnect.setAttribute("href", "/mercadolivre/connect");
+        } else {
+          mlConnect.classList.add("disabled");
+          mlConnect.removeAttribute("href");
+        }
 
         if (document.activeElement !== $("amazonTag")) {
           $("amazonTag").value = s.afiliadoTag || "";
@@ -337,6 +380,11 @@
         const nome = button.dataset.action;
         if (nome === "afiliado-save") {
           acao(nome, { tag: $("amazonTag").value });
+        } else if (nome === "mercadolivre-config-save") {
+          acao(nome, {
+            clientId: $("mlClientId").value,
+            clientSecret: $("mlClientSecret").value
+          }).then(() => { $("mlClientSecret").value = ""; });
         } else {
           acao(nome);
         }
