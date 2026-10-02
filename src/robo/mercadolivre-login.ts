@@ -1,35 +1,24 @@
 import "dotenv/config";
 import { resolve } from "node:path";
-import { chromium, type BrowserContext, type Page } from "playwright";
+import { chromium, type Page } from "playwright";
 
 const profileDir = resolve("data", "mercadolivre-profile");
 const canal = process.env.MERCADOLIVRE_BROWSER_CHANNEL ?? "chrome";
-const portal = "https://www.mercadolivre.com.br/l/afiliados-home";
+const painelAfiliados = "https://www.mercadolivre.com.br/afiliados";
 
-async function fecharAbasExtras(
-  context: BrowserContext,
-  principal: Page
-): Promise<void> {
-  for (const extra of context.pages()) {
-    if (extra === principal) continue;
-    await extra.close().catch(() => undefined);
-  }
-  await principal.bringToFront();
+function emFluxoLogin(page: Page): boolean {
+  const url = page.url();
+  return /login|identification|challenge|verification|registration/i.test(url);
 }
 
-async function temLinkEntrar(page: Page): Promise<boolean> {
-  return (
-    (await page
-      .locator('a[href*="/jms/mlb/lgz/login"]:visible')
-      .count()
-      .catch(() => 1)) > 0
-  );
-}
+async function abrirPainel(page: Page): Promise<boolean> {
+  await page.goto(painelAfiliados, {
+    waitUntil: "domcontentloaded",
+    timeout: 60_000
+  }).catch(() => undefined);
+  await page.waitForTimeout(4_000).catch(() => undefined);
 
-async function estaLogado(page: Page): Promise<boolean> {
-  if (page.isClosed()) return false;
-  if (/\/jms\/mlb\/lgz\/login/i.test(page.url())) return false;
-  return !(await temLinkEntrar(page));
+  return !page.isClosed() && !emFluxoLogin(page);
 }
 
 console.log("Abrindo Mercado Livre com perfil persistente...");
@@ -43,51 +32,28 @@ const context = await chromium.launchPersistentContext(profileDir, {
 });
 
 let page = context.pages()[0] ?? (await context.newPage());
-await page.goto(portal, {
-  waitUntil: "domcontentloaded",
-  timeout: 60_000
-});
-await page.waitForTimeout(1_500);
-await fecharAbasExtras(context, page);
 
-if (await estaLogado(page)) {
-  console.log("LOGIN_CONFIRMADO: a sessao web do Mercado Livre ja esta autenticada.");
+if (await abrirPainel(page)) {
+  console.log("LOGIN_CONFIRMADO: painel de afiliados acessivel.");
+  await page.waitForTimeout(3_000).catch(() => undefined);
   await context.close();
   process.exit(0);
 }
 
-const entrar = page.locator('a[href*="/jms/mlb/lgz/login"]:visible').first();
-const hrefEntrar = await entrar.getAttribute("href").catch(() => null);
-if (hrefEntrar) {
-  console.log("Abrindo a tela oficial de login do Mercado Livre...");
-  await page.goto(hrefEntrar, {
-    waitUntil: "domcontentloaded",
-    timeout: 60_000
-  });
-}
-
 console.log("");
-console.log("Conclua o login e qualquer verificacao normal nessa janela.");
-console.log("Nao feche a janela: ela fechara automaticamente apos confirmar a sessao.");
+console.log("LOGIN_NECESSARIO: conclua o login nesta janela.");
+console.log("Nao feche a janela. O programa validara o acesso ao painel e fechara sozinho.");
 
 let confirmado = false;
 for (let tentativa = 0; tentativa < 600; tentativa += 1) {
   if (context.pages().length === 0) break;
-
   page = context.pages()[0] ?? page;
-  if (!page.isClosed() && !/\/jms\/mlb\/lgz\/login/i.test(page.url())) {
-    if (!page.url().includes("/l/afiliados-home")) {
-      await page.goto(portal, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000
-      }).catch(() => undefined);
-      await page.waitForTimeout(1_000).catch(() => undefined);
-    }
 
-    if (await estaLogado(page)) {
+  if (!page.isClosed() && !emFluxoLogin(page)) {
+    if (await abrirPainel(page)) {
       confirmado = true;
-      console.log("LOGIN_CONFIRMADO: sessao web autenticada e salva.");
-      await page.waitForTimeout(2_500).catch(() => undefined);
+      console.log("LOGIN_CONFIRMADO: painel de afiliados acessivel e sessao salva.");
+      await page.waitForTimeout(5_000).catch(() => undefined);
       break;
     }
   }
