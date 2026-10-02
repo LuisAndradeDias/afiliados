@@ -204,6 +204,7 @@ function arquivoDo(script: string): string {
     preparar: "src/robo/whatsapp-preparar.ts",
     "mercadolivre-login": "src/robo/mercadolivre-login.ts",
     "mercadolivre-buscar": "src/robo/mercadolivre-preview.ts",
+    "mercadolivre-link": "src/robo/mercadolivre-link.ts",
     automatico: "src/robo/automatico.ts"
   };
   const arquivo = mapa[script];
@@ -284,6 +285,7 @@ async function estado() {
       descontoPercentual?: number;
       imagem?: string;
       urlProduto?: string;
+      urlAfiliado?: string;
       categoria?: string;
     })
     .catch(() => ({}));
@@ -393,6 +395,31 @@ async function executarAcao(
       mensagem: ok
         ? "Busca de ofertas do Mercado Livre iniciada."
         : "Já existe uma busca do Mercado Livre em andamento."
+    };
+  }
+
+  if (acao === "mercadolivre-link") {
+    if (processos.has("mercadolivre-login")) {
+      return {
+        ok: false,
+        mensagem: "Finalize o login do Mercado Livre antes de gerar o link."
+      };
+    }
+
+    const ofertaExiste = await existe(ofertaMercadoLivrePath);
+    if (!ofertaExiste) {
+      return {
+        ok: false,
+        mensagem: "Busque uma oferta do Mercado Livre antes de gerar o link."
+      };
+    }
+
+    const ok = iniciar("mercadolivre-link", "mercadolivre-link");
+    return {
+      ok,
+      mensagem: ok
+        ? "Gerador oficial do Mercado Livre aberto."
+        : "Já existe uma geração de link do Mercado Livre em andamento."
     };
   }
 
