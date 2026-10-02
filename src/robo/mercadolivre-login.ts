@@ -17,15 +17,19 @@ async function fecharAbasExtras(
   await principal.bringToFront();
 }
 
+async function temLinkEntrar(page: Page): Promise<boolean> {
+  return (
+    (await page
+      .locator('a[href*="/jms/mlb/lgz/login"]')
+      .count()
+      .catch(() => 1)) > 0
+  );
+}
+
 async function estaLogado(page: Page): Promise<boolean> {
-  if (/\/login|\/registration/i.test(page.url())) return false;
-
-  const linksLogin = await page
-    .locator('a[href*="/jms/mlb/lgz/login"], a[href*="/registration"]')
-    .count()
-    .catch(() => 1);
-
-  return linksLogin === 0;
+  if (page.isClosed()) return false;
+  if (/\/jms\/mlb\/lgz\/login/i.test(page.url())) return false;
+  return !(await temLinkEntrar(page));
 }
 
 console.log("Abrindo Mercado Livre com perfil persistente...");
@@ -38,7 +42,7 @@ const context = await chromium.launchPersistentContext(profileDir, {
   args: ["--start-maximized"]
 });
 
-const page = context.pages()[0] ?? (await context.newPage());
+let page = context.pages()[0] ?? (await context.newPage());
 await page.goto(portal, {
   waitUntil: "domcontentloaded",
   timeout: 60_000
@@ -52,21 +56,40 @@ if (await estaLogado(page)) {
   process.exit(0);
 }
 
+const entrar = page.locator('a[href*="/jms/mlb/lgz/login"]').first();
+const hrefEntrar = await entrar.getAttribute("href").catch(() => null);
+if (hrefEntrar) {
+  console.log("Abrindo a tela oficial de login do Mercado Livre...");
+  await page.goto(hrefEntrar, {
+    waitUntil: "domcontentloaded",
+    timeout: 60_000
+  });
+}
+
 console.log("");
-console.log("Entre na sua conta do Mercado Livre nesta janela.");
-console.log("Conclua qualquer verificacao normal solicitada pelo site.");
-console.log("Nao feche a janela: o programa fechara sozinho quando detectar o login.");
+console.log("Conclua o login e qualquer verificacao normal nessa janela.");
+console.log("Nao feche a janela: ela fechara automaticamente apos confirmar a sessao.");
 
 let confirmado = false;
-for (let tentativa = 0; tentativa < 360; tentativa += 1) {
+for (let tentativa = 0; tentativa < 600; tentativa += 1) {
   if (context.pages().length === 0) break;
 
-  const atual = context.pages()[0] ?? page;
-  if (await estaLogado(atual)) {
-    confirmado = true;
-    console.log("LOGIN_CONFIRMADO: sessao web autenticada e salva.");
-    await atual.waitForTimeout(2_000).catch(() => undefined);
-    break;
+  page = context.pages()[0] ?? page;
+  if (!page.isClosed() && !/\/jms\/mlb\/lgz\/login/i.test(page.url())) {
+    if (!page.url().includes("/l/afiliados-home")) {
+      await page.goto(portal, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000
+      }).catch(() => undefined);
+      await page.waitForTimeout(1_000).catch(() => undefined);
+    }
+
+    if (await estaLogado(page)) {
+      confirmado = true;
+      console.log("LOGIN_CONFIRMADO: sessao web autenticada e salva.");
+      await page.waitForTimeout(2_500).catch(() => undefined);
+      break;
+    }
   }
 
   await new Promise((resolve) => setTimeout(resolve, 1_000));
@@ -76,6 +99,6 @@ await context.close().catch(() => undefined);
 
 if (!confirmado) {
   throw new Error(
-    "Login do Mercado Livre nao foi confirmado. Abra novamente e conclua a autenticacao."
+    "Login do Mercado Livre nao foi confirmado dentro do tempo de espera."
   );
 }
