@@ -10,6 +10,7 @@
     "mercadolivre:login": "tsx src/robo/mercadolivre-login.ts",
     "mercadolivre:test": "tsx src/robo/mercadolivre-teste.ts",
     "mercadolivre:preview": "tsx src/robo/mercadolivre-preview.ts",
+    "mercadolivre:link": "tsx src/robo/mercadolivre-link.ts",
     "whatsapp:preview": "tsx src/robo/whatsapp-preview.ts",
     "whatsapp:login": "tsx src/robo/whatsapp-login.ts",
     "whatsapp:preparar": "tsx src/robo/whatsapp-preparar.ts",
