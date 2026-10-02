@@ -196,6 +196,12 @@ export class MercadoLivreApiFonte {
         return db - da || a.price - b.price;
       });
 
+    if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
+      console.log(
+        `Mercado Livre publicacoes: total=${publicacoes.length}, novas=${candidatas.length}`
+      );
+    }
+
     const maximoVendedores = Math.max(
       1,
       Math.min(
