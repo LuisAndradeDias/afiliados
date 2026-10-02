@@ -74,7 +74,9 @@ if (!detalhes.ok) {
   process.exit(1);
 }
 
-const itens = (await detalhes.json()) as ItemBulk[];
+const textoDetalhes = await detalhes.text();
+console.log("Items bulk resposta: " + textoDetalhes.slice(0, 1600));
+const itens = JSON.parse(textoDetalhes) as ItemBulk[];
 const primeiro = itens.find(
   (item) => item.status_code === 200 && item.body?.permalink
 )?.body;
