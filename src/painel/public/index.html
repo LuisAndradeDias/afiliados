@@ -158,10 +158,13 @@
         <button class="success" data-action="mercadolivre-buscar">
           🔎 Buscar oferta Mercado Livre
         </button>
+        <button class="secondary" data-action="mercadolivre-login">
+          🔐 Login web Mercado Livre
+        </button>
         <button class="hero" data-action="mercadolivre-link">
           🔗 Gerar link oficial
         </button>
-        <a href="https://www.mercadolivre.com.br/l/afiliados-home" target="_blank" rel="noreferrer">
+        <a href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noreferrer">
           Abrir Afiliados
         </a>
       </div>
@@ -350,6 +353,7 @@
         const logando = s.executando.includes("login");
         const buscando = s.executando.includes("buscar");
         const mlBuscando = s.executando.includes("mercadolivre-buscar");
+        const mlLogando = s.executando.includes("mercadolivre-login");
         const mlGerandoLink = s.executando.includes("mercadolivre-link");
         const automatico = s.executando.includes("automatico");
         const whatsappOcupado = preparando || logando;
@@ -396,9 +400,12 @@
             b.disabled = buscando;
           } else if (acao === "mercadolivre-buscar") {
             b.disabled = mlBuscando || !s.mercadoLivreApiConfigurada;
+          } else if (acao === "mercadolivre-login") {
+            b.disabled = mlLogando || mlGerandoLink;
           } else if (acao === "mercadolivre-link") {
             b.disabled =
               mlGerandoLink ||
+              mlLogando ||
               !s.mercadoLivreOferta ||
               !s.mercadoLivreOferta.urlProduto;
           } else if (acao === "automatico-start") {
