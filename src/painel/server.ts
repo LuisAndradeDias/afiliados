@@ -535,6 +535,21 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (
+      req.method === "POST" &&
+      requestUrl.pathname === "/webhooks/mercadolivre"
+    ) {
+      let corpo = "";
+      for await (const parte of req) corpo += String(parte);
+      registrar(
+        "mercadolivre-webhook",
+        corpo ? `Notificação recebida: ${corpo.slice(0, 500)}` : "Notificação recebida."
+      );
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+
     if (req.method === "GET" && requestUrl.pathname === "/") {
       const html = await readFile(paginaPath, "utf8");
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
