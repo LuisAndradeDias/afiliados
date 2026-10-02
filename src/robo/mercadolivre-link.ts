@@ -123,6 +123,27 @@ async function gerar(page: Page): Promise<void> {
   console.log("Geracao solicitada ao Mercado Livre.");
 }
 
+async function lerClipboard(page: Page): Promise<string | undefined> {
+  try {
+    const copiar = await primeiroVisivel(
+      [
+        page.getByRole("button", { name: /copiar/i }),
+        page.getByText(/^copiar$/i, { exact: true })
+      ],
+      1_500
+    );
+    await copiar.click();
+    await page.waitForTimeout(500);
+
+    const valor = await page.evaluate(() =>
+      navigator.clipboard.readText().catch(() => "")
+    );
+    return /^https?:\/\//i.test(valor.trim()) ? valor.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function linksDaPagina(page: Page): Promise<string[]> {
   return page.locator("a, input, textarea").evaluateAll((elementos) => {
     const urls: string[] = [];
@@ -165,6 +186,11 @@ const context = await chromium.launchPersistentContext(perfil, {
   args: ["--start-maximized"]
 });
 
+await context.grantPermissions(
+  ["clipboard-read", "clipboard-write"],
+  { origin: "https://www.mercadolivre.com.br" }
+).catch(() => undefined);
+
 try {
   const page = context.pages()[0] ?? (await context.newPage());
   await garantirLogin(page);
@@ -180,6 +206,13 @@ try {
     const links = (await linksDaPagina(page)).filter((link) => !antes.has(link));
     linkAfiliado = escolherLinkAfiliado(links, oferta.urlProduto);
     if (linkAfiliado) break;
+  }
+
+  if (!linkAfiliado) {
+    const copiado = await lerClipboard(page);
+    if (copiado) {
+      linkAfiliado = escolherLinkAfiliado([copiado], oferta.urlProduto);
+    }
   }
 
   if (!linkAfiliado) {
