@@ -64,8 +64,7 @@ if (publicacoes.length === 0) {
 const ids = publicacoes.slice(0, 20).map((item) => item.item_id);
 const detalhes = await fetch(
   "https://api.mercadolibre.com/items/bulk?ids=" +
-    encodeURIComponent(ids.join(",")) +
-    "&attributes=body.id,body.permalink,body.title,body.status",
+    ids.join(","),
   { headers }
 );
 console.log(`Items bulk: HTTP ${detalhes.status}`);
