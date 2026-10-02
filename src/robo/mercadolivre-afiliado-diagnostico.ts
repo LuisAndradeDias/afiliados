@@ -6,8 +6,9 @@ const perfil = resolve("data", "mercadolivre-profile");
 const canal = process.env.MERCADOLIVRE_BROWSER_CHANNEL ?? "chrome";
 const context = await chromium.launchPersistentContext(perfil, {
   channel: canal,
-  headless: true,
-  viewport: { width: 1440, height: 1000 }
+  headless: false,
+  viewport: null,
+  args: ["--start-maximized"]
 });
 
 try {
@@ -16,7 +17,7 @@ try {
     waitUntil: "domcontentloaded",
     timeout: 60_000
   });
-  await page.waitForTimeout(4_000);
+  await page.waitForTimeout(8_000);
 
   console.log(`URL final: ${page.url()}`);
   console.log(`Titulo: ${await page.title()}`);
