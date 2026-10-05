@@ -11,6 +11,10 @@ import {
   limparHistoricoOfertas,
   previewCooldownMinutos
 } from "../ofertas/historico.js";
+import {
+  lerOfertaMercadoLivre,
+  salvarLinkAfiliadoMercadoLivre
+} from "../afiliados/mercadolivre.js";
 
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
@@ -28,6 +32,7 @@ const processos = new Map<string, ChildProcess>();
 const logs: string[] = [];
 let carregarProximaAposEnvio = false;
 let mercadoLivreOauthState = "";
+let origemPreparacaoAtual: "amazon" | "mercado-livre" = "amazon";
 
 function registrar(origem: string, texto: string): void {
   for (const linha of texto.split(/\r?\n/)) {
@@ -204,6 +209,7 @@ function arquivoDo(script: string): string {
     preparar: "src/robo/whatsapp-preparar.ts",
     "mercadolivre-login": "src/robo/mercadolivre-login.ts",
     "mercadolivre-buscar": "src/robo/mercadolivre-preview.ts",
+    "mercadolivre-whatsapp": "src/robo/mercadolivre-whatsapp.ts",
     automatico: "src/robo/automatico.ts"
   };
   const arquivo = mapa[script];
@@ -243,16 +249,23 @@ function iniciar(
     aoFinal?.(codigo);
 
     if (nome === "preparar" && carregarProximaAposEnvio) {
+      const origemFinalizada = origemPreparacaoAtual;
       carregarProximaAposEnvio = false;
 
-      if (codigo === 0) {
-        registrar("fluxo", "Envio concluído. Buscando a próxima oferta...");
+      if (codigo === 0 && origemFinalizada === "amazon") {
+        registrar("fluxo", "Envio concluído. Buscando a próxima oferta Amazon...");
         iniciar("buscar", "buscar", {}, (codigoBusca) => {
           if (codigoBusca === 0 && !whatsappOcupado()) {
+            origemPreparacaoAtual = "amazon";
             registrar("fluxo", "Próxima oferta pronta. Abrindo WhatsApp...");
             iniciar("preparar", "preparar");
           }
         });
+      } else if (codigo === 0 && origemFinalizada === "mercado-livre") {
+        registrar(
+          "fluxo",
+          "Oferta Mercado Livre enviada. Busque outra oferta e gere um novo link oficial antes do próximo envio."
+        );
       }
     }
   });
@@ -284,6 +297,7 @@ async function estado() {
       descontoPercentual?: number;
       imagem?: string;
       urlProduto?: string;
+      urlAfiliado?: string;
       categoria?: string;
     })
     .catch(() => ({}));
@@ -301,6 +315,7 @@ async function estado() {
     mercadoLivreClientId: process.env.MERCADOLIVRE_CLIENT_ID?.trim() ?? "",
     mercadoLivreRedirectUri: redirectMercadoLivre(),
     mercadoLivreOferta: ofertaMercadoLivre,
+    origemPreparacaoAtual,
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
@@ -396,6 +411,71 @@ async function executarAcao(
     };
   }
 
+  if (acao === "mercadolivre-link-save") {
+    const link = String(dados.link ?? "").trim();
+
+    try {
+      const oferta = await salvarLinkAfiliadoMercadoLivre(link);
+      registrar(
+        "mercadolivre",
+        `Link oficial salvo para ${oferta.produtoId}.`
+      );
+      return {
+        ok: true,
+        mensagem: "Link oficial salvo. A oferta já pode ser preparada no WhatsApp."
+      };
+    } catch (error) {
+      const mensagem = error instanceof Error ? error.message : String(error);
+      return { ok: false, mensagem };
+    }
+  }
+
+  if (acao === "mercadolivre-preparar") {
+    if (whatsappOcupado() || processos.has("mercadolivre-whatsapp")) {
+      return {
+        ok: false,
+        mensagem: "Aguarde a tarefa atual do WhatsApp terminar."
+      };
+    }
+
+    try {
+      const oferta = await lerOfertaMercadoLivre();
+      if (!oferta.urlAfiliado) {
+        return {
+          ok: false,
+          mensagem:
+            "Gere o link oficial do Mercado Livre, cole no painel e salve antes de preparar o WhatsApp."
+        };
+      }
+    } catch (error) {
+      const mensagem = error instanceof Error ? error.message : String(error);
+      return { ok: false, mensagem };
+    }
+
+    origemPreparacaoAtual = "mercado-livre";
+    const ok = iniciar(
+      "mercadolivre-whatsapp",
+      "mercadolivre-whatsapp",
+      {},
+      (codigo) => {
+        if (codigo === 0 && !whatsappOcupado()) {
+          registrar(
+            "mercadolivre",
+            "Oferta validada. Abrindo WhatsApp para revisão."
+          );
+          iniciar("preparar", "preparar");
+        }
+      }
+    );
+
+    return {
+      ok,
+      mensagem: ok
+        ? "Preparando oferta do Mercado Livre para o WhatsApp."
+        : "A preparação do Mercado Livre já está em andamento."
+    };
+  }
+
   if (acao === "buscar") {
     const ok = iniciar("buscar", "buscar");
     return { ok, mensagem: ok ? "Busca iniciada." : "Já existe uma busca em andamento." };
@@ -416,6 +496,15 @@ async function executarAcao(
         mensagem: "Feche a janela de login do WhatsApp antes de preparar a oferta."
       };
     }
+
+    const pacoteAtual = await readFile(pacotePath, "utf8")
+      .then((texto) => JSON.parse(texto) as { plataforma?: string })
+      .catch(() => ({}));
+    origemPreparacaoAtual = (pacoteAtual.plataforma ?? "")
+      .toLowerCase()
+      .includes("mercado livre")
+      ? "mercado-livre"
+      : "amazon";
 
     const ok = iniciar("preparar", "preparar");
     return { ok, mensagem: ok ? "Preparando oferta no WhatsApp." : "A tarefa já está em andamento." };
@@ -453,7 +542,10 @@ async function executarAcao(
 
     if (processos.has("buscar") || whatsappOcupado()) {
       return { ok: false, mensagem: "Aguarde a tarefa atual terminar." };
-    }    iniciar("buscar", "buscar", {}, (codigo) => {
+    }
+
+    origemPreparacaoAtual = "amazon";
+    iniciar("buscar", "buscar", {}, (codigo) => {
       if (codigo === 0 && !whatsappOcupado()) {
         registrar("fluxo", "Oferta gerada. Abrindo WhatsApp para revisão.");
         iniciar("preparar", "preparar");
@@ -489,7 +581,9 @@ async function executarAcao(
       return { ok: false, mensagem: "Não há oferta pronta para enviar." };
     }
 
-    carregarProximaAposEnvio = acao === "preparar-send-next";
+    carregarProximaAposEnvio =
+      acao === "preparar-send-next" &&
+      origemPreparacaoAtual === "amazon";
     writeFileSync(enviarWhatsappPath, "enviar", "utf8");
     registrar(
       "preparar",
