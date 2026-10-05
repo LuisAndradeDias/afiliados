@@ -431,17 +431,35 @@
           O painel não inventa parâmetros de afiliado. A oferta ML só é liberada para o WhatsApp depois que um link oficial é validado.
         </div>
 
-        <details class="config">
+        <details class="config" open>
           <summary>Configuração da API Mercado Livre</summary>
-          <div class="config-grid">
-            <input id="mlClientId" type="text" placeholder="App ID" />
-            <input id="mlClientSecret" type="password" placeholder="Secret Key" autocomplete="off" />
-            <button class="success" data-action="mercadolivre-config-save">Salvar</button>
+
+          <div class="notice" style="margin-top:12px">
+            <strong>Ordem correta:</strong> 1) salve App ID + Secret Key; 2) salve o Redirect URI HTTPS que está cadastrado no DevCenter; 3) clique em Autorizar OAuth.
           </div>
+
+          <div class="hint" style="margin-top:12px"><strong>1. Credenciais do aplicativo</strong></div>
+          <div class="config-grid">
+            <input id="mlClientId" type="text" placeholder="App ID" autocomplete="off" />
+            <input id="mlClientSecret" type="password" placeholder="Secret Key" autocomplete="off" />
+            <button class="success" data-action="mercadolivre-config-save">Salvar credenciais</button>
+          </div>
+
+          <div class="hint" style="margin-top:12px"><strong>2. Redirect URI HTTPS</strong></div>
+          <div class="input-row">
+            <input id="mlRedirectUriInput" type="text" placeholder="https://seu-endereco/oauth/mercadolivre/callback" autocomplete="off" />
+            <button class="success" data-action="mercadolivre-redirect-save">Salvar Redirect</button>
+          </div>
+          <div class="hint">
+            Esta URL precisa ser exatamente a mesma cadastrada no DevCenter e terminar em
+            <code>/oauth/mercadolivre/callback</code>.
+          </div>
+
+          <div class="hint" style="margin-top:12px"><strong>3. Autorizar a conta</strong></div>
           <div class="actions">
             <a id="mlConnect" class="button-link primary disabled" href="/mercadolivre/connect" target="_blank" rel="noreferrer">Autorizar OAuth</a>
           </div>
-          <div class="hint">Redirect URI: <strong id="mlRedirectUri"></strong></div>
+          <div class="hint">Redirect ativo: <strong id="mlRedirectUri">não configurado</strong></div>
         </details>
       </article>
     </section>
@@ -595,25 +613,38 @@
         );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada
           ? (s.mercadoLivreUserId ? "OAuth autorizado · ID " + s.mercadoLivreUserId : "OAuth autorizado")
-          : s.mercadoLivreAppConfigurada
-            ? "Aguardando autorização OAuth"
-            : "App ID e Secret Key ainda não configurados";
+          : !s.mercadoLivreAppConfigurada
+            ? "Passo 1/3 · salve App ID e Secret Key"
+            : !s.mercadoLivreRedirectConfigurado
+              ? "Passo 2/3 · configure o Redirect URI HTTPS"
+              : "Passo 3/3 · clique em Autorizar OAuth";
 
         $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
 
         if (document.activeElement !== $("amazonTag")) {
           $("amazonTag").value = s.afiliadoTag || "";
         }
-        if (document.activeElement !== $("mlClientId")) {
+        if (
+          !$("mlClientId").value &&
+          document.activeElement !== $("mlClientId")
+        ) {
           $("mlClientId").value = s.mercadoLivreClientId || "";
         }
         $("mlClientSecret").placeholder = s.mercadoLivreAppConfigurada
           ? "Secret Key já salva — deixe em branco"
           : "Secret Key";
-        $("mlRedirectUri").textContent = s.mercadoLivreRedirectUri || "";
+
+        if (
+          !$("mlRedirectUriInput").value &&
+          document.activeElement !== $("mlRedirectUriInput")
+        ) {
+          $("mlRedirectUriInput").value = s.mercadoLivreRedirectUri || "";
+        }
+        $("mlRedirectUri").textContent =
+          s.mercadoLivreRedirectUri || "não configurado";
 
         const mlConnect = $("mlConnect");
-        if (s.mercadoLivreAppConfigurada) {
+        if (s.mercadoLivreOauthPronto) {
           mlConnect.classList.remove("disabled");
           mlConnect.setAttribute("href", "/mercadolivre/connect");
         } else {
@@ -768,6 +799,8 @@
             clientId: $("mlClientId").value,
             clientSecret: $("mlClientSecret").value
           }).then(() => { $("mlClientSecret").value = ""; });
+        } else if (nome === "mercadolivre-redirect-save") {
+          acao(nome, { redirectUri: $("mlRedirectUriInput").value });
         } else if (nome === "mercadolivre-link-save") {
           acao(nome, { link: $("mlAffiliateLink").value });
         } else {
