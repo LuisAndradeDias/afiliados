@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Afiliados - Link Meli Automático",
+  "version": "0.1.0",
+  "description": "Automatiza o Gerador de Links oficial do Mercado Livre e devolve o link ao painel local.",
+  "permissions": ["alarms"],
+  "host_permissions": [
+    "http://127.0.0.1:3030/*",
+    "http://localhost:3030/*",
+    "https://www.mercadolivre.com.br/*",
+    "https://mercadolivre.com.br/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.mercadolivre.com.br/*",
+        "https://mercadolivre.com.br/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
