@@ -86,10 +86,22 @@ async function salvarVariavelEnv(nome: string, valor: string): Promise<void> {
 }
 
 function redirectMercadoLivre(): string {
-  return (
-    process.env.MERCADOLIVRE_REDIRECT_URI?.trim() ||
-    `http://localhost:${porta}/oauth/mercadolivre/callback`
-  );
+  return process.env.MERCADOLIVRE_REDIRECT_URI?.trim() ?? "";
+}
+
+function redirectMercadoLivreValido(): boolean {
+  const valor = redirectMercadoLivre();
+  if (!valor) return false;
+
+  try {
+    const url = new URL(valor);
+    return (
+      url.protocol === "https:" &&
+      url.pathname === "/oauth/mercadolivre/callback"
+    );
+  } catch {
+    return false;
+  }
 }
 
 function appMercadoLivreConfigurada(): boolean {
@@ -103,6 +115,11 @@ function urlAutorizacaoMercadoLivre(): string {
   const clientId = process.env.MERCADOLIVRE_CLIENT_ID?.trim();
   if (!clientId || !appMercadoLivreConfigurada()) {
     throw new Error("Configure o App ID e a Secret Key do Mercado Livre primeiro.");
+  }
+  if (!redirectMercadoLivreValido()) {
+    throw new Error(
+      "Configure um Redirect URI HTTPS válido terminando em /oauth/mercadolivre/callback."
+    );
   }
 
   mercadoLivreOauthState = randomBytes(24).toString("hex");
@@ -310,6 +327,9 @@ async function estado() {
     sessaoWhatsapp: await existe(perfilPath),
     sessaoMercadoLivre: await existe(perfilMercadoLivrePath),
     mercadoLivreAppConfigurada: appMercadoLivreConfigurada(),
+    mercadoLivreRedirectConfigurado: redirectMercadoLivreValido(),
+    mercadoLivreOauthPronto:
+      appMercadoLivreConfigurada() && redirectMercadoLivreValido(),
     mercadoLivreApiConfigurada: Boolean(process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()),
     mercadoLivreUserId: process.env.MERCADOLIVRE_USER_ID?.trim() ?? "",
     mercadoLivreClientId: process.env.MERCADOLIVRE_CLIENT_ID?.trim() ?? "",
@@ -357,17 +377,53 @@ async function executarAcao(
     if (clientSecret) {
       await salvarVariavelEnv("MERCADOLIVRE_CLIENT_SECRET", clientSecret);
     }
-    await salvarVariavelEnv(
-      "MERCADOLIVRE_REDIRECT_URI",
-      redirectMercadoLivre()
-    );
-
     registrar("painel", "Credenciais do aplicativo Mercado Livre salvas localmente.");
     return {
       ok: true,
       mensagem: appMercadoLivreConfigurada()
         ? "Aplicativo Mercado Livre configurado. Agora clique em Autorizar conta."
         : "App ID salvo. Informe também a Secret Key para autorizar."
+    };
+  }
+
+  if (acao === "mercadolivre-redirect-save") {
+    const valor = String(dados.redirectUri ?? "").trim();
+
+    if (!valor) {
+      return {
+        ok: false,
+        mensagem:
+          "Informe o Redirect URI HTTPS cadastrado no DevCenter do Mercado Livre."
+      };
+    }
+
+    let url: URL;
+    try {
+      url = new URL(valor);
+    } catch {
+      return { ok: false, mensagem: "O Redirect URI informado não é uma URL válida." };
+    }
+
+    if (
+      url.protocol !== "https:" ||
+      url.pathname !== "/oauth/mercadolivre/callback"
+    ) {
+      return {
+        ok: false,
+        mensagem:
+          "Use uma URL HTTPS que termine exatamente em /oauth/mercadolivre/callback."
+      };
+    }
+
+    url.hash = "";
+    const redirect = url.toString();
+    await salvarVariavelEnv("MERCADOLIVRE_REDIRECT_URI", redirect);
+    registrar("painel", "Redirect URI HTTPS do Mercado Livre salvo localmente.");
+
+    return {
+      ok: true,
+      mensagem:
+        "Redirect URI salvo. Confirme que esta mesma URL está cadastrada no DevCenter e depois clique em Autorizar OAuth."
     };
   }
 
