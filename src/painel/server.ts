@@ -499,7 +499,7 @@ async function executarAcao(
 
     const pacoteAtual = await readFile(pacotePath, "utf8")
       .then((texto) => JSON.parse(texto) as { plataforma?: string })
-      .catch(() => ({}));
+      .catch(() => ({} as { plataforma?: string }));
     origemPreparacaoAtual = (pacoteAtual.plataforma ?? "")
       .toLowerCase()
       .includes("mercado livre")
