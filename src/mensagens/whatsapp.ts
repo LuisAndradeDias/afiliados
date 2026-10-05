@@ -7,9 +7,27 @@ function moedaBR(valor: number): string {
   });
 }
 
+function cabecalho(oferta: Oferta): string {
+  const plataforma = oferta.plataforma
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (plataforma.includes("mercado livre")) {
+    return "🟡 *OFERTA MERCADO LIVRE*";
+  }
+
+  if (plataforma.includes("amazon")) {
+    return "🔥 *OFERTA AMAZON*";
+  }
+
+  return `🔥 *OFERTA ${oferta.plataforma.toUpperCase()}*`;
+}
+
 export function formatarOfertaWhatsapp(oferta: Oferta): string {
   const linhas = [
-    "🔥 *OFERTA AMAZON*",
+    cabecalho(oferta),
     "",
     `*${oferta.titulo}*`,
     "",

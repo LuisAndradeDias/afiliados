@@ -6,291 +6,577 @@
   <title>Central de Ofertas</title>
   <style>
     :root {
-      font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
-      color: #172033;
-      background: #f5f7fb;
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      --bg: #f3f6fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --text: #142033;
+      --muted: #667085;
+      --line: #e4e9f1;
+      --navy: #111c32;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #078a63;
+      --green-soft: #ecfdf5;
+      --yellow: #f4b400;
+      --yellow-soft: #fff8df;
+      --red: #b42318;
+      --shadow: 0 12px 30px rgba(17, 28, 50, .07);
     }
+
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; }
-    header {
-      background: linear-gradient(135deg, #111827, #1f2937);
-      color: white; padding: 28px 32px;
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
+    a { color: var(--blue); }
+
+    .topbar {
+      background:
+        radial-gradient(circle at 85% -20%, rgba(37,99,235,.55), transparent 35%),
+        linear-gradient(135deg, #0f172a, #172554 65%, #1e3a8a);
+      color: white;
+      padding: 30px 24px 34px;
     }
-    header h1 { margin: 0 0 6px; font-size: 28px; }
-    header p { margin: 0; color: #cbd5e1; }
-    main { max-width: 1180px; margin: 0 auto; padding: 24px; }
-    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-    .card { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px; box-shadow: 0 4px 16px #0f172a0d; }
-    .card h2 { margin: 0 0 12px; font-size: 16px; }
-    .value { font-size: 22px; font-weight: 750; }
-    .muted { color: #64748b; font-size: 13px; }
-    .ok { color: #087f5b; }
-    .warn { color: #b45309; }
-    .bad { color: #b91c1c; }
-  </style>
-</head>
-<body>  <style>
-    .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
-    .primary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    details { margin-top: 16px; }
-    summary { cursor: pointer; font-weight: 700; color: #475569; }
-    .affiliate-config {
-      display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
+    .topbar-inner {
+      max-width: 1220px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-end;
     }
-    input[type="text"], input[type="password"] {
-      width: 100%; border: 1px solid #cbd5e1; border-radius: 10px;
-      padding: 12px 14px; font: inherit; color: #172033; background: white;
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      font-size: 11px;
+      font-weight: 800;
+      color: #bfdbfe;
+      margin-bottom: 8px;
     }
-    .ml-config {
-      display: grid; grid-template-columns: 1fr 1fr auto;
-      gap: 10px; align-items: center;
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.035em; }
+    .topbar p { margin: 10px 0 0; max-width: 700px; color: #dbeafe; line-height: 1.55; }
+    .runtime {
+      min-width: 230px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.09);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
     }
-    .link-preview {
-      margin-top: 12px; padding: 12px; background: #f8fafc;
-      border: 1px solid #e2e8f0; border-radius: 10px;
-      word-break: break-all; font-size: 13px;
+    .runtime small { color: #bfdbfe; display: block; margin-bottom: 4px; }
+    .runtime strong { font-size: 14px; }
+
+    .shell { max-width: 1220px; margin: -18px auto 0; padding: 0 24px 36px; }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
     }
-    .link-preview a { color: #2563eb; }
-    button, .button-link {
-      border: 0; border-radius: 12px; padding: 14px 16px;
-      font-weight: 700; font-size: 14px; cursor: pointer;
-      background: #111827; color: white; transition: .15s ease;
-      text-decoration: none; text-align: center; display: inline-block;
+    .status-card, .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
     }
-    button:hover, .button-link:hover { transform: translateY(-1px); background: #0f172a; }
-    button.secondary, .button-link.secondary {
-      background: #e2e8f0; color: #172033;
-    }
-    button.danger { background: #b91c1c; }
-    button.success { background: #087f5b; }
-    button.hero, .button-link.hero { background: #2563eb; }
-    button:disabled, .button-link.disabled {
-      opacity: .45; cursor: not-allowed; transform: none; pointer-events: none;
-    }
+    .status-card { padding: 16px; }
+    .status-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .status-value { margin-top: 6px; font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
+    .status-note { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .ok { color: var(--green); }
+    .warn { color: #b7791f; }
+    .bad { color: var(--red); }
+
     .section { margin-top: 18px; }
-    .two { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
-    pre {
-      margin: 0; white-space: pre-wrap; word-break: break-word;
-      background: #0f172a; color: #dbeafe; border-radius: 12px;
-      padding: 16px; min-height: 260px; max-height: 420px; overflow: auto;
-      font: 13px/1.55 Consolas, monospace;
+    .platform-grid, .queue-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .card { padding: 20px; }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .card-head h2 { margin: 0; font-size: 19px; letter-spacing: -.02em; }
+    .card-head p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .platform-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .amazon-badge { background: #fff3e8; color: #9a4d00; }
+    .ml-badge { background: var(--yellow-soft); color: #7a5b00; }
+
+    .field-label { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 800; color: #344054; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      border: 1px solid #cfd7e4;
+      border-radius: 11px;
+      padding: 12px 13px;
+      font: inherit;
+      color: var(--text);
+      background: white;
+      outline: none;
+      transition: border .15s, box-shadow .15s;
+    }
+    input:focus { border-color: #7aa7ff; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .input-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; }
+
+    button, .button-link {
+      border: 0;
+      border-radius: 11px;
+      padding: 12px 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+      transition: transform .15s, filter .15s, opacity .15s;
+    }
+    button:hover, .button-link:hover { transform: translateY(-1px); filter: brightness(.98); }
+    button:disabled, .button-link.disabled { opacity: .45; pointer-events: none; transform: none; }
+    .primary { background: var(--blue); color: white; }
+    .success { background: var(--green); color: white; }
+    .secondary { background: #e9eef6; color: #24324a; }
+    .dark { background: var(--navy); color: white; }
+    .danger { background: #fee4e2; color: var(--red); }
+    .yellow { background: #ffe600; color: #1f2937; }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+    .actions > * { flex: 1 1 150px; }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+    .notice {
+      margin-top: 12px;
+      border-radius: 11px;
+      padding: 11px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      background: var(--blue-soft);
+      color: #1d4ed8;
+      border: 1px solid #dbeafe;
+    }
+    .notice.warn-box {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #92400e;
+    }
+
+    .steps { display: grid; gap: 8px; margin: 14px 0; }
+    .step {
+      display: grid;
+      grid-template-columns: 26px minmax(0,1fr);
+      gap: 9px;
+      align-items: start;
+      color: #475467;
+      font-size: 12px;
+    }
+    .step-number {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: #eef2f6; color: #344054; font-weight: 900;
+    }
+    .step strong { display: block; color: #24324a; margin-bottom: 2px; }
+
+    .offer-box {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+    .offer-title { font-size: 14px; font-weight: 850; line-height: 1.4; }
+    .offer-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      border-radius: 999px; padding: 6px 9px;
+      background: #eef2ff; color: #3730a3;
+      font-size: 11px; font-weight: 800;
+    }
+    .pill.green { background: var(--green-soft); color: #047857; }
+    .pill.yellow { background: var(--yellow-soft); color: #7a5b00; }
+
+    .saved-link {
+      margin-top: 9px;
+      padding: 10px 11px;
+      border-radius: 10px;
+      background: var(--green-soft);
+      color: #05603f;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    details.config {
+      margin-top: 16px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+    details.config summary { cursor: pointer; color: #475467; font-weight: 800; font-size: 12px; }
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 12px; }
+
+    .preview-layout { display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 18px; }
+    .offer-image {
+      display: none;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: white;
     }
     .message {
-      min-height: 220px; white-space: pre-wrap; background: #f8fafc;
-      border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
-      font-size: 14px; line-height: 1.55;
+      white-space: pre-wrap;
+      min-height: 210px;
+      border-radius: 14px;
+      padding: 15px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font: 13px/1.55 Consolas, "Courier New", monospace;
+      overflow: auto;
     }
-    .offer-image {
-      display: none; width: 100%; max-height: 300px; object-fit: contain;
-      background: white; border: 1px solid #e2e8f0; border-radius: 12px;
-      margin-bottom: 12px;
+    .meta { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+
+    .send-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .send-actions .wide { grid-column: 1 / -1; }
+    .group-box {
+      padding: 13px;
+      border-radius: 12px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      margin-bottom: 14px;
     }
-    .offer-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-    .offer-meta .pill strong { margin-left: 4px; }
-    .pill { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; font-weight: 700; }
-    #toast { margin-top: 12px; min-height: 20px; font-size: 14px; font-weight: 600; }
-    @media (max-width: 850px) { .grid, .actions, .two, .primary-actions, .affiliate-config, .ml-config { grid-template-columns: 1fr; } }
+    .group-box small { display: block; color: var(--muted); margin-bottom: 4px; }
+    .group-box strong { font-size: 16px; }
+
+    .monitor-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .monitor-item { padding: 12px; border: 1px solid var(--line); background: var(--surface-soft); border-radius: 12px; }
+    .monitor-item small { color: var(--muted); display: block; margin-bottom: 5px; }
+    .monitor-item strong { font-size: 13px; }
+
+    #toast {
+      position: sticky;
+      top: 12px;
+      z-index: 4;
+      min-height: 0;
+      margin-top: 16px;
+      border-radius: 12px;
+      padding: 0;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    #toast:not(:empty) { padding: 11px 13px; border: 1px solid currentColor; background: white; }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0b1220;
+      color: #cfe1ff;
+      border-radius: 14px;
+      padding: 15px;
+      min-height: 180px;
+      max-height: 360px;
+      overflow: auto;
+      font: 12px/1.55 Consolas, monospace;
+    }
+
+    @media (max-width: 950px) {
+      .status-grid { grid-template-columns: repeat(2,1fr); }
+      .platform-grid, .queue-grid { grid-template-columns: 1fr; }
+      .topbar-inner { align-items: flex-start; flex-direction: column; }
+      .runtime { width: 100%; }
+    }
+    @media (max-width: 650px) {
+      .shell { padding-left: 14px; padding-right: 14px; }
+      .status-grid, .monitor-grid, .config-grid, .preview-layout, .send-actions { grid-template-columns: 1fr; }
+      .send-actions .wide { grid-column: auto; }
+      .input-row { grid-template-columns: 1fr; }
+    }
   </style>
-  <header>
-    <h1>Central de Ofertas</h1>
-    <p>Amazon → seleção variada → imagem + mensagem → WhatsApp, com confirmação pelo painel.</p>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <div class="eyebrow">Operação de afiliados</div>
+        <h1>Central de Ofertas</h1>
+        <p>Amazon e Mercado Livre em um único fluxo: buscar, validar o link, preparar a mensagem e revisar no WhatsApp antes do envio.</p>
+      </div>
+      <div class="runtime">
+        <small>Execução agora</small>
+        <strong id="execucao">Carregando status...</strong>
+      </div>
+    </div>
   </header>
-  <main>    <section class="grid">
-      <div class="card">
-        <h2>Grupo do WhatsApp</h2>
-        <div id="grupo" class="value">...</div>
-        <div class="muted">Destino das mensagens preparadas</div>
+
+  <main class="shell">
+    <section class="status-grid">
+      <div class="status-card">
+        <div class="status-label">WhatsApp</div>
+        <div id="sessao" class="status-value">...</div>
+        <div id="grupo" class="status-note">...</div>
       </div>
-      <div class="card">
-        <h2>Sessão do WhatsApp</h2>
-        <div id="sessao" class="value">...</div>
-        <div class="muted">Perfil local reutilizado pelo Chrome</div>
+      <div class="status-card">
+        <div class="status-label">Amazon Associados</div>
+        <div id="afiliado" class="status-value">...</div>
+        <div class="status-note">Tracking ID aplicado às ofertas Amazon</div>
       </div>
-      <div class="card">
-        <h2>Afiliado Amazon</h2>
-        <div id="afiliado" class="value">...</div>
-        <div class="muted">Sem tag, o link não gera comissão</div>
+      <div class="status-card">
+        <div class="status-label">Mercado Livre</div>
+        <div id="mercadoLivreStatus" class="status-value">...</div>
+        <div id="mercadoLivreApi" class="status-note">...</div>
       </div>
-      <div class="card">
-        <h2>Mercado Livre</h2>
-        <div id="mercadoLivreStatus" class="value">Portal disponível</div>
-        <div id="mercadoLivreApi" class="muted">API aguardando autorização OAuth</div>
-      </div>
-      <div class="card">
-        <h2>Filtro mínimo</h2>
-        <div id="desconto" class="value">...</div>
-        <div class="muted">Desconto mínimo para considerar oferta</div>
+      <div class="status-card">
+        <div class="status-label">Filtro mínimo</div>
+        <div id="desconto" class="status-value">...</div>
+        <div class="status-note">Desconto necessário para entrar na fila</div>
       </div>
     </section>
 
-    <section class="card section">
-      <h2>Amazon Associados</h2>
-      <div class="affiliate-config">
-        <input id="amazonTag" type="text" placeholder="Cole seu Tracking ID, ex.: minha-loja-20" />
-        <button class="success" data-action="afiliado-save">Salvar e ativar</button>
-        <a href="https://associados.amazon.com.br/" target="_blank" rel="noreferrer">
-          Abrir Portal de Associados
-        </a>
-      </div>
-      <div class="muted" style="margin-top:8px">
-        Você pode colar o Tracking ID ou um link de associado completo que contenha ?tag=.
-      </div>
-      <div id="linkAfiliadoBox" class="link-preview" style="display:none">
-        <strong>Link da última oferta:</strong>
-        <a id="linkAfiliado" target="_blank" rel="noreferrer"></a>
-      </div>
-    </section>
+    <div id="toast"></div>
 
-    <section class="card section">
-      <h2>Mercado Livre Afiliados</h2>
-      <div class="ml-config">
-        <input id="mlClientId" type="text" placeholder="App ID do Mercado Livre" />
-        <input id="mlClientSecret" type="password" placeholder="Secret Key" autocomplete="off" />
-        <button class="success" data-action="mercadolivre-config-save">Salvar aplicativo</button>
-      </div>
-      <div class="muted" style="margin-top:8px">
-        Redirect URI para cadastrar no DevCenter:
-        <strong id="mlRedirectUri">http://localhost:3030/oauth/mercadolivre/callback</strong>
-      </div>
-      <div class="actions">
-        <a id="mlConnect" class="button-link hero disabled"
-           href="/mercadolivre/connect" target="_blank" rel="noreferrer">
-          🟡 Autorizar conta Mercado Livre
-        </a>
-        <button class="success" data-action="mercadolivre-buscar">
-          🔎 Buscar oferta Mercado Livre
-        </button>
-        <a class="button-link secondary"
-           href="https://www.mercadolivre.com.br/afiliados"
-           target="_blank" rel="noreferrer">
-          🔐 Login web Mercado Livre
-        </a>
-        <button id="mlGerarLink" class="hero" type="button">
-          🔗 Gerar link oficial
-        </button>
-        <a href="https://www.mercadolivre.com.br/afiliados"
-           target="_blank" rel="noreferrer">
-          Abrir Afiliados
-        </a>
-      </div>
-      <div class="muted" style="margin-top:12px">
-        As telas do Mercado Livre abertas por este painel usam uma nova guia do mesmo navegador
-        e reaproveitam a sessão web que já estiver conectada. A autorização OAuth continua sendo
-        a conexão oficial usada pela API.
-      </div>
-      <div class="warn" style="margin-top:10px">
-        Atenção: o Mercado Livre permite divulgação em WhatsApp/Telegram públicos, mas não em grupos privados.
-      </div>
-      <div id="mlOfertaBox" class="link-preview" style="display:none">
-        <strong>Melhor oferta encontrada:</strong>
-        <div id="mlOfertaTitulo" style="margin-top:8px;font-weight:700"></div>
-        <div id="mlOfertaPreco" style="margin-top:6px"></div>
-        <div id="mlOfertaDesconto" style="margin-top:4px"></div>
-        <a id="mlOfertaLink" target="_blank" rel="noreferrer"></a>
-        <div class="muted" style="margin-top:8px">
-          Antes de divulgar, gere o link no Gerador de Links do Mercado Livre para confirmar a elegibilidade e atribuir sua comissão.
+    <section class="platform-grid section">
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h2>Amazon</h2>
+            <p>Fluxo automatizado com rotação de categorias, score e Tracking ID.</p>
+          </div>
+          <span class="platform-badge amazon-badge">Fluxo completo</span>
         </div>
-      </div>
+
+        <label class="field-label" for="amazonTag">Tracking ID</label>
+        <div class="input-row">
+          <input id="amazonTag" type="text" placeholder="ex.: minha-loja-20" />
+          <button class="success" data-action="afiliado-save">Salvar</button>
+        </div>
+        <div class="hint">Aceita o Tracking ID ou um link Amazon que contenha <code>?tag=</code>.</div>
+
+        <div id="linkAfiliadoBox" class="saved-link" style="display:none">
+          <strong>Último link:</strong>
+          <a id="linkAfiliado" target="_blank" rel="noreferrer"></a>
+        </div>
+
+        <div class="actions">
+          <button class="primary" data-action="fluxo">✨ Nova oferta Amazon</button>
+          <button class="secondary" data-action="buscar">🔎 Só buscar</button>
+          <a class="button-link secondary" href="https://associados.amazon.com.br/" target="_blank" rel="noreferrer">Portal Amazon</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h2>Mercado Livre</h2>
+            <p>Busca via API oficial. O link de comissão continua vindo do Gerador de Links oficial.</p>
+          </div>
+          <span class="platform-badge ml-badge">Link oficial obrigatório</span>
+        </div>
+
+        <div class="steps">
+          <div class="step"><span class="step-number">1</span><div><strong>Buscar oferta</strong>Seleciona produto novo, vendedor verde e desconto válido.</div></div>
+          <div class="step"><span class="step-number">2</span><div><strong>Gerar link</strong>Abre Afiliados no mesmo navegador e copia a URL do produto.</div></div>
+          <div class="step"><span class="step-number">3</span><div><strong>Salvar link oficial</strong>Cole o <code>meli.la</code> ou link <code>/sec/</code> gerado pelo Mercado Livre.</div></div>
+          <div class="step"><span class="step-number">4</span><div><strong>Preparar WhatsApp</strong>Gera a mensagem e reutiliza o mesmo fluxo de revisão do WhatsApp.</div></div>
+        </div>
+
+        <div class="actions">
+          <button class="yellow" data-action="mercadolivre-buscar">🔎 Buscar oferta ML</button>
+          <button id="mlGerarLink" class="primary" type="button">🔗 Abrir Gerador de Links</button>
+          <a class="button-link secondary" href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noreferrer">Abrir Afiliados</a>
+        </div>
+
+        <div id="mlOfertaBox" class="offer-box" style="display:none">
+          <div class="offer-title" id="mlOfertaTitulo"></div>
+          <div class="offer-stats">
+            <span class="pill yellow" id="mlOfertaPreco"></span>
+            <span class="pill green" id="mlOfertaDesconto"></span>
+          </div>
+          <div style="margin-top:10px">
+            <a id="mlOfertaLink" target="_blank" rel="noreferrer">Abrir produto</a>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <label class="field-label" for="mlAffiliateLink">Link oficial de afiliado</label>
+          <div class="input-row">
+            <input id="mlAffiliateLink" type="text" placeholder="Cole aqui o link meli.la ou /sec/ gerado pelo Mercado Livre" />
+            <button class="success" data-action="mercadolivre-link-save">Validar e salvar</button>
+          </div>
+          <div id="mlAffiliateSavedBox" class="saved-link" style="display:none">
+            <strong>Link validado:</strong>
+            <a id="mlAffiliateSaved" target="_blank" rel="noreferrer"></a>
+          </div>
+        </div>
+
+        <button style="width:100%;margin-top:12px" class="dark" data-action="mercadolivre-preparar">
+          💬 Preparar Mercado Livre no WhatsApp
+        </button>
+
+        <div class="notice warn-box">
+          O painel não inventa parâmetros de afiliado. A oferta ML só é liberada para o WhatsApp depois que um link oficial é validado.
+        </div>
+
+        <details class="config">
+          <summary>Configuração da API Mercado Livre</summary>
+          <div class="config-grid">
+            <input id="mlClientId" type="text" placeholder="App ID" />
+            <input id="mlClientSecret" type="password" placeholder="Secret Key" autocomplete="off" />
+            <button class="success" data-action="mercadolivre-config-save">Salvar</button>
+          </div>
+          <div class="actions">
+            <a id="mlConnect" class="button-link primary disabled" href="/mercadolivre/connect" target="_blank" rel="noreferrer">Autorizar OAuth</a>
+          </div>
+          <div class="hint">Redirect URI: <strong id="mlRedirectUri"></strong></div>
+        </details>
+      </article>
+    </section>
+
+    <section class="queue-grid section">
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h2>Oferta preparada</h2>
+            <p>Prévia do pacote que será aberto no WhatsApp.</p>
+          </div>
+        </div>
+        <div class="preview-layout">
+          <img id="imagemOferta" class="offer-image" alt="Imagem da oferta" />
+          <div>
+            <div class="meta">
+              <span class="pill">Categoria <strong id="categoriaOferta">-</strong></span>
+              <span class="pill">Comissão <strong id="comissaoOferta">-</strong></span>
+              <span class="pill">Score <strong id="scoreOferta">-</strong></span>
+            </div>
+            <div id="mensagem" class="message">Ainda não há mensagem preparada.</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h2>Revisão e envio</h2>
+            <p>O envio só acontece depois da sua confirmação.</p>
+          </div>
+        </div>
+
+        <div class="group-box">
+          <small>Grupo configurado</small>
+          <strong id="grupoEnvio">...</strong>
+        </div>
+
+        <div class="send-actions">
+          <button class="success" data-action="preparar-send">📤 Enviar agora</button>
+          <button class="primary" data-action="preparar-send-next">📤 Enviar + próxima Amazon</button>
+          <button class="secondary" data-action="preparar">🖼️ Reabrir oferta</button>
+          <button class="danger" data-action="preparar-cancel">✕ Descartar preparação</button>
+          <button class="secondary wide" data-action="login">🔐 Login do WhatsApp</button>
+        </div>
+
+        <div class="notice">
+          Para Mercado Livre, “Enviar + próxima Amazon” fica desativado. Cada nova oferta ML precisa de um novo link oficial.
+        </div>
+      </article>
     </section>
 
     <section class="card section">
-      <h2>Enviar oferta</h2>
-      <div class="primary-actions">
-        <button class="hero" data-action="fluxo">✨ Nova oferta</button>
-        <button class="success" data-action="preparar-send-next">📤 Enviar e carregar próxima</button>
-      </div>
-      <div id="toast"></div>
-
-      <details>
-        <summary>Mais opções</summary>
-        <div class="actions">
-          <button data-action="buscar">🔎 Só buscar oferta</button>
-          <button data-action="preparar">🖼️ Reabrir última oferta</button>
-          <button class="secondary" data-action="preparar-cancel">✕ Descartar oferta aberta</button>
-          <button class="secondary" data-action="login">🔐 Login do WhatsApp</button>
-          <button class="secondary" data-action="automatico-start">⏱ Iniciar monitoramento</button>
-          <button class="danger" data-action="automatico-stop">■ Parar monitoramento</button>
+      <div class="card-head">
+        <div>
+          <h2>Monitoramento</h2>
+          <p>Parâmetros que controlam rotação e repetição.</p>
+        </div>
+        <div class="actions" style="margin:0">
+          <button class="secondary" data-action="automatico-start">▶ Monitorar</button>
+          <button class="danger" data-action="automatico-stop">■ Parar</button>
           <button class="secondary" data-action="historico-clear">↺ Limpar histórico</button>
         </div>
-      </details>
+      </div>
+      <div class="monitor-grid">
+        <div class="monitor-item"><small>Consultas Amazon</small><strong id="consultas">...</strong></div>
+        <div class="monitor-item"><small>Cooldown</small><strong id="cooldown">...</strong></div>
+        <div class="monitor-item"><small>Ofertas bloqueadas</small><strong id="bloqueadas">0</strong></div>
+      </div>
     </section>
 
-    <section class="card section">
-      <h2>O que está sendo monitorado</h2>
-      <div><span class="pill">Consultas</span> <span id="consultas">...</span></div>
-      <div style="margin-top:10px"><span class="pill">Sem repetir</span> <span id="cooldown">...</span></div>
-      <div style="margin-top:10px"><span class="pill">Já enviadas no período</span> <span id="bloqueadas">0</span></div>
-      <div style="margin-top:10px"><span class="pill">Em execução</span> <span id="execucao">Nenhuma tarefa</span></div>
-    </section>
-    <section class="two section">
-      <div class="card">
-        <h2>Última oferta gerada</h2>
-        <div class="offer-meta">
-          <span class="pill">Categoria <strong id="categoriaOferta">-</strong></span>
-          <span class="pill">Comissão estimada <strong id="comissaoOferta">-</strong></span>
-          <span class="pill">Score <strong id="scoreOferta">-</strong></span>
-        </div>
-        <img id="imagemOferta" class="offer-image" alt="Imagem do produto" />
-        <div id="mensagem" class="message">Ainda não há mensagem gerada.</div>
+    <details class="card section">
+      <summary style="cursor:pointer;font-weight:850">Atividade técnica e logs</summary>
+      <div style="display:flex;justify-content:flex-end;margin:12px 0 8px">
+        <button class="secondary" data-action="limpar-logs">Limpar logs</button>
       </div>
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-          <h2 style="margin:0">Atividade do sistema</h2>
-          <button class="secondary" data-action="limpar-logs" style="padding:8px 10px">Limpar</button>
-        </div>
-        <pre id="logs">Aguardando atividade...</pre>
-      </div>
-    </section>
+      <pre id="logs">Aguardando atividade...</pre>
+    </details>
   </main>
 
   <script>
     const $ = (id) => document.getElementById(id);
     const buttons = [...document.querySelectorAll("button[data-action]")];
-    const mercadoLivreAfiliadosUrl =
-      "https://www.mercadolivre.com.br/afiliados";
+    const mercadoLivreAfiliadosUrl = "https://www.mercadolivre.com.br/afiliados";
+
+    function classeStatus(el, tipo) {
+      el.classList.remove("ok", "warn", "bad");
+      if (tipo) el.classList.add(tipo);
+    }
+
+    function moeda(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function toast(texto, tipo = "warn") {
+      $("toast").textContent = texto;
+      $("toast").className = tipo;
+    }
 
     $("mlGerarLink").addEventListener("click", () => {
       const urlProduto = $("mlOfertaLink").getAttribute("href") || "";
       if (!urlProduto) {
-        $("toast").textContent =
-          "Busque uma oferta do Mercado Livre antes de gerar o link.";
-        $("toast").className = "warn";
+        toast("Busque uma oferta do Mercado Livre antes de abrir o Gerador de Links.", "warn");
         return;
       }
 
-      window.open(mercadoLivreAfiliadosUrl, "_blank");
+      window.open(mercadoLivreAfiliadosUrl, "_blank", "noopener");
 
       if (navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(urlProduto)
-          .then(() => {
-            $("toast").textContent =
-              "Afiliados aberto em nova guia. A URL da oferta foi copiada; cole no Gerador de Links.";
-            $("toast").className = "ok";
-          })
-          .catch(() => {
-            $("toast").textContent =
-              "Afiliados aberto em nova guia. Copie o link da oferta e cole no Gerador de Links.";
-            $("toast").className = "warn";
-          });
+          .then(() => toast(
+            "Afiliados aberto em nova guia. A URL do produto foi copiada; cole no Gerador de Links.",
+            "ok"
+          ))
+          .catch(() => toast(
+            "Afiliados aberto em nova guia. Copie o link do produto mostrado no painel.",
+            "warn"
+          ));
       } else {
-        $("toast").textContent =
-          "Afiliados aberto em nova guia. Copie o link da oferta e cole no Gerador de Links.";
-        $("toast").className = "warn";
+        toast("Afiliados aberto em nova guia. Copie o link do produto mostrado no painel.", "warn");
       }
     });
 
-    function classeStatus(el, tipo) {
-      el.classList.remove("ok", "warn", "bad");
-      el.classList.add(tipo);
-    }
-
     async function atualizar() {
       try {
-        const r = await fetch("/api/status", { cache: "no-store" });
-        const s = await r.json();
+        const resposta = await fetch("/api/status", { cache: "no-store" });
+        const s = await resposta.json();
 
-        $("grupo").textContent = s.grupo;
-        $("sessao").textContent = s.sessaoWhatsapp ? "Sessão criada" : "Não conectada";
+        $("grupo").textContent = s.grupo || "Não configurado";
+        $("grupoEnvio").textContent = s.grupo || "Não configurado";
+
+        $("sessao").textContent = s.sessaoWhatsapp ? "Sessão pronta" : "Não conectada";
         classeStatus($("sessao"), s.sessaoWhatsapp ? "ok" : "warn");
 
         $("afiliado").textContent = s.afiliadoConfigurado
@@ -299,27 +585,32 @@
         classeStatus($("afiliado"), s.afiliadoConfigurado ? "ok" : "warn");
 
         $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? (s.mercadoLivreUserId ? "Conectado · ID " + s.mercadoLivreUserId : "Conectado")
+          ? "API conectada"
           : s.mercadoLivreAppConfigurada
-            ? "Aplicativo configurado"
-            : "Configurar aplicativo";
+            ? "App configurado"
+            : "Configurar";
         classeStatus(
           $("mercadoLivreStatus"),
           s.mercadoLivreApiConfigurada ? "ok" : "warn"
         );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada
-          ? "API autorizada via OAuth"
+          ? (s.mercadoLivreUserId ? "OAuth autorizado · ID " + s.mercadoLivreUserId : "OAuth autorizado")
           : s.mercadoLivreAppConfigurada
-            ? "Aguardando autorização da conta"
-            : "Informe App ID e Secret Key";
+            ? "Aguardando autorização OAuth"
+            : "App ID e Secret Key ainda não configurados";
 
+        $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
+
+        if (document.activeElement !== $("amazonTag")) {
+          $("amazonTag").value = s.afiliadoTag || "";
+        }
         if (document.activeElement !== $("mlClientId")) {
           $("mlClientId").value = s.mercadoLivreClientId || "";
         }
         $("mlClientSecret").placeholder = s.mercadoLivreAppConfigurada
-          ? "Secret Key já salva — deixe em branco para manter"
+          ? "Secret Key já salva — deixe em branco"
           : "Secret Key";
-        $("mlRedirectUri").textContent = s.mercadoLivreRedirectUri;
+        $("mlRedirectUri").textContent = s.mercadoLivreRedirectUri || "";
 
         const mlConnect = $("mlConnect");
         if (s.mercadoLivreAppConfigurada) {
@@ -333,23 +624,30 @@
         const mlOferta = s.mercadoLivreOferta || {};
         const mlOfertaBox = $("mlOfertaBox");
         if (mlOferta.urlProduto) {
-          $("mlOfertaTitulo").textContent = mlOferta.titulo || "Oferta";
-          $("mlOfertaPreco").textContent =
-            "Preço: " + Number(mlOferta.precoAtual || 0).toLocaleString(
-              "pt-BR",
-              { style: "currency", currency: "BRL" }
-            );
-          $("mlOfertaDesconto").textContent =
-            "Desconto: " + (mlOferta.descontoPercentual || 0) + "%";
+          $("mlOfertaTitulo").textContent = mlOferta.titulo || "Oferta Mercado Livre";
+          $("mlOfertaPreco").textContent = moeda(mlOferta.precoAtual);
+          $("mlOfertaDesconto").textContent = (mlOferta.descontoPercentual || 0) + "% OFF";
           $("mlOfertaLink").href = mlOferta.urlProduto;
-          $("mlOfertaLink").textContent = "Abrir produto no Mercado Livre";
           mlOfertaBox.style.display = "block";
         } else {
+          $("mlOfertaLink").removeAttribute("href");
           mlOfertaBox.style.display = "none";
         }
 
-        if (document.activeElement !== $("amazonTag")) {
-          $("amazonTag").value = s.afiliadoTag || "";
+        if (document.activeElement !== $("mlAffiliateLink")) {
+          $("mlAffiliateLink").value = mlOferta.urlAfiliado || "";
+        }
+
+        const mlSavedBox = $("mlAffiliateSavedBox");
+        const mlSaved = $("mlAffiliateSaved");
+        if (mlOferta.urlAfiliado) {
+          mlSaved.href = mlOferta.urlAfiliado;
+          mlSaved.textContent = mlOferta.urlAfiliado;
+          mlSavedBox.style.display = "block";
+        } else {
+          mlSaved.removeAttribute("href");
+          mlSaved.textContent = "";
+          mlSavedBox.style.display = "none";
         }
 
         const linkBox = $("linkAfiliadoBox");
@@ -364,28 +662,16 @@
           linkBox.style.display = "none";
         }
 
-        $("desconto").textContent = s.descontoMinimo + "%";
-        $("consultas").textContent = s.consultas;
-        $("cooldown").textContent = (s.previewCooldownMinutos / 60) + "h após busca / " + s.cooldownHoras + "h após envio";
+        $("consultas").textContent = s.consultas || "-";
+        $("cooldown").textContent =
+          ((s.previewCooldownMinutos || 120) / 60) + "h após busca · " +
+          (s.cooldownHoras || 24) + "h após envio";
         $("bloqueadas").textContent = String(s.ofertasBloqueadas ?? 0);
-
-        const preparando = s.executando.includes("preparar");
-        const logando = s.executando.includes("login");
-        const buscando = s.executando.includes("buscar");
-        const mlBuscando = s.executando.includes("mercadolivre-buscar");
-        const automatico = s.executando.includes("automatico");
-        const whatsappOcupado = preparando || logando;
-
-        $("execucao").textContent = preparando
-          ? "Aguardando sua confirmação no WhatsApp"
-          : s.executando.length
-            ? s.executando.join(", ")
-            : "Nenhuma tarefa";
 
         $("categoriaOferta").textContent = s.categoriaAtual || "-";
         $("comissaoOferta").textContent = s.comissaoAtual ? s.comissaoAtual + "%" : "-";
         $("scoreOferta").textContent = s.scoreAtual ? String(s.scoreAtual) : "-";
-        $("mensagem").textContent = s.mensagem || "Ainda não há mensagem gerada.";
+        $("mensagem").textContent = s.mensagem || "Ainda não há mensagem preparada.";
 
         const imagem = $("imagemOferta");
         if (s.imagemUrl) {
@@ -396,8 +682,23 @@
           imagem.style.display = "none";
         }
 
-        $("logs").textContent = s.logs.length ? s.logs.join("\n") : "Aguardando atividade...";
+        $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
         $("logs").scrollTop = $("logs").scrollHeight;
+
+        const preparando = s.executando.includes("preparar");
+        const logando = s.executando.includes("login");
+        const buscando = s.executando.includes("buscar");
+        const mlBuscando = s.executando.includes("mercadolivre-buscar");
+        const mlPreparando = s.executando.includes("mercadolivre-whatsapp");
+        const automatico = s.executando.includes("automatico");
+        const whatsappOcupado = preparando || logando;
+        const origemMl = s.origemPreparacaoAtual === "mercado-livre";
+
+        $("execucao").textContent = preparando
+          ? "WhatsApp aguardando confirmação"
+          : s.executando.length
+            ? s.executando.join(", ")
+            : "Nenhuma tarefa ativa";
 
         for (const b of buttons) {
           const acao = b.dataset.action;
@@ -405,10 +706,11 @@
 
           if (acao === "preparar" || acao === "login") {
             b.disabled = whatsappOcupado;
-          } else if (
-            acao === "preparar-send-next" ||
-            acao === "preparar-cancel"
-          ) {
+          } else if (acao === "preparar-send") {
+            b.disabled = !preparando;
+          } else if (acao === "preparar-send-next") {
+            b.disabled = !preparando || origemMl;
+          } else if (acao === "preparar-cancel") {
             b.disabled = !preparando;
           } else if (acao === "historico-clear") {
             b.disabled = preparando;
@@ -418,6 +720,14 @@
             b.disabled = buscando;
           } else if (acao === "mercadolivre-buscar") {
             b.disabled = mlBuscando || !s.mercadoLivreApiConfigurada;
+          } else if (acao === "mercadolivre-link-save") {
+            b.disabled = !mlOferta.urlProduto;
+          } else if (acao === "mercadolivre-preparar") {
+            b.disabled =
+              whatsappOcupado ||
+              mlPreparando ||
+              !mlOferta.urlProduto ||
+              !mlOferta.urlAfiliado;
           } else if (acao === "automatico-start") {
             b.disabled = automatico || preparando || buscando;
           } else if (acao === "automatico-stop") {
@@ -426,26 +736,23 @@
             b.disabled = false;
           }
         }
-      } catch (e) {
-        $("toast").textContent = "Não foi possível atualizar o painel.";
-        $("toast").className = "bad";
+      } catch {
+        toast("Não foi possível atualizar o painel.", "bad");
       }
     }
+
     async function acao(nome, extras = {}) {
-      $("toast").textContent = "Executando...";
-      $("toast").className = "warn";
+      toast("Executando...", "warn");
       try {
-        const r = await fetch("/api/action", {
+        const resposta = await fetch("/api/action", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ action: nome, ...extras })
         });
-        const data = await r.json();
-        $("toast").textContent = data.mensagem;
-        $("toast").className = data.ok ? "ok" : "warn";
+        const data = await resposta.json();
+        toast(data.mensagem, data.ok ? "ok" : "warn");
       } catch {
-        $("toast").textContent = "Falha ao executar a ação.";
-        $("toast").className = "bad";
+        toast("Falha ao executar a ação.", "bad");
       }
       await atualizar();
     }
@@ -453,6 +760,7 @@
     for (const button of buttons) {
       button.addEventListener("click", () => {
         const nome = button.dataset.action;
+
         if (nome === "afiliado-save") {
           acao(nome, { tag: $("amazonTag").value });
         } else if (nome === "mercadolivre-config-save") {
@@ -460,6 +768,8 @@
             clientId: $("mlClientId").value,
             clientSecret: $("mlClientSecret").value
           }).then(() => { $("mlClientSecret").value = ""; });
+        } else if (nome === "mercadolivre-link-save") {
+          acao(nome, { link: $("mlAffiliateLink").value });
         } else {
           acao(nome);
         }
@@ -469,6 +779,12 @@
     $("amazonTag").addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         acao("afiliado-save", { tag: $("amazonTag").value });
+      }
+    });
+
+    $("mlAffiliateLink").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        acao("mercadolivre-link-save", { link: $("mlAffiliateLink").value });
       }
     });
 
