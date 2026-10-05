@@ -83,7 +83,8 @@
 
   function localizarGerador() {
     const termos = ["gerador de links", "gerar links", "criar link"];
-    return elementosClicaveis().find((el) => {
+
+    const direto = elementosClicaveis().find((el) => {
       const texto = normalizar(
         [el.textContent, el.getAttribute("aria-label"), el.getAttribute("title")]
           .filter(Boolean)
@@ -91,6 +92,25 @@
       );
       return termos.some((termo) => texto.includes(termo));
     });
+    if (direto) return direto;
+
+    const textos = [...document.querySelectorAll("span, p, div, strong")]
+      .filter(visivel)
+      .filter((el) => {
+        const texto = normalizar(el.textContent);
+        return termos.some(
+          (termo) => texto === termo || texto.startsWith(termo)
+        );
+      });
+
+    for (const texto of textos) {
+      const clicavel = texto.closest(
+        'a, button, [role="button"], [tabindex="0"]'
+      );
+      if (clicavel && visivel(clicavel)) return clicavel;
+    }
+
+    return null;
   }
 
   function localizarCampoUrl() {
@@ -100,33 +120,52 @@
       )
     ].filter(visivel);
 
-    const pontuar = (el) => {
+    const avaliar = (el) => {
       const contexto = normalizar(
         [
           el.getAttribute("placeholder"),
           el.getAttribute("aria-label"),
           el.getAttribute("name"),
+          el.getAttribute("role"),
           el.id,
           el.closest("label")?.textContent,
-          el.parentElement?.textContent?.slice(0, 180)
+          el.parentElement?.textContent?.slice(0, 220),
+          el.parentElement?.parentElement?.textContent?.slice(0, 220)
         ]
           .filter(Boolean)
           .join(" ")
       );
 
+      const campoPesquisa =
+        contexto.includes("pesquis") ||
+        contexto.includes("buscar") ||
+        contexto.includes("search") ||
+        contexto.includes("produtos selecionados") ||
+        contexto.includes("mais relevantes") ||
+        el.getAttribute("role") === "searchbox";
+
+      if (campoPesquisa) {
+        return { el, score: -100, contexto };
+      }
+
       let score = 0;
-      if (contexto.includes("url")) score += 6;
-      if (contexto.includes("link")) score += 5;
+      if (el.getAttribute("type") === "url") score += 8;
+      if (contexto.includes("url")) score += 7;
+      if (contexto.includes("link")) score += 6;
       if (contexto.includes("produto")) score += 4;
-      if (contexto.includes("cole")) score += 3;
-      if (contexto.includes("pesquis")) score -= 8;
-      if (contexto.includes("buscar")) score -= 5;
-      return score;
+      if (contexto.includes("cole")) score += 4;
+      if (contexto.includes("insira")) score += 2;
+
+      return { el, score, contexto };
     };
 
-    return campos
-      .map((el) => ({ el, score: pontuar(el) }))
-      .sort((a, b) => b.score - a.score)[0]?.el || null;
+    const melhor = campos
+      .map(avaliar)
+      .sort((a, b) => b.score - a.score)[0];
+
+    // Nunca escolhe um campo genérico só porque é o único input da página.
+    // O Gerador de Links precisa apresentar indícios claros de URL/link/produto.
+    return melhor && melhor.score >= 6 ? melhor.el : null;
   }
 
   function localizarBotaoGerar() {
