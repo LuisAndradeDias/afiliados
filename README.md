@@ -7,7 +7,7 @@ Central local para localizar ofertas, validar links de afiliado, preparar conte�
 O projeto possui dois fluxos ativos:
 
 - **Amazon**: coleta via navegador, rotação de categorias, score por promoção/comissão, aplicação do Tracking ID e preparação no WhatsApp.
-- **Mercado Livre**: coleta via API oficial, filtro de publicação nova + vendedor verde, geração manual do link oficial no Portal de Afiliados, validação do link e preparação no mesmo fluxo do WhatsApp.
+- **Mercado Livre**: coleta via API oficial, filtro de publicação nova + vendedor verde, geração automática do link pelo Gerador de Links oficial através de uma extensão local do Chrome, validação do link e preparação no mesmo fluxo do WhatsApp. O modo manual continua disponível como fallback.
 
 O envio continua dependendo de confirmação humana no painel.
 
@@ -84,12 +84,14 @@ O fluxo normal é:
 
 1. Autorize a API Mercado Livre no painel.
 2. Clique em **Buscar oferta ML**.
-3. Clique em **Abrir Gerador de Links**. O painel abre Afiliados no mesmo navegador e tenta copiar a URL do produto.
-4. Gere o link no Portal de Afiliados.
-5. Cole o link no campo **Link oficial de afiliado** e clique em **Validar e salvar**.
-6. O projeto aceita somente links oficiais de compartilhamento, como `meli.la` ou caminhos `/sec/`.
+3. Instale uma vez a extensão local em `browser-extension/mercadolivre-affiliate` usando `chrome://extensions/` → **Modo do desenvolvedor** → **Carregar sem compactação**.
+4. Quando o painel mostrar **Automação Meli conectada**, clique em **Gerar link automaticamente**.
+5. O painel abre Afiliados no mesmo navegador. A extensão localiza o Gerador de Links oficial, cola a URL do produto, clica em gerar e devolve o `meli.la`/`/sec/` ao painel.
+6. O backend valida o link oficial e o salva na oferta atual.
 7. Clique em **Preparar Mercado Livre no WhatsApp**.
 8. Revise foto + legenda e confirme o envio.
+
+Se a extensão não estiver ativa ou o Mercado Livre alterar o layout, o botão volta ao modo manual: abre Afiliados e copia a URL do produto para você gerar e colar o link no painel.
 
 O projeto não fabrica parâmetros de afiliado do Mercado Livre e não trata uma URL normal de produto como link com comissão.
 
@@ -157,3 +159,20 @@ Use `.env.example` como referência e mantenha localmente:
 - sessões do WhatsApp/Chrome
 
 Consulte `docs/PROJECT_MAP.md` para o mapa completo do projeto.
+
+## Extensão local para links Mercado Livre
+
+Instalação rápida no Windows:
+
+```text
+Instalar Automacao Meli.bat
+```
+
+Ou manualmente:
+
+1. Abra `chrome://extensions/`.
+2. Ative **Modo do desenvolvedor**.
+3. Clique em **Carregar sem compactação**.
+4. Selecione `C:\projeto01\browser-extension\mercadolivre-affiliate`.
+
+A extensão não lê cookies, senhas nem tokens. Ela automatiza somente a interface visível do Gerador de Links e conversa com o painel local em `127.0.0.1:3030`.
