@@ -22,11 +22,13 @@ Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo pa
 1. `src/fontes/mercadolivre/api.ts` consulta o catálogo e publicações pela API oficial.
 2. A fonte exige publicação nova e vendedor com reputação verde.
 3. `src/robo/mercadolivre-preview.ts` aplica desconto mínimo, cooldown e escolhe a melhor oferta.
-4. O painel abre o Gerador de Links no mesmo navegador do usuário e copia a URL do produto.
-5. `src/afiliados/mercadolivre.ts` valida e salva somente links oficiais de compartilhamento (`meli.la` ou `/sec/`).
-6. `src/robo/mercadolivre-whatsapp.ts` transforma a oferta validada em mensagem/pacote.
-7. `src/robo/whatsapp-preparar.ts` reutiliza o mesmo fluxo de revisão e envio do WhatsApp.
-8. O histórico usa a chave `mercado-livre:<produtoId>`, evitando repetição.
+4. O painel cria um job de link e abre o Portal de Afiliados no navegador do usuário.
+5. `browser-extension/mercadolivre-affiliate/` usa a sessão web já autenticada, localiza o Gerador de Links oficial, preenche a URL do produto, gera e devolve o link ao painel.
+6. O painel mantém o estado do job em memória e recebe o resultado pelos endpoints `/api/mercadolivre/link-*`.
+7. `src/afiliados/mercadolivre.ts` valida e salva somente links oficiais de compartilhamento (`meli.la` ou `/sec/`).
+8. `src/robo/mercadolivre-whatsapp.ts` transforma a oferta validada em mensagem/pacote.
+9. `src/robo/whatsapp-preparar.ts` reutiliza o mesmo fluxo de revisão e envio do WhatsApp.
+10. O histórico usa a chave `mercado-livre:<produtoId>`, evitando repetição.
 
 ## Pastas
 
@@ -39,6 +41,7 @@ Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo pa
 - `src/painel/`: servidor local e interface de operação.
 - `data/`: estado local, sessões, ofertas e histórico. Não deve ser versionado.
 - `docs/`: documentação operacional e mapa de arquitetura.
+- `browser-extension/mercadolivre-affiliate/`: automação local do Gerador de Links oficial do Mercado Livre.
 
 ## Arquivos locais importantes
 
@@ -52,6 +55,7 @@ Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo pa
 ## Regras de segurança do fluxo
 
 - Nunca fabricar parâmetros de afiliado do Mercado Livre.
+- A automação do link deve operar na interface oficial do Gerador de Links; não usar endpoints privados/descobertos por engenharia reversa.
 - Não tratar URL normal de produto como link de afiliado.
 - Mercado Livre só pode ser preparado para WhatsApp depois de salvar um link oficial.
 - O envio continua dependente de confirmação no painel.
