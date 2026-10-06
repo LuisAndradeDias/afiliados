@@ -1,4 +1,5 @@
 const PANEL = "http://127.0.0.1:3030";
+const AFILIADOS = "https://www.mercadolivre.com.br/afiliados";
 
 async function api(path, options = {}) {
   const response = await fetch(PANEL + path, {
@@ -26,28 +27,60 @@ async function api(path, options = {}) {
 }
 
 async function ping() {
+  return api("/api/mercadolivre/extension-ping", {
+    method: "POST",
+    body: "{}"
+  });
+}
+
+async function garantirAbaParaJob() {
+  const resposta = await api("/api/mercadolivre/link-job");
+  if (!resposta?.job) return;
+
+  const abas = await chrome.tabs.query({
+    url: [
+      "https://www.mercadolivre.com.br/*",
+      "https://mercadolivre.com.br/*"
+    ]
+  });
+
+  const ativa = abas.find((aba) => aba.id && !aba.discarded);
+  if (ativa) return;
+
+  await chrome.tabs.create({
+    url: AFILIADOS,
+    active: false
+  });
+}
+
+async function cicloBackground() {
   try {
-    await api("/api/mercadolivre/extension-ping", {
-      method: "POST",
-      body: "{}"
-    });
+    await ping();
+    await garantirAbaParaJob();
   } catch {
-    // O painel pode estar fechado; tentamos novamente depois.
+    // Painel fechado, Chrome sem permissão ou rede indisponível.
+    // O próximo ciclo tenta novamente.
   }
 }
 
+function configurarAlarme() {
+  chrome.alarms.create("meli-monitor", { periodInMinutes: 0.5 });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create("meli-ping", { periodInMinutes: 1 });
-  ping();
+  configurarAlarme();
+  void cicloBackground();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  chrome.alarms.create("meli-ping", { periodInMinutes: 1 });
-  ping();
+  configurarAlarme();
+  void cicloBackground();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "meli-ping") ping();
+  if (alarm.name === "meli-monitor") {
+    void cicloBackground();
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -57,10 +90,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (message.type === "ping") {
-      return api("/api/mercadolivre/extension-ping", {
-        method: "POST",
-        body: "{}"
-      });
+      return ping();
     }
 
     if (message.type === "getJob") {
