@@ -324,6 +324,13 @@ interface PacotePainel {
   categoria?: string;
   comissaoEstimadaPercentual?: number;
   scoreOferta?: number;
+  cupomCodigo?: string;
+  cupomPercentual?: number;
+  cupomValor?: number;
+  cupomCompraMinima?: number;
+  cupomDescontoMaximo?: number;
+  precoComCupomEstimado?: number;
+  descontoEfetivoPercentual?: number;
 }
 
 async function atualizarOfertaAtualComTag(tag: string): Promise<void> {
@@ -838,6 +845,14 @@ async function estado() {
     categoriaAtual: pacote.categoria ?? "",
     comissaoAtual: pacote.comissaoEstimadaPercentual ?? 0,
     scoreAtual: pacote.scoreOferta ?? 0,
+    cupomAtual: pacote.cupomCodigo ?? "",
+    cupomPercentualAtual: pacote.cupomPercentual ?? 0,
+    cupomValorAtual: pacote.cupomValor ?? 0,
+    precoComCupomEstimado: pacote.precoComCupomEstimado ?? 0,
+    descontoEfetivoAtual:
+      pacote.descontoEfetivoPercentual ??
+      pacote.descontoPercentual ??
+      0,
     cooldownHoras: cooldownHoras(),
     previewCooldownMinutos: previewCooldownMinutos(),
     ofertasBloqueadas: await contarBloqueadas(),
