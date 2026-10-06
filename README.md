@@ -7,7 +7,7 @@ Central local para localizar ofertas, validar links de afiliado, preparar conte�
 O projeto possui dois fluxos ativos:
 
 - **Amazon**: coleta via navegador, rotação de categorias, score por promoção/comissão, aplicação do Tracking ID e preparação no WhatsApp.
-- **Mercado Livre**: coleta via API oficial, filtro de publicação nova + vendedor verde, geração automática do link pelo Gerador de Links oficial através de uma extensão local do Chrome, validação do link e preparação no mesmo fluxo do WhatsApp. O modo manual continua disponível como fallback.
+- **Mercado Livre**: coleta via API oficial, filtro de publicação nova + vendedor verde, geração automática do link pelo Gerador de Links oficial através de uma extensão local do Chrome, validação do link e preparação automática no WhatsApp. Depois da revisão, **Enviar + próxima ML** inicia outra oferta automaticamente. O modo manual continua disponível como fallback.
 
 O envio continua dependendo de confirmação humana no painel.
 
@@ -88,10 +88,11 @@ O fluxo normal é:
 4. Quando o painel mostrar **Automação Meli conectada**, clique em **Gerar link automaticamente**.
 5. O painel abre Afiliados no mesmo navegador. A extensão localiza o Gerador de Links oficial, cola a URL do produto, clica em gerar e devolve o `meli.la`/`/sec/` ao painel.
 6. O backend valida o link oficial e o salva na oferta atual.
-7. Clique em **Preparar Mercado Livre no WhatsApp**.
-8. Revise foto + legenda e confirme o envio.
+7. No modo automático, o painel já monta a mensagem e abre o WhatsApp assim que o link oficial é salvo.
+8. Revise foto + legenda.
+9. Use **Enviar agora** para encerrar a rodada ou **Enviar + próxima ML** para enviar e iniciar automaticamente a próxima busca → link → preparação.
 
-Se a extensão não estiver ativa ou o Mercado Livre alterar o layout, o botão volta ao modo manual: abre Afiliados e copia a URL do produto para você gerar e colar o link no painel.
+Se a extensão não estiver ativa ou o Mercado Livre alterar o layout, o modo manual continua disponível: buscar oferta → gerar/colar o link → preparar WhatsApp.
 
 O projeto não fabrica parâmetros de afiliado do Mercado Livre e não trata uma URL normal de produto como link com comissão.
 
@@ -176,3 +177,23 @@ Ou manualmente:
 4. Selecione `C:\projeto01\browser-extension\mercadolivre-affiliate`.
 
 A extensão não lê cookies, senhas nem tokens. Ela automatiza somente a interface visível do Gerador de Links e conversa com o painel local em `127.0.0.1:3030`.
+
+## Fluxo automático Mercado Livre
+
+Com API, extensão e WhatsApp conectados, o botão **Fluxo automático ML** executa:
+
+```text
+buscar oferta elegível
+→ gerar link oficial no Gerador de Links
+→ validar/salvar meli.la
+→ gerar mensagem + pacote
+→ abrir grupo no WhatsApp
+→ aguardar revisão
+```
+
+Depois da revisão:
+
+- **Enviar agora**: envia e encerra a rodada.
+- **Enviar + próxima ML**: envia e repete automaticamente o ciclo para outra oferta.
+
+O envio continua exigindo confirmação humana.
