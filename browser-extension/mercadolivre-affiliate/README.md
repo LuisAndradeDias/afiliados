@@ -25,3 +25,12 @@ Ela não acessa cookies, tokens ou credenciais. O trabalho é feito pelo DOM vis
 O painel passa a mostrar **Automação Meli conectada**.
 
 Se o Mercado Livre alterar o layout do Portal, o fluxo manual continua disponível como fallback.
+
+
+## Cupons
+
+A partir da versão 0.3.0, a extensão também observa blocos de cupom que estejam visíveis em páginas do Mercado Livre/Afiliados e envia apenas esses blocos para o painel local.
+
+Ela não envia o conteúdo geral da página, cookies, senhas ou tokens.
+
+Os cupons observados têm validade curta no cache do projeto e são revalidados antes da preparação no WhatsApp. Para carregar esta versão após um `git pull`, recarregue a extensão em `chrome://extensions/`.
