@@ -454,8 +454,22 @@ try {
   );
   await resultadoGrupo.click();
 
-  await localizarCompositor(page);
-  await page.waitForTimeout(2_000);
+  const compositorInicial = await localizarCompositor(page);
+
+  // O observador precisa ser armado ANTES de a oferta aparecer no compositor.
+  // Assim, mesmo que o usuário clique em Enviar imediatamente após a mensagem
+  // ficar pronta, o novo balão enviado sempre será comparado contra o estado
+  // anterior do grupo e não poderá entrar no baseline por engano.
+  await page.waitForTimeout(500);
+  const sendBaseline = await captureSendBaseline(
+    page,
+    mensagem,
+    pacote.titulo,
+    pacote.produtoId
+  );
+  console.log(
+    `Observador de envio armado antes da preparação: ${sendBaseline.outgoingCount} mensagem(ns) de saída já existentes no grupo.`
+  );
 
   let preparouImagem = false;
   let botaoEnviar: Locator;
@@ -464,10 +478,9 @@ try {
     botaoEnviar = await prepararImagemComLegenda(page, imagemPath, mensagem);
     preparouImagem = true;
   } else {
-    const compositor = await localizarCompositor(page);
-    await compositor.fill(mensagem.trim());
+    await compositorInicial.fill(mensagem.trim());
 
-    const textoPreparado = (await compositor.textContent())?.trim() ?? "";
+    const textoPreparado = (await compositorInicial.textContent())?.trim() ?? "";
     if (!textoPreparado) {
       throw new Error("A mensagem não foi inserida no campo de conversa.");
     }
@@ -476,18 +489,12 @@ try {
   }
 
   if (!modoTeste) {
-    await page.waitForTimeout(750);
+    await page.waitForTimeout(250);
     await fecharAbasExtras(context, page);
     console.log(
       `Aba ativa: ${page.url()} | Abas abertas pelo projeto: ${context.pages().length}`
     );
   }
-
-  const sendBaseline = await captureSendBaseline(
-    page,
-    mensagem,
-    pacote.titulo
-  );
 
   console.log(
     preparouImagem
