@@ -798,10 +798,10 @@ async function prepararMercadoLivreAutomaticamente(): Promise<boolean> {
       } else if (codigo !== 0) {
         mercadoLivreFluxoAutomatico = false;
 
-        if (mercadoLivreMonitorAtivo) {
-          agendarMonitorMercadoLivre(
-            mercadoLivreMonitorBackoffMs(),
-            "Falha ao montar a oferta para o WhatsApp. O monitoramento tentará outra promoção."
+        if (monitorAlternadoAtivo) {
+          agendarProximoTurnoAposRodada(
+            "amazon",
+            "Falha ao montar a oferta Mercado Livre. Amazon será consultada no próximo minuto."
           );
         } else {
           atualizarFluxoMercadoLivre(
@@ -857,7 +857,7 @@ async function iniciarFluxoMercadoLivreAutomatico(
     };
   }
 
-  cancelarAgendamentoMonitorMercadoLivre();
+  cancelarAgendamentoMonitorAlternado();
   mercadoLivreBuscaLimitada = false;
   mercadoLivreMonitorUltimaBuscaEm = Date.now();
   mercadoLivreFluxoAutomatico = true;
@@ -886,17 +886,19 @@ async function iniciarFluxoMercadoLivreAutomatico(
       if (codigo !== 0) {
         mercadoLivreFluxoAutomatico = false;
 
-        if (modoMonitor && mercadoLivreMonitorAtivo) {
+        if (modoMonitor && monitorAlternadoAtivo) {
           const limitado = mercadoLivreBuscaLimitada;
-          const espera = limitado
-            ? mercadoLivreMonitorBackoffMs()
-            : mercadoLivreMonitorIntervaloMs();
 
-          agendarMonitorMercadoLivre(
-            espera,
+          if (limitado) {
+            mercadoLivreBloqueadoAte =
+              Date.now() + mercadoLivreMonitorBackoffMs();
+          }
+
+          agendarProximoTurnoAposRodada(
+            "amazon",
             limitado
-              ? "Mercado Livre limitou as requisições. Monitoramento em espera antes de tentar outra categoria."
-              : "Nenhuma oferta passou pelos filtros. Monitoramento continua e tentará outra categoria."
+              ? "Mercado Livre entrou em backoff por limite da API. Amazon será consultada no próximo minuto."
+              : "Nenhuma oferta Mercado Livre passou pelos filtros. Amazon será consultada no próximo minuto."
           );
           return;
         }
@@ -918,10 +920,10 @@ async function iniciarFluxoMercadoLivreAutomatico(
         mercadoLivreFluxoAutomatico = false;
         const mensagem = error instanceof Error ? error.message : String(error);
 
-        if (modoMonitor && mercadoLivreMonitorAtivo) {
-          agendarMonitorMercadoLivre(
-            mercadoLivreMonitorBackoffMs(),
-            `Falha ao iniciar o link automático: ${mensagem}. O monitoramento tentará novamente.`
+        if (modoMonitor && monitorAlternadoAtivo) {
+          agendarProximoTurnoAposRodada(
+            "amazon",
+            `Falha ao iniciar o link automático: ${mensagem}. Amazon será consultada no próximo minuto.`
           );
           return;
         }
@@ -937,10 +939,10 @@ async function iniciarFluxoMercadoLivreAutomatico(
   if (!ok) {
     mercadoLivreFluxoAutomatico = false;
 
-    if (modoMonitor && mercadoLivreMonitorAtivo) {
-      agendarMonitorMercadoLivre(
-        mercadoLivreMonitorIntervaloMs(),
-        "A busca já estava ocupada. O monitoramento tentará novamente."
+    if (modoMonitor && monitorAlternadoAtivo) {
+      agendarProximoTurnoAposRodada(
+        "amazon",
+        "A busca Mercado Livre estava ocupada. Amazon será consultada no próximo minuto."
       );
     } else {
       atualizarFluxoMercadoLivre(
@@ -1164,15 +1166,16 @@ async function executarAcao(
     }
 
     await definirMonitorMercadoLivreAtivo(true);
-    agendarMonitorMercadoLivre(
+    agendarMonitorAlternado(
+      "mercado-livre",
       750,
-      "Monitoramento contínuo ativado. Primeira busca iniciará em instantes."
+      "Monitoramento intercalado ativado: Mercado Livre agora, Amazon no minuto seguinte."
     );
 
     return {
       ok: true,
       mensagem:
-        "Monitoramento contínuo ativado. O sistema buscará promoções até encontrar uma oferta válida."
+        "Monitoramento intercalado ativado: Mercado Livre e Amazon serão consultados alternadamente a cada minuto."
     };
   }
 
@@ -1614,10 +1617,10 @@ const server = createServer(async (req, res) => {
         if (mercadoLivreFluxoAutomatico) {
           mercadoLivreFluxoAutomatico = false;
 
-          if (mercadoLivreMonitorAtivo) {
-            agendarMonitorMercadoLivre(
-              mercadoLivreMonitorBackoffMs(),
-              `Gerador de Links falhou: ${erro}. O monitoramento tentará novamente.`
+          if (monitorAlternadoAtivo) {
+            agendarProximoTurnoAposRodada(
+              "amazon",
+              `Gerador de Links falhou: ${erro}. Amazon será consultada no próximo minuto.`
             );
           } else {
             atualizarFluxoMercadoLivre(
@@ -1676,10 +1679,10 @@ const server = createServer(async (req, res) => {
         if (mercadoLivreFluxoAutomatico) {
           mercadoLivreFluxoAutomatico = false;
 
-          if (mercadoLivreMonitorAtivo) {
-            agendarMonitorMercadoLivre(
-              mercadoLivreMonitorBackoffMs(),
-              `O link automático foi recusado: ${mensagem}. O monitoramento tentará novamente.`
+          if (monitorAlternadoAtivo) {
+            agendarProximoTurnoAposRodada(
+              "amazon",
+              `O link automático foi recusado: ${mensagem}. Amazon será consultada no próximo minuto.`
             );
           } else {
             atualizarFluxoMercadoLivre(
@@ -1724,10 +1727,11 @@ server.listen(porta, "127.0.0.1", () => {
   registrar("painel", `Painel disponível em http://localhost:${porta}`);
   console.log(`Painel disponível em http://localhost:${porta}`);
 
-  if (mercadoLivreMonitorAtivo) {
-    agendarMonitorMercadoLivre(
+  if (monitorAlternadoAtivo) {
+    agendarMonitorAlternado(
+      "mercado-livre",
       1_500,
-      "Monitoramento contínuo restaurado. Primeira busca iniciará em instantes."
+      "Monitoramento intercalado restaurado: Mercado Livre inicia, Amazon entra no minuto seguinte."
     );
   }
 });
