@@ -395,13 +395,17 @@
         </div>
 
         <div class="actions">
-          <button class="yellow" data-action="mercadolivre-buscar">🔎 Buscar oferta ML</button>
-          <button id="mlGerarLink" class="primary" type="button">⚡ Gerar link automaticamente</button>
+          <button class="success" data-action="mercadolivre-fluxo">⚡ Fluxo automático ML</button>
+          <button class="yellow" data-action="mercadolivre-buscar">🔎 Só buscar</button>
+          <button id="mlGerarLink" class="primary" type="button">🔗 Só gerar link</button>
           <a class="button-link secondary" href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noreferrer">Abrir Afiliados</a>
         </div>
 
         <div id="mlAutomationStatus" class="notice warn-box">
           Automação Meli: verificando extensão do navegador...
+        </div>
+        <div id="mlFlowStatus" class="notice" style="display:none">
+          Fluxo Mercado Livre aguardando início.
         </div>
 
         <details class="config">
@@ -520,14 +524,15 @@
 
         <div class="send-actions">
           <button class="success" data-action="preparar-send">📤 Enviar agora</button>
-          <button class="primary" data-action="preparar-send-next">📤 Enviar + próxima Amazon</button>
+          <button id="sendNextButton" class="primary" data-action="preparar-send-next">📤 Enviar + próxima</button>
           <button class="secondary" data-action="preparar">🖼️ Reabrir oferta</button>
           <button class="danger" data-action="preparar-cancel">✕ Descartar preparação</button>
           <button class="secondary wide" data-action="login">🔐 Login do WhatsApp</button>
         </div>
 
         <div class="notice">
-          Para Mercado Livre, “Enviar + próxima Amazon” fica desativado. Cada nova oferta ML precisa de um novo link oficial.
+          Com a automação Meli conectada, “Enviar + próxima” também funciona para Mercado Livre:
+          busca outra oferta, gera outro link oficial e prepara a próxima mensagem automaticamente.
         </div>
       </article>
     </section>
@@ -683,11 +688,12 @@
         }
 
         const mlAutomationStatus = $("mlAutomationStatus");
+        const mlFlowStatus = $("mlFlowStatus");
         const mlAutoButton = $("mlGerarLink");
         const mlJob = s.mercadoLivreLinkJob || null;
 
         if (s.mercadoLivreExtensionConectada) {
-          mlAutoButton.textContent = "⚡ Gerar link automaticamente";
+          mlAutoButton.textContent = "🔗 Só gerar link";
           mlAutomationStatus.classList.remove("warn-box");
 
           if (mlJob?.status === "pending") {
@@ -713,6 +719,23 @@
           mlAutomationStatus.textContent =
             "Automação Meli não conectada. Instale/ative a extensão abaixo; o fluxo manual continua funcionando.";
           mlAutomationStatus.classList.add("warn-box");
+        }
+
+        const fluxoEtapa = s.mercadoLivreFluxoEtapa || "idle";
+        const fluxoMensagem = s.mercadoLivreFluxoMensagem || "";
+
+        if (fluxoEtapa !== "idle" || fluxoMensagem) {
+          mlFlowStatus.style.display = "block";
+          mlFlowStatus.textContent =
+            "Fluxo ML · " +
+            (fluxoMensagem || fluxoEtapa);
+          mlFlowStatus.classList.toggle(
+            "warn-box",
+            fluxoEtapa === "error"
+          );
+        } else {
+          mlFlowStatus.style.display = "none";
+          mlFlowStatus.textContent = "";
         }
 
         const mlOferta = s.mercadoLivreOferta || {};
@@ -787,6 +810,15 @@
         const automatico = s.executando.includes("automatico");
         const whatsappOcupado = preparando || logando;
         const origemMl = s.origemPreparacaoAtual === "mercado-livre";
+        const fluxoMlAtivo =
+          s.mercadoLivreFluxoAutomatico &&
+          s.mercadoLivreFluxoEtapa !== "idle" &&
+          s.mercadoLivreFluxoEtapa !== "error";
+
+        const sendNextButton = $("sendNextButton");
+        sendNextButton.textContent = origemMl
+          ? "📤 Enviar + próxima ML"
+          : "📤 Enviar + próxima Amazon";
 
         $("execucao").textContent = preparando
           ? "WhatsApp aguardando confirmação"
@@ -803,7 +835,9 @@
           } else if (acao === "preparar-send") {
             b.disabled = !preparando;
           } else if (acao === "preparar-send-next") {
-            b.disabled = !preparando || origemMl;
+            b.disabled =
+              !preparando ||
+              (origemMl && !s.mercadoLivreExtensionConectada);
           } else if (acao === "preparar-cancel") {
             b.disabled = !preparando;
           } else if (acao === "historico-clear") {
@@ -812,8 +846,16 @@
             b.disabled = whatsappOcupado || buscando || automatico;
           } else if (acao === "buscar") {
             b.disabled = buscando;
+          } else if (acao === "mercadolivre-fluxo") {
+            b.disabled =
+              fluxoMlAtivo ||
+              mlBuscando ||
+              mlPreparando ||
+              whatsappOcupado ||
+              !s.mercadoLivreApiConfigurada ||
+              !s.mercadoLivreExtensionConectada;
           } else if (acao === "mercadolivre-buscar") {
-            b.disabled = mlBuscando || !s.mercadoLivreApiConfigurada;
+            b.disabled = mlBuscando || fluxoMlAtivo || !s.mercadoLivreApiConfigurada;
           } else if (acao === "mercadolivre-link-save") {
             b.disabled = !mlOferta.urlProduto;
           } else if (acao === "mercadolivre-preparar") {
@@ -864,6 +906,9 @@
           }).then(() => { $("mlClientSecret").value = ""; });
         } else if (nome === "mercadolivre-redirect-save") {
           acao(nome, { redirectUri: $("mlRedirectUriInput").value });
+        } else if (nome === "mercadolivre-fluxo") {
+          window.open(mercadoLivreAfiliadosUrl, "_blank", "noopener");
+          acao(nome);
         } else if (nome === "mercadolivre-link-save") {
           acao(nome, { link: $("mlAffiliateLink").value });
         } else {
