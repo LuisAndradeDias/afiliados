@@ -527,6 +527,18 @@ function iniciar(
       mercadoLivreBuscaLimitada = true;
     }
 
+    if (
+      nome === "preparar" &&
+      texto.includes("ENVIO_CONFIRMADO_MANUAL:")
+    ) {
+      finalizacaoWhatsappAtual = "enviar";
+      carregarProximaAposEnvio = false;
+      registrar(
+        "painel",
+        "Envio feito diretamente no WhatsApp detectado. Finalizando a oferta e retomando o ciclo."
+      );
+    }
+
     if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
       finalizacaoWhatsappAtual = null;
       carregarProximaAposEnvio = false;

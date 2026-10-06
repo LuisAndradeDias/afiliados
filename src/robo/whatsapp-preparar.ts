@@ -3,6 +3,11 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright";
 import { registrarOfertaEnviada } from "../ofertas/historico.js";
+import {
+  captureSendBaseline,
+  detectManualSend,
+  type WhatsappSendBaseline
+} from "./whatsapp-envio-observer.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -239,13 +244,28 @@ async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
 
 async function aguardarFinalizacao(
   context: BrowserContext,
-  page: Page
+  page: Page,
+  baseline: WhatsappSendBaseline
 ): Promise<void> {
   while (true) {
     if (page.isClosed() || context.pages().length === 0) {
       throw new Error(
         "A janela do WhatsApp foi fechada antes de enviar ou descartar a oferta."
       );
+    }
+
+    const envioManual = await detectManualSend(page, baseline)
+      .catch(() => false);
+
+    if (envioManual) {
+      await registrarEnvioAtual();
+      await rm(enviarSignalPath, { force: true });
+      await rm(fecharSignalPath, { force: true });
+      console.log(
+        "ENVIO_CONFIRMADO_MANUAL: envio feito diretamente no WhatsApp detectado e registrado no histórico."
+      );
+      await context.close().catch(() => undefined);
+      return;
     }
 
     const enviar = await readFile(enviarSignalPath, "utf8")
@@ -463,12 +483,20 @@ try {
     );
   }
 
+  const sendBaseline = await captureSendBaseline(
+    page,
+    mensagem,
+    pacote.titulo
+  );
+
   console.log(
     preparouImagem
       ? `Imagem + legenda preparadas no grupo: ${nomeGrupo}`
       : `Mensagem preparada no grupo: ${nomeGrupo}`
   );
-  console.log("Aguardando sua confirmação pelo painel.");
+  console.log(
+    "Aguardando sua confirmação no painel ou o envio direto no WhatsApp."
+  );
 
   if (modoTeste) {
     console.log("Teste concluído: busca, abertura do grupo e preenchimento funcionaram.");
@@ -478,11 +506,11 @@ try {
 
   console.log(
     preparouImagem
-      ? "Revise a foto e a legenda. Para enviar, use Enviar e carregar próxima no painel."
-      : "Revise a mensagem. Para enviar, use o botão Enviar agora no painel."
+      ? "Revise a foto e a legenda. Você pode enviar pelo WhatsApp ou pelo painel."
+      : "Revise a mensagem. Você pode enviar pelo WhatsApp ou pelo painel."
   );
 
-  await aguardarFinalizacao(context, page);
+  await aguardarFinalizacao(context, page, sendBaseline);
 } catch (error) {
   await context.close();
   throw error;
