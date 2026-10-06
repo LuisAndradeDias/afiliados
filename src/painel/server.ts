@@ -34,6 +34,49 @@ let carregarProximaAposEnvio = false;
 let mercadoLivreOauthState = "";
 let origemPreparacaoAtual: "amazon" | "mercado-livre" = "amazon";
 
+type MercadoLivreLinkJobStatus =
+  | "pending"
+  | "running"
+  | "done"
+  | "error";
+
+interface MercadoLivreLinkJob {
+  id: string;
+  produtoId: string;
+  urlProduto: string;
+  criadoEm: string;
+  status: MercadoLivreLinkJobStatus;
+  mensagem?: string;
+}
+
+let mercadoLivreLinkJob: MercadoLivreLinkJob | null = null;
+let mercadoLivreExtensionLastSeen = 0;
+
+type MercadoLivreFluxoEtapa =
+  | "idle"
+  | "searching"
+  | "linking"
+  | "preparing"
+  | "waiting-send"
+  | "error";
+
+let mercadoLivreFluxoAutomatico = false;
+let mercadoLivreFluxoEtapa: MercadoLivreFluxoEtapa = "idle";
+let mercadoLivreFluxoMensagem = "";
+
+function atualizarFluxoMercadoLivre(
+  etapa: MercadoLivreFluxoEtapa,
+  mensagem: string
+): void {
+  mercadoLivreFluxoEtapa = etapa;
+  mercadoLivreFluxoMensagem = mensagem;
+  registrar("mercadolivre-fluxo", mensagem);
+}
+
+function mercadoLivreExtensionConectada(): boolean {
+  return Date.now() - mercadoLivreExtensionLastSeen < 75_000;
+}
+
 function registrar(origem: string, texto: string): void {
   for (const linha of texto.split(/\r?\n/)) {
     if (!linha.trim()) continue;
@@ -279,10 +322,11 @@ function iniciar(
           }
         });
       } else if (codigo === 0 && origemFinalizada === "mercado-livre") {
-        registrar(
-          "fluxo",
-          "Oferta Mercado Livre enviada. Busque outra oferta e gere um novo link oficial antes do próximo envio."
+        atualizarFluxoMercadoLivre(
+          "idle",
+          "Oferta Mercado Livre enviada. Iniciando a próxima automaticamente..."
         );
+        void iniciarFluxoMercadoLivreAutomatico();
       }
     }
   });
@@ -296,6 +340,169 @@ function whatsappOcupado(): boolean {
 
 async function existe(path: string): Promise<boolean> {
   return stat(path).then(() => true).catch(() => false);
+}
+
+async function criarPedidoLinkMercadoLivre(): Promise<MercadoLivreLinkJob> {
+  const oferta = await lerOfertaMercadoLivre();
+
+  mercadoLivreLinkJob = {
+    id: randomBytes(12).toString("hex"),
+    produtoId: oferta.produtoId,
+    urlProduto: oferta.urlProduto,
+    criadoEm: new Date().toISOString(),
+    status: "pending"
+  };
+
+  registrar(
+    "mercadolivre-link",
+    `Pedido automático criado para ${oferta.produtoId}. Aguardando extensão do navegador.`
+  );
+
+  return mercadoLivreLinkJob;
+}
+
+async function prepararMercadoLivreAutomaticamente(): Promise<boolean> {
+  if (whatsappOcupado() || processos.has("mercadolivre-whatsapp")) {
+    atualizarFluxoMercadoLivre(
+      "error",
+      "Fluxo ML pausado: o WhatsApp ou a preparação já está ocupado."
+    );
+    return false;
+  }
+
+  const oferta = await lerOfertaMercadoLivre();
+  if (!oferta.urlAfiliado) {
+    atualizarFluxoMercadoLivre(
+      "error",
+      "Fluxo ML interrompido: o link oficial não foi salvo."
+    );
+    return false;
+  }
+
+  origemPreparacaoAtual = "mercado-livre";
+  atualizarFluxoMercadoLivre(
+    "preparing",
+    "Link oficial salvo. Gerando mensagem e pacote do Mercado Livre..."
+  );
+
+  const ok = iniciar(
+    "mercadolivre-whatsapp",
+    "mercadolivre-whatsapp",
+    {},
+    (codigo) => {
+      if (codigo === 0 && !whatsappOcupado()) {
+        atualizarFluxoMercadoLivre(
+          "waiting-send",
+          "Oferta pronta. Abrindo WhatsApp para revisão e confirmação."
+        );
+        iniciar("preparar", "preparar");
+      } else if (codigo !== 0) {
+        atualizarFluxoMercadoLivre(
+          "error",
+          "Falha ao montar a oferta Mercado Livre para o WhatsApp."
+        );
+      }
+    }
+  );
+
+  if (!ok) {
+    atualizarFluxoMercadoLivre(
+      "error",
+      "A preparação Mercado Livre já está em andamento."
+    );
+  }
+
+  return ok;
+}
+
+async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
+  ok: boolean;
+  mensagem: string;
+}> {
+  if (!process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()) {
+    return {
+      ok: false,
+      mensagem: "Conecte a API do Mercado Livre antes de iniciar o fluxo."
+    };
+  }
+
+  if (!mercadoLivreExtensionConectada()) {
+    return {
+      ok: false,
+      mensagem:
+        "A extensão Meli não está conectada. Recarregue/ative a extensão do navegador."
+    };
+  }
+
+  if (processos.has("mercadolivre-buscar") || processos.has("mercadolivre-whatsapp")) {
+    return {
+      ok: false,
+      mensagem: "Já existe uma tarefa Mercado Livre em andamento."
+    };
+  }
+
+  if (whatsappOcupado()) {
+    return {
+      ok: false,
+      mensagem: "Finalize a oferta aberta no WhatsApp antes de iniciar outra."
+    };
+  }
+
+  mercadoLivreFluxoAutomatico = true;
+  mercadoLivreLinkJob = null;
+  atualizarFluxoMercadoLivre(
+    "searching",
+    "Buscando a próxima oferta elegível do Mercado Livre..."
+  );
+
+  const ok = iniciar(
+    "mercadolivre-buscar",
+    "mercadolivre-buscar",
+    {},
+    async (codigo) => {
+      if (codigo !== 0) {
+        mercadoLivreFluxoAutomatico = false;
+        atualizarFluxoMercadoLivre(
+          "error",
+          "Nenhuma oferta Mercado Livre atingiu os filtros nesta rodada."
+        );
+        return;
+      }
+
+      try {
+        await criarPedidoLinkMercadoLivre();
+        atualizarFluxoMercadoLivre(
+          "linking",
+          "Oferta encontrada. Aguardando o Gerador de Links automático."
+        );
+      } catch (error) {
+        mercadoLivreFluxoAutomatico = false;
+        const mensagem = error instanceof Error ? error.message : String(error);
+        atualizarFluxoMercadoLivre(
+          "error",
+          `Não foi possível iniciar a geração do link: ${mensagem}`
+        );
+      }
+    }
+  );
+
+  if (!ok) {
+    mercadoLivreFluxoAutomatico = false;
+    atualizarFluxoMercadoLivre(
+      "error",
+      "A busca Mercado Livre já está em andamento."
+    );
+    return {
+      ok: false,
+      mensagem: "A busca Mercado Livre já está em andamento."
+    };
+  }
+
+  return {
+    ok: true,
+    mensagem:
+      "Fluxo Mercado Livre iniciado: buscar → gerar link → preparar WhatsApp."
+  };
 }
 
 async function estado() {
@@ -335,6 +542,11 @@ async function estado() {
     mercadoLivreClientId: process.env.MERCADOLIVRE_CLIENT_ID?.trim() ?? "",
     mercadoLivreRedirectUri: redirectMercadoLivre(),
     mercadoLivreOferta: ofertaMercadoLivre,
+    mercadoLivreExtensionConectada: mercadoLivreExtensionConectada(),
+    mercadoLivreLinkJob,
+    mercadoLivreFluxoAutomatico,
+    mercadoLivreFluxoEtapa,
+    mercadoLivreFluxoMensagem,
     origemPreparacaoAtual,
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
@@ -454,7 +666,17 @@ async function executarAcao(
     };
   }
 
+  if (acao === "mercadolivre-fluxo") {
+    return iniciarFluxoMercadoLivreAutomatico();
+  }
+
   if (acao === "mercadolivre-buscar") {
+    mercadoLivreFluxoAutomatico = false;
+    atualizarFluxoMercadoLivre(
+      "idle",
+      "Busca manual do Mercado Livre iniciada."
+    );
+
     const ok = iniciar(
       "mercadolivre-buscar",
       "mercadolivre-buscar"
@@ -465,6 +687,28 @@ async function executarAcao(
         ? "Busca de ofertas do Mercado Livre iniciada."
         : "Já existe uma busca do Mercado Livre em andamento."
     };
+  }
+
+  if (acao === "mercadolivre-link-auto") {
+    mercadoLivreFluxoAutomatico = false;
+
+    try {
+      await criarPedidoLinkMercadoLivre();
+      atualizarFluxoMercadoLivre(
+        "linking",
+        "Pedido manual de link criado. Aguardando o Gerador de Links automático."
+      );
+
+      return {
+        ok: true,
+        mensagem: mercadoLivreExtensionConectada()
+          ? "Gerador automático iniciado. A nova guia do Mercado Livre fará o restante."
+          : "Pedido criado. Instale/ative a extensão Meli no navegador para concluir automaticamente."
+      };
+    } catch (error) {
+      const mensagem = error instanceof Error ? error.message : String(error);
+      return { ok: false, mensagem };
+    }
   }
 
   if (acao === "mercadolivre-link-save") {
@@ -487,49 +731,20 @@ async function executarAcao(
   }
 
   if (acao === "mercadolivre-preparar") {
-    if (whatsappOcupado() || processos.has("mercadolivre-whatsapp")) {
-      return {
-        ok: false,
-        mensagem: "Aguarde a tarefa atual do WhatsApp terminar."
-      };
-    }
+    mercadoLivreFluxoAutomatico = false;
 
     try {
-      const oferta = await lerOfertaMercadoLivre();
-      if (!oferta.urlAfiliado) {
-        return {
-          ok: false,
-          mensagem:
-            "Gere o link oficial do Mercado Livre, cole no painel e salve antes de preparar o WhatsApp."
-        };
-      }
+      const ok = await prepararMercadoLivreAutomaticamente();
+      return {
+        ok,
+        mensagem: ok
+          ? "Preparando oferta do Mercado Livre para o WhatsApp."
+          : "Não foi possível iniciar a preparação do Mercado Livre."
+      };
     } catch (error) {
       const mensagem = error instanceof Error ? error.message : String(error);
       return { ok: false, mensagem };
     }
-
-    origemPreparacaoAtual = "mercado-livre";
-    const ok = iniciar(
-      "mercadolivre-whatsapp",
-      "mercadolivre-whatsapp",
-      {},
-      (codigo) => {
-        if (codigo === 0 && !whatsappOcupado()) {
-          registrar(
-            "mercadolivre",
-            "Oferta validada. Abrindo WhatsApp para revisão."
-          );
-          iniciar("preparar", "preparar");
-        }
-      }
-    );
-
-    return {
-      ok,
-      mensagem: ok
-        ? "Preparando oferta do Mercado Livre para o WhatsApp."
-        : "A preparação do Mercado Livre já está em andamento."
-    };
   }
 
   if (acao === "buscar") {
@@ -637,9 +852,30 @@ async function executarAcao(
       return { ok: false, mensagem: "Não há oferta pronta para enviar." };
     }
 
-    carregarProximaAposEnvio =
+    if (
       acao === "preparar-send-next" &&
-      origemPreparacaoAtual === "amazon";
+      origemPreparacaoAtual === "mercado-livre" &&
+      !mercadoLivreExtensionConectada()
+    ) {
+      return {
+        ok: false,
+        mensagem:
+          "A extensão Meli precisa estar conectada para carregar a próxima oferta automaticamente."
+      };
+    }
+
+    carregarProximaAposEnvio = acao === "preparar-send-next";
+    if (
+      origemPreparacaoAtual === "mercado-livre" &&
+      acao === "preparar-send"
+    ) {
+      mercadoLivreFluxoAutomatico = false;
+      atualizarFluxoMercadoLivre(
+        "idle",
+        "Envio Mercado Livre confirmado. O fluxo será encerrado após o envio."
+      );
+    }
+
     writeFileSync(enviarWhatsappPath, "enviar", "utf8");
     registrar(
       "preparar",
@@ -657,6 +893,14 @@ async function executarAcao(
 
   if (acao === "preparar-cancel") {
     carregarProximaAposEnvio = false;
+
+    if (origemPreparacaoAtual === "mercado-livre") {
+      mercadoLivreFluxoAutomatico = false;
+      atualizarFluxoMercadoLivre(
+        "idle",
+        "Preparação Mercado Livre descartada pelo usuário."
+      );
+    }
 
     if (!processos.has("preparar")) {
       return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
@@ -734,6 +978,155 @@ const server = createServer(async (req, res) => {
       const html = await readFile(paginaPath, "utf8");
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       res.end(html);
+      return;
+    }
+
+    if (
+      req.method === "POST" &&
+      requestUrl.pathname === "/api/mercadolivre/extension-ping"
+    ) {
+      mercadoLivreExtensionLastSeen = Date.now();
+      json(res, 200, { ok: true });
+      return;
+    }
+
+    if (
+      req.method === "GET" &&
+      requestUrl.pathname === "/api/mercadolivre/link-job"
+    ) {
+      mercadoLivreExtensionLastSeen = Date.now();
+      json(res, 200, {
+        ok: true,
+        job:
+          mercadoLivreLinkJob &&
+          (mercadoLivreLinkJob.status === "pending" ||
+            mercadoLivreLinkJob.status === "running")
+            ? mercadoLivreLinkJob
+            : null
+      });
+      return;
+    }
+
+    if (
+      req.method === "POST" &&
+      requestUrl.pathname === "/api/mercadolivre/link-job/start"
+    ) {
+      mercadoLivreExtensionLastSeen = Date.now();
+      const corpo = await lerJson(req);
+      const id = String(corpo.id ?? "");
+
+      if (!mercadoLivreLinkJob || mercadoLivreLinkJob.id !== id) {
+        json(res, 409, {
+          ok: false,
+          mensagem: "Pedido de link expirado ou substituído."
+        });
+        return;
+      }
+
+      mercadoLivreLinkJob = {
+        ...mercadoLivreLinkJob,
+        status: "running",
+        mensagem: "Gerador de Links aberto pela extensão."
+      };
+      registrar(
+        "mercadolivre-link",
+        `Extensão iniciou o pedido ${id}.`
+      );
+      json(res, 200, { ok: true, job: mercadoLivreLinkJob });
+      return;
+    }
+
+    if (
+      req.method === "POST" &&
+      requestUrl.pathname === "/api/mercadolivre/link-result"
+    ) {
+      mercadoLivreExtensionLastSeen = Date.now();
+      const corpo = await lerJson(req);
+      const id = String(corpo.id ?? "");
+      const link = String(corpo.link ?? "").trim();
+      const erro = String(corpo.error ?? "").trim();
+
+      if (!mercadoLivreLinkJob || mercadoLivreLinkJob.id !== id) {
+        json(res, 409, {
+          ok: false,
+          mensagem: "Pedido de link expirado ou substituído."
+        });
+        return;
+      }
+
+      if (erro) {
+        mercadoLivreLinkJob = {
+          ...mercadoLivreLinkJob,
+          status: "error",
+          mensagem: erro
+        };
+        if (mercadoLivreFluxoAutomatico) {
+          mercadoLivreFluxoAutomatico = false;
+          atualizarFluxoMercadoLivre(
+            "error",
+            `Falha no Gerador de Links: ${erro}`
+          );
+        }
+        registrar("mercadolivre-link", `Falha automática: ${erro}`);
+        json(res, 200, { ok: true });
+        return;
+      }
+
+      try {
+        const oferta = await salvarLinkAfiliadoMercadoLivre(link);
+        mercadoLivreLinkJob = {
+          ...mercadoLivreLinkJob,
+          status: "done",
+          mensagem: "Link oficial gerado e salvo."
+        };
+        registrar(
+          "mercadolivre-link",
+          `Link automático salvo para ${oferta.produtoId}.`
+        );
+
+        if (mercadoLivreFluxoAutomatico) {
+          atualizarFluxoMercadoLivre(
+            "preparing",
+            "Link oficial gerado. Preparando a oferta para o WhatsApp..."
+          );
+
+          void prepararMercadoLivreAutomaticamente().catch((error) => {
+            mercadoLivreFluxoAutomatico = false;
+            const mensagem =
+              error instanceof Error ? error.message : String(error);
+            atualizarFluxoMercadoLivre(
+              "error",
+              `Falha após gerar o link: ${mensagem}`
+            );
+          });
+        }
+
+        json(res, 200, {
+          ok: true,
+          mensagem: mercadoLivreFluxoAutomatico
+            ? "Link oficial salvo. Preparação do WhatsApp iniciada."
+            : "Link oficial gerado e salvo no painel."
+        });
+      } catch (error) {
+        const mensagem = error instanceof Error ? error.message : String(error);
+        mercadoLivreLinkJob = {
+          ...mercadoLivreLinkJob,
+          status: "error",
+          mensagem
+        };
+        if (mercadoLivreFluxoAutomatico) {
+          mercadoLivreFluxoAutomatico = false;
+          atualizarFluxoMercadoLivre(
+            "error",
+            `O link automático foi recusado: ${mensagem}`
+          );
+        }
+        registrar(
+          "mercadolivre-link",
+          `Link devolvido pela extensão foi recusado: ${mensagem}`
+        );
+        json(res, 409, { ok: false, mensagem });
+      }
       return;
     }
 
