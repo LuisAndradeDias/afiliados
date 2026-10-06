@@ -5,6 +5,10 @@ import { MercadoLivreApiFonte } from "../fontes/mercadolivre/api.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScorePromocao } from "../ofertas/score.js";
 import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
+import {
+  aplicarMelhorCupomMercadoLivre,
+  obterCuponsMercadoLivre
+} from "../afiliados/mercadolivre-cupons.js";
 
 const consultas = (
   process.env.MERCADOLIVRE_QUERIES ??
@@ -39,6 +43,11 @@ const consultasUsadas = Array.from(
     consultas[(indiceRotacao + offset) % consultas.length]
 );
 const bloqueadas = await chavesBloqueadas();
+const cupons = await obterCuponsMercadoLivre().catch((error) => {
+  const mensagem = error instanceof Error ? error.message : String(error);
+  console.warn(`Mercado Livre: catálogo de cupons indisponível: ${mensagem}`);
+  return [];
+});
 const porProduto = new Map<string, Oferta>();
 
 for (const consulta of consultasUsadas) {
@@ -48,13 +57,22 @@ for (const consulta of consultasUsadas) {
     limite
   ).buscar();
 
-  for (const oferta of ofertas) {
+  for (const ofertaBase of ofertas) {
+    const oferta = aplicarMelhorCupomMercadoLivre(
+      ofertaBase,
+      cupons
+    );
     oferta.scoreOferta = calcularScorePromocao(oferta);
+
     const atual = porProduto.get(oferta.produtoId);
     if (
       !atual ||
-      (oferta.descontoPercentual ?? 0) >
-        (atual.descontoPercentual ?? 0)
+      (oferta.descontoEfetivoPercentual ??
+        oferta.descontoPercentual ??
+        0) >
+        (atual.descontoEfetivoPercentual ??
+          atual.descontoPercentual ??
+          0)
     ) {
       porProduto.set(oferta.produtoId, oferta);
     }
@@ -72,11 +90,18 @@ await writeFile(
 
 const todas = [...porProduto.values()];
 const elegiveis = todas
-  .filter((oferta) => (oferta.descontoPercentual ?? 0) >= minimo)
+  .filter(
+    (oferta) =>
+      (oferta.descontoEfetivoPercentual ??
+        oferta.descontoPercentual ??
+        0) >= minimo
+  )
   .filter((oferta) => !bloqueadas.has(chaveOferta(oferta)))
   .sort((a, b) => {
-    const descontoA = a.descontoPercentual ?? 0;
-    const descontoB = b.descontoPercentual ?? 0;
+    const descontoA =
+      a.descontoEfetivoPercentual ?? a.descontoPercentual ?? 0;
+    const descontoB =
+      b.descontoEfetivoPercentual ?? b.descontoPercentual ?? 0;
     return descontoB - descontoA ||
       (b.scoreOferta ?? 0) - (a.scoreOferta ?? 0);
   });
@@ -85,7 +110,8 @@ const melhor = elegiveis[0];
 
 console.log(
   `Mercado Livre: ${todas.length} ofertas encontradas, ` +
-  `${elegiveis.length} elegiveis com minimo de ${minimo}%.`
+  `${elegiveis.length} elegiveis com minimo de ${minimo}% ` +
+  `(cupons ativos considerados: ${cupons.length}).`
 );
 if (!melhor) {
   console.log(
@@ -107,8 +133,15 @@ console.log("--- MELHOR OFERTA MERCADO LIVRE ---");
 console.log(melhor.titulo);
 console.log(
   `Preco: R$ ${melhor.precoAtual.toFixed(2)} | ` +
-  `Desconto: ${melhor.descontoPercentual ?? 0}%`
+  `Desconto base: ${melhor.descontoPercentual ?? 0}% | ` +
+  `Beneficio efetivo: ${melhor.descontoEfetivoPercentual ?? melhor.descontoPercentual ?? 0}%`
 );
+if (melhor.cupomCodigo) {
+  console.log(
+    `Cupom candidato: ${melhor.cupomCodigo} | ` +
+    `Preco estimado com cupom: R$ ${melhor.precoComCupomEstimado?.toFixed(2) ?? "-"}`
+  );
+}
 console.log(`Categoria de busca: ${melhor.categoria ?? "-"}`);
 console.log(`Produto: ${melhor.urlProduto}`);
 console.log("-----------------------------------");
