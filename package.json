@@ -17,7 +17,8 @@
     "automatico": "tsx src/robo/automatico.ts",
     "painel": "tsx src/painel/server.ts",
     "typecheck": "tsc --noEmit",
-    "test:whatsapp-observer": "tsx tests/whatsapp-envio-observer.mts"
+    "test:whatsapp-observer": "tsx tests/whatsapp-envio-observer.mts",
+    "test:painel-operacional": "tsx tests/painel-operacional.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
