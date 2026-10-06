@@ -322,6 +322,7 @@ interface PacotePainel {
   urlAfiliado?: string;
   imagemUrl?: string;
   categoria?: string;
+  descontoPercentual?: number;
   comissaoEstimadaPercentual?: number;
   scoreOferta?: number;
   cupomCodigo?: string;
