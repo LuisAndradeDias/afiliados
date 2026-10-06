@@ -16,7 +16,8 @@
     "whatsapp:preparar": "tsx src/robo/whatsapp-preparar.ts",
     "automatico": "tsx src/robo/automatico.ts",
     "painel": "tsx src/painel/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:whatsapp-observer": "tsx tests/whatsapp-envio-observer.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
