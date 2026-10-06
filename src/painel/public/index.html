@@ -276,6 +276,183 @@
       font-size: 14px;
     }
 
+    .section-kicker {
+      display: inline-block;
+      margin-bottom: 6px;
+      color: #667085;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+    .cycle-card {
+      padding: 22px;
+      box-shadow: var(--shadow-lg);
+    }
+    .cycle-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 22px;
+    }
+    .cycle-copy { min-width: 0; }
+    .cycle-title-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 9px;
+    }
+    .cycle-title-row h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -.03em;
+    }
+    .cycle-copy p {
+      max-width: 760px;
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .cycle-badge {
+      border-radius: 999px;
+      padding: 6px 9px;
+      background: #f2f4f7;
+      color: #475467;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .04em;
+    }
+    .cycle-badge.active {
+      background: var(--green-soft);
+      color: var(--green-dark);
+    }
+    .cycle-toggle {
+      min-width: 210px;
+      min-height: 48px;
+      flex: 0 0 auto;
+    }
+    .cycle-status-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .cycle-status {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 13px 14px;
+      background: var(--surface-2);
+    }
+    .cycle-status-main {
+      background: linear-gradient(145deg, #eff6ff, #fff);
+      border-color: #bfdbfe;
+    }
+    .cycle-status small {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .cycle-status strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .cycle-status span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .platform-lanes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .platform-lane {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 13px;
+      background: #fff;
+    }
+    .platform-lane.active {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.06);
+    }
+    .lane-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      background: #f2f4f7;
+      color: #344054;
+      font-size: 11px;
+      font-weight: 950;
+    }
+    .platform-lane.amazon .lane-icon {
+      background: #fff4e8;
+      color: #b54708;
+    }
+    .platform-lane.meli .lane-icon {
+      background: #fff8cc;
+      color: #7a5d00;
+    }
+    .lane-copy { min-width: 0; flex: 1; }
+    .lane-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .lane-top strong { font-size: 13px; }
+    .lane-state {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      text-align: right;
+    }
+    .lane-copy > span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+    .group-hint {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .review-card.is-empty .review-grid {
+      grid-template-columns: 1fr;
+    }
+    .review-card.is-empty .review-side {
+      display: none;
+    }
+    .review-card.is-empty .review-main {
+      grid-template-columns: 1fr;
+    }
+    .review-card.is-empty .meta {
+      display: none;
+    }
+    .review-card.is-empty .empty-message {
+      min-height: 115px;
+    }
+
     .flow-card { padding: 20px; display: none; }
     .flow-card.visible { display: block; }
     .flow-top {
@@ -517,7 +694,9 @@
     @media (max-width: 900px) {
       .hero-inner { flex-direction: column; align-items: flex-start; }
       .runtime { width: 100%; }
-      .launch-grid, .review-grid, .tool-grid { grid-template-columns: 1fr; }
+      .launch-grid, .review-grid, .tool-grid, .cycle-status-grid, .platform-lanes { grid-template-columns: 1fr; }
+      .cycle-head { flex-direction: column; }
+      .cycle-toggle { width: 100%; min-width: 0; }
       .review-side { border-left: 0; border-top: 1px solid var(--line); padding: 16px 0 0; }
     }
     @media (max-width: 680px) {
@@ -536,11 +715,11 @@
     <div class="hero-inner">
       <div>
         <div class="eyebrow">Central de afiliados</div>
-        <h1>Ofertas prontas, sem complicação.</h1>
-        <p>Escolha a plataforma, deixe o sistema buscar e preparar tudo, revise no WhatsApp e confirme o envio.</p>
+        <h1>Amazon + Mercado Livre em um único ciclo.</h1>
+        <p>O sistema alterna as buscas, prepara a melhor oferta e pausa no WhatsApp até você confirmar o envio.</p>
       </div>
       <div class="runtime">
-        <small>Agora</small>
+        <small>Estado atual</small>
         <strong id="execucao">Carregando...</strong>
       </div>
     </div>
@@ -576,76 +755,102 @@
 
     <div id="toast"></div>
 
-    <section id="launchCard" class="card launch-card section">
-      <div class="launch-head">
-        <div>
-          <h2>O que você quer publicar?</h2>
-          <p>Um clique inicia o fluxo completo. O envio final continua dependendo da sua confirmação.</p>
+    <section id="launchCard" class="card cycle-card section">
+      <div class="cycle-head">
+        <div class="cycle-copy">
+          <span class="section-kicker">AUTOMAÇÃO PRINCIPAL</span>
+          <div class="cycle-title-row">
+            <h2>Ciclo Amazon + Mercado Livre</h2>
+            <span id="cycleBadge" class="cycle-badge">Verificando...</span>
+          </div>
+          <p>Mercado Livre → 1 min → Amazon → 1 min → repetir. Cada plataforma é consultada aproximadamente a cada 2 minutos.</p>
         </div>
-        <span class="ready-badge">Modo operacional</span>
+        <button id="cycleToggleButton" class="success cycle-toggle" data-action="monitor-set">
+          Iniciar ciclo automático
+        </button>
       </div>
 
-      <div class="launch-grid">
-        <article class="launch-action amazon">
-          <div>
-            <div class="platform-top">
-              <div class="platform-name">Amazon</div>
-              <div id="amazonLaunchState" class="platform-state">Verificando...</div>
+      <div class="cycle-status-grid">
+        <div class="cycle-status cycle-status-main">
+          <small>Agora</small>
+          <strong id="cycleNow">Carregando...</strong>
+          <span id="cycleNowDetail">Lendo o estado do sistema.</span>
+        </div>
+        <div class="cycle-status">
+          <small>Próxima etapa</small>
+          <strong id="cycleNext">...</strong>
+          <span id="cycleCountdown">...</span>
+        </div>
+        <div class="cycle-status">
+          <small>WhatsApp</small>
+          <strong id="cycleWhatsapp">...</strong>
+          <span id="cycleWhatsappDetail">Grupo <b id="grupoCiclo">...</b></span>
+        </div>
+      </div>
+
+      <div class="platform-lanes">
+        <article id="amazonLane" class="platform-lane amazon">
+          <div class="lane-icon">A</div>
+          <div class="lane-copy">
+            <div class="lane-top">
+              <strong>Amazon</strong>
+              <span id="amazonLaunchState" class="lane-state">Verificando...</span>
             </div>
-            <p>Participa do ciclo automático a cada 2 minutos. Você também pode disparar uma busca manual imediata.</p>
+            <span id="amazonLaneMeta">Tracking ID e última consulta.</span>
           </div>
-          <button class="primary big-action" data-action="fluxo">✨ Buscar Amazon agora</button>
         </article>
 
-        <article class="launch-action meli">
-          <div>
-            <div class="platform-top">
-              <div class="platform-name">Mercado Livre</div>
-              <div id="meliLaunchState" class="platform-state">Verificando...</div>
+        <article id="meliLane" class="platform-lane meli">
+          <div class="lane-icon">ML</div>
+          <div class="lane-copy">
+            <div class="lane-top">
+              <strong>Mercado Livre</strong>
+              <span id="meliLaunchState" class="lane-state">Verificando...</span>
             </div>
-            <p>Coordena o ciclo intercalado: Meli, 1 minuto depois Amazon, 1 minuto depois Meli novamente.</p>
+            <span id="meliLaneMeta">API, cupons e última consulta.</span>
           </div>
-          <button id="meliMonitorButton" class="success big-action" data-action="mercadolivre-monitor-toggle">▶ Ativar ciclo Amazon + Meli</button>
         </article>
       </div>
     </section>
 
-    <section id="flowCard" class="card flow-card section">
+    <section id="flowCard" class="card flow-card visible section">
       <div class="flow-top">
         <div>
-          <h2 id="flowTitle">Fluxo em andamento</h2>
-          <p id="flowDescription">Acompanhando a preparação da oferta.</p>
+          <span class="section-kicker">ATIVIDADE ATUAL</span>
+          <h2 id="flowTitle">Aguardando estado do ciclo</h2>
+          <p id="flowDescription">O painel mostrará aqui exatamente o que o robô está fazendo.</p>
         </div>
-        <span id="flowBadge" class="flow-label">Processando</span>
+        <span id="flowBadge" class="flow-label">Carregando</span>
       </div>
 
       <div id="mlStepper" class="stepper">
         <div id="stepSearch" class="flow-step">
           <strong>1 · Buscar</strong>
-          <span>Encontrar oferta elegível</span>
+          <span id="stepSearchText">Encontrar uma oferta elegível</span>
         </div>
         <div id="stepLink" class="flow-step">
           <strong>2 · Validar / link</strong>
-          <span>Checar benefício e link de afiliado</span>
+          <span id="stepLinkText">Validar desconto, cupom e link</span>
         </div>
         <div id="stepPrepare" class="flow-step">
-          <strong>3 · Preparar</strong>
-          <span>Montar mensagem e imagem</span>
+          <strong>3 · Abrir WhatsApp</strong>
+          <span id="stepPrepareText">Montar imagem e mensagem</span>
         </div>
         <div id="stepReview" class="flow-step">
-          <strong>4 · Revisar</strong>
-          <span>Aguardar confirmação no WhatsApp</span>
+          <strong>4 · Revisar e enviar</strong>
+          <span id="stepReviewText">Aguardar sua confirmação</span>
         </div>
       </div>
     </section>
 
-    <section class="card review-card section">
+    <section id="reviewCard" class="card review-card is-empty section">
       <div class="launch-head">
         <div>
-          <h2>Oferta para revisão</h2>
-          <p>Quando uma oferta estiver pronta, ela aparece aqui para você conferir antes do envio.</p>
+          <span class="section-kicker">REVISÃO</span>
+          <h2>Oferta preparada</h2>
+          <p id="reviewSubtitle">Quando uma promoção estiver pronta, ela aparece aqui antes do envio.</p>
         </div>
-        <span id="reviewOrigin" class="ready-badge">Aguardando oferta</span>
+        <span id="reviewOrigin" class="ready-badge">Nenhuma oferta</span>
       </div>
 
       <div class="review-grid">
@@ -659,7 +864,9 @@
               <span id="cupomOfertaPill" class="pill" style="display:none">Cupom&nbsp;<strong id="cupomOferta">-</strong></span>
               <span id="precoCupomPill" class="pill" style="display:none">Com cupom&nbsp;<strong id="precoCupomOferta">-</strong></span>
             </div>
-            <div id="mensagem" class="empty-message">Nenhuma oferta preparada ainda.</div>
+            <div id="mensagem" class="empty-message">
+              O ciclo está livre para procurar a próxima promoção.
+            </div>
           </div>
         </div>
 
@@ -667,14 +874,16 @@
           <div class="group-box">
             <small>Destino</small>
             <strong id="grupoEnvio">...</strong>
+            <span id="reviewWhatsappState" class="group-hint">Aguardando oferta.</span>
           </div>
           <div class="send-actions">
-            <button id="sendNowButton" class="success" data-action="preparar-send">📤 Enviar agora</button>
+            <button id="reopenWhatsappButton" class="primary" data-action="preparar" style="display:none">↗ Reabrir no WhatsApp</button>
+            <button id="sendNowButton" class="success" data-action="preparar-send">📤 Enviar pelo painel</button>
             <button id="sendNextButton" class="primary" data-action="preparar-send-next">📤 Enviar + próxima</button>
-            <button class="danger" data-action="preparar-cancel">✕ Descartar</button>
+            <button id="discardOfferButton" class="danger" data-action="preparar-cancel">✕ Descartar oferta</button>
           </div>
           <div class="send-note">
-            Você pode enviar pelo painel ou diretamente no WhatsApp. O sistema reconhece o envio e retoma o ciclo automaticamente.
+            Você pode enviar diretamente no WhatsApp. Quando a mensagem enviada for detectada, o painel registra a oferta e retoma o ciclo automaticamente.
           </div>
         </aside>
       </div>
