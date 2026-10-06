@@ -841,7 +841,7 @@
       const ativo = s.mercadoLivreFluxoAutomatico || etapa !== "idle";
       const card = $("flowCard");
 
-      if (!ativo && !preparando) {
+      if (!ativo) {
         card.classList.remove("visible");
         return;
       }
@@ -934,7 +934,11 @@
         const mlPreparando = s.executando.includes("mercadolivre-whatsapp");
         const automatico = s.executando.includes("automatico");
         const whatsappOcupado = preparando || logando;
-        const origemMl = s.origemPreparacaoAtual === "mercado-livre";
+        const origemPacoteMl = (s.plataformaAtual || "")
+          .toLowerCase()
+          .includes("mercado livre");
+        const origemMl =
+          s.origemPreparacaoAtual === "mercado-livre" || origemPacoteMl;
         const fluxoMlAtivo =
           s.mercadoLivreFluxoAutomatico &&
           s.mercadoLivreFluxoEtapa !== "idle" &&
