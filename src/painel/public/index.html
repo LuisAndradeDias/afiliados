@@ -603,9 +603,9 @@
               <div class="platform-name">Mercado Livre</div>
               <div id="meliLaunchState" class="platform-state">Verificando...</div>
             </div>
-            <p>Busca a oferta, gera o link oficial automaticamente e prepara tudo para revisão no WhatsApp.</p>
+            <p>Fica consultando promoções continuamente. Quando encontra uma oferta válida, gera o link e abre o WhatsApp para revisão.</p>
           </div>
-          <button class="success big-action" data-action="mercadolivre-fluxo">⚡ Criar oferta Mercado Livre</button>
+          <button id="meliMonitorButton" class="success big-action" data-action="mercadolivre-monitor-toggle">▶ Ativar monitoramento contínuo</button>
         </article>
       </div>
     </section>
@@ -667,7 +667,7 @@
             <strong id="grupoEnvio">...</strong>
           </div>
           <div class="send-actions">
-            <button class="success" data-action="preparar-send">📤 Enviar agora</button>
+            <button id="sendNowButton" class="success" data-action="preparar-send">📤 Enviar agora</button>
             <button id="sendNextButton" class="primary" data-action="preparar-send-next">📤 Enviar + próxima</button>
             <button class="danger" data-action="preparar-cancel">✕ Descartar</button>
           </div>
@@ -839,7 +839,10 @@
     function renderFluxoMeli(s, preparando) {
       const etapa = s.mercadoLivreFluxoEtapa || "idle";
       const mensagem = s.mercadoLivreFluxoMensagem || "";
-      const ativo = s.mercadoLivreFluxoAutomatico || etapa !== "idle";
+      const ativo =
+        s.mercadoLivreMonitorAtivo ||
+        s.mercadoLivreFluxoAutomatico ||
+        etapa !== "idle";
       const card = $("flowCard");
 
       if (!ativo) {
@@ -848,10 +851,9 @@
       }
 
       card.classList.add("visible");
-      $("flowTitle").textContent =
-        s.origemPreparacaoAtual === "mercado-livre" || ativo
-          ? "Fluxo Mercado Livre"
-          : "Oferta em preparação";
+      $("flowTitle").textContent = s.mercadoLivreMonitorAtivo
+        ? "Monitoramento Mercado Livre"
+        : "Fluxo Mercado Livre";
       $("flowDescription").textContent =
         mensagem ||
         (preparando
@@ -859,6 +861,7 @@
           : "Acompanhando a preparação da oferta.");
 
       const rotulos = {
+        monitoring: "Monitorando",
         searching: "Buscando oferta",
         linking: "Gerando link",
         preparing: "Preparando WhatsApp",
@@ -870,6 +873,7 @@
 
       ["stepSearch", "stepLink", "stepPrepare", "stepReview"].forEach((id) => setStep(id, ""));
 
+      if (etapa === "monitoring") setStep("stepSearch", "active");
       if (etapa === "searching") setStep("stepSearch", "active");
       if (etapa === "linking") {
         setStep("stepSearch", "done");
@@ -934,7 +938,9 @@
         } else if (envioAtual > ultimoEnvioVisto) {
           ultimoEnvioVisto = envioAtual;
 
-          if (s.ultimoEnvioComProxima) {
+          if (s.mercadoLivreMonitorAtivo) {
+            toast("Oferta enviada. Monitoramento retomado automaticamente.", "ok");
+          } else if (s.ultimoEnvioComProxima) {
             toast("Oferta enviada. Preparando automaticamente a próxima promoção...", "ok");
           } else {
             toast("Oferta enviada. Painel liberado para preparar outra promoção.", "ok");
@@ -979,17 +985,43 @@
         $("amazonLaunchState").textContent = s.afiliadoConfigurado ? "Pronta" : "Configuração pendente";
 
         $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? (s.mercadoLivreExtensionConectada ? "API + automação prontas" : "API conectada · extensão offline")
+          ? s.mercadoLivreMonitorAtivo
+            ? "Monitoramento contínuo ativo"
+            : (s.mercadoLivreExtensionConectada ? "API + automação prontas" : "API conectada · extensão offline")
           : "Configuração pendente";
         setDot(
           "meliDot",
           s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada ? "ok" : "warn"
         );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "API conectada" : "API pendente";
-        $("meliLaunchState").textContent =
-          s.mercadoLivreApiConfigurada
-            ? (s.mercadoLivreExtensionConectada ? "Pronto" : "API pronta · extensão reconecta ao iniciar")
+        const monitorButton = $("meliMonitorButton");
+        const proximaBuscaEm = Number(s.mercadoLivreMonitorProximaBuscaEm || 0);
+        const segundosProximaBusca = proximaBuscaEm
+          ? Math.max(0, Math.ceil((proximaBuscaEm - Date.now()) / 1000))
+          : 0;
+        const minutosProximaBusca = Math.floor(segundosProximaBusca / 60);
+        const restoSegundos = segundosProximaBusca % 60;
+        const textoProxima = proximaBuscaEm
+          ? `Próxima busca em ${minutosProximaBusca}m ${String(restoSegundos).padStart(2, "0")}s`
+          : "";
+
+        if (s.mercadoLivreMonitorAtivo) {
+          monitorButton.textContent = "⏸ Pausar monitoramento";
+          monitorButton.classList.remove("success");
+          monitorButton.classList.add("secondary");
+
+          $("meliLaunchState").textContent = preparando
+            ? "Oferta encontrada · monitor pausado"
+            : textoProxima || "Monitorando agora";
+        } else {
+          monitorButton.textContent = "▶ Ativar monitoramento contínuo";
+          monitorButton.classList.remove("secondary");
+          monitorButton.classList.add("success");
+
+          $("meliLaunchState").textContent = s.mercadoLivreApiConfigurada
+            ? "Pronto para monitorar"
             : "Configuração pendente";
+        }
 
         $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
 
@@ -1118,20 +1150,31 @@
         $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
         $("logs").scrollTop = $("logs").scrollHeight;
 
+        const sendNowButton = $("sendNowButton");
         const sendNextButton = $("sendNextButton");
-        sendNextButton.textContent = origemMl
-          ? "📤 Enviar + próxima ML"
-          : "📤 Enviar + próxima Amazon";
+
+        if (origemMl && s.mercadoLivreMonitorAtivo) {
+          sendNowButton.textContent = "📤 Enviar e continuar monitorando";
+          sendNextButton.style.display = "none";
+        } else {
+          sendNowButton.textContent = "📤 Enviar agora";
+          sendNextButton.style.display = "";
+          sendNextButton.textContent = origemMl
+            ? "📤 Enviar + próxima ML"
+            : "📤 Enviar + próxima Amazon";
+        }
 
         $("execucao").textContent = s.whatsappEnvioPendente
           ? "Aguardando confirmação do envio no WhatsApp"
           : preparando
-            ? "Aguardando sua revisão no WhatsApp"
+            ? "Oferta encontrada · aguardando sua revisão"
           : s.executando.length
             ? s.executando.join(", ")
-            : fluxoMlAtivo
-              ? "Fluxo Mercado Livre em andamento"
-              : "Pronto para criar uma oferta";
+            : s.mercadoLivreMonitorAtivo
+              ? (textoProxima || "Monitorando Mercado Livre")
+              : fluxoMlAtivo
+                ? "Fluxo Mercado Livre em andamento"
+                : "Pronto para criar uma oferta";
 
         for (const b of buttons) {
           const acao = b.dataset.action;
@@ -1154,6 +1197,10 @@
             b.disabled = whatsappOcupado || buscando || automatico || !s.afiliadoConfigurado;
           } else if (acao === "buscar") {
             b.disabled = buscando;
+          } else if (acao === "mercadolivre-monitor-toggle") {
+            b.disabled =
+              !s.mercadoLivreMonitorAtivo &&
+              !s.mercadoLivreApiConfigurada;
           } else if (acao === "mercadolivre-fluxo") {
             b.disabled =
               fluxoMlAtivo ||
@@ -1213,6 +1260,11 @@
           }).then(() => { $("mlClientSecret").value = ""; });
         } else if (nome === "mercadolivre-redirect-save") {
           acao(nome, { redirectUri: $("mlRedirectUriInput").value });
+        } else if (nome === "mercadolivre-monitor-toggle") {
+          if (!estadoAtual.mercadoLivreMonitorAtivo) {
+            window.open(mercadoLivreAfiliadosUrl, "_blank", "noopener");
+          }
+          acao(nome);
         } else if (nome === "mercadolivre-fluxo") {
           window.open(mercadoLivreAfiliadosUrl, "_blank", "noopener");
           acao(nome);
