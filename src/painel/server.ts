@@ -575,13 +575,18 @@ function iniciar(
 
     if (
       nome === "preparar" &&
-      texto.includes("ENVIO_CONFIRMADO_MANUAL:")
+      (
+        texto.includes("ENVIO_CONFIRMADO_MANUAL:") ||
+        texto.includes("ENVIO_CONFIRMADO_AUTO:")
+      )
     ) {
       finalizacaoWhatsappAtual = "enviar";
       carregarProximaAposEnvio = false;
       registrar(
         "painel",
-        "Envio feito diretamente no WhatsApp detectado. Finalizando a oferta e retomando o ciclo."
+        texto.includes("ENVIO_CONFIRMADO_AUTO:")
+          ? "Envio automático confirmado pelo WhatsApp. Finalizando a oferta e retomando o ciclo."
+          : "Envio feito diretamente no WhatsApp detectado. Finalizando a oferta e retomando o ciclo."
       );
     }
 
