@@ -576,7 +576,7 @@
 
     <div id="toast"></div>
 
-    <section class="card launch-card section">
+    <section id="launchCard" class="card launch-card section">
       <div class="launch-head">
         <div>
           <h2>O que você quer publicar?</h2>
@@ -805,6 +805,7 @@
     const buttons = [...document.querySelectorAll("button[data-action]")];
     const mercadoLivreAfiliadosUrl = "https://www.mercadolivre.com.br/afiliados";
     let estadoAtual = {};
+    let ultimoEnvioVisto = null;
 
     function classeStatus(el, tipo) {
       el.classList.remove("ok", "warn", "bad");
@@ -926,6 +927,25 @@
         const resposta = await fetch("/api/status", { cache: "no-store" });
         const s = await resposta.json();
         estadoAtual = s;
+
+        const envioAtual = Number(s.ultimoEnvioConcluidoEm || 0);
+        if (ultimoEnvioVisto === null) {
+          ultimoEnvioVisto = envioAtual;
+        } else if (envioAtual > ultimoEnvioVisto) {
+          ultimoEnvioVisto = envioAtual;
+
+          if (s.ultimoEnvioComProxima) {
+            toast("Oferta enviada. Preparando automaticamente a próxima promoção...", "ok");
+          } else {
+            toast("Oferta enviada. Painel liberado para preparar outra promoção.", "ok");
+            window.setTimeout(() => {
+              $("launchCard").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+              });
+            }, 250);
+          }
+        }
 
         const preparando = s.executando.includes("preparar");
         const logando = s.executando.includes("login");
