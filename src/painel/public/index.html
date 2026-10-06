@@ -656,6 +656,8 @@
               <span class="pill">Categoria&nbsp;<strong id="categoriaOferta">-</strong></span>
               <span class="pill">Comissão&nbsp;<strong id="comissaoOferta">-</strong></span>
               <span class="pill">Score&nbsp;<strong id="scoreOferta">-</strong></span>
+              <span id="cupomOfertaPill" class="pill" style="display:none">Cupom&nbsp;<strong id="cupomOferta">-</strong></span>
+              <span id="precoCupomPill" class="pill" style="display:none">Com cupom&nbsp;<strong id="precoCupomOferta">-</strong></span>
             </div>
             <div id="mensagem" class="empty-message">Nenhuma oferta preparada ainda.</div>
           </div>
@@ -1005,21 +1007,26 @@
           ? `Próxima busca em ${minutosProximaBusca}m ${String(restoSegundos).padStart(2, "0")}s`
           : "";
 
+        const cuponsAtivos = Number(s.mercadoLivreCuponsAtivos || 0);
+        const infoCupons = cuponsAtivos > 0
+          ? ` · ${cuponsAtivos} cupom(ns) ativo(s)`
+          : "";
+
         if (s.mercadoLivreMonitorAtivo) {
           monitorButton.textContent = "⏸ Pausar monitoramento";
           monitorButton.classList.remove("success");
           monitorButton.classList.add("secondary");
 
           $("meliLaunchState").textContent = preparando
-            ? "Oferta encontrada · monitor pausado"
-            : textoProxima || "Monitorando agora";
+            ? "Oferta encontrada · monitor pausado" + infoCupons
+            : (textoProxima || "Monitorando agora") + infoCupons;
         } else {
           monitorButton.textContent = "▶ Ativar monitoramento contínuo";
           monitorButton.classList.remove("secondary");
           monitorButton.classList.add("success");
 
           $("meliLaunchState").textContent = s.mercadoLivreApiConfigurada
-            ? "Pronto para monitorar"
+            ? "Pronto para monitorar" + infoCupons
             : "Configuração pendente";
         }
 
@@ -1126,6 +1133,22 @@
         $("categoriaOferta").textContent = s.categoriaAtual || "-";
         $("comissaoOferta").textContent = s.comissaoAtual ? s.comissaoAtual + "%" : "-";
         $("scoreOferta").textContent = s.scoreAtual ? String(s.scoreAtual) : "-";
+
+        if (s.cupomAtual) {
+          $("cupomOferta").textContent = s.cupomAtual;
+          $("cupomOfertaPill").style.display = "inline-flex";
+        } else {
+          $("cupomOferta").textContent = "-";
+          $("cupomOfertaPill").style.display = "none";
+        }
+
+        if (s.precoComCupomEstimado) {
+          $("precoCupomOferta").textContent = moeda(s.precoComCupomEstimado);
+          $("precoCupomPill").style.display = "inline-flex";
+        } else {
+          $("precoCupomOferta").textContent = "-";
+          $("precoCupomPill").style.display = "none";
+        }
 
         const mensagem = s.mensagem || "";
         if (mensagem) {

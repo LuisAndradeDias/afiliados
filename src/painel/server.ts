@@ -15,6 +15,10 @@ import {
   lerOfertaMercadoLivre,
   salvarLinkAfiliadoMercadoLivre
 } from "../afiliados/mercadolivre.js";
+import {
+  registrarCuponsObservadosMercadoLivre,
+  statusCuponsMercadoLivre
+} from "../afiliados/mercadolivre-cupons.js";
 
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
@@ -322,8 +326,16 @@ interface PacotePainel {
   urlAfiliado?: string;
   imagemUrl?: string;
   categoria?: string;
+  descontoPercentual?: number;
   comissaoEstimadaPercentual?: number;
   scoreOferta?: number;
+  cupomCodigo?: string;
+  cupomPercentual?: number;
+  cupomValor?: number;
+  cupomCompraMinima?: number;
+  cupomDescontoMaximo?: number;
+  precoComCupomEstimado?: number;
+  descontoEfetivoPercentual?: number;
 }
 
 async function atualizarOfertaAtualComTag(tag: string): Promise<void> {
@@ -778,6 +790,7 @@ async function iniciarFluxoMercadoLivreAutomatico(
 
 async function estado() {
   const mensagem = await readFile(mensagemPath, "utf8").catch(() => "");
+  const statusCupons = await statusCuponsMercadoLivre();
   const pacote: PacotePainel = await readFile(pacotePath, "utf8")
     .then((texto) => JSON.parse(texto) as PacotePainel)
     .catch(() => ({}));
@@ -838,6 +851,17 @@ async function estado() {
     categoriaAtual: pacote.categoria ?? "",
     comissaoAtual: pacote.comissaoEstimadaPercentual ?? 0,
     scoreAtual: pacote.scoreOferta ?? 0,
+    cupomAtual: pacote.cupomCodigo ?? "",
+    cupomPercentualAtual: pacote.cupomPercentual ?? 0,
+    cupomValorAtual: pacote.cupomValor ?? 0,
+    precoComCupomEstimado: pacote.precoComCupomEstimado ?? 0,
+    descontoEfetivoAtual:
+      pacote.descontoEfetivoPercentual ??
+      pacote.descontoPercentual ??
+      0,
+    mercadoLivreCuponsTotal: statusCupons.total,
+    mercadoLivreCuponsAtivos: statusCupons.ativos,
+    mercadoLivreCuponsAtualizadosEm: statusCupons.coletadoEm ?? "",
     cooldownHoras: cooldownHoras(),
     previewCooldownMinutos: previewCooldownMinutos(),
     ofertasBloqueadas: await contarBloqueadas(),
@@ -1309,6 +1333,36 @@ const server = createServer(async (req, res) => {
     ) {
       mercadoLivreExtensionLastSeen = Date.now();
       json(res, 200, { ok: true });
+      return;
+    }
+
+    if (
+      req.method === "POST" &&
+      requestUrl.pathname === "/api/mercadolivre/coupons-observed"
+    ) {
+      mercadoLivreExtensionLastSeen = Date.now();
+      const corpo = await lerJson(req);
+      const origem = String(corpo.url ?? "").slice(0, 500);
+      const blocos = Array.isArray(corpo.blocks)
+        ? corpo.blocks
+            .filter((item: unknown): item is string => typeof item === "string")
+            .map((item: string) => item.slice(0, 4_000))
+            .slice(0, 100)
+        : [];
+
+      const quantidade = await registrarCuponsObservadosMercadoLivre(
+        blocos,
+        origem || "mercadolivre-browser"
+      );
+
+      if (quantidade > 0) {
+        registrar(
+          "mercadolivre-cupons",
+          `Extensão observou ${quantidade} cupom(ns) no navegador.`
+        );
+      }
+
+      json(res, 200, { ok: true, quantidade });
       return;
     }
 

@@ -3,8 +3,10 @@
   window.__meliAutoLinkLoaded = true;
 
   const POLL_MS = 1600;
+  const COUPON_SCAN_MS = 15000;
   let processando = false;
   let jobAtual = "";
+  let ultimoScanCupom = 0;
 
   function normalizar(texto) {
     return (texto || "")
@@ -246,6 +248,53 @@
     return null;
   }
 
+  function blocosCupomNaPagina() {
+    const texto = document.body?.innerText || "";
+    if (!texto || !/\bCupom\b/.test(texto)) return [];
+
+    const marcador = /\bCupom\s+([A-Z0-9][A-Z0-9_-]{3,29})\b/g;
+    const marcadores = [...texto.matchAll(marcador)];
+    const blocos = [];
+
+    for (let i = 0; i < marcadores.length && blocos.length < 60; i += 1) {
+      const atual = marcadores[i];
+      const inicio = atual.index ?? 0;
+      const fim =
+        i + 1 < marcadores.length
+          ? (marcadores[i + 1].index ?? texto.length)
+          : Math.min(texto.length, inicio + 3000);
+
+      const bloco = texto
+        .slice(inicio, Math.min(fim, inicio + 3000))
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (
+        /válido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(
+          bloco
+        )
+      ) {
+        blocos.push(bloco);
+      }
+    }
+
+    return [...new Set(blocos)];
+  }
+
+  async function observarCupons() {
+    if (Date.now() - ultimoScanCupom < COUPON_SCAN_MS) return;
+    ultimoScanCupom = Date.now();
+
+    const blocks = blocosCupomNaPagina();
+    if (blocks.length === 0) return;
+
+    await enviar({
+      type: "couponSnapshot",
+      url: location.href,
+      blocks
+    });
+  }
+
   async function processar(job) {
     processando = true;
     jobAtual = job.id;
@@ -331,6 +380,7 @@
 
   async function ciclo() {
     await enviar({ type: "ping" });
+    await observarCupons();
 
     if (processando) return;
 

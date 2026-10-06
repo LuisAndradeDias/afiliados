@@ -115,6 +115,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       });
     }
 
+    if (message.type === "couponSnapshot") {
+      return api("/api/mercadolivre/coupons-observed", {
+        method: "POST",
+        body: JSON.stringify({
+          url: message.url || "",
+          blocks: Array.isArray(message.blocks)
+            ? message.blocks.slice(0, 100)
+            : []
+        })
+      });
+    }
+
     return { ok: false, mensagem: "Ação desconhecida." };
   };
 

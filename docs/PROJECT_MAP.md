@@ -85,3 +85,22 @@ O estado do monitor vive no servidor do painel.
 - após envio confirmado ou descarte, o monitor agenda a próxima rodada.
 - o Gerador de Links continua sendo executado pela extensão local do Chrome.
 - a extensão pode reabrir uma aba de Afiliados em segundo plano quando existir um job pendente.
+
+
+## Motor de cupons Mercado Livre
+
+Arquivos principais:
+
+- `src/afiliados/mercadolivre-cupons.ts`: coleta, cache, parsing, ranking, cálculo de benefício e revalidação.
+- `src/robo/mercadolivre-preview.ts`: aplica o melhor cupom às ofertas antes do filtro mínimo.
+- `src/robo/mercadolivre-whatsapp.ts`: força uma nova validação do cupom imediatamente antes da mensagem.
+- `browser-extension/mercadolivre-affiliate/content.js`: observa somente blocos visíveis de cupom no navegador.
+- `POST /api/mercadolivre/coupons-observed`: recebe os blocos observados e grava cache curto.
+
+Regras:
+
+- Cupons públicos/observados são tratados como dados voláteis.
+- Cupons observados no navegador têm TTL curto.
+- Cupons marcados como não cumulativos não são somados ao preço promocional.
+- O preço com cupom exibido ao usuário é uma estimativa condicionada à elegibilidade no checkout.
+- A API de campanhas do vendedor não é usada para anúncios de terceiros.
