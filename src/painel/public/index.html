@@ -1007,21 +1007,26 @@
           ? `Próxima busca em ${minutosProximaBusca}m ${String(restoSegundos).padStart(2, "0")}s`
           : "";
 
+        const cuponsAtivos = Number(s.mercadoLivreCuponsAtivos || 0);
+        const infoCupons = cuponsAtivos > 0
+          ? ` · ${cuponsAtivos} cupom(ns) ativo(s)`
+          : "";
+
         if (s.mercadoLivreMonitorAtivo) {
           monitorButton.textContent = "⏸ Pausar monitoramento";
           monitorButton.classList.remove("success");
           monitorButton.classList.add("secondary");
 
           $("meliLaunchState").textContent = preparando
-            ? "Oferta encontrada · monitor pausado"
-            : textoProxima || "Monitorando agora";
+            ? "Oferta encontrada · monitor pausado" + infoCupons
+            : (textoProxima || "Monitorando agora") + infoCupons;
         } else {
           monitorButton.textContent = "▶ Ativar monitoramento contínuo";
           monitorButton.classList.remove("secondary");
           monitorButton.classList.add("success");
 
           $("meliLaunchState").textContent = s.mercadoLivreApiConfigurada
-            ? "Pronto para monitorar"
+            ? "Pronto para monitorar" + infoCupons
             : "Configuração pendente";
         }
 
