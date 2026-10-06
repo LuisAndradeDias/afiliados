@@ -228,3 +228,36 @@ MERCADOLIVRE_MONITOR_BACKOFF_MINUTES=8
 O monitoramento nunca prepara duas ofertas ao mesmo tempo. Enquanto o WhatsApp está aberto para revisão, novas buscas ficam pausadas.
 
 Quando o monitoramento está ativo, o botão principal de envio vira **Enviar e continuar monitorando**.
+
+
+## Motor de cupons Mercado Livre
+
+O monitoramento do Mercado Livre também considera cupons oficiais de afiliados.
+
+Fontes usadas:
+
+1. Página pública oficial de promoções: `https://www.mercadolivre.com.br/l/promocoes`.
+2. Cupons visíveis no navegador autenticado do usuário, observados pela extensão local enquanto ele navega em páginas do Mercado Livre/Afiliados.
+
+O projeto **não cria nem modifica cupons de vendedores** e não usa endpoints privados descobertos por engenharia reversa. A API `seller-promotions` é destinada à gestão das promoções do próprio vendedor e não é usada para alterar anúncios de terceiros.
+
+### Como a seleção funciona
+
+- o catálogo público é atualizado a cada 2 minutos por padrão;
+- cupons observados no navegador autenticado expiram do cache após 10 minutos por padrão;
+- o motor valida data, compra mínima, percentual/valor fixo e desconto máximo;
+- categorias com exclusões públicas conhecidas são descartadas de forma conservadora;
+- cupons não cumulativos são tratados como benefício alternativo, nunca somados ao desconto do anúncio;
+- a oferta pode atingir o filtro mínimo usando o melhor benefício efetivo entre promoção e cupom;
+- imediatamente antes de abrir o WhatsApp, o cupom é consultado novamente;
+- se o cupom sumir/expirar e a oferta deixar de atingir o filtro mínimo, a rodada é descartada e o monitor continua procurando outra.
+
+Configuração:
+
+```env
+MERCADOLIVRE_COUPON_REFRESH_MINUTES=2
+MERCADOLIVRE_COUPON_OBSERVED_TTL_MINUTES=10
+MERCADOLIVRE_COUPON_SOURCE_URL=https://www.mercadolivre.com.br/l/promocoes
+```
+
+Quando um cupom é usado, a mensagem informa que o preço é estimado e está sujeito à elegibilidade e disponibilidade no checkout.
