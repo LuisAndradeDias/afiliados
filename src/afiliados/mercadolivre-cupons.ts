@@ -6,6 +6,8 @@ const CUPONS_URL =
   process.env.MERCADOLIVRE_COUPON_SOURCE_URL?.trim() ||
   "https://www.mercadolivre.com.br/l/promocoes";
 const CACHE_PATH = "data/cupons-mercadolivre.json";
+const OBSERVED_CACHE_PATH =
+  "data/cupons-mercadolivre-observados.json";
 
 export interface CupomMercadoLivre {
   codigo: string;
@@ -115,14 +117,19 @@ function datasDoTermo(termos: string): {
 }
 
 function parsearCupom(codigo: string, termos: string): CupomMercadoLivre | null {
-  const percentualMatch = termos.match(
-    /Desconto(?:\s+de)?(?:\s+até)?\s*(\d+(?:[.,]\d+)?)\s*%/i
-  );
+  const percentualMatch =
+    termos.match(
+      /Desconto(?:\s+de)?(?:\s+até)?\s*(\d+(?:[.,]\d+)?)\s*%/i
+    ) ??
+    termos.match(/(\d+(?:[.,]\d+)?)\s*%\s*OFF/i);
 
   const valorFixoMatch = percentualMatch
     ? null
-    : termos.match(
-        /(?:Desconto(?:\s+de)?|Ganhe)\s+R\$\s*([\d.]+(?:,\d+)?)/i
+    : (
+        termos.match(
+          /(?:Desconto(?:\s+de)?|Ganhe)\s+R\$\s*([\d.]+(?:,\d+)?)/i
+        ) ??
+        termos.match(/R\$\s*([\d.]+(?:,\d+)?)\s*OFF/i)
       );
 
   const compraMinimaMatch = termos.match(
@@ -175,7 +182,9 @@ export function extrairCuponsMercadoLivre(html: string): CupomMercadoLivre[] {
         : Math.min(texto.length, inicio + 3_500);
 
     const termos = texto.slice(inicio, Math.min(fim, inicio + 3_500));
-    if (!/válido|desconto|compra/i.test(termos)) continue;
+    if (!/válido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(termos)) {
+      continue;
+    }
 
     const cupom = parsearCupom(codigo, termos);
     if (!cupom) continue;
@@ -220,6 +229,80 @@ async function gravarCache(cupons: CupomMercadoLivre[]): Promise<void> {
 
   await mkdir(dirname(CACHE_PATH), { recursive: true });
   await writeFile(CACHE_PATH, JSON.stringify(cache, null, 2), "utf8");
+}
+
+function observedTtlMs(): number {
+  const minutos = Number(
+    process.env.MERCADOLIVRE_COUPON_OBSERVED_TTL_MINUTES ?? 10
+  );
+  return Math.max(2, Number.isFinite(minutos) ? minutos : 10) * 60_000;
+}
+
+async function lerCacheObservado(): Promise<CacheCuponsMercadoLivre | null> {
+  return readFile(OBSERVED_CACHE_PATH, "utf8")
+    .then(
+      (texto) =>
+        JSON.parse(
+          texto.replace(/^\uFEFF/, "")
+        ) as CacheCuponsMercadoLivre
+    )
+    .catch(() => null);
+}
+
+async function gravarCacheObservado(
+  cupons: CupomMercadoLivre[],
+  origem: string
+): Promise<void> {
+  const cache: CacheCuponsMercadoLivre = {
+    coletadoEm: new Date().toISOString(),
+    fonte: origem,
+    cupons
+  };
+
+  await mkdir(dirname(OBSERVED_CACHE_PATH), { recursive: true });
+  await writeFile(
+    OBSERVED_CACHE_PATH,
+    JSON.stringify(cache, null, 2),
+    "utf8"
+  );
+}
+
+export async function registrarCuponsObservadosMercadoLivre(
+  blocos: string[],
+  origem: string
+): Promise<number> {
+  const texto = blocos
+    .filter((bloco) => bloco && bloco.length <= 4_000)
+    .slice(0, 100)
+    .join(" ");
+
+  if (!texto.trim()) return 0;
+
+  const agora = new Date().toISOString();
+  const novos = extrairCuponsMercadoLivre(texto).map((cupom) => ({
+    ...cupom,
+    coletadoEm: agora
+  }));
+
+  if (novos.length === 0) return 0;
+
+  const anterior = await lerCacheObservado();
+  const porCodigo = new Map<string, CupomMercadoLivre>();
+
+  for (const cupom of anterior?.cupons ?? []) {
+    const idade =
+      Date.now() - new Date(cupom.coletadoEm).getTime();
+    if (idade <= observedTtlMs()) {
+      porCodigo.set(cupom.codigo, cupom);
+    }
+  }
+
+  for (const cupom of novos) {
+    porCodigo.set(cupom.codigo, cupom);
+  }
+
+  await gravarCacheObservado([...porCodigo.values()], origem);
+  return novos.length;
 }
 
 async function baixarCupons(): Promise<CupomMercadoLivre[]> {
@@ -276,7 +359,22 @@ export async function obterCuponsMercadoLivre(
     }
   }
 
-  return cupons.filter((cupom) => cupomAtivo(cupom));
+  const observados = await lerCacheObservado();
+  const observadosRecentes = (observados?.cupons ?? []).filter((cupom) => {
+    const idade =
+      Date.now() - new Date(cupom.coletadoEm).getTime();
+    return idade <= observedTtlMs() && cupomAtivo(cupom);
+  });
+
+  const porCodigo = new Map<string, CupomMercadoLivre>();
+  for (const cupom of cupons.filter((atual) => cupomAtivo(atual))) {
+    porCodigo.set(cupom.codigo, cupom);
+  }
+  for (const cupom of observadosRecentes) {
+    porCodigo.set(cupom.codigo, cupom);
+  }
+
+  return [...porCodigo.values()];
 }
 
 export async function statusCuponsMercadoLivre(): Promise<{
@@ -285,11 +383,24 @@ export async function statusCuponsMercadoLivre(): Promise<{
   coletadoEm?: string;
 }> {
   const cache = await lerCache();
-  const cupons = cache?.cupons ?? [];
+  const observado = await lerCacheObservado();
+  const publicos = cache?.cupons ?? [];
+  const observados = observado?.cupons ?? [];
+  const agora = Date.now();
+
+  const ativosPublicos = publicos.filter((cupom) => cupomAtivo(cupom));
+  const ativosObservados = observados.filter((cupom) => {
+    const idade = agora - new Date(cupom.coletadoEm).getTime();
+    return idade <= observedTtlMs() && cupomAtivo(cupom);
+  });
+
   return {
-    total: cupons.length,
-    ativos: cupons.filter((cupom) => cupomAtivo(cupom)).length,
-    coletadoEm: cache?.coletadoEm
+    total: publicos.length + observados.length,
+    ativos: new Set(
+      [...ativosPublicos, ...ativosObservados].map((cupom) => cupom.codigo)
+    ).size,
+    coletadoEm:
+      observado?.coletadoEm ?? cache?.coletadoEm
   };
 }
 
