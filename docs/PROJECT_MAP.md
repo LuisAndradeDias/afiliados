@@ -26,9 +26,11 @@ Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo pa
 5. `browser-extension/mercadolivre-affiliate/` usa a sessão web já autenticada, localiza o Gerador de Links oficial, preenche a URL do produto, gera e devolve o link ao painel.
 6. O painel mantém o estado do job em memória e recebe o resultado pelos endpoints `/api/mercadolivre/link-*`.
 7. `src/afiliados/mercadolivre.ts` valida e salva somente links oficiais de compartilhamento (`meli.la` ou `/sec/`).
-8. `src/robo/mercadolivre-whatsapp.ts` transforma a oferta validada em mensagem/pacote.
-9. `src/robo/whatsapp-preparar.ts` reutiliza o mesmo fluxo de revisão e envio do WhatsApp.
-10. O histórico usa a chave `mercado-livre:<produtoId>`, evitando repetição.
+8. Quando o fluxo automático está ativo, o backend encadeia o resultado do link diretamente em `src/robo/mercadolivre-whatsapp.ts`.
+9. `src/robo/mercadolivre-whatsapp.ts` transforma a oferta validada em mensagem/pacote.
+10. `src/robo/whatsapp-preparar.ts` abre o grupo e aguarda confirmação humana.
+11. **Enviar + próxima ML** registra o envio e reinicia busca → link → preparação.
+12. O histórico usa a chave `mercado-livre:<produtoId>`, evitando repetição.
 
 ## Pastas
 
