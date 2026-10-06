@@ -57,6 +57,7 @@ let mercadoLivreExtensionLastSeen = 0;
 
 type MercadoLivreFluxoEtapa =
   | "idle"
+  | "monitoring"
   | "searching"
   | "linking"
   | "preparing"
@@ -66,6 +67,88 @@ type MercadoLivreFluxoEtapa =
 let mercadoLivreFluxoAutomatico = false;
 let mercadoLivreFluxoEtapa: MercadoLivreFluxoEtapa = "idle";
 let mercadoLivreFluxoMensagem = "";
+
+let mercadoLivreMonitorAtivo =
+  process.env.MERCADOLIVRE_MONITOR_ENABLED === "true";
+let mercadoLivreMonitorTimer: ReturnType<typeof setTimeout> | null = null;
+let mercadoLivreMonitorProximaBuscaEm = 0;
+let mercadoLivreMonitorUltimaBuscaEm = 0;
+let mercadoLivreBuscaLimitada = false;
+
+function mercadoLivreMonitorIntervaloMs(): number {
+  const minutos = Number(
+    process.env.MERCADOLIVRE_MONITOR_INTERVAL_MINUTES ?? 3
+  );
+  return Math.max(1, Number.isFinite(minutos) ? minutos : 3) * 60_000;
+}
+
+function mercadoLivreMonitorBackoffMs(): number {
+  const minutos = Number(
+    process.env.MERCADOLIVRE_MONITOR_BACKOFF_MINUTES ?? 8
+  );
+  return Math.max(2, Number.isFinite(minutos) ? minutos : 8) * 60_000;
+}
+
+function cancelarAgendamentoMonitorMercadoLivre(): void {
+  if (mercadoLivreMonitorTimer) {
+    clearTimeout(mercadoLivreMonitorTimer);
+    mercadoLivreMonitorTimer = null;
+  }
+  mercadoLivreMonitorProximaBuscaEm = 0;
+}
+
+function agendarMonitorMercadoLivre(
+  atrasoMs: number,
+  mensagem: string
+): void {
+  cancelarAgendamentoMonitorMercadoLivre();
+  if (!mercadoLivreMonitorAtivo) return;
+
+  const atraso = Math.max(500, atrasoMs);
+  mercadoLivreMonitorProximaBuscaEm = Date.now() + atraso;
+  atualizarFluxoMercadoLivre("monitoring", mensagem);
+
+  mercadoLivreMonitorTimer = setTimeout(() => {
+    mercadoLivreMonitorTimer = null;
+    mercadoLivreMonitorProximaBuscaEm = 0;
+
+    if (!mercadoLivreMonitorAtivo) return;
+
+    void iniciarFluxoMercadoLivreAutomatico(true).then((resultado) => {
+      if (!resultado.ok && mercadoLivreMonitorAtivo) {
+        agendarMonitorMercadoLivre(
+          mercadoLivreMonitorIntervaloMs(),
+          "Monitoramento ativo. Nova tentativa agendada."
+        );
+      }
+    });
+  }, atraso);
+}
+
+async function definirMonitorMercadoLivreAtivo(
+  ativo: boolean
+): Promise<void> {
+  mercadoLivreMonitorAtivo = ativo;
+  await salvarVariavelEnv(
+    "MERCADOLIVRE_MONITOR_ENABLED",
+    ativo ? "true" : "false"
+  );
+
+  if (!ativo) {
+    cancelarAgendamentoMonitorMercadoLivre();
+    if (
+      !whatsappOcupado() &&
+      !processos.has("mercadolivre-buscar") &&
+      !processos.has("mercadolivre-whatsapp")
+    ) {
+      mercadoLivreFluxoAutomatico = false;
+      atualizarFluxoMercadoLivre(
+        "idle",
+        "Monitoramento contínuo do Mercado Livre pausado."
+      );
+    }
+  }
+}
 
 function atualizarFluxoMercadoLivre(
   etapa: MercadoLivreFluxoEtapa,
@@ -329,6 +412,13 @@ function iniciar(
     const texto = String(d);
     registrar(nome, texto);
 
+    if (
+      nome === "mercadolivre-buscar" &&
+      (texto.includes("limite de requisicoes") || texto.includes("HTTP 429"))
+    ) {
+      mercadoLivreBuscaLimitada = true;
+    }
+
     if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
       finalizacaoWhatsappAtual = null;
       carregarProximaAposEnvio = false;
@@ -341,6 +431,13 @@ function iniciar(
   child.stderr?.on("data", (d) => {
     const texto = String(d);
     registrar(nome, texto);
+
+    if (
+      nome === "mercadolivre-buscar" &&
+      (texto.includes("limite de requisicoes") || texto.includes("HTTP 429"))
+    ) {
+      mercadoLivreBuscaLimitada = true;
+    }
 
     if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
       finalizacaoWhatsappAtual = null;
@@ -384,14 +481,41 @@ function iniciar(
     if (finalizacao === "cancelar") {
       await limparPreparacaoAtual(origemFinalizada);
       registrar("fluxo", "Preparação descartada. Painel liberado para uma nova oferta.");
+
+      if (
+        origemFinalizada === "mercado-livre" &&
+        mercadoLivreMonitorAtivo
+      ) {
+        agendarMonitorMercadoLivre(
+          5_000,
+          "Oferta descartada. Retomando o monitoramento do Mercado Livre..."
+        );
+      }
       return;
     }
 
     if (finalizacao !== "enviar") return;
 
     ultimoEnvioConcluidoEm = Date.now();
-    ultimoEnvioComProxima = carregarProxima;
+    ultimoEnvioComProxima =
+      carregarProxima ||
+      (origemFinalizada === "mercado-livre" && mercadoLivreMonitorAtivo);
     await limparPreparacaoAtual(origemFinalizada);
+
+    if (
+      origemFinalizada === "mercado-livre" &&
+      mercadoLivreMonitorAtivo
+    ) {
+      registrar(
+        "fluxo",
+        "Envio concluído. Retomando o monitoramento contínuo do Mercado Livre."
+      );
+      agendarMonitorMercadoLivre(
+        5_000,
+        "Envio concluído. Procurando a próxima promoção em instantes..."
+      );
+      return;
+    }
 
     if (!carregarProxima) {
       registrar(
@@ -503,10 +627,19 @@ async function prepararMercadoLivreAutomaticamente(): Promise<boolean> {
   return ok;
 }
 
-async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
+async function iniciarFluxoMercadoLivreAutomatico(
+  modoMonitor = false
+): Promise<{
   ok: boolean;
   mensagem: string;
 }> {
+  if (modoMonitor && !mercadoLivreMonitorAtivo) {
+    return {
+      ok: false,
+      mensagem: "O monitoramento contínuo do Mercado Livre está pausado."
+    };
+  }
+
   if (!process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()) {
     return {
       ok: false,
@@ -528,11 +661,16 @@ async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
     };
   }
 
+  cancelarAgendamentoMonitorMercadoLivre();
+  mercadoLivreBuscaLimitada = false;
+  mercadoLivreMonitorUltimaBuscaEm = Date.now();
   mercadoLivreFluxoAutomatico = true;
   mercadoLivreLinkJob = null;
   atualizarFluxoMercadoLivre(
     "searching",
-    "Buscando a próxima oferta elegível do Mercado Livre..."
+    modoMonitor
+      ? "Monitoramento ativo: consultando a próxima categoria do Mercado Livre..."
+      : "Buscando a próxima oferta elegível do Mercado Livre..."
   );
 
   const ok = iniciar(
@@ -540,8 +678,33 @@ async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
     "mercadolivre-buscar",
     {},
     async (codigo) => {
+      if (modoMonitor && !mercadoLivreMonitorAtivo) {
+        mercadoLivreFluxoAutomatico = false;
+        atualizarFluxoMercadoLivre(
+          "idle",
+          "Monitoramento contínuo pausado."
+        );
+        return;
+      }
+
       if (codigo !== 0) {
         mercadoLivreFluxoAutomatico = false;
+
+        if (modoMonitor && mercadoLivreMonitorAtivo) {
+          const limitado = mercadoLivreBuscaLimitada;
+          const espera = limitado
+            ? mercadoLivreMonitorBackoffMs()
+            : mercadoLivreMonitorIntervaloMs();
+
+          agendarMonitorMercadoLivre(
+            espera,
+            limitado
+              ? "Mercado Livre limitou as requisições. Monitoramento em espera antes de tentar outra categoria."
+              : "Nenhuma oferta passou pelos filtros. Monitoramento continua e tentará outra categoria."
+          );
+          return;
+        }
+
         atualizarFluxoMercadoLivre(
           "error",
           "Nenhuma oferta Mercado Livre atingiu os filtros nesta rodada."
@@ -553,11 +716,20 @@ async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
         await criarPedidoLinkMercadoLivre();
         atualizarFluxoMercadoLivre(
           "linking",
-          "Oferta encontrada. Aguardando o Gerador de Links automático."
+          "Oferta encontrada. Gerando o link oficial automaticamente..."
         );
       } catch (error) {
         mercadoLivreFluxoAutomatico = false;
         const mensagem = error instanceof Error ? error.message : String(error);
+
+        if (modoMonitor && mercadoLivreMonitorAtivo) {
+          agendarMonitorMercadoLivre(
+            mercadoLivreMonitorBackoffMs(),
+            `Falha ao iniciar o link automático: ${mensagem}. O monitoramento tentará novamente.`
+          );
+          return;
+        }
+
         atualizarFluxoMercadoLivre(
           "error",
           `Não foi possível iniciar a geração do link: ${mensagem}`
@@ -568,10 +740,19 @@ async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
 
   if (!ok) {
     mercadoLivreFluxoAutomatico = false;
-    atualizarFluxoMercadoLivre(
-      "error",
-      "A busca Mercado Livre já está em andamento."
-    );
+
+    if (modoMonitor && mercadoLivreMonitorAtivo) {
+      agendarMonitorMercadoLivre(
+        mercadoLivreMonitorIntervaloMs(),
+        "A busca já estava ocupada. O monitoramento tentará novamente."
+      );
+    } else {
+      atualizarFluxoMercadoLivre(
+        "error",
+        "A busca Mercado Livre já está em andamento."
+      );
+    }
+
     return {
       ok: false,
       mensagem: "A busca Mercado Livre já está em andamento."
@@ -580,8 +761,9 @@ async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
 
   return {
     ok: true,
-    mensagem:
-      "Fluxo Mercado Livre iniciado: buscar → gerar link → preparar WhatsApp."
+    mensagem: modoMonitor
+      ? "Monitoramento consultando o Mercado Livre."
+      : "Fluxo Mercado Livre iniciado: buscar → gerar link → preparar WhatsApp."
   };
 }
 
@@ -627,6 +809,13 @@ async function estado() {
     mercadoLivreFluxoAutomatico,
     mercadoLivreFluxoEtapa,
     mercadoLivreFluxoMensagem,
+    mercadoLivreMonitorAtivo,
+    mercadoLivreMonitorProximaBuscaEm,
+    mercadoLivreMonitorUltimaBuscaEm,
+    mercadoLivreMonitorIntervaloMinutos:
+      mercadoLivreMonitorIntervaloMs() / 60_000,
+    mercadoLivreMonitorBackoffMinutos:
+      mercadoLivreMonitorBackoffMs() / 60_000,
     origemPreparacaoAtual,
     plataformaAtual: pacote.plataforma ?? "",
     ultimoEnvioConcluidoEm,
@@ -747,6 +936,35 @@ async function executarAcao(
     return {
       ok: true,
       mensagem: `Amazon vinculada com o ID ${tag}. As próximas ofertas usarão seu link de associado.`
+    };
+  }
+
+  if (acao === "mercadolivre-monitor-toggle") {
+    if (mercadoLivreMonitorAtivo) {
+      await definirMonitorMercadoLivreAtivo(false);
+      return {
+        ok: true,
+        mensagem: "Monitoramento contínuo do Mercado Livre pausado."
+      };
+    }
+
+    if (!process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()) {
+      return {
+        ok: false,
+        mensagem: "Conecte a API do Mercado Livre antes de ativar o monitoramento."
+      };
+    }
+
+    await definirMonitorMercadoLivreAtivo(true);
+    agendarMonitorMercadoLivre(
+      750,
+      "Monitoramento contínuo ativado. Primeira busca iniciará em instantes."
+    );
+
+    return {
+      ok: true,
+      mensagem:
+        "Monitoramento contínuo ativado. O sistema buscará promoções até encontrar uma oferta válida."
     };
   }
 
@@ -964,7 +1182,9 @@ async function executarAcao(
       mercadoLivreFluxoAutomatico = false;
       atualizarFluxoMercadoLivre(
         "idle",
-        "Envio Mercado Livre confirmado. O fluxo será encerrado após o envio."
+        mercadoLivreMonitorAtivo
+          ? "Envio confirmado. O monitoramento será retomado após o WhatsApp confirmar o envio."
+          : "Envio Mercado Livre confirmado. O fluxo será encerrado após o envio."
       );
     }
 
@@ -1249,4 +1469,11 @@ const server = createServer(async (req, res) => {
 server.listen(porta, "127.0.0.1", () => {
   registrar("painel", `Painel disponível em http://localhost:${porta}`);
   console.log(`Painel disponível em http://localhost:${porta}`);
+
+  if (mercadoLivreMonitorAtivo) {
+    agendarMonitorMercadoLivre(
+      1_500,
+      "Monitoramento contínuo restaurado. Primeira busca iniciará em instantes."
+    );
+  }
 });
