@@ -128,3 +128,20 @@ Variáveis:
 - `MERCADOLIVRE_MONITOR_BACKOFF_MINUTES`
 
 `MERCADOLIVRE_MONITOR_ENABLED` é mantida por compatibilidade e também é atualizada quando o ciclo unificado é ligado/desligado.
+
+
+## Estado operacional do painel
+
+O servidor é a fonte única de verdade do painel e expõe:
+
+- `operacaoEstado`
+- `operacaoPlataforma`
+- `ofertaPlataformaAtual`
+- `ofertaPreparada`
+- `whatsappRevisaoPronta`
+
+A UI não deve inferir a origem da oferta combinando `origemPreparacaoAtual` com o último turno do monitor. Quando houver pacote preparado, `ofertaPlataformaAtual` é a referência canônica.
+
+A ação principal do ciclo é `monitor-set`, com `ativo: true|false`. `mercadolivre-monitor-toggle` fica apenas para compatibilidade.
+
+Ao falhar/fechar a janela de revisão, o pacote é preservado e o estado vira `offer-pending`. O usuário deve reabrir ou descartar antes que o agendador volte a pesquisar.
