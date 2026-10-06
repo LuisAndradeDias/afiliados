@@ -1644,7 +1644,29 @@ async function executarAcao(
     }
 
     if (!processos.has("preparar")) {
-      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
+      if (!origemPacote) {
+        return { ok: false, mensagem: "Não há oferta preparada para descartar." };
+      }
+
+      await limparPreparacaoAtual(origemPacote);
+
+      if (monitorAlternadoAtivo) {
+        const proxima = outraPlataformaMonitor(origemPacote);
+        agendarMonitorAlternado(
+          proxima,
+          2_000,
+          `Oferta pendente descartada. Retomando o ciclo por ${nomePlataformaMonitor(proxima)}.`
+        );
+      }
+
+      registrar(
+        "painel",
+        "Oferta preparada sem janela ativa do WhatsApp foi descartada."
+      );
+      return {
+        ok: true,
+        mensagem: "Oferta descartada. O ciclo automático foi liberado."
+      };
     }
 
     carregarProximaAposEnvio = false;
