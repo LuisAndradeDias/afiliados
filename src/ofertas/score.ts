@@ -3,7 +3,10 @@ import { bonusComissao } from "./comissoes-amazon.js";
 
 export function calcularScorePromocao(oferta: Oferta): number {
   let score = 0;
-  const desconto = oferta.descontoPercentual ?? 0;
+  const desconto =
+    oferta.descontoEfetivoPercentual ??
+    oferta.descontoPercentual ??
+    0;
 
   if (desconto >= 20) score += 20;
   if (desconto >= 30) score += 15;
