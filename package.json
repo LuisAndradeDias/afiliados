@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit",
     "test:whatsapp-observer": "tsx tests/whatsapp-envio-observer.mts",
     "test:painel-operacional": "tsx tests/painel-operacional.mts",
-    "test:imagem-oferta": "tsx tests/imagem-oferta.mts"
+    "test:imagem-oferta": "tsx tests/imagem-oferta.mts",
+    "test:whatsapp-pointer": "tsx tests/whatsapp-pointer.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

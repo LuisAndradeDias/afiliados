@@ -12,6 +12,7 @@ import {
   detectManualSend,
   type WhatsappSendBaseline
 } from "./whatsapp-envio-observer.js";
+import { clicarComPonteiro } from "./whatsapp-pointer.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -248,9 +249,11 @@ async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
 
   if (botaoEnviar) {
     try {
-      await botaoEnviar.click({ timeout: 5_000 });
+      await clicarComPonteiro(page, botaoEnviar);
       clicou = true;
-      console.log("Botão real de envio do WhatsApp acionado.");
+      console.log(
+        "Ponteiro movido até o botão real de envio do WhatsApp e clique acionado."
+      );
     } catch (error) {
       const motivo = error instanceof Error ? error.message : String(error);
       console.warn(
