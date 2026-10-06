@@ -12,6 +12,14 @@ import {
   detectManualSend,
   type WhatsappSendBaseline
 } from "./whatsapp-envio-observer.js";
+import {
+  clicarComPonteiro,
+  trazerWhatsappParaTelaPrincipal
+} from "./whatsapp-pointer.js";
+import {
+  deveAutoEnviar,
+  lerConfigAutoEnvio
+} from "./whatsapp-auto-send.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -213,7 +221,10 @@ async function aguardarCampoVazio(
   );
 }
 
-async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
+async function enviarOfertaNoWhatsapp(
+  page: Page,
+  permitirFallbackTeclado = true
+): Promise<void> {
   if (page.isClosed()) {
     throw new Error("A janela do WhatsApp foi fechada antes do envio.");
   }
@@ -248,27 +259,46 @@ async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
 
   if (botaoEnviar) {
     try {
-      await botaoEnviar.click({ timeout: 5_000 });
+      await clicarComPonteiro(page, botaoEnviar);
       clicou = true;
-      console.log("Botão real de envio do WhatsApp acionado.");
+      console.log(
+        "Cursor físico do Windows movido até o botão real do WhatsApp e clique acionado."
+      );
     } catch (error) {
       const motivo = error instanceof Error ? error.message : String(error);
+      if (!permitirFallbackTeclado) {
+        throw new Error(
+          `Clique físico não foi executado com segurança: ${motivo}`
+        );
+      }
       console.warn(
-        `Clique no botão de envio não confirmou; tentando Enter pelo teclado: ${motivo}`
+        `Clique físico falhou; tentando Enter pelo teclado como fallback: ${motivo}`
       );
     }
+  } else if (!permitirFallbackTeclado) {
+    throw new Error("Botão real de envio do WhatsApp não foi encontrado.");
   }
 
-  if (dialogoVisivel && clicou) {
-    const fechou = await dialogo
-      .waitFor({ state: "hidden", timeout: 6_000 })
-      .then(() => true)
-      .catch(() => false);
+  if (clicou) {
+    if (dialogoVisivel) {
+      const fechou = await dialogo
+        .waitFor({ state: "hidden", timeout: 15_000 })
+        .then(() => true)
+        .catch(() => false);
 
-    if (fechou) {
-      console.log("WhatsApp confirmou o envio: prévia de mídia fechada.");
-      return;
+      if (fechou) {
+        console.log("WhatsApp confirmou o envio: prévia de mídia fechada.");
+        return;
+      }
+
+      throw new Error(
+        "O clique físico foi executado, mas a prévia de mídia não fechou. Nenhum segundo clique será feito automaticamente."
+      );
     }
+
+    await aguardarCampoVazio(campoMensagem);
+    console.log("WhatsApp confirmou o envio: compositor ficou vazio.");
+    return;
   }
 
   await campoMensagem.focus();
@@ -290,6 +320,16 @@ async function aguardarFinalizacao(
   page: Page,
   baseline: WhatsappSendBaseline
 ): Promise<void> {
+  const autoEnvio = lerConfigAutoEnvio();
+  const prontoEm = Date.now();
+  let autoEnvioTentado = false;
+
+  if (autoEnvio.enabled) {
+    console.log(
+      `AUTO_ENVIO_ARMADO: envio automático será tentado uma única vez após ${autoEnvio.delayMs}ms.`
+    );
+  }
+
   while (true) {
     if (page.isClosed() || context.pages().length === 0) {
       throw new Error(
@@ -311,19 +351,39 @@ async function aguardarFinalizacao(
       return;
     }
 
-    const enviar = await readFile(enviarSignalPath, "utf8")
+    const enviarPorPainel = await readFile(enviarSignalPath, "utf8")
       .then(() => true)
       .catch(() => false);
+    const enviarAutomaticamente = deveAutoEnviar(
+      Date.now(),
+      prontoEm,
+      autoEnvio,
+      autoEnvioTentado
+    );
 
-    if (enviar) {
-      await rm(enviarSignalPath, { force: true });
-      console.log("Envio solicitado pelo painel.");
+    if (enviarPorPainel || enviarAutomaticamente) {
+      autoEnvioTentado = true;
+      const origemEnvio = enviarPorPainel ? "painel" : "automatico";
+
+      if (enviarPorPainel) {
+        await rm(enviarSignalPath, { force: true });
+        console.log("Envio solicitado pelo painel.");
+      } else {
+        console.log(
+          "AUTO_ENVIO_INICIADO: movendo o cursor físico até o botão real de envio."
+        );
+      }
 
       try {
-        await enviarOfertaNoWhatsapp(page);
+        await enviarOfertaNoWhatsapp(
+          page,
+          origemEnvio === "painel"
+        );
         await registrarEnvioAtual();
         console.log(
-          "ENVIO_CONFIRMADO: WhatsApp confirmou o envio e a oferta foi registrada no histórico."
+          origemEnvio === "automatico"
+            ? "ENVIO_CONFIRMADO_AUTO: WhatsApp confirmou o envio automático e a oferta foi registrada no histórico."
+            : "ENVIO_CONFIRMADO: WhatsApp confirmou o envio e a oferta foi registrada no histórico."
         );
         await context.close().catch(() => undefined);
         return;
@@ -331,7 +391,7 @@ async function aguardarFinalizacao(
         const mensagemErro =
           error instanceof Error ? error.message : String(error);
         console.error(
-          `ENVIO_NAO_CONFIRMADO: ${mensagemErro}. A janela continuará aberta para nova tentativa.`
+          `ENVIO_NAO_CONFIRMADO: ${mensagemErro}. A janela continuará aberta; o autoenvio não será repetido.`
         );
         await page.bringToFront().catch(() => undefined);
       }
@@ -363,6 +423,10 @@ async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
 
   await page.waitForTimeout(1_000);
   await fecharAbasExtras(context, page);
+  await trazerWhatsappParaTelaPrincipal();
+  console.log(
+    "Janela do WhatsApp movida para a tela principal e trazida para frente."
+  );
 
   return page;
 }
@@ -447,7 +511,9 @@ try {
     channel: canal,
     headless: modoTeste,
     viewport: modoTeste ? { width: 1280, height: 900 } : null,
-    args: modoTeste ? [] : ["--start-maximized"]
+    args: modoTeste
+      ? []
+      : ["--start-maximized", "--window-position=0,0"]
   });
 } catch (error) {
   throw new Error(
