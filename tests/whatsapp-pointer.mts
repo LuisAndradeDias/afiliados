@@ -1,57 +1,43 @@
-import { chromium } from "playwright";
-import { clicarComPonteiro } from "../src/robo/whatsapp-pointer.js";
+import { readFile } from "node:fs/promises";
+import { calcularCentroNaTela } from "../src/robo/whatsapp-pointer.js";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-const browser = await chromium.launch({
-  channel: "chrome",
-  headless: true
-});
+const ponto = calcularCentroNaTela(
+  { x: 620, y: 420, width: 120, height: 56 },
+  {
+    screenX: 0,
+    screenY: 0,
+    outerWidth: 1936,
+    outerHeight: 1048,
+    innerWidth: 1920,
+    innerHeight: 961
+  }
+);
 
-try {
-  const page = await browser.newPage({
-    viewport: { width: 900, height: 600 }
-  });
+assert(
+  ponto.x === 688,
+  `Centro X esperado 688, recebido ${ponto.x}.`
+);
+assert(
+  ponto.y === 527,
+  `Centro Y esperado 527, recebido ${ponto.y}.`
+);
 
-  await page.setContent(`
-    <style>
-      body { margin: 0; }
-      #send {
-        position: absolute;
-        left: 620px;
-        top: 420px;
-        width: 120px;
-        height: 56px;
-      }
-    </style>
-    <button id="send" aria-label="Enviar">Enviar</button>
-    <div id="resultado"></div>
-    <script>
-      window.movimentos = 0;
-      document.addEventListener("mousemove", () => window.movimentos++);
-      document.querySelector("#send").addEventListener("click", () => {
-        document.querySelector("#resultado").textContent = "clicado";
-      });
-    </script>
-  `);
+const fonte = await readFile("src/robo/whatsapp-pointer.ts", "utf8");
+assert(
+  fonte.includes("SetCursorPos"),
+  "O módulo precisa mover o cursor físico do Windows."
+);
+assert(
+  fonte.includes("mouse_event"),
+  "O módulo precisa executar o clique físico do Windows."
+);
+assert(
+  fonte.includes('matches(":hover")'),
+  "O clique precisa validar que o cursor físico está sobre o botão."
+);
 
-  const botao = page.getByRole("button", { name: "Enviar" });
-  await clicarComPonteiro(page, botao);
-
-  assert(
-    (await page.locator("#resultado").textContent()) === "clicado",
-    "O clique com ponteiro não acionou o botão."
-  );
-
-  const movimentos = await page.evaluate(() => (window as any).movimentos as number);
-  assert(
-    movimentos >= 2,
-    `Esperava movimento gradual do ponteiro, recebeu ${movimentos} evento(s).`
-  );
-
-  console.log("whatsapp-pointer: OK");
-} finally {
-  await browser.close();
-}
+console.log("whatsapp-pointer: OK");

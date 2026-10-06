@@ -252,7 +252,7 @@ async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
       await clicarComPonteiro(page, botaoEnviar);
       clicou = true;
       console.log(
-        "Ponteiro movido até o botão real de envio do WhatsApp e clique acionado."
+        "Cursor físico do Windows movido até o botão real do WhatsApp e clique acionado."
       );
     } catch (error) {
       const motivo = error instanceof Error ? error.message : String(error);
