@@ -950,6 +950,10 @@ async function executarAcao(
   }
 
   if (acao === "preparar-cancel") {
+    if (!processos.has("preparar")) {
+      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
+    }
+
     carregarProximaAposEnvio = false;
     finalizacaoWhatsappAtual = "cancelar";
 
@@ -959,10 +963,6 @@ async function executarAcao(
         "idle",
         "Preparação Mercado Livre descartada pelo usuário."
       );
-    }
-
-    if (!processos.has("preparar")) {
-      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
     }
 
     writeFileSync(fecharWhatsappPath, "fechar", "utf8");
