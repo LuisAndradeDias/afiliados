@@ -9,36 +9,47 @@
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
         "Segoe UI", sans-serif;
-      --bg: #f3f6fb;
+      --bg: #f5f7fb;
       --surface: #ffffff;
-      --surface-soft: #f8fafc;
-      --text: #142033;
+      --surface-2: #f8fafc;
+      --text: #182230;
       --muted: #667085;
-      --line: #e4e9f1;
-      --navy: #111c32;
+      --line: #e4e7ec;
+      --navy: #101828;
       --blue: #2563eb;
+      --blue-dark: #1d4ed8;
       --blue-soft: #eff6ff;
-      --green: #078a63;
-      --green-soft: #ecfdf5;
-      --yellow: #f4b400;
-      --yellow-soft: #fff8df;
-      --red: #b42318;
-      --shadow: 0 12px 30px rgba(17, 28, 50, .07);
+      --green: #079455;
+      --green-dark: #067647;
+      --green-soft: #ecfdf3;
+      --yellow: #fdb022;
+      --yellow-soft: #fffaeb;
+      --red: #d92d20;
+      --red-soft: #fef3f2;
+      --shadow: 0 12px 28px rgba(16, 24, 40, .07);
+      --shadow-lg: 0 22px 55px rgba(16, 24, 40, .10);
     }
 
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 85% 8%, rgba(37, 99, 235, .07), transparent 25%),
+        var(--bg);
+      color: var(--text);
+    }
     a { color: var(--blue); }
 
-    .topbar {
+    .hero {
       background:
-        radial-gradient(circle at 85% -20%, rgba(37,99,235,.55), transparent 35%),
-        linear-gradient(135deg, #0f172a, #172554 65%, #1e3a8a);
+        radial-gradient(circle at 88% 0%, rgba(96, 165, 250, .38), transparent 30%),
+        linear-gradient(135deg, #0f172a 0%, #172554 55%, #1e40af 100%);
       color: white;
-      padding: 30px 24px 34px;
+      padding: 28px 24px 52px;
     }
-    .topbar-inner {
-      max-width: 1220px;
+    .hero-inner {
+      max-width: 1180px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -46,86 +57,188 @@
       align-items: flex-end;
     }
     .eyebrow {
-      text-transform: uppercase;
-      letter-spacing: .13em;
-      font-size: 11px;
-      font-weight: 800;
-      color: #bfdbfe;
       margin-bottom: 8px;
+      color: #bfdbfe;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: .14em;
+      font-weight: 900;
     }
-    h1 { margin: 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.035em; }
-    .topbar p { margin: 10px 0 0; max-width: 700px; color: #dbeafe; line-height: 1.55; }
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 44px);
+      letter-spacing: -.045em;
+      line-height: 1.04;
+    }
+    .hero p {
+      margin: 10px 0 0;
+      color: #dbeafe;
+      max-width: 650px;
+      line-height: 1.5;
+      font-size: 14px;
+    }
     .runtime {
-      min-width: 230px;
-      padding: 12px 14px;
+      min-width: 245px;
+      padding: 13px 15px;
+      border-radius: 14px;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.09);
-      border-radius: 14px;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(9px);
     }
-    .runtime small { color: #bfdbfe; display: block; margin-bottom: 4px; }
+    .runtime small { display: block; color: #bfdbfe; margin-bottom: 4px; }
     .runtime strong { font-size: 14px; }
 
-    .shell { max-width: 1220px; margin: -18px auto 0; padding: 0 24px 36px; }
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
+    .shell {
+      max-width: 1180px;
+      margin: -28px auto 0;
+      padding: 0 24px 42px;
     }
-    .status-card, .card {
+
+    .health {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .health-item {
+      background: rgba(255,255,255,.98);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 15px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+    .health-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #98a2b3;
+      box-shadow: 0 0 0 4px #f2f4f7;
+      flex: 0 0 auto;
+    }
+    .health-dot.ok { background: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
+    .health-dot.warn { background: var(--yellow); box-shadow: 0 0 0 4px var(--yellow-soft); }
+    .health-copy { min-width: 0; }
+    .health-copy small { display: block; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .health-copy strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #toast {
+      position: sticky;
+      top: 12px;
+      z-index: 20;
+      margin-top: 12px;
+      border-radius: 12px;
+      padding: 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    #toast:not(:empty) {
+      padding: 11px 13px;
+      background: white;
+      border: 1px solid currentColor;
+      box-shadow: var(--shadow);
+    }
+    .ok { color: var(--green-dark); }
+    .warn { color: #b54708; }
+    .bad { color: var(--red); }
+
+    .section { margin-top: 18px; }
+    .card {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 18px;
       box-shadow: var(--shadow);
     }
-    .status-card { padding: 16px; }
-    .status-label { color: var(--muted); font-size: 12px; font-weight: 700; }
-    .status-value { margin-top: 6px; font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
-    .status-note { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
-    .ok { color: var(--green); }
-    .warn { color: #b7791f; }
-    .bad { color: var(--red); }
 
-    .section { margin-top: 18px; }
-    .platform-grid, .queue-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
+    .launch-card {
+      padding: 22px;
+      box-shadow: var(--shadow-lg);
     }
-    .card { padding: 20px; }
-    .card-head {
+    .launch-head {
       display: flex;
       justify-content: space-between;
+      gap: 18px;
       align-items: flex-start;
-      gap: 16px;
       margin-bottom: 18px;
     }
-    .card-head h2 { margin: 0; font-size: 19px; letter-spacing: -.02em; }
-    .card-head p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .platform-badge {
+    .launch-head h2, .card-title {
+      margin: 0;
+      letter-spacing: -.025em;
+    }
+    .launch-head h2 { font-size: 21px; }
+    .launch-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .ready-badge {
       border-radius: 999px;
       padding: 6px 10px;
+      background: var(--green-soft);
+      color: var(--green-dark);
+      font-weight: 900;
       font-size: 11px;
-      font-weight: 800;
       white-space: nowrap;
     }
-    .amazon-badge { background: #fff3e8; color: #9a4d00; }
-    .ml-badge { background: var(--yellow-soft); color: #7a5b00; }
 
-    .field-label { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 800; color: #344054; }
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      border: 1px solid #cfd7e4;
-      border-radius: 11px;
-      padding: 12px 13px;
-      font: inherit;
-      color: var(--text);
-      background: white;
-      outline: none;
-      transition: border .15s, box-shadow .15s;
+    .launch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
     }
-    input:focus { border-color: #7aa7ff; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-    .input-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; }
+    .launch-action {
+      position: relative;
+      overflow: hidden;
+      border-radius: 17px;
+      padding: 20px;
+      min-height: 176px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+    .launch-action.amazon {
+      background: linear-gradient(145deg, #fffaf4, #fff);
+      border-color: #fedfbb;
+    }
+    .launch-action.meli {
+      background: linear-gradient(145deg, #fffdf0, #fff);
+      border-color: #fef0c7;
+    }
+    .platform-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    .platform-name {
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: -.02em;
+    }
+    .platform-state {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .launch-action p {
+      margin: 9px 0 16px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 12px;
+      max-width: 440px;
+    }
 
     button, .button-link {
       border: 0;
@@ -133,7 +246,7 @@
       padding: 12px 14px;
       font: inherit;
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 900;
       cursor: pointer;
       text-decoration: none;
       text-align: center;
@@ -144,91 +257,89 @@
       transition: transform .15s, filter .15s, opacity .15s;
     }
     button:hover, .button-link:hover { transform: translateY(-1px); filter: brightness(.98); }
-    button:disabled, .button-link.disabled { opacity: .45; pointer-events: none; transform: none; }
+    button:disabled, .button-link.disabled {
+      opacity: .42;
+      pointer-events: none;
+      transform: none;
+      cursor: not-allowed;
+    }
     .primary { background: var(--blue); color: white; }
+    .primary:hover { background: var(--blue-dark); }
     .success { background: var(--green); color: white; }
-    .secondary { background: #e9eef6; color: #24324a; }
+    .secondary { background: #eef2f6; color: #344054; }
     .dark { background: var(--navy); color: white; }
-    .danger { background: #fee4e2; color: var(--red); }
-    .yellow { background: #ffe600; color: #1f2937; }
-    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
-    .actions > * { flex: 1 1 150px; }
-
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      margin-top: 8px;
+    .danger { background: var(--red-soft); color: var(--red); }
+    .yellow { background: #ffe600; color: #172033; }
+    .big-action {
+      width: 100%;
+      min-height: 48px;
+      font-size: 14px;
     }
-    .notice {
-      margin-top: 12px;
-      border-radius: 11px;
-      padding: 11px 12px;
-      font-size: 12px;
-      line-height: 1.5;
+
+    .flow-card { padding: 20px; display: none; }
+    .flow-card.visible { display: block; }
+    .flow-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .flow-top h2 { margin: 0; font-size: 18px; }
+    .flow-top p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .flow-label {
+      padding: 6px 9px;
+      border-radius: 999px;
       background: var(--blue-soft);
-      color: #1d4ed8;
-      border: 1px solid #dbeafe;
+      color: var(--blue-dark);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
     }
-    .notice.warn-box {
-      background: #fffbeb;
-      border-color: #fde68a;
-      color: #92400e;
-    }
-
-    .steps { display: grid; gap: 8px; margin: 14px 0; }
-    .step {
+    .stepper {
       display: grid;
-      grid-template-columns: 26px minmax(0,1fr);
-      gap: 9px;
-      align-items: start;
-      color: #475467;
-      font-size: 12px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
     }
-    .step-number {
-      width: 26px; height: 26px; border-radius: 50%;
-      display: grid; place-items: center;
-      background: #eef2f6; color: #344054; font-weight: 900;
-    }
-    .step strong { display: block; color: #24324a; margin-bottom: 2px; }
-
-    .offer-box {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 14px;
+    .flow-step {
+      position: relative;
+      min-height: 76px;
       border: 1px solid var(--line);
-      background: var(--surface-soft);
+      border-radius: 13px;
+      padding: 11px;
+      background: var(--surface-2);
+      color: var(--muted);
     }
-    .offer-title { font-size: 14px; font-weight: 850; line-height: 1.4; }
-    .offer-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    .pill {
-      display: inline-flex; align-items: center; gap: 4px;
-      border-radius: 999px; padding: 6px 9px;
-      background: #eef2ff; color: #3730a3;
-      font-size: 11px; font-weight: 800;
+    .flow-step strong { display: block; color: #344054; font-size: 12px; margin-bottom: 4px; }
+    .flow-step span { font-size: 11px; line-height: 1.35; }
+    .flow-step.active {
+      border-color: #93c5fd;
+      background: var(--blue-soft);
     }
-    .pill.green { background: var(--green-soft); color: #047857; }
-    .pill.yellow { background: var(--yellow-soft); color: #7a5b00; }
-
-    .saved-link {
-      margin-top: 9px;
-      padding: 10px 11px;
-      border-radius: 10px;
+    .flow-step.active strong { color: var(--blue-dark); }
+    .flow-step.done {
+      border-color: #abefc6;
       background: var(--green-soft);
-      color: #05603f;
-      font-size: 12px;
-      word-break: break-all;
     }
-
-    details.config {
-      margin-top: 16px;
-      border-top: 1px solid var(--line);
-      padding-top: 12px;
+    .flow-step.done strong { color: var(--green-dark); }
+    .flow-step.error {
+      border-color: #fecdca;
+      background: var(--red-soft);
     }
-    details.config summary { cursor: pointer; color: #475467; font-weight: 800; font-size: 12px; }
-    .config-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 12px; }
+    .flow-step.error strong { color: var(--red); }
 
-    .preview-layout { display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 18px; }
+    .review-card { padding: 20px; }
+    .review-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
+      gap: 18px;
+    }
+    .review-main {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 18px;
+      min-width: 0;
+    }
     .offer-image {
       display: none;
       width: 100%;
@@ -240,329 +351,453 @@
     }
     .message {
       white-space: pre-wrap;
-      min-height: 210px;
+      min-height: 220px;
       border-radius: 14px;
       padding: 15px;
       background: #0f172a;
-      color: #e2e8f0;
-      font: 13px/1.55 Consolas, "Courier New", monospace;
+      color: #dbeafe;
+      font: 12px/1.55 Consolas, "Courier New", monospace;
       overflow: auto;
     }
-    .meta { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
-
-    .send-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-    .send-actions .wide { grid-column: 1 / -1; }
+    .empty-message {
+      color: #98a2b3;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      min-height: 220px;
+      padding: 26px;
+      background: var(--surface-2);
+      border: 1px dashed #d0d5dd;
+      border-radius: 14px;
+      font-size: 13px;
+    }
+    .meta { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 6px 9px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .review-side {
+      border-left: 1px solid var(--line);
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
     .group-box {
       padding: 13px;
       border-radius: 12px;
-      background: var(--surface-soft);
+      background: var(--surface-2);
       border: 1px solid var(--line);
-      margin-bottom: 14px;
     }
     .group-box small { display: block; color: var(--muted); margin-bottom: 4px; }
-    .group-box strong { font-size: 16px; }
+    .group-box strong { font-size: 15px; }
+    .send-actions { display: grid; gap: 9px; }
+    .send-actions button { width: 100%; }
+    .send-note { color: var(--muted); font-size: 11px; line-height: 1.45; }
 
-    .monitor-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
-    .monitor-item { padding: 12px; border: 1px solid var(--line); background: var(--surface-soft); border-radius: 12px; }
-    .monitor-item small { color: var(--muted); display: block; margin-bottom: 5px; }
-    .monitor-item strong { font-size: 13px; }
-
-    #toast {
-      position: sticky;
-      top: 12px;
-      z-index: 4;
-      min-height: 0;
-      margin-top: 16px;
-      border-radius: 12px;
-      padding: 0;
-      font-size: 13px;
-      font-weight: 750;
+    details.toolbox {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
-    #toast:not(:empty) { padding: 11px 13px; border: 1px solid currentColor; background: white; }
+    details.toolbox + details.toolbox { margin-top: 10px; }
+    details.toolbox > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 16px 18px;
+      font-weight: 900;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    details.toolbox > summary::-webkit-details-marker { display: none; }
+    details.toolbox > summary::after {
+      content: "+";
+      color: #98a2b3;
+      font-size: 19px;
+      line-height: 1;
+    }
+    details.toolbox[open] > summary::after { content: "−"; }
+    .toolbox-body {
+      border-top: 1px solid var(--line);
+      padding: 18px;
+    }
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .tool-block {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 14px;
+      background: var(--surface-2);
+    }
+    .tool-block h3 { margin: 0 0 5px; font-size: 13px; }
+    .tool-block p { margin: 0 0 11px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .field-label { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 900; color: #344054; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      border: 1px solid #cfd7e4;
+      border-radius: 10px;
+      padding: 11px 12px;
+      font: inherit;
+      color: var(--text);
+      background: white;
+      outline: none;
+    }
+    input:focus { border-color: #84adff; box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+    .input-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .actions > * { flex: 1 1 140px; }
+    .hint { color: var(--muted); font-size: 11px; line-height: 1.45; margin-top: 7px; }
+    .offer-box {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 11px;
+      padding: 11px;
+    }
+    .offer-title { font-weight: 900; font-size: 12px; line-height: 1.4; }
+    .offer-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+    .saved-link {
+      margin-top: 8px;
+      padding: 9px 10px;
+      border-radius: 9px;
+      background: var(--green-soft);
+      color: var(--green-dark);
+      font-size: 11px;
+      word-break: break-all;
+    }
+    .notice {
+      margin-top: 9px;
+      border-radius: 10px;
+      padding: 10px 11px;
+      font-size: 11px;
+      line-height: 1.45;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+      border: 1px solid #dbeafe;
+    }
+    .notice.warn-box {
+      background: var(--yellow-soft);
+      border-color: #fedf89;
+      color: #93370d;
+    }
 
+    .monitor-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .monitor-item {
+      padding: 10px;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 10px;
+    }
+    .monitor-item small { color: var(--muted); display: block; margin-bottom: 4px; font-size: 10px; }
+    .monitor-item strong { font-size: 12px; }
     pre {
       margin: 0;
       white-space: pre-wrap;
       word-break: break-word;
       background: #0b1220;
       color: #cfe1ff;
-      border-radius: 14px;
-      padding: 15px;
-      min-height: 180px;
-      max-height: 360px;
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 160px;
+      max-height: 330px;
       overflow: auto;
-      font: 12px/1.55 Consolas, monospace;
+      font: 11px/1.55 Consolas, monospace;
     }
 
-    @media (max-width: 950px) {
-      .status-grid { grid-template-columns: repeat(2,1fr); }
-      .platform-grid, .queue-grid { grid-template-columns: 1fr; }
-      .topbar-inner { align-items: flex-start; flex-direction: column; }
+    @media (max-width: 900px) {
+      .hero-inner { flex-direction: column; align-items: flex-start; }
       .runtime { width: 100%; }
+      .launch-grid, .review-grid, .tool-grid { grid-template-columns: 1fr; }
+      .review-side { border-left: 0; border-top: 1px solid var(--line); padding: 16px 0 0; }
     }
-    @media (max-width: 650px) {
-      .shell { padding-left: 14px; padding-right: 14px; }
-      .status-grid, .monitor-grid, .config-grid, .preview-layout, .send-actions { grid-template-columns: 1fr; }
-      .send-actions .wide { grid-column: auto; }
-      .input-row { grid-template-columns: 1fr; }
+    @media (max-width: 680px) {
+      .hero { padding-left: 15px; padding-right: 15px; }
+      .shell { padding-left: 12px; padding-right: 12px; }
+      .health { grid-template-columns: 1fr; }
+      .stepper { grid-template-columns: 1fr 1fr; }
+      .review-main { grid-template-columns: 1fr; }
+      .config-grid, .input-row { grid-template-columns: 1fr; }
+      .monitor-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-inner">
+  <header class="hero">
+    <div class="hero-inner">
       <div>
-        <div class="eyebrow">Operação de afiliados</div>
-        <h1>Central de Ofertas</h1>
-        <p>Amazon e Mercado Livre em um único fluxo: buscar, validar o link, preparar a mensagem e revisar no WhatsApp antes do envio.</p>
+        <div class="eyebrow">Central de afiliados</div>
+        <h1>Ofertas prontas, sem complicação.</h1>
+        <p>Escolha a plataforma, deixe o sistema buscar e preparar tudo, revise no WhatsApp e confirme o envio.</p>
       </div>
       <div class="runtime">
-        <small>Execução agora</small>
-        <strong id="execucao">Carregando status...</strong>
+        <small>Agora</small>
+        <strong id="execucao">Carregando...</strong>
       </div>
     </div>
   </header>
 
   <main class="shell">
-    <section class="status-grid">
-      <div class="status-card">
-        <div class="status-label">WhatsApp</div>
-        <div id="sessao" class="status-value">...</div>
-        <div id="grupo" class="status-note">...</div>
+    <section class="health">
+      <div class="health-item">
+        <span id="whatsappDot" class="health-dot"></span>
+        <div class="health-copy">
+          <small>WhatsApp</small>
+          <strong id="sessao">...</strong>
+          <span id="grupo" style="display:none"></span>
+        </div>
       </div>
-      <div class="status-card">
-        <div class="status-label">Amazon Associados</div>
-        <div id="afiliado" class="status-value">...</div>
-        <div class="status-note">Tracking ID aplicado às ofertas Amazon</div>
+      <div class="health-item">
+        <span id="amazonDot" class="health-dot"></span>
+        <div class="health-copy">
+          <small>Amazon</small>
+          <strong id="afiliado">...</strong>
+        </div>
       </div>
-      <div class="status-card">
-        <div class="status-label">Mercado Livre</div>
-        <div id="mercadoLivreStatus" class="status-value">...</div>
-        <div id="mercadoLivreApi" class="status-note">...</div>
+      <div class="health-item">
+        <span id="meliDot" class="health-dot"></span>
+        <div class="health-copy">
+          <small>Mercado Livre</small>
+          <strong id="mercadoLivreStatus">...</strong>
+          <span id="mercadoLivreApi" style="display:none"></span>
+        </div>
       </div>
-      <div class="status-card">
-        <div class="status-label">Filtro mínimo</div>
-        <div id="desconto" class="status-value">...</div>
-        <div class="status-note">Desconto necessário para entrar na fila</div>
-      </div>
+      <span id="desconto" style="display:none"></span>
     </section>
 
     <div id="toast"></div>
 
-    <section class="platform-grid section">
-      <article class="card">
-        <div class="card-head">
+    <section class="card launch-card section">
+      <div class="launch-head">
+        <div>
+          <h2>O que você quer publicar?</h2>
+          <p>Um clique inicia o fluxo completo. O envio final continua dependendo da sua confirmação.</p>
+        </div>
+        <span class="ready-badge">Modo operacional</span>
+      </div>
+
+      <div class="launch-grid">
+        <article class="launch-action amazon">
           <div>
-            <h2>Amazon</h2>
-            <p>Fluxo automatizado com rotação de categorias, score e Tracking ID.</p>
+            <div class="platform-top">
+              <div class="platform-name">Amazon</div>
+              <div id="amazonLaunchState" class="platform-state">Verificando...</div>
+            </div>
+            <p>Busca a melhor oferta, aplica seu Tracking ID e abre a mensagem pronta no WhatsApp.</p>
           </div>
-          <span class="platform-badge amazon-badge">Fluxo completo</span>
-        </div>
+          <button class="primary big-action" data-action="fluxo">✨ Criar oferta Amazon</button>
+        </article>
 
-        <label class="field-label" for="amazonTag">Tracking ID</label>
-        <div class="input-row">
-          <input id="amazonTag" type="text" placeholder="ex.: minha-loja-20" />
-          <button class="success" data-action="afiliado-save">Salvar</button>
-        </div>
-        <div class="hint">Aceita o Tracking ID ou um link Amazon que contenha <code>?tag=</code>.</div>
-
-        <div id="linkAfiliadoBox" class="saved-link" style="display:none">
-          <strong>Último link:</strong>
-          <a id="linkAfiliado" target="_blank" rel="noreferrer"></a>
-        </div>
-
-        <div class="actions">
-          <button class="primary" data-action="fluxo">✨ Nova oferta Amazon</button>
-          <button class="secondary" data-action="buscar">🔎 Só buscar</button>
-          <a class="button-link secondary" href="https://associados.amazon.com.br/" target="_blank" rel="noreferrer">Portal Amazon</a>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="card-head">
+        <article class="launch-action meli">
           <div>
-            <h2>Mercado Livre</h2>
-            <p>Busca via API oficial. O link de comissão continua vindo do Gerador de Links oficial.</p>
+            <div class="platform-top">
+              <div class="platform-name">Mercado Livre</div>
+              <div id="meliLaunchState" class="platform-state">Verificando...</div>
+            </div>
+            <p>Busca a oferta, gera o link oficial automaticamente e prepara tudo para revisão no WhatsApp.</p>
           </div>
-          <span class="platform-badge ml-badge">Link oficial obrigatório</span>
-        </div>
-
-        <div class="steps">
-          <div class="step"><span class="step-number">1</span><div><strong>Buscar oferta</strong>Seleciona produto novo, vendedor verde e desconto válido.</div></div>
-          <div class="step"><span class="step-number">2</span><div><strong>Gerar link</strong>Abre Afiliados no mesmo navegador e copia a URL do produto.</div></div>
-          <div class="step"><span class="step-number">3</span><div><strong>Salvar link oficial</strong>Cole o <code>meli.la</code> ou link <code>/sec/</code> gerado pelo Mercado Livre.</div></div>
-          <div class="step"><span class="step-number">4</span><div><strong>Preparar WhatsApp</strong>Gera a mensagem e reutiliza o mesmo fluxo de revisão do WhatsApp.</div></div>
-        </div>
-
-        <div class="actions">
-          <button class="success" data-action="mercadolivre-fluxo">⚡ Fluxo automático ML</button>
-          <button class="yellow" data-action="mercadolivre-buscar">🔎 Só buscar</button>
-          <button id="mlGerarLink" class="primary" type="button">🔗 Só gerar link</button>
-          <a class="button-link secondary" href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noreferrer">Abrir Afiliados</a>
-        </div>
-
-        <div id="mlAutomationStatus" class="notice warn-box">
-          Automação Meli: verificando extensão do navegador...
-        </div>
-        <div id="mlFlowStatus" class="notice" style="display:none">
-          Fluxo Mercado Livre aguardando início.
-        </div>
-
-        <details class="config">
-          <summary>Instalar automação do Gerador de Links (uma vez)</summary>
-          <div class="hint" style="margin-top:10px">
-            No Chrome, abra <code>chrome://extensions/</code>, ative <strong>Modo do desenvolvedor</strong>,
-            clique em <strong>Carregar sem compactação</strong> e selecione:
-          </div>
-          <div class="saved-link" style="margin-top:8px">
-            C:\projeto01\browser-extension\mercadolivre-affiliate
-          </div>
-          <div class="hint">
-            A extensão usa sua sessão já conectada no Mercado Livre, preenche o Gerador de Links
-            oficial e devolve somente o link gerado ao painel. O preenchimento manual continua
-            disponível como fallback.
-          </div>
-        </details>
-
-        <div id="mlOfertaBox" class="offer-box" style="display:none">
-          <div class="offer-title" id="mlOfertaTitulo"></div>
-          <div class="offer-stats">
-            <span class="pill yellow" id="mlOfertaPreco"></span>
-            <span class="pill green" id="mlOfertaDesconto"></span>
-          </div>
-          <div style="margin-top:10px">
-            <a id="mlOfertaLink" target="_blank" rel="noreferrer">Abrir produto</a>
-          </div>
-        </div>
-
-        <div style="margin-top:14px">
-          <label class="field-label" for="mlAffiliateLink">Link oficial de afiliado</label>
-          <div class="input-row">
-            <input id="mlAffiliateLink" type="text" placeholder="Cole aqui o link meli.la ou /sec/ gerado pelo Mercado Livre" />
-            <button class="success" data-action="mercadolivre-link-save">Validar e salvar</button>
-          </div>
-          <div id="mlAffiliateSavedBox" class="saved-link" style="display:none">
-            <strong>Link validado:</strong>
-            <a id="mlAffiliateSaved" target="_blank" rel="noreferrer"></a>
-          </div>
-        </div>
-
-        <button style="width:100%;margin-top:12px" class="dark" data-action="mercadolivre-preparar">
-          💬 Preparar Mercado Livre no WhatsApp
-        </button>
-
-        <div class="notice warn-box">
-          O painel não inventa parâmetros de afiliado. A oferta ML só é liberada para o WhatsApp depois que um link oficial é validado.
-        </div>
-
-        <details class="config" open>
-          <summary>Configuração da API Mercado Livre</summary>
-
-          <div class="notice" style="margin-top:12px">
-            <strong>Ordem correta:</strong> 1) salve App ID + Secret Key; 2) salve o Redirect URI HTTPS que está cadastrado no DevCenter; 3) clique em Autorizar OAuth.
-          </div>
-
-          <div class="hint" style="margin-top:12px"><strong>1. Credenciais do aplicativo</strong></div>
-          <div class="config-grid">
-            <input id="mlClientId" type="text" placeholder="App ID" autocomplete="off" />
-            <input id="mlClientSecret" type="password" placeholder="Secret Key" autocomplete="off" />
-            <button class="success" data-action="mercadolivre-config-save">Salvar credenciais</button>
-          </div>
-
-          <div class="hint" style="margin-top:12px"><strong>2. Redirect URI HTTPS</strong></div>
-          <div class="input-row">
-            <input id="mlRedirectUriInput" type="text" placeholder="https://seu-endereco/oauth/mercadolivre/callback" autocomplete="off" />
-            <button class="success" data-action="mercadolivre-redirect-save">Salvar Redirect</button>
-          </div>
-          <div class="hint">
-            Esta URL precisa ser exatamente a mesma cadastrada no DevCenter e terminar em
-            <code>/oauth/mercadolivre/callback</code>.
-          </div>
-
-          <div class="hint" style="margin-top:12px"><strong>3. Autorizar a conta</strong></div>
-          <div class="actions">
-            <a id="mlConnect" class="button-link primary disabled" href="/mercadolivre/connect" target="_blank" rel="noreferrer">Autorizar OAuth</a>
-          </div>
-          <div class="hint">Redirect ativo: <strong id="mlRedirectUri">não configurado</strong></div>
-        </details>
-      </article>
+          <button class="success big-action" data-action="mercadolivre-fluxo">⚡ Criar oferta Mercado Livre</button>
+        </article>
+      </div>
     </section>
 
-    <section class="queue-grid section">
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>Oferta preparada</h2>
-            <p>Prévia do pacote que será aberto no WhatsApp.</p>
-          </div>
+    <section id="flowCard" class="card flow-card section">
+      <div class="flow-top">
+        <div>
+          <h2 id="flowTitle">Fluxo em andamento</h2>
+          <p id="flowDescription">Acompanhando a preparação da oferta.</p>
         </div>
-        <div class="preview-layout">
+        <span id="flowBadge" class="flow-label">Processando</span>
+      </div>
+
+      <div id="mlStepper" class="stepper">
+        <div id="stepSearch" class="flow-step">
+          <strong>1 · Buscar</strong>
+          <span>Encontrar oferta elegível</span>
+        </div>
+        <div id="stepLink" class="flow-step">
+          <strong>2 · Link oficial</strong>
+          <span>Gerar e validar meli.la</span>
+        </div>
+        <div id="stepPrepare" class="flow-step">
+          <strong>3 · Preparar</strong>
+          <span>Montar mensagem e imagem</span>
+        </div>
+        <div id="stepReview" class="flow-step">
+          <strong>4 · Revisar</strong>
+          <span>Aguardar confirmação no WhatsApp</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card review-card section">
+      <div class="launch-head">
+        <div>
+          <h2>Oferta para revisão</h2>
+          <p>Quando uma oferta estiver pronta, ela aparece aqui para você conferir antes do envio.</p>
+        </div>
+        <span id="reviewOrigin" class="ready-badge">Aguardando oferta</span>
+      </div>
+
+      <div class="review-grid">
+        <div class="review-main">
           <img id="imagemOferta" class="offer-image" alt="Imagem da oferta" />
           <div>
             <div class="meta">
-              <span class="pill">Categoria <strong id="categoriaOferta">-</strong></span>
-              <span class="pill">Comissão <strong id="comissaoOferta">-</strong></span>
-              <span class="pill">Score <strong id="scoreOferta">-</strong></span>
+              <span class="pill">Categoria&nbsp;<strong id="categoriaOferta">-</strong></span>
+              <span class="pill">Comissão&nbsp;<strong id="comissaoOferta">-</strong></span>
+              <span class="pill">Score&nbsp;<strong id="scoreOferta">-</strong></span>
             </div>
-            <div id="mensagem" class="message">Ainda não há mensagem preparada.</div>
-          </div>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2>Revisão e envio</h2>
-            <p>O envio só acontece depois da sua confirmação.</p>
+            <div id="mensagem" class="empty-message">Nenhuma oferta preparada ainda.</div>
           </div>
         </div>
 
-        <div class="group-box">
-          <small>Grupo configurado</small>
-          <strong id="grupoEnvio">...</strong>
-        </div>
-
-        <div class="send-actions">
-          <button class="success" data-action="preparar-send">📤 Enviar agora</button>
-          <button id="sendNextButton" class="primary" data-action="preparar-send-next">📤 Enviar + próxima</button>
-          <button class="secondary" data-action="preparar">🖼️ Reabrir oferta</button>
-          <button class="danger" data-action="preparar-cancel">✕ Descartar preparação</button>
-          <button class="secondary wide" data-action="login">🔐 Login do WhatsApp</button>
-        </div>
-
-        <div class="notice">
-          Com a automação Meli conectada, “Enviar + próxima” também funciona para Mercado Livre:
-          busca outra oferta, gera outro link oficial e prepara a próxima mensagem automaticamente.
-        </div>
-      </article>
-    </section>
-
-    <section class="card section">
-      <div class="card-head">
-        <div>
-          <h2>Monitoramento</h2>
-          <p>Parâmetros que controlam rotação e repetição.</p>
-        </div>
-        <div class="actions" style="margin:0">
-          <button class="secondary" data-action="automatico-start">▶ Monitorar</button>
-          <button class="danger" data-action="automatico-stop">■ Parar</button>
-          <button class="secondary" data-action="historico-clear">↺ Limpar histórico</button>
-        </div>
-      </div>
-      <div class="monitor-grid">
-        <div class="monitor-item"><small>Consultas Amazon</small><strong id="consultas">...</strong></div>
-        <div class="monitor-item"><small>Cooldown</small><strong id="cooldown">...</strong></div>
-        <div class="monitor-item"><small>Ofertas bloqueadas</small><strong id="bloqueadas">0</strong></div>
+        <aside class="review-side">
+          <div class="group-box">
+            <small>Destino</small>
+            <strong id="grupoEnvio">...</strong>
+          </div>
+          <div class="send-actions">
+            <button class="success" data-action="preparar-send">📤 Enviar agora</button>
+            <button id="sendNextButton" class="primary" data-action="preparar-send-next">📤 Enviar + próxima</button>
+            <button class="danger" data-action="preparar-cancel">✕ Descartar</button>
+          </div>
+          <div class="send-note">
+            “Enviar + próxima” envia a oferta atual e inicia automaticamente outra da mesma plataforma.
+          </div>
+        </aside>
       </div>
     </section>
 
-    <details class="card section">
-      <summary style="cursor:pointer;font-weight:850">Atividade técnica e logs</summary>
-      <div style="display:flex;justify-content:flex-end;margin:12px 0 8px">
-        <button class="secondary" data-action="limpar-logs">Limpar logs</button>
-      </div>
-      <pre id="logs">Aguardando atividade...</pre>
-    </details>
+    <section class="section">
+      <details class="toolbox">
+        <summary>Ferramentas avançadas e fallback manual</summary>
+        <div class="toolbox-body">
+          <div class="tool-grid">
+            <div class="tool-block">
+              <h3>Amazon · ações manuais</h3>
+              <p>Use apenas para diagnóstico ou quando quiser buscar sem abrir o WhatsApp.</p>
+              <div class="actions">
+                <button class="secondary" data-action="buscar">🔎 Só buscar Amazon</button>
+                <a class="button-link secondary" href="https://associados.amazon.com.br/" target="_blank" rel="noreferrer">Portal Amazon</a>
+              </div>
+              <div id="linkAfiliadoBox" class="saved-link" style="display:none">
+                <strong>Último link:</strong>
+                <a id="linkAfiliado" target="_blank" rel="noreferrer"></a>
+              </div>
+            </div>
+
+            <div class="tool-block">
+              <h3>Mercado Livre · fallback manual</h3>
+              <p>Se a automação falhar, você ainda pode buscar, gerar e salvar o link manualmente.</p>
+              <div class="actions">
+                <button class="yellow" data-action="mercadolivre-buscar">🔎 Só buscar ML</button>
+                <button id="mlGerarLink" class="primary" type="button">🔗 Só gerar link</button>
+                <a class="button-link secondary" href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noreferrer">Abrir Afiliados</a>
+              </div>
+
+              <div id="mlAutomationStatus" class="notice warn-box">Verificando automação Meli...</div>
+              <div id="mlFlowStatus" class="notice" style="display:none"></div>
+
+              <div id="mlOfertaBox" class="offer-box" style="display:none">
+                <div class="offer-title" id="mlOfertaTitulo"></div>
+                <div class="offer-stats">
+                  <span class="pill" id="mlOfertaPreco"></span>
+                  <span class="pill" id="mlOfertaDesconto"></span>
+                </div>
+                <div style="margin-top:7px"><a id="mlOfertaLink" target="_blank" rel="noreferrer">Abrir produto</a></div>
+              </div>
+
+              <label class="field-label" for="mlAffiliateLink" style="margin-top:11px">Link oficial</label>
+              <div class="input-row">
+                <input id="mlAffiliateLink" type="text" placeholder="Cole meli.la ou /sec/" />
+                <button class="success" data-action="mercadolivre-link-save">Salvar</button>
+              </div>
+              <div id="mlAffiliateSavedBox" class="saved-link" style="display:none">
+                <a id="mlAffiliateSaved" target="_blank" rel="noreferrer"></a>
+              </div>
+              <button style="width:100%;margin-top:9px" class="dark" data-action="mercadolivre-preparar">Preparar ML no WhatsApp</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="toolbox">
+        <summary>Configurações das contas</summary>
+        <div class="toolbox-body">
+          <div class="tool-grid">
+            <div class="tool-block">
+              <h3>Amazon Associados</h3>
+              <p>Seu Tracking ID é aplicado automaticamente às ofertas Amazon.</p>
+              <label class="field-label" for="amazonTag">Tracking ID</label>
+              <div class="input-row">
+                <input id="amazonTag" type="text" placeholder="ex.: minha-loja-20" />
+                <button class="success" data-action="afiliado-save">Salvar</button>
+              </div>
+            </div>
+
+            <div class="tool-block">
+              <h3>WhatsApp</h3>
+              <p>Login e sessão persistente usados para preparar as mensagens no grupo configurado.</p>
+              <button style="width:100%" class="secondary" data-action="login">🔐 Conectar / renovar login</button>
+              <button style="width:100%;margin-top:8px" class="secondary" data-action="preparar">🖼️ Reabrir oferta atual</button>
+            </div>
+
+            <div class="tool-block" style="grid-column:1/-1">
+              <h3>Mercado Livre API</h3>
+              <p>Configuração técnica do OAuth. Depois de conectada, normalmente você não precisa mexer aqui.</p>
+              <div class="config-grid">
+                <input id="mlClientId" type="text" placeholder="App ID" autocomplete="off" />
+                <input id="mlClientSecret" type="password" placeholder="Secret Key" autocomplete="off" />
+                <button class="success" data-action="mercadolivre-config-save">Salvar credenciais</button>
+              </div>
+              <div class="input-row" style="margin-top:8px">
+                <input id="mlRedirectUriInput" type="text" placeholder="Redirect URI HTTPS" autocomplete="off" />
+                <button class="success" data-action="mercadolivre-redirect-save">Salvar Redirect</button>
+              </div>
+              <div class="actions">
+                <a id="mlConnect" class="button-link primary disabled" href="/mercadolivre/connect" target="_blank" rel="noreferrer">Autorizar OAuth</a>
+              </div>
+              <div class="hint">Redirect ativo: <strong id="mlRedirectUri">não configurado</strong></div>
+            </div>
+
+            <div class="tool-block" style="grid-column:1/-1">
+              <h3>Extensão Meli</h3>
+              <p>Instalação única para automatizar o Gerador de Links no Chrome.</p>
+              <div class="saved-link">C:\projeto01\browser-extension\mercadolivre-affiliate</div>
+              <div class="hint">Chrome → chrome://extensions → Modo do desenvolvedor → Carregar sem compactação.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="toolbox">
+        <summary>Monitoramento, histórico e logs</summary>
+        <div class="toolbox-body">
+          <div class="monitor-grid">
+            <div class="monitor-item"><small>Consultas Amazon</small><strong id="consultas">...</strong></div>
+            <div class="monitor-item"><small>Cooldown</small><strong id="cooldown">...</strong></div>
+            <div class="monitor-item"><small>Ofertas bloqueadas</small><strong id="bloqueadas">0</strong></div>
+          </div>
+          <div class="actions">
+            <button class="secondary" data-action="automatico-start">▶ Monitorar</button>
+            <button class="danger" data-action="automatico-stop">■ Parar</button>
+            <button class="secondary" data-action="historico-clear">↺ Limpar histórico</button>
+            <button class="secondary" data-action="limpar-logs">Limpar logs</button>
+          </div>
+          <pre id="logs" style="margin-top:10px">Aguardando atividade...</pre>
+        </div>
+      </details>
+    </section>
   </main>
 
   <script>
@@ -576,6 +811,12 @@
       if (tipo) el.classList.add(tipo);
     }
 
+    function setDot(id, tipo) {
+      const el = $(id);
+      el.classList.remove("ok", "warn");
+      if (tipo) el.classList.add(tipo);
+    }
+
     function moeda(valor) {
       return Number(valor || 0).toLocaleString("pt-BR", {
         style: "currency",
@@ -586,6 +827,72 @@
     function toast(texto, tipo = "warn") {
       $("toast").textContent = texto;
       $("toast").className = tipo;
+    }
+
+    function setStep(id, estado) {
+      const el = $(id);
+      el.classList.remove("active", "done", "error");
+      if (estado) el.classList.add(estado);
+    }
+
+    function renderFluxoMeli(s, preparando) {
+      const etapa = s.mercadoLivreFluxoEtapa || "idle";
+      const mensagem = s.mercadoLivreFluxoMensagem || "";
+      const ativo = s.mercadoLivreFluxoAutomatico || etapa !== "idle";
+      const card = $("flowCard");
+
+      if (!ativo && !preparando) {
+        card.classList.remove("visible");
+        return;
+      }
+
+      card.classList.add("visible");
+      $("flowTitle").textContent =
+        s.origemPreparacaoAtual === "mercado-livre" || ativo
+          ? "Fluxo Mercado Livre"
+          : "Oferta em preparação";
+      $("flowDescription").textContent =
+        mensagem ||
+        (preparando
+          ? "WhatsApp aberto aguardando sua revisão."
+          : "Acompanhando a preparação da oferta.");
+
+      const rotulos = {
+        searching: "Buscando oferta",
+        linking: "Gerando link",
+        preparing: "Preparando WhatsApp",
+        "waiting-send": "Aguardando revisão",
+        error: "Atenção necessária",
+        idle: preparando ? "Aguardando revisão" : "Pronto"
+      };
+      $("flowBadge").textContent = rotulos[etapa] || "Processando";
+
+      ["stepSearch", "stepLink", "stepPrepare", "stepReview"].forEach((id) => setStep(id, ""));
+
+      if (etapa === "searching") setStep("stepSearch", "active");
+      if (etapa === "linking") {
+        setStep("stepSearch", "done");
+        setStep("stepLink", "active");
+      }
+      if (etapa === "preparing") {
+        setStep("stepSearch", "done");
+        setStep("stepLink", "done");
+        setStep("stepPrepare", "active");
+      }
+      if (etapa === "waiting-send" || (preparando && s.origemPreparacaoAtual === "mercado-livre")) {
+        setStep("stepSearch", "done");
+        setStep("stepLink", "done");
+        setStep("stepPrepare", "done");
+        setStep("stepReview", "active");
+      }
+      if (etapa === "error") {
+        if (s.mercadoLivreLinkJob?.status === "error") {
+          setStep("stepSearch", "done");
+          setStep("stepLink", "error");
+        } else {
+          setStep("stepSearch", "error");
+        }
+      }
     }
 
     $("mlGerarLink").addEventListener("click", async () => {
@@ -605,18 +912,12 @@
       if (navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(urlProduto)
           .then(() => toast(
-            "Extensão Meli não conectada. Afiliados foi aberto e a URL do produto foi copiada para geração manual.",
+            "Extensão Meli não conectada. A URL do produto foi copiada para geração manual.",
             "warn"
           ))
-          .catch(() => toast(
-            "Extensão Meli não conectada. Gere o link manualmente e cole no painel.",
-            "warn"
-          ));
+          .catch(() => toast("Gere o link manualmente e cole no painel.", "warn"));
       } else {
-        toast(
-          "Extensão Meli não conectada. Gere o link manualmente e cole no painel.",
-          "warn"
-        );
+        toast("Gere o link manualmente e cole no painel.", "warn");
       }
     });
 
@@ -625,182 +926,6 @@
         const resposta = await fetch("/api/status", { cache: "no-store" });
         const s = await resposta.json();
         estadoAtual = s;
-
-        $("grupo").textContent = s.grupo || "Não configurado";
-        $("grupoEnvio").textContent = s.grupo || "Não configurado";
-
-        $("sessao").textContent = s.sessaoWhatsapp ? "Sessão pronta" : "Não conectada";
-        classeStatus($("sessao"), s.sessaoWhatsapp ? "ok" : "warn");
-
-        $("afiliado").textContent = s.afiliadoConfigurado
-          ? s.afiliadoTag
-          : "Não configurado";
-        classeStatus($("afiliado"), s.afiliadoConfigurado ? "ok" : "warn");
-
-        $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? "API conectada"
-          : s.mercadoLivreAppConfigurada
-            ? "App configurado"
-            : "Configurar";
-        classeStatus(
-          $("mercadoLivreStatus"),
-          s.mercadoLivreApiConfigurada ? "ok" : "warn"
-        );
-        $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada
-          ? (s.mercadoLivreUserId ? "OAuth autorizado · ID " + s.mercadoLivreUserId : "OAuth autorizado")
-          : !s.mercadoLivreAppConfigurada
-            ? "Passo 1/3 · salve App ID e Secret Key"
-            : !s.mercadoLivreRedirectConfigurado
-              ? "Passo 2/3 · configure o Redirect URI HTTPS"
-              : "Passo 3/3 · clique em Autorizar OAuth";
-
-        $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
-
-        if (document.activeElement !== $("amazonTag")) {
-          $("amazonTag").value = s.afiliadoTag || "";
-        }
-        if (
-          !$("mlClientId").value &&
-          document.activeElement !== $("mlClientId")
-        ) {
-          $("mlClientId").value = s.mercadoLivreClientId || "";
-        }
-        $("mlClientSecret").placeholder = s.mercadoLivreAppConfigurada
-          ? "Secret Key já salva — deixe em branco"
-          : "Secret Key";
-
-        if (
-          !$("mlRedirectUriInput").value &&
-          document.activeElement !== $("mlRedirectUriInput")
-        ) {
-          $("mlRedirectUriInput").value = s.mercadoLivreRedirectUri || "";
-        }
-        $("mlRedirectUri").textContent =
-          s.mercadoLivreRedirectUri || "não configurado";
-
-        const mlConnect = $("mlConnect");
-        if (s.mercadoLivreOauthPronto) {
-          mlConnect.classList.remove("disabled");
-          mlConnect.setAttribute("href", "/mercadolivre/connect");
-        } else {
-          mlConnect.classList.add("disabled");
-          mlConnect.removeAttribute("href");
-        }
-
-        const mlAutomationStatus = $("mlAutomationStatus");
-        const mlFlowStatus = $("mlFlowStatus");
-        const mlAutoButton = $("mlGerarLink");
-        const mlJob = s.mercadoLivreLinkJob || null;
-
-        if (s.mercadoLivreExtensionConectada) {
-          mlAutoButton.textContent = "🔗 Só gerar link";
-          mlAutomationStatus.classList.remove("warn-box");
-
-          if (mlJob?.status === "pending") {
-            mlAutomationStatus.textContent =
-              "Automação Meli conectada · aguardando a aba do Mercado Livre.";
-          } else if (mlJob?.status === "running") {
-            mlAutomationStatus.textContent =
-              "Automação Meli conectada · Gerador de Links em execução...";
-          } else if (mlJob?.status === "error") {
-            mlAutomationStatus.textContent =
-              "Automação Meli conectada · última tentativa falhou: " +
-              (mlJob.mensagem || "erro não informado");
-            mlAutomationStatus.classList.add("warn-box");
-          } else if (mlJob?.status === "done") {
-            mlAutomationStatus.textContent =
-              "Automação Meli conectada · último link gerado e salvo com sucesso.";
-          } else {
-            mlAutomationStatus.textContent =
-              "Automação Meli conectada · pronta para gerar links.";
-          }
-        } else {
-          mlAutoButton.textContent = "🔗 Abrir Gerador de Links";
-          mlAutomationStatus.textContent =
-            "Automação Meli não conectada. Instale/ative a extensão abaixo; o fluxo manual continua funcionando.";
-          mlAutomationStatus.classList.add("warn-box");
-        }
-
-        const fluxoEtapa = s.mercadoLivreFluxoEtapa || "idle";
-        const fluxoMensagem = s.mercadoLivreFluxoMensagem || "";
-
-        if (fluxoEtapa !== "idle" || fluxoMensagem) {
-          mlFlowStatus.style.display = "block";
-          mlFlowStatus.textContent =
-            "Fluxo ML · " +
-            (fluxoMensagem || fluxoEtapa);
-          mlFlowStatus.classList.toggle(
-            "warn-box",
-            fluxoEtapa === "error"
-          );
-        } else {
-          mlFlowStatus.style.display = "none";
-          mlFlowStatus.textContent = "";
-        }
-
-        const mlOferta = s.mercadoLivreOferta || {};
-        const mlOfertaBox = $("mlOfertaBox");
-        if (mlOferta.urlProduto) {
-          $("mlOfertaTitulo").textContent = mlOferta.titulo || "Oferta Mercado Livre";
-          $("mlOfertaPreco").textContent = moeda(mlOferta.precoAtual);
-          $("mlOfertaDesconto").textContent = (mlOferta.descontoPercentual || 0) + "% OFF";
-          $("mlOfertaLink").href = mlOferta.urlProduto;
-          mlOfertaBox.style.display = "block";
-        } else {
-          $("mlOfertaLink").removeAttribute("href");
-          mlOfertaBox.style.display = "none";
-        }
-
-        if (document.activeElement !== $("mlAffiliateLink")) {
-          $("mlAffiliateLink").value = mlOferta.urlAfiliado || "";
-        }
-
-        const mlSavedBox = $("mlAffiliateSavedBox");
-        const mlSaved = $("mlAffiliateSaved");
-        if (mlOferta.urlAfiliado) {
-          mlSaved.href = mlOferta.urlAfiliado;
-          mlSaved.textContent = mlOferta.urlAfiliado;
-          mlSavedBox.style.display = "block";
-        } else {
-          mlSaved.removeAttribute("href");
-          mlSaved.textContent = "";
-          mlSavedBox.style.display = "none";
-        }
-
-        const linkBox = $("linkAfiliadoBox");
-        const linkAfiliado = $("linkAfiliado");
-        if (s.linkAfiliadoAtual) {
-          linkAfiliado.href = s.linkAfiliadoAtual;
-          linkAfiliado.textContent = s.linkAfiliadoAtual;
-          linkBox.style.display = "block";
-        } else {
-          linkAfiliado.removeAttribute("href");
-          linkAfiliado.textContent = "";
-          linkBox.style.display = "none";
-        }
-
-        $("consultas").textContent = s.consultas || "-";
-        $("cooldown").textContent =
-          ((s.previewCooldownMinutos || 120) / 60) + "h após busca · " +
-          (s.cooldownHoras || 24) + "h após envio";
-        $("bloqueadas").textContent = String(s.ofertasBloqueadas ?? 0);
-
-        $("categoriaOferta").textContent = s.categoriaAtual || "-";
-        $("comissaoOferta").textContent = s.comissaoAtual ? s.comissaoAtual + "%" : "-";
-        $("scoreOferta").textContent = s.scoreAtual ? String(s.scoreAtual) : "-";
-        $("mensagem").textContent = s.mensagem || "Ainda não há mensagem preparada.";
-
-        const imagem = $("imagemOferta");
-        if (s.imagemUrl) {
-          imagem.src = s.imagemUrl;
-          imagem.style.display = "block";
-        } else {
-          imagem.removeAttribute("src");
-          imagem.style.display = "none";
-        }
-
-        $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
-        $("logs").scrollTop = $("logs").scrollHeight;
 
         const preparando = s.executando.includes("preparar");
         const logando = s.executando.includes("login");
@@ -815,16 +940,172 @@
           s.mercadoLivreFluxoEtapa !== "idle" &&
           s.mercadoLivreFluxoEtapa !== "error";
 
+        $("grupo").textContent = s.grupo || "Não configurado";
+        $("grupoEnvio").textContent = s.grupo || "Não configurado";
+
+        $("sessao").textContent = s.sessaoWhatsapp
+          ? "Conectado · " + (s.grupo || "grupo não definido")
+          : "Não conectado";
+        setDot("whatsappDot", s.sessaoWhatsapp ? "ok" : "warn");
+
+        $("afiliado").textContent = s.afiliadoConfigurado
+          ? "Conectada · " + s.afiliadoTag
+          : "Configurar Tracking ID";
+        setDot("amazonDot", s.afiliadoConfigurado ? "ok" : "warn");
+        $("amazonLaunchState").textContent = s.afiliadoConfigurado ? "Pronta" : "Configuração pendente";
+
+        $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
+          ? (s.mercadoLivreExtensionConectada ? "API + automação prontas" : "API conectada · extensão offline")
+          : "Configuração pendente";
+        setDot(
+          "meliDot",
+          s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada ? "ok" : "warn"
+        );
+        $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "API conectada" : "API pendente";
+        $("meliLaunchState").textContent =
+          s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada
+            ? "Pronto"
+            : "Configuração pendente";
+
+        $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
+
+        if (document.activeElement !== $("amazonTag")) {
+          $("amazonTag").value = s.afiliadoTag || "";
+        }
+        if (!$("mlClientId").value && document.activeElement !== $("mlClientId")) {
+          $("mlClientId").value = s.mercadoLivreClientId || "";
+        }
+        $("mlClientSecret").placeholder = s.mercadoLivreAppConfigurada
+          ? "Secret Key já salva — deixe em branco"
+          : "Secret Key";
+
+        if (
+          !$("mlRedirectUriInput").value &&
+          document.activeElement !== $("mlRedirectUriInput")
+        ) {
+          $("mlRedirectUriInput").value = s.mercadoLivreRedirectUri || "";
+        }
+        $("mlRedirectUri").textContent = s.mercadoLivreRedirectUri || "não configurado";
+
+        const mlConnect = $("mlConnect");
+        if (s.mercadoLivreOauthPronto) {
+          mlConnect.classList.remove("disabled");
+          mlConnect.setAttribute("href", "/mercadolivre/connect");
+        } else {
+          mlConnect.classList.add("disabled");
+          mlConnect.removeAttribute("href");
+        }
+
+        const mlAutomationStatus = $("mlAutomationStatus");
+        const mlFlowStatus = $("mlFlowStatus");
+        const mlJob = s.mercadoLivreLinkJob || null;
+
+        if (s.mercadoLivreExtensionConectada) {
+          mlAutomationStatus.classList.remove("warn-box");
+          if (mlJob?.status === "running") {
+            mlAutomationStatus.textContent = "Automação conectada · gerando link oficial...";
+          } else if (mlJob?.status === "error") {
+            mlAutomationStatus.textContent =
+              "Automação conectada · falha anterior: " + (mlJob.mensagem || "erro não informado");
+            mlAutomationStatus.classList.add("warn-box");
+          } else {
+            mlAutomationStatus.textContent = "Automação Meli conectada e pronta.";
+          }
+        } else {
+          mlAutomationStatus.textContent =
+            "Automação Meli offline. Recarregue a extensão para usar o fluxo completo.";
+          mlAutomationStatus.classList.add("warn-box");
+        }
+
+        const fluxoMensagem = s.mercadoLivreFluxoMensagem || "";
+        if (fluxoMensagem) {
+          mlFlowStatus.style.display = "block";
+          mlFlowStatus.textContent = fluxoMensagem;
+          mlFlowStatus.classList.toggle("warn-box", s.mercadoLivreFluxoEtapa === "error");
+        } else {
+          mlFlowStatus.style.display = "none";
+        }
+
+        renderFluxoMeli(s, preparando);
+
+        const mlOferta = s.mercadoLivreOferta || {};
+        if (mlOferta.urlProduto) {
+          $("mlOfertaTitulo").textContent = mlOferta.titulo || "Oferta Mercado Livre";
+          $("mlOfertaPreco").textContent = moeda(mlOferta.precoAtual);
+          $("mlOfertaDesconto").textContent = (mlOferta.descontoPercentual || 0) + "% OFF";
+          $("mlOfertaLink").href = mlOferta.urlProduto;
+          $("mlOfertaBox").style.display = "block";
+        } else {
+          $("mlOfertaLink").removeAttribute("href");
+          $("mlOfertaBox").style.display = "none";
+        }
+
+        if (document.activeElement !== $("mlAffiliateLink")) {
+          $("mlAffiliateLink").value = mlOferta.urlAfiliado || "";
+        }
+        if (mlOferta.urlAfiliado) {
+          $("mlAffiliateSaved").href = mlOferta.urlAfiliado;
+          $("mlAffiliateSaved").textContent = mlOferta.urlAfiliado;
+          $("mlAffiliateSavedBox").style.display = "block";
+        } else {
+          $("mlAffiliateSaved").removeAttribute("href");
+          $("mlAffiliateSaved").textContent = "";
+          $("mlAffiliateSavedBox").style.display = "none";
+        }
+
+        if (s.linkAfiliadoAtual) {
+          $("linkAfiliado").href = s.linkAfiliadoAtual;
+          $("linkAfiliado").textContent = s.linkAfiliadoAtual;
+          $("linkAfiliadoBox").style.display = "block";
+        } else {
+          $("linkAfiliadoBox").style.display = "none";
+        }
+
+        $("consultas").textContent = s.consultas || "-";
+        $("cooldown").textContent =
+          ((s.previewCooldownMinutos || 120) / 60) + "h busca · " +
+          (s.cooldownHoras || 24) + "h envio";
+        $("bloqueadas").textContent = String(s.ofertasBloqueadas ?? 0);
+
+        $("categoriaOferta").textContent = s.categoriaAtual || "-";
+        $("comissaoOferta").textContent = s.comissaoAtual ? s.comissaoAtual + "%" : "-";
+        $("scoreOferta").textContent = s.scoreAtual ? String(s.scoreAtual) : "-";
+
+        const mensagem = s.mensagem || "";
+        if (mensagem) {
+          $("mensagem").className = "message";
+          $("mensagem").textContent = mensagem;
+          $("reviewOrigin").textContent = origemMl ? "Mercado Livre" : "Amazon";
+        } else {
+          $("mensagem").className = "empty-message";
+          $("mensagem").textContent = "Nenhuma oferta preparada ainda.";
+          $("reviewOrigin").textContent = "Aguardando oferta";
+        }
+
+        const imagem = $("imagemOferta");
+        if (s.imagemUrl) {
+          imagem.src = s.imagemUrl;
+          imagem.style.display = "block";
+        } else {
+          imagem.removeAttribute("src");
+          imagem.style.display = "none";
+        }
+
+        $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
+        $("logs").scrollTop = $("logs").scrollHeight;
+
         const sendNextButton = $("sendNextButton");
         sendNextButton.textContent = origemMl
           ? "📤 Enviar + próxima ML"
           : "📤 Enviar + próxima Amazon";
 
         $("execucao").textContent = preparando
-          ? "WhatsApp aguardando confirmação"
+          ? "Aguardando sua revisão no WhatsApp"
           : s.executando.length
             ? s.executando.join(", ")
-            : "Nenhuma tarefa ativa";
+            : fluxoMlAtivo
+              ? "Fluxo Mercado Livre em andamento"
+              : "Pronto para criar uma oferta";
 
         for (const b of buttons) {
           const acao = b.dataset.action;
@@ -835,15 +1116,13 @@
           } else if (acao === "preparar-send") {
             b.disabled = !preparando;
           } else if (acao === "preparar-send-next") {
-            b.disabled =
-              !preparando ||
-              (origemMl && !s.mercadoLivreExtensionConectada);
+            b.disabled = !preparando || (origemMl && !s.mercadoLivreExtensionConectada);
           } else if (acao === "preparar-cancel") {
             b.disabled = !preparando;
           } else if (acao === "historico-clear") {
             b.disabled = preparando;
           } else if (acao === "fluxo") {
-            b.disabled = whatsappOcupado || buscando || automatico;
+            b.disabled = whatsappOcupado || buscando || automatico || !s.afiliadoConfigurado;
           } else if (acao === "buscar") {
             b.disabled = buscando;
           } else if (acao === "mercadolivre-fluxo") {
