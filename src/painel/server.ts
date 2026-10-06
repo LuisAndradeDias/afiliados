@@ -230,6 +230,7 @@ async function salvarTokenMercadoLivre(token: TokenMercadoLivre): Promise<void> 
 }
 
 interface PacotePainel {
+  plataforma?: string;
   mensagem?: string;
   urlProduto?: string;
   urlAfiliado?: string;
@@ -548,6 +549,7 @@ async function estado() {
     mercadoLivreFluxoEtapa,
     mercadoLivreFluxoMensagem,
     origemPreparacaoAtual,
+    plataformaAtual: pacote.plataforma ?? "",
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
