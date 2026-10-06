@@ -325,8 +325,33 @@ function iniciar(
 
   processos.set(nome, child);
   registrar(nome, "Iniciado.");
-  child.stdout?.on("data", (d) => registrar(nome, String(d)));
-  child.stderr?.on("data", (d) => registrar(nome, String(d)));  child.on("error", (erro) => {
+  child.stdout?.on("data", (d) => {
+    const texto = String(d);
+    registrar(nome, texto);
+
+    if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
+      finalizacaoWhatsappAtual = null;
+      carregarProximaAposEnvio = false;
+      registrar(
+        "painel",
+        "O WhatsApp não confirmou o envio. Os botões foram liberados para tentar novamente."
+      );
+    }
+  });
+  child.stderr?.on("data", (d) => {
+    const texto = String(d);
+    registrar(nome, texto);
+
+    if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
+      finalizacaoWhatsappAtual = null;
+      carregarProximaAposEnvio = false;
+      registrar(
+        "painel",
+        "O WhatsApp não confirmou o envio. Os botões foram liberados para tentar novamente."
+      );
+    }
+  });
+  child.on("error", (erro) => {
     registrar(nome, `Erro ao iniciar: ${erro.message}`);
     processos.delete(nome);
   });
@@ -345,7 +370,16 @@ function iniciar(
     finalizacaoWhatsappAtual = null;
     carregarProximaAposEnvio = false;
 
-    if (codigo !== 0) return;
+    if (codigo !== 0) {
+      if (nome === "preparar" && origemFinalizada === "mercado-livre") {
+        mercadoLivreFluxoAutomatico = false;
+        atualizarFluxoMercadoLivre(
+          "error",
+          "A janela do WhatsApp foi encerrada antes de confirmar o envio. Reabra a oferta e tente novamente."
+        );
+      }
+      return;
+    }
 
     if (finalizacao === "cancelar") {
       await limparPreparacaoAtual(origemFinalizada);
@@ -597,6 +631,7 @@ async function estado() {
     plataformaAtual: pacote.plataforma ?? "",
     ultimoEnvioConcluidoEm,
     ultimoEnvioComProxima,
+    whatsappEnvioPendente: finalizacaoWhatsappAtual === "enviar",
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
@@ -897,6 +932,13 @@ async function executarAcao(
   }
 
   if (acao === "preparar-send" || acao === "preparar-send-next") {
+    if (finalizacaoWhatsappAtual === "enviar") {
+      return {
+        ok: false,
+        mensagem: "O comando de envio já foi enviado. Aguardando confirmação do WhatsApp."
+      };
+    }
+
     if (!processos.has("preparar")) {
       return { ok: false, mensagem: "Não há oferta pronta para enviar." };
     }

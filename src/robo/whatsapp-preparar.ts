@@ -148,47 +148,106 @@ async function registrarEnvioAtual(): Promise<void> {
   });
 }
 
+async function aguardarCampoVazio(
+  campo: Locator,
+  timeoutMs = 12_000
+): Promise<void> {
+  const inicio = Date.now();
+
+  while (Date.now() - inicio < timeoutMs) {
+    const texto = ((await campo.textContent().catch(() => "")) ?? "").trim();
+    if (!texto) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(
+    "O campo de mensagem não esvaziou; o WhatsApp não confirmou o envio."
+  );
+}
+
 async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
+  if (page.isClosed()) {
+    throw new Error("A janela do WhatsApp foi fechada antes do envio.");
+  }
+
+  await page.bringToFront().catch(() => undefined);
+
   const dialogo = page.locator('[role="dialog"]').last();
   const dialogoVisivel = await dialogo.isVisible().catch(() => false);
   const raiz = dialogoVisivel ? dialogo : page;
 
-  const iconeEnviar = raiz.locator('[data-icon*="send"]').last();
-  const iconeVisivel = await iconeEnviar.isVisible().catch(() => false);
+  const campoMensagem = await primeiroVisivel(
+    [
+      raiz.getByRole("textbox", {
+        name: /^digite uma mensagem$|^type a message$/i
+      }),
+      raiz.locator('[contenteditable="true"][role="textbox"]').first(),
+      page.locator('footer div[contenteditable="true"][role="textbox"]').first()
+    ],
+    4_000
+  );
 
-  if (iconeVisivel) {
-    const botao = iconeEnviar
-      .locator('xpath=ancestor::*[@role="button" or self::button][1]')
-      .first();
+  let clicou = false;
 
-    await botao.click({ timeout: 5_000 });
-  } else {
-    const legenda = await primeiroVisivel(
-      [
-        raiz.getByRole("textbox", {
-          name: /^digite uma mensagem$|^type a message$/i
-        }),
-        raiz.locator('[contenteditable="true"][role="textbox"]').first()
-      ],
-      4_000
-    );
+  const botaoEnviar = await primeiroVisivel(
+    [
+      raiz.getByRole("button", { name: /enviar|send/i }),
+      raiz.locator('button:has([data-icon*="send"])'),
+      raiz.locator('[role="button"]:has([data-icon*="send"])')
+    ],
+    2_000
+  ).catch(() => null);
 
-    await legenda.focus();
-    await page.keyboard.press("Enter");
+  if (botaoEnviar) {
+    try {
+      await botaoEnviar.click({ timeout: 5_000 });
+      clicou = true;
+      console.log("Botão real de envio do WhatsApp acionado.");
+    } catch (error) {
+      const motivo = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `Clique no botão de envio não confirmou; tentando Enter pelo teclado: ${motivo}`
+      );
+    }
   }
+
+  if (dialogoVisivel && clicou) {
+    const fechou = await dialogo
+      .waitFor({ state: "hidden", timeout: 6_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (fechou) {
+      console.log("WhatsApp confirmou o envio: prévia de mídia fechada.");
+      return;
+    }
+  }
+
+  await campoMensagem.focus();
+  await page.keyboard.press("Enter");
+  console.log("Enter enviado pelo teclado do navegador como fallback.");
 
   if (dialogoVisivel) {
     await dialogo.waitFor({ state: "hidden", timeout: 15_000 });
-  } else {
-    await page.waitForTimeout(1_500);
+    console.log("WhatsApp confirmou o envio: prévia de mídia fechada após Enter.");
+    return;
   }
+
+  await aguardarCampoVazio(campoMensagem);
+  console.log("WhatsApp confirmou o envio: compositor ficou vazio.");
 }
 
 async function aguardarFinalizacao(
   context: BrowserContext,
   page: Page
 ): Promise<void> {
-  while (context.pages().length > 0) {
+  while (true) {
+    if (page.isClosed() || context.pages().length === 0) {
+      throw new Error(
+        "A janela do WhatsApp foi fechada antes de enviar ou descartar a oferta."
+      );
+    }
+
     const enviar = await readFile(enviarSignalPath, "utf8")
       .then(() => true)
       .catch(() => false);
@@ -197,11 +256,22 @@ async function aguardarFinalizacao(
       await rm(enviarSignalPath, { force: true });
       console.log("Envio solicitado pelo painel.");
 
-      await enviarOfertaNoWhatsapp(page);
-      await registrarEnvioAtual();
-      console.log("ENVIO_CONFIRMADO: oferta enviada e registrada no histórico.");
-      await context.close().catch(() => undefined);
-      return;
+      try {
+        await enviarOfertaNoWhatsapp(page);
+        await registrarEnvioAtual();
+        console.log(
+          "ENVIO_CONFIRMADO: WhatsApp confirmou o envio e a oferta foi registrada no histórico."
+        );
+        await context.close().catch(() => undefined);
+        return;
+      } catch (error) {
+        const mensagemErro =
+          error instanceof Error ? error.message : String(error);
+        console.error(
+          `ENVIO_NAO_CONFIRMADO: ${mensagemErro}. A janela continuará aberta para nova tentativa.`
+        );
+        await page.bringToFront().catch(() => undefined);
+      }
     }
 
     const fechar = await readFile(fecharSignalPath, "utf8")

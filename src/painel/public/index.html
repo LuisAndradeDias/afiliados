@@ -1123,8 +1123,10 @@
           ? "📤 Enviar + próxima ML"
           : "📤 Enviar + próxima Amazon";
 
-        $("execucao").textContent = preparando
-          ? "Aguardando sua revisão no WhatsApp"
+        $("execucao").textContent = s.whatsappEnvioPendente
+          ? "Aguardando confirmação do envio no WhatsApp"
+          : preparando
+            ? "Aguardando sua revisão no WhatsApp"
           : s.executando.length
             ? s.executando.join(", ")
             : fluxoMlAtivo
@@ -1138,11 +1140,14 @@
           if (acao === "preparar" || acao === "login") {
             b.disabled = whatsappOcupado;
           } else if (acao === "preparar-send") {
-            b.disabled = !preparando;
+            b.disabled = !preparando || s.whatsappEnvioPendente;
           } else if (acao === "preparar-send-next") {
-            b.disabled = !preparando || (origemMl && !s.mercadoLivreExtensionConectada);
+            b.disabled =
+              !preparando ||
+              s.whatsappEnvioPendente ||
+              (origemMl && !s.mercadoLivreExtensionConectada);
           } else if (acao === "preparar-cancel") {
-            b.disabled = !preparando;
+            b.disabled = !preparando || s.whatsappEnvioPendente;
           } else if (acao === "historico-clear") {
             b.disabled = preparando;
           } else if (acao === "fluxo") {
