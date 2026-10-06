@@ -261,3 +261,37 @@ MERCADOLIVRE_COUPON_SOURCE_URL=https://www.mercadolivre.com.br/l/promocoes
 ```
 
 Quando um cupom é usado, a mensagem informa que o preço é estimado e está sujeito à elegibilidade e disponibilidade no checkout.
+
+
+## Monitoramento intercalado Amazon + Mercado Livre
+
+O modo operacional principal usa um único relógio para evitar consultas simultâneas:
+
+```text
+00:00  Mercado Livre
+01:00  Amazon
+02:00  Mercado Livre
+03:00  Amazon
+04:00  Mercado Livre
+...
+```
+
+Assim, cada plataforma é consultada aproximadamente a cada **2 minutos**, com **1 minuto de distância** entre as plataformas.
+
+Configuração:
+
+```env
+ALTERNATING_MONITOR_ENABLED=true
+ALTERNATING_MONITOR_SLOT_SECONDS=60
+```
+
+Regras operacionais:
+
+- nunca executa Amazon e Mercado Livre ao mesmo tempo;
+- se uma busca ainda estiver ocupada, o próximo turno aguarda;
+- quando uma oferta é encontrada, todo o relógio pausa enquanto o WhatsApp aguarda revisão;
+- depois de **Enviar** ou **Descartar**, o ciclo retoma pela outra plataforma;
+- se o Mercado Livre entrar em backoff por limite de API, apenas os turnos do Meli são pulados; a Amazon continua sendo consultada;
+- cada plataforma continua usando sua própria rotação de categorias e seu próprio histórico/cooldown.
+
+O processo legado `npm run automatico` da Amazon continua disponível apenas para diagnóstico, mas não deve ser executado junto com o monitoramento intercalado do painel.
