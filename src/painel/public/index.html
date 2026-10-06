@@ -1524,18 +1524,49 @@
         }
 
         const mensagem = s.mensagem || "";
+        const reviewCard = $("reviewCard");
+        const sendNowButton = $("sendNowButton");
+        const sendNextButton = $("sendNextButton");
+        const reopenWhatsappButton = $("reopenWhatsappButton");
+        const discardOfferButton = $("discardOfferButton");
+
+        reviewCard.classList.toggle("is-empty", !mensagem);
+
         if (mensagem) {
           $("mensagem").className = "message";
           $("mensagem").textContent = mensagem;
-          $("reviewOrigin").textContent = origemMl ? "Mercado Livre" : "Amazon";
+          $("reviewOrigin").textContent = nomePlataforma(ofertaPlataforma);
+
+          if (revisaoPronta) {
+            $("reviewSubtitle").textContent =
+              "O WhatsApp está aberto com esta oferta. Revise a mensagem e confirme o envio.";
+            $("reviewWhatsappState").textContent =
+              "WhatsApp pronto. Você pode enviar na janela do WhatsApp ou pelo botão abaixo.";
+          } else if (preparando) {
+            $("reviewSubtitle").textContent =
+              "A oferta foi escolhida. O WhatsApp ainda está sendo preparado.";
+            $("reviewWhatsappState").textContent =
+              "Abrindo WhatsApp e montando a mensagem...";
+          } else {
+            $("reviewSubtitle").textContent =
+              "A oferta está salva, mas a janela de revisão do WhatsApp não está ativa.";
+            $("reviewWhatsappState").textContent =
+              "WhatsApp não está aberto para esta oferta. Use “Reabrir no WhatsApp”.";
+          }
         } else {
           $("mensagem").className = "empty-message";
-          $("mensagem").textContent = "Nenhuma oferta preparada ainda.";
-          $("reviewOrigin").textContent = "Aguardando oferta";
+          $("mensagem").textContent =
+            s.monitorAlternadoAtivo
+              ? "O ciclo está procurando a próxima promoção. Quando encontrar uma oferta, ela aparecerá aqui."
+              : "Nenhuma oferta preparada. Inicie o ciclo automático para procurar promoções.";
+          $("reviewOrigin").textContent = "Nenhuma oferta";
+          $("reviewSubtitle").textContent =
+            "Quando uma promoção estiver pronta, ela aparece aqui antes do envio.";
+          $("reviewWhatsappState").textContent = "Aguardando oferta.";
         }
 
         const imagem = $("imagemOferta");
-        if (s.imagemUrl) {
+        if (s.imagemUrl && mensagem) {
           imagem.src = s.imagemUrl;
           imagem.style.display = "block";
         } else {
@@ -1546,66 +1577,83 @@
         $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
         $("logs").scrollTop = $("logs").scrollHeight;
 
-        const sendNowButton = $("sendNowButton");
-        const sendNextButton = $("sendNextButton");
+        reopenWhatsappButton.style.display =
+          mensagem && !preparando ? "" : "none";
+        sendNowButton.style.display =
+          mensagem && revisaoPronta ? "" : "none";
+        discardOfferButton.style.display =
+          mensagem ? "" : "none";
 
         if (s.monitorAlternadoAtivo) {
           sendNowButton.textContent = "📤 Enviar e continuar ciclo";
           sendNextButton.style.display = "none";
         } else {
-          sendNowButton.textContent = "📤 Enviar agora";
-          sendNextButton.style.display = "";
+          sendNowButton.textContent = "📤 Enviar pelo painel";
+          sendNextButton.style.display =
+            mensagem && revisaoPronta ? "" : "none";
           sendNextButton.textContent = origemMl
             ? "📤 Enviar + próxima ML"
             : "📤 Enviar + próxima Amazon";
         }
 
-        $("execucao").textContent = s.whatsappEnvioPendente
-          ? "Aguardando confirmação do envio no WhatsApp"
-          : preparando
-            ? "Oferta encontrada · aguardando sua revisão"
-          : s.executando.length
-            ? s.executando.join(", ")
-            : s.monitorAlternadoAtivo
-              ? (textoProxima || "Monitorando Amazon + Mercado Livre")
-              : fluxoMlAtivo
-                ? "Fluxo Mercado Livre em andamento"
-                : "Pronto para criar uma oferta";
+        $("execucao").textContent = $("cycleNow").textContent;
 
         for (const b of buttons) {
           const acao = b.dataset.action;
           if (acao === "limpar-logs") continue;
 
-          if (acao === "preparar" || acao === "login") {
+          if (acao === "login") {
             b.disabled = whatsappOcupado;
+          } else if (acao === "preparar") {
+            b.disabled =
+              whatsappOcupado ||
+              !ofertaPreparada;
           } else if (acao === "preparar-send") {
-            b.disabled = !preparando || s.whatsappEnvioPendente;
+            b.disabled =
+              !revisaoPronta ||
+              s.whatsappEnvioPendente;
           } else if (acao === "preparar-send-next") {
             b.disabled =
-              !preparando ||
+              !revisaoPronta ||
               s.whatsappEnvioPendente ||
               (origemMl && !s.mercadoLivreExtensionConectada);
           } else if (acao === "preparar-cancel") {
-            b.disabled = !preparando || s.whatsappEnvioPendente;
+            b.disabled =
+              !ofertaPreparada ||
+              s.whatsappEnvioPendente;
           } else if (acao === "historico-clear") {
             b.disabled = preparando;
+          } else if (acao === "monitor-set") {
+            b.disabled =
+              !s.monitorAlternadoAtivo &&
+              (!s.mercadoLivreApiConfigurada || !s.afiliadoConfigurado);
           } else if (acao === "fluxo") {
-            b.disabled = whatsappOcupado || buscando || automatico || !s.afiliadoConfigurado;
+            b.disabled =
+              s.monitorAlternadoAtivo ||
+              whatsappOcupado ||
+              buscando ||
+              automatico ||
+              !s.afiliadoConfigurado;
           } else if (acao === "buscar") {
-            b.disabled = buscando;
+            b.disabled = buscando || s.monitorAlternadoAtivo;
           } else if (acao === "mercadolivre-monitor-toggle") {
             b.disabled =
               !s.monitorAlternadoAtivo &&
               (!s.mercadoLivreApiConfigurada || !s.afiliadoConfigurado);
           } else if (acao === "mercadolivre-fluxo") {
             b.disabled =
+              s.monitorAlternadoAtivo ||
               fluxoMlAtivo ||
               mlBuscando ||
               mlPreparando ||
               whatsappOcupado ||
               !s.mercadoLivreApiConfigurada;
           } else if (acao === "mercadolivre-buscar") {
-            b.disabled = mlBuscando || fluxoMlAtivo || !s.mercadoLivreApiConfigurada;
+            b.disabled =
+              s.monitorAlternadoAtivo ||
+              mlBuscando ||
+              fluxoMlAtivo ||
+              !s.mercadoLivreApiConfigurada;
           } else if (acao === "mercadolivre-link-save") {
             b.disabled = !mlOferta.urlProduto;
           } else if (acao === "mercadolivre-preparar") {
@@ -1660,10 +1708,11 @@
           }).then(() => { $("mlClientSecret").value = ""; });
         } else if (nome === "mercadolivre-redirect-save") {
           acao(nome, { redirectUri: $("mlRedirectUriInput").value });
+        } else if (nome === "monitor-set") {
+          acao("monitor-set", {
+            ativo: !Boolean(estadoAtual.monitorAlternadoAtivo)
+          });
         } else if (nome === "mercadolivre-monitor-toggle") {
-          if (!estadoAtual.mercadoLivreMonitorAtivo) {
-            window.open(mercadoLivreAfiliadosUrl, "_blank", "noopener");
-          }
           acao(nome);
         } else if (nome === "mercadolivre-fluxo") {
           window.open(mercadoLivreAfiliadosUrl, "_blank", "noopener");
