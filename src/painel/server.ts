@@ -1345,8 +1345,8 @@ const server = createServer(async (req, res) => {
       const origem = String(corpo.url ?? "").slice(0, 500);
       const blocos = Array.isArray(corpo.blocks)
         ? corpo.blocks
-            .filter((item): item is string => typeof item === "string")
-            .map((item) => item.slice(0, 4_000))
+            .filter((item: unknown): item is string => typeof item === "string")
+            .map((item: string) => item.slice(0, 4_000))
             .slice(0, 100)
         : [];
 
