@@ -18,7 +18,8 @@
     "painel": "tsx src/painel/server.ts",
     "typecheck": "tsc --noEmit",
     "test:whatsapp-observer": "tsx tests/whatsapp-envio-observer.mts",
-    "test:painel-operacional": "tsx tests/painel-operacional.mts"
+    "test:painel-operacional": "tsx tests/painel-operacional.mts",
+    "test:imagem-oferta": "tsx tests/imagem-oferta.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
