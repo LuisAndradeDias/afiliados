@@ -865,6 +865,17 @@ async function executarAcao(
     }
 
     carregarProximaAposEnvio = acao === "preparar-send-next";
+    if (
+      origemPreparacaoAtual === "mercado-livre" &&
+      acao === "preparar-send"
+    ) {
+      mercadoLivreFluxoAutomatico = false;
+      atualizarFluxoMercadoLivre(
+        "idle",
+        "Envio Mercado Livre confirmado. O fluxo será encerrado após o envio."
+      );
+    }
+
     writeFileSync(enviarWhatsappPath, "enviar", "utf8");
     registrar(
       "preparar",
@@ -882,6 +893,14 @@ async function executarAcao(
 
   if (acao === "preparar-cancel") {
     carregarProximaAposEnvio = false;
+
+    if (origemPreparacaoAtual === "mercado-livre") {
+      mercadoLivreFluxoAutomatico = false;
+      atualizarFluxoMercadoLivre(
+        "idle",
+        "Preparação Mercado Livre descartada pelo usuário."
+      );
+    }
 
     if (!processos.has("preparar")) {
       return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
@@ -1041,6 +1060,13 @@ const server = createServer(async (req, res) => {
           status: "error",
           mensagem: erro
         };
+        if (mercadoLivreFluxoAutomatico) {
+          mercadoLivreFluxoAutomatico = false;
+          atualizarFluxoMercadoLivre(
+            "error",
+            `Falha no Gerador de Links: ${erro}`
+          );
+        }
         registrar("mercadolivre-link", `Falha automática: ${erro}`);
         json(res, 200, { ok: true });
         return;
@@ -1057,9 +1083,29 @@ const server = createServer(async (req, res) => {
           "mercadolivre-link",
           `Link automático salvo para ${oferta.produtoId}.`
         );
+
+        if (mercadoLivreFluxoAutomatico) {
+          atualizarFluxoMercadoLivre(
+            "preparing",
+            "Link oficial gerado. Preparando a oferta para o WhatsApp..."
+          );
+
+          void prepararMercadoLivreAutomaticamente().catch((error) => {
+            mercadoLivreFluxoAutomatico = false;
+            const mensagem =
+              error instanceof Error ? error.message : String(error);
+            atualizarFluxoMercadoLivre(
+              "error",
+              `Falha após gerar o link: ${mensagem}`
+            );
+          });
+        }
+
         json(res, 200, {
           ok: true,
-          mensagem: "Link oficial gerado e salvo no painel."
+          mensagem: mercadoLivreFluxoAutomatico
+            ? "Link oficial salvo. Preparação do WhatsApp iniciada."
+            : "Link oficial gerado e salvo no painel."
         });
       } catch (error) {
         const mensagem = error instanceof Error ? error.message : String(error);
@@ -1068,6 +1114,13 @@ const server = createServer(async (req, res) => {
           status: "error",
           mensagem
         };
+        if (mercadoLivreFluxoAutomatico) {
+          mercadoLivreFluxoAutomatico = false;
+          atualizarFluxoMercadoLivre(
+            "error",
+            `O link automático foi recusado: ${mensagem}`
+          );
+        }
         registrar(
           "mercadolivre-link",
           `Link devolvido pela extensão foi recusado: ${mensagem}`
