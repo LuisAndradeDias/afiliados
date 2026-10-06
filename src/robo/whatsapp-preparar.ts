@@ -187,17 +187,20 @@ async function enviarOfertaNoWhatsapp(page: Page): Promise<void> {
     4_000
   );
 
-  const iconeEnviar = raiz.locator('[data-icon*="send"]').last();
-  const iconeVisivel = await iconeEnviar.isVisible().catch(() => false);
   let clicou = false;
 
-  if (iconeVisivel) {
-    const botao = iconeEnviar
-      .locator('xpath=ancestor::*[@role="button" or self::button][1]')
-      .first();
+  const botaoEnviar = await primeiroVisivel(
+    [
+      raiz.getByRole("button", { name: /enviar|send/i }),
+      raiz.locator('button:has([data-icon*="send"])'),
+      raiz.locator('[role="button"]:has([data-icon*="send"])')
+    ],
+    2_000
+  ).catch(() => null);
 
+  if (botaoEnviar) {
     try {
-      await botao.click({ timeout: 5_000 });
+      await botaoEnviar.click({ timeout: 5_000 });
       clicou = true;
       console.log("Botão real de envio do WhatsApp acionado.");
     } catch (error) {
