@@ -295,3 +295,26 @@ Regras operacionais:
 - cada plataforma continua usando sua própria rotação de categorias e seu próprio histórico/cooldown.
 
 O processo legado `npm run automatico` da Amazon continua disponível apenas para diagnóstico, mas não deve ser executado junto com o monitoramento intercalado do painel.
+
+
+## Painel operacional v2
+
+O painel principal representa um único ciclo **Amazon + Mercado Livre**.
+
+Estados expostos pelo backend:
+
+- `paused`: novas buscas pausadas.
+- `scheduled`: aguardando o próximo slot do ciclo.
+- `searching`: uma plataforma está sendo consultada.
+- `linking`: o Mercado Livre está gerando/validando o link oficial.
+- `preparing`: uma oferta foi escolhida e o WhatsApp está sendo aberto/preparado.
+- `review`: o WhatsApp confirmou que a mensagem está pronta para revisão.
+- `sending`: o envio foi solicitado e aguarda confirmação real do WhatsApp.
+- `offer-pending`: existe uma oferta salva, mas não há janela de revisão ativa; o usuário pode reabrir ou descartar.
+- `error`: intervenção necessária.
+
+O botão principal usa uma ação idempotente `monitor-set`. A interface envia explicitamente o estado desejado (ativo/pausado), evitando que uma tela desatualizada inverta o ciclo por engano.
+
+A plataforma exibida na revisão vem do pacote real da oferta (`ultima-oferta-whatsapp.json`), e não da última plataforma consultada pelo monitor.
+
+Se o WhatsApp fechar ou falhar depois que a oferta foi criada, a oferta é preservada como `offer-pending`; o ciclo não inicia outra busca por cima dela.
