@@ -104,3 +104,27 @@ Regras:
 - Cupons marcados como não cumulativos não são somados ao preço promocional.
 - O preço com cupom exibido ao usuário é uma estimativa condicionada à elegibilidade no checkout.
 - A API de campanhas do vendedor não é usada para anúncios de terceiros.
+
+
+## Agendador intercalado Amazon + Mercado Livre
+
+O coordenador do painel em `src/painel/server.ts` controla as duas plataformas com um slot padrão de 60 segundos.
+
+Sequência normal:
+
+1. Mercado Livre.
+2. +60s Amazon.
+3. +60s Mercado Livre.
+4. +60s Amazon.
+
+Consequentemente, cada fonte tem cadência aproximada de 120 segundos.
+
+O agendador mantém apenas um timer pendente e pausa quando houver busca, geração de link, preparação ou revisão no WhatsApp. Ao concluir ou descartar uma oferta, a próxima plataforma é sempre a outra.
+
+Variáveis:
+
+- `ALTERNATING_MONITOR_ENABLED`
+- `ALTERNATING_MONITOR_SLOT_SECONDS`
+- `MERCADOLIVRE_MONITOR_BACKOFF_MINUTES`
+
+`MERCADOLIVRE_MONITOR_ENABLED` é mantida por compatibilidade e também é atualizada quando o ciclo unificado é ligado/desligado.

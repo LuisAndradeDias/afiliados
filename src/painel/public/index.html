@@ -592,9 +592,9 @@
               <div class="platform-name">Amazon</div>
               <div id="amazonLaunchState" class="platform-state">Verificando...</div>
             </div>
-            <p>Busca a melhor oferta, aplica seu Tracking ID e abre a mensagem pronta no WhatsApp.</p>
+            <p>Participa do ciclo automático a cada 2 minutos. Você também pode disparar uma busca manual imediata.</p>
           </div>
-          <button class="primary big-action" data-action="fluxo">✨ Criar oferta Amazon</button>
+          <button class="primary big-action" data-action="fluxo">✨ Buscar Amazon agora</button>
         </article>
 
         <article class="launch-action meli">
@@ -603,9 +603,9 @@
               <div class="platform-name">Mercado Livre</div>
               <div id="meliLaunchState" class="platform-state">Verificando...</div>
             </div>
-            <p>Fica consultando promoções continuamente. Quando encontra uma oferta válida, gera o link e abre o WhatsApp para revisão.</p>
+            <p>Coordena o ciclo intercalado: Meli, 1 minuto depois Amazon, 1 minuto depois Meli novamente.</p>
           </div>
-          <button id="meliMonitorButton" class="success big-action" data-action="mercadolivre-monitor-toggle">▶ Ativar monitoramento contínuo</button>
+          <button id="meliMonitorButton" class="success big-action" data-action="mercadolivre-monitor-toggle">▶ Ativar ciclo Amazon + Meli</button>
         </article>
       </div>
     </section>
@@ -625,8 +625,8 @@
           <span>Encontrar oferta elegível</span>
         </div>
         <div id="stepLink" class="flow-step">
-          <strong>2 · Link oficial</strong>
-          <span>Gerar e validar meli.la</span>
+          <strong>2 · Validar / link</strong>
+          <span>Checar benefício e link de afiliado</span>
         </div>
         <div id="stepPrepare" class="flow-step">
           <strong>3 · Preparar</strong>
@@ -853,8 +853,8 @@
       }
 
       card.classList.add("visible");
-      $("flowTitle").textContent = s.mercadoLivreMonitorAtivo
-        ? "Monitoramento Mercado Livre"
+      $("flowTitle").textContent = s.monitorAlternadoAtivo
+        ? "Monitoramento intercalado Amazon + Mercado Livre"
         : "Fluxo Mercado Livre";
       $("flowDescription").textContent =
         mensagem ||
@@ -940,8 +940,8 @@
         } else if (envioAtual > ultimoEnvioVisto) {
           ultimoEnvioVisto = envioAtual;
 
-          if (s.mercadoLivreMonitorAtivo) {
-            toast("Oferta enviada. Monitoramento retomado automaticamente.", "ok");
+          if (s.monitorAlternadoAtivo) {
+            toast("Oferta enviada. Ciclo Amazon + Mercado Livre retomado automaticamente.", "ok");
           } else if (s.ultimoEnvioComProxima) {
             toast("Oferta enviada. Preparando automaticamente a próxima promoção...", "ok");
           } else {
@@ -984,11 +984,10 @@
           ? "Conectada · " + s.afiliadoTag
           : "Configurar Tracking ID";
         setDot("amazonDot", s.afiliadoConfigurado ? "ok" : "warn");
-        $("amazonLaunchState").textContent = s.afiliadoConfigurado ? "Pronta" : "Configuração pendente";
 
         $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? s.mercadoLivreMonitorAtivo
-            ? "Monitoramento contínuo ativo"
+          ? s.monitorAlternadoAtivo
+            ? "Ciclo intercalado ativo"
             : (s.mercadoLivreExtensionConectada ? "API + automação prontas" : "API conectada · extensão offline")
           : "Configuração pendente";
         setDot(
@@ -997,14 +996,22 @@
         );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "API conectada" : "API pendente";
         const monitorButton = $("meliMonitorButton");
-        const proximaBuscaEm = Number(s.mercadoLivreMonitorProximaBuscaEm || 0);
+        const proximaBuscaEm = Number(
+          s.monitorAlternadoProximaBuscaEm ||
+          s.mercadoLivreMonitorProximaBuscaEm ||
+          0
+        );
         const segundosProximaBusca = proximaBuscaEm
           ? Math.max(0, Math.ceil((proximaBuscaEm - Date.now()) / 1000))
           : 0;
         const minutosProximaBusca = Math.floor(segundosProximaBusca / 60);
         const restoSegundos = segundosProximaBusca % 60;
+        const proximaPlataforma =
+          s.monitorAlternadoProximaPlataforma === "amazon"
+            ? "Amazon"
+            : "Mercado Livre";
         const textoProxima = proximaBuscaEm
-          ? `Próxima busca em ${minutosProximaBusca}m ${String(restoSegundos).padStart(2, "0")}s`
+          ? `Próxima: ${proximaPlataforma} em ${minutosProximaBusca}m ${String(restoSegundos).padStart(2, "0")}s`
           : "";
 
         const cuponsAtivos = Number(s.mercadoLivreCuponsAtivos || 0);
@@ -1012,21 +1019,36 @@
           ? ` · ${cuponsAtivos} cupom(ns) ativo(s)`
           : "";
 
-        if (s.mercadoLivreMonitorAtivo) {
-          monitorButton.textContent = "⏸ Pausar monitoramento";
+        if (s.monitorAlternadoAtivo) {
+          monitorButton.textContent = "⏸ Pausar ciclo Amazon + Meli";
           monitorButton.classList.remove("success");
           monitorButton.classList.add("secondary");
 
+          $("amazonLaunchState").textContent = preparando
+            ? "Ciclo pausado para revisão"
+            : (
+                s.monitorAlternadoProximaPlataforma === "amazon"
+                  ? textoProxima || "Próxima rodada Amazon"
+                  : "A cada 2 min"
+              );
+
           $("meliLaunchState").textContent = preparando
-            ? "Oferta encontrada · monitor pausado" + infoCupons
-            : (textoProxima || "Monitorando agora") + infoCupons;
+            ? "Ciclo pausado para revisão" + infoCupons
+            : (
+                s.monitorAlternadoProximaPlataforma === "mercado-livre"
+                  ? (textoProxima || "Próxima rodada Meli") + infoCupons
+                  : "A cada 2 min" + infoCupons
+              );
         } else {
-          monitorButton.textContent = "▶ Ativar monitoramento contínuo";
+          monitorButton.textContent = "▶ Ativar ciclo Amazon + Meli";
           monitorButton.classList.remove("secondary");
           monitorButton.classList.add("success");
 
+          $("amazonLaunchState").textContent = s.afiliadoConfigurado
+            ? "Pronta para o ciclo"
+            : "Configuração pendente";
           $("meliLaunchState").textContent = s.mercadoLivreApiConfigurada
-            ? "Pronto para monitorar" + infoCupons
+            ? "Pronto para o ciclo" + infoCupons
             : "Configuração pendente";
         }
 
@@ -1176,8 +1198,8 @@
         const sendNowButton = $("sendNowButton");
         const sendNextButton = $("sendNextButton");
 
-        if (origemMl && s.mercadoLivreMonitorAtivo) {
-          sendNowButton.textContent = "📤 Enviar e continuar monitorando";
+        if (s.monitorAlternadoAtivo) {
+          sendNowButton.textContent = "📤 Enviar e continuar ciclo";
           sendNextButton.style.display = "none";
         } else {
           sendNowButton.textContent = "📤 Enviar agora";
@@ -1193,8 +1215,8 @@
             ? "Oferta encontrada · aguardando sua revisão"
           : s.executando.length
             ? s.executando.join(", ")
-            : s.mercadoLivreMonitorAtivo
-              ? (textoProxima || "Monitorando Mercado Livre")
+            : s.monitorAlternadoAtivo
+              ? (textoProxima || "Monitorando Amazon + Mercado Livre")
               : fluxoMlAtivo
                 ? "Fluxo Mercado Livre em andamento"
                 : "Pronto para criar uma oferta";
@@ -1222,8 +1244,8 @@
             b.disabled = buscando;
           } else if (acao === "mercadolivre-monitor-toggle") {
             b.disabled =
-              !s.mercadoLivreMonitorAtivo &&
-              !s.mercadoLivreApiConfigurada;
+              !s.monitorAlternadoAtivo &&
+              (!s.mercadoLivreApiConfigurada || !s.afiliadoConfigurado);
           } else if (acao === "mercadolivre-fluxo") {
             b.disabled =
               fluxoMlAtivo ||
@@ -1242,7 +1264,11 @@
               !mlOferta.urlProduto ||
               !mlOferta.urlAfiliado;
           } else if (acao === "automatico-start") {
-            b.disabled = automatico || preparando || buscando;
+            b.disabled =
+              automatico ||
+              preparando ||
+              buscando ||
+              s.monitorAlternadoAtivo;
           } else if (acao === "automatico-stop") {
             b.disabled = !automatico;
           } else {
