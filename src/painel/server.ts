@@ -589,13 +589,15 @@ function iniciar(
       await limparPreparacaoAtual(origemFinalizada);
       registrar("fluxo", "Preparação descartada. Painel liberado para uma nova oferta.");
 
-      if (
-        origemFinalizada === "mercado-livre" &&
-        mercadoLivreMonitorAtivo
-      ) {
-        agendarMonitorMercadoLivre(
+      if (monitorAlternadoAtivo) {
+        const proxima: PlataformaMonitor =
+          origemFinalizada === "mercado-livre"
+            ? "amazon"
+            : "mercado-livre";
+        agendarMonitorAlternado(
+          proxima,
           5_000,
-          "Oferta descartada. Retomando o monitoramento do Mercado Livre..."
+          `Oferta descartada. Retomando o ciclo por ${nomePlataformaMonitor(proxima)}.`
         );
       }
       return;
@@ -605,21 +607,23 @@ function iniciar(
 
     ultimoEnvioConcluidoEm = Date.now();
     ultimoEnvioComProxima =
-      carregarProxima ||
-      (origemFinalizada === "mercado-livre" && mercadoLivreMonitorAtivo);
+      carregarProxima || monitorAlternadoAtivo;
     await limparPreparacaoAtual(origemFinalizada);
 
-    if (
-      origemFinalizada === "mercado-livre" &&
-      mercadoLivreMonitorAtivo
-    ) {
+    if (monitorAlternadoAtivo) {
+      const proxima: PlataformaMonitor =
+        origemFinalizada === "mercado-livre"
+          ? "amazon"
+          : "mercado-livre";
+
       registrar(
         "fluxo",
-        "Envio concluído. Retomando o monitoramento contínuo do Mercado Livre."
+        `Envio concluído. Retomando o monitoramento intercalado por ${nomePlataformaMonitor(proxima)}.`
       );
-      agendarMonitorMercadoLivre(
+      agendarMonitorAlternado(
+        proxima,
         5_000,
-        "Envio concluído. Procurando a próxima promoção em instantes..."
+        `Envio concluído. ${nomePlataformaMonitor(proxima)} será consultada em instantes.`
       );
       return;
     }
@@ -655,6 +659,82 @@ function iniciar(
 
 function whatsappOcupado(): boolean {
   return processos.has("login") || processos.has("preparar");
+}
+
+function iniciarFluxoAmazonMonitor(): {
+  ok: boolean;
+  mensagem: string;
+} {
+  if (!monitorAlternadoAtivo) {
+    return {
+      ok: false,
+      mensagem: "O monitoramento intercalado está pausado."
+    };
+  }
+
+  if (!process.env.AMAZON_ASSOCIATE_TAG?.trim()) {
+    registrar(
+      "monitor-amazon",
+      "Amazon pulada: Tracking ID não configurado."
+    );
+    agendarProximoTurnoAposRodada(
+      "mercado-livre",
+      "Amazon sem Tracking ID. Mercado Livre será consultado no próximo minuto."
+    );
+    return {
+      ok: false,
+      mensagem: "Configure o Tracking ID da Amazon."
+    };
+  }
+
+  if (processos.has("buscar") || whatsappOcupado()) {
+    return {
+      ok: false,
+      mensagem: "Amazon aguardando a tarefa atual terminar."
+    };
+  }
+
+  origemPreparacaoAtual = "amazon";
+  registrar(
+    "monitor-amazon",
+    "Turno Amazon iniciado pelo monitoramento intercalado."
+  );
+
+  const ok = iniciar(
+    "buscar",
+    "buscar",
+    {},
+    (codigo) => {
+      if (!monitorAlternadoAtivo) return;
+
+      if (codigo === 0 && !whatsappOcupado()) {
+        registrar(
+          "monitor-amazon",
+          "Oferta Amazon encontrada. Pausando o ciclo para revisão no WhatsApp."
+        );
+        iniciar("preparar", "preparar");
+        return;
+      }
+
+      registrar(
+        "monitor-amazon",
+        codigo === 2
+          ? "Nenhuma oferta Amazon passou pelos filtros nesta rodada."
+          : `Rodada Amazon terminou com código ${codigo ?? "?"}.`
+      );
+      agendarProximoTurnoAposRodada(
+        "mercado-livre",
+        "Rodada Amazon concluída. Mercado Livre será consultado no próximo minuto."
+      );
+    }
+  );
+
+  return {
+    ok,
+    mensagem: ok
+      ? "Busca Amazon iniciada pelo ciclo intercalado."
+      : "Já existe uma busca Amazon em andamento."
+  };
 }
 
 async function existe(path: string): Promise<boolean> {
