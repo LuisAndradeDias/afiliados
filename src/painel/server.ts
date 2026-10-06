@@ -576,7 +576,26 @@ function iniciar(
     carregarProximaAposEnvio = false;
 
     if (codigo !== 0) {
-      if (nome === "preparar" && origemFinalizada === "mercado-livre") {
+      if (monitorAlternadoAtivo) {
+        const proxima: PlataformaMonitor =
+          origemFinalizada === "mercado-livre"
+            ? "amazon"
+            : "mercado-livre";
+
+        await limparPreparacaoAtual(origemFinalizada);
+        registrar(
+          "fluxo",
+          `A revisão no WhatsApp foi encerrada antes da confirmação. Retomando o ciclo por ${nomePlataformaMonitor(proxima)}.`
+        );
+        agendarMonitorAlternado(
+          proxima,
+          5_000,
+          `WhatsApp encerrado sem envio. ${nomePlataformaMonitor(proxima)} será consultada em instantes.`
+        );
+        return;
+      }
+
+      if (origemFinalizada === "mercado-livre") {
         mercadoLivreFluxoAutomatico = false;
         atualizarFluxoMercadoLivre(
           "error",
