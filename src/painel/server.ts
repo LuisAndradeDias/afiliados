@@ -3,7 +3,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   cooldownHoras,
@@ -31,6 +31,9 @@ const porta = Number(process.env.PAINEL_PORT ?? 3030);
 const processos = new Map<string, ChildProcess>();
 const logs: string[] = [];
 let carregarProximaAposEnvio = false;
+let finalizacaoWhatsappAtual: "enviar" | "cancelar" | null = null;
+let ultimoEnvioConcluidoEm = 0;
+let ultimoEnvioComProxima = false;
 let mercadoLivreOauthState = "";
 let origemPreparacaoAtual: "amazon" | "mercado-livre" = "amazon";
 
@@ -278,6 +281,30 @@ function arquivoDo(script: string): string {
   return arquivo;
 }
 
+async function limparPreparacaoAtual(
+  origem: "amazon" | "mercado-livre"
+): Promise<void> {
+  const caminhos = [
+    mensagemPath,
+    pacotePath,
+    resolve(raiz, "data", "ultima-imagem-whatsapp.jpg"),
+    resolve(raiz, "data", "ultima-imagem-whatsapp.png"),
+    resolve(raiz, "data", "ultima-imagem-whatsapp.gif")
+  ];
+
+  if (origem === "mercado-livre") {
+    caminhos.push(ofertaMercadoLivrePath);
+    mercadoLivreLinkJob = null;
+    mercadoLivreFluxoAutomatico = false;
+    mercadoLivreFluxoEtapa = "idle";
+    mercadoLivreFluxoMensagem = "";
+  }
+
+  await Promise.all(
+    caminhos.map((caminho) => rm(caminho, { force: true }).catch(() => undefined))
+  );
+}
+
 function iniciar(
   nome: string,
   script: string,
@@ -304,31 +331,57 @@ function iniciar(
     processos.delete(nome);
   });
 
-  child.on("close", (codigo) => {
+  child.on("close", async (codigo) => {
     registrar(nome, `Finalizado com código ${codigo ?? "?"}.`);
     processos.delete(nome);
     aoFinal?.(codigo);
 
-    if (nome === "preparar" && carregarProximaAposEnvio) {
-      const origemFinalizada = origemPreparacaoAtual;
-      carregarProximaAposEnvio = false;
+    if (nome !== "preparar") return;
 
-      if (codigo === 0 && origemFinalizada === "amazon") {
-        registrar("fluxo", "Envio concluído. Buscando a próxima oferta Amazon...");
-        iniciar("buscar", "buscar", {}, (codigoBusca) => {
-          if (codigoBusca === 0 && !whatsappOcupado()) {
-            origemPreparacaoAtual = "amazon";
-            registrar("fluxo", "Próxima oferta pronta. Abrindo WhatsApp...");
-            iniciar("preparar", "preparar");
-          }
-        });
-      } else if (codigo === 0 && origemFinalizada === "mercado-livre") {
-        atualizarFluxoMercadoLivre(
-          "idle",
-          "Oferta Mercado Livre enviada. Iniciando a próxima automaticamente..."
-        );
-        void iniciarFluxoMercadoLivreAutomatico();
-      }
+    const origemFinalizada = origemPreparacaoAtual;
+    const finalizacao = finalizacaoWhatsappAtual;
+    const carregarProxima = carregarProximaAposEnvio;
+
+    finalizacaoWhatsappAtual = null;
+    carregarProximaAposEnvio = false;
+
+    if (codigo !== 0) return;
+
+    if (finalizacao === "cancelar") {
+      await limparPreparacaoAtual(origemFinalizada);
+      registrar("fluxo", "Preparação descartada. Painel liberado para uma nova oferta.");
+      return;
+    }
+
+    if (finalizacao !== "enviar") return;
+
+    ultimoEnvioConcluidoEm = Date.now();
+    ultimoEnvioComProxima = carregarProxima;
+    await limparPreparacaoAtual(origemFinalizada);
+
+    if (!carregarProxima) {
+      registrar(
+        "fluxo",
+        "Envio concluído. Painel liberado para preparar outra promoção."
+      );
+      return;
+    }
+
+    if (origemFinalizada === "amazon") {
+      registrar("fluxo", "Envio concluído. Buscando a próxima oferta Amazon...");
+      iniciar("buscar", "buscar", {}, (codigoBusca) => {
+        if (codigoBusca === 0 && !whatsappOcupado()) {
+          origemPreparacaoAtual = "amazon";
+          registrar("fluxo", "Próxima oferta pronta. Abrindo WhatsApp...");
+          iniciar("preparar", "preparar");
+        }
+      });
+    } else {
+      atualizarFluxoMercadoLivre(
+        "idle",
+        "Oferta Mercado Livre enviada. Iniciando a próxima automaticamente..."
+      );
+      void iniciarFluxoMercadoLivreAutomatico();
     }
   });
 
@@ -550,6 +603,8 @@ async function estado() {
     mercadoLivreFluxoMensagem,
     origemPreparacaoAtual,
     plataformaAtual: pacote.plataforma ?? "",
+    ultimoEnvioConcluidoEm,
+    ultimoEnvioComProxima,
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
@@ -867,6 +922,7 @@ async function executarAcao(
     }
 
     carregarProximaAposEnvio = acao === "preparar-send-next";
+    finalizacaoWhatsappAtual = "enviar";
     if (
       origemPreparacaoAtual === "mercado-livre" &&
       acao === "preparar-send"
@@ -894,7 +950,12 @@ async function executarAcao(
   }
 
   if (acao === "preparar-cancel") {
+    if (!processos.has("preparar")) {
+      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
+    }
+
     carregarProximaAposEnvio = false;
+    finalizacaoWhatsappAtual = "cancelar";
 
     if (origemPreparacaoAtual === "mercado-livre") {
       mercadoLivreFluxoAutomatico = false;
@@ -902,10 +963,6 @@ async function executarAcao(
         "idle",
         "Preparação Mercado Livre descartada pelo usuário."
       );
-    }
-
-    if (!processos.has("preparar")) {
-      return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
     }
 
     writeFileSync(fecharWhatsappPath, "fechar", "utf8");
