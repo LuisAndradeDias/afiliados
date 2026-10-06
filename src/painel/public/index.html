@@ -656,6 +656,8 @@
               <span class="pill">Categoria&nbsp;<strong id="categoriaOferta">-</strong></span>
               <span class="pill">Comissão&nbsp;<strong id="comissaoOferta">-</strong></span>
               <span class="pill">Score&nbsp;<strong id="scoreOferta">-</strong></span>
+              <span id="cupomOfertaPill" class="pill" style="display:none">Cupom&nbsp;<strong id="cupomOferta">-</strong></span>
+              <span id="precoCupomPill" class="pill" style="display:none">Com cupom&nbsp;<strong id="precoCupomOferta">-</strong></span>
             </div>
             <div id="mensagem" class="empty-message">Nenhuma oferta preparada ainda.</div>
           </div>
@@ -1126,6 +1128,22 @@
         $("categoriaOferta").textContent = s.categoriaAtual || "-";
         $("comissaoOferta").textContent = s.comissaoAtual ? s.comissaoAtual + "%" : "-";
         $("scoreOferta").textContent = s.scoreAtual ? String(s.scoreAtual) : "-";
+
+        if (s.cupomAtual) {
+          $("cupomOferta").textContent = s.cupomAtual;
+          $("cupomOfertaPill").style.display = "inline-flex";
+        } else {
+          $("cupomOferta").textContent = "-";
+          $("cupomOfertaPill").style.display = "none";
+        }
+
+        if (s.precoComCupomEstimado) {
+          $("precoCupomOferta").textContent = moeda(s.precoComCupomEstimado);
+          $("precoCupomPill").style.display = "inline-flex";
+        } else {
+          $("precoCupomOferta").textContent = "-";
+          $("precoCupomPill").style.display = "none";
+        }
 
         const mensagem = s.mensagem || "";
         if (mensagem) {
