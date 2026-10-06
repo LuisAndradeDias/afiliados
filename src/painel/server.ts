@@ -1186,7 +1186,14 @@ async function executarAcao(
     if (!process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()) {
       return {
         ok: false,
-        mensagem: "Conecte a API do Mercado Livre antes de ativar o monitoramento."
+        mensagem: "Conecte a API do Mercado Livre antes de ativar o ciclo."
+      };
+    }
+
+    if (!process.env.AMAZON_ASSOCIATE_TAG?.trim()) {
+      return {
+        ok: false,
+        mensagem: "Configure o Tracking ID da Amazon antes de ativar o ciclo."
       };
     }
 
