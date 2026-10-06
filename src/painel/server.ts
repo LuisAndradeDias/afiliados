@@ -130,6 +130,7 @@ function monitorTemTarefaAtiva(): boolean {
     processos.has("buscar") ||
     processos.has("mercadolivre-buscar") ||
     processos.has("mercadolivre-whatsapp") ||
+    processos.has("automatico") ||
     mercadoLivreFluxoAutomatico
   );
 }
@@ -829,10 +830,10 @@ async function iniciarFluxoMercadoLivreAutomatico(
   ok: boolean;
   mensagem: string;
 }> {
-  if (modoMonitor && !mercadoLivreMonitorAtivo) {
+  if (modoMonitor && !monitorAlternadoAtivo) {
     return {
       ok: false,
-      mensagem: "O monitoramento contínuo do Mercado Livre está pausado."
+      mensagem: "O monitoramento intercalado Amazon + Mercado Livre está pausado."
     };
   }
 
@@ -874,11 +875,11 @@ async function iniciarFluxoMercadoLivreAutomatico(
     "mercadolivre-buscar",
     {},
     async (codigo) => {
-      if (modoMonitor && !mercadoLivreMonitorAtivo) {
+      if (modoMonitor && !monitorAlternadoAtivo) {
         mercadoLivreFluxoAutomatico = false;
         atualizarFluxoMercadoLivre(
           "idle",
-          "Monitoramento contínuo pausado."
+          "Monitoramento intercalado pausado."
         );
         return;
       }
@@ -1009,10 +1010,18 @@ async function estado() {
     mercadoLivreFluxoEtapa,
     mercadoLivreFluxoMensagem,
     mercadoLivreMonitorAtivo,
+    monitorAlternadoAtivo,
+    monitorAlternadoProximaPlataforma,
+    monitorAlternadoUltimaPlataforma,
+    monitorAlternadoProximaBuscaEm: mercadoLivreMonitorProximaBuscaEm,
+    monitorAlternadoSlotSegundos: monitorAlternadoSlotMs() / 1_000,
     mercadoLivreMonitorProximaBuscaEm,
     mercadoLivreMonitorUltimaBuscaEm,
+    amazonMonitorUltimaBuscaEm,
     mercadoLivreMonitorIntervaloMinutos:
       mercadoLivreMonitorIntervaloMs() / 60_000,
+    amazonMonitorIntervaloMinutos:
+      (monitorAlternadoSlotMs() * 2) / 60_000,
     mercadoLivreMonitorBackoffMinutos:
       mercadoLivreMonitorBackoffMs() / 60_000,
     origemPreparacaoAtual,
@@ -1150,11 +1159,11 @@ async function executarAcao(
   }
 
   if (acao === "mercadolivre-monitor-toggle") {
-    if (mercadoLivreMonitorAtivo) {
+    if (monitorAlternadoAtivo) {
       await definirMonitorMercadoLivreAtivo(false);
       return {
         ok: true,
-        mensagem: "Monitoramento contínuo do Mercado Livre pausado."
+        mensagem: "Monitoramento intercalado Amazon + Mercado Livre pausado."
       };
     }
 
@@ -1341,6 +1350,14 @@ async function executarAcao(
   }
 
   if (acao === "automatico-start") {
+    if (monitorAlternadoAtivo) {
+      return {
+        ok: false,
+        mensagem:
+          "O monitoramento intercalado Amazon + Mercado Livre já está ativo. Pause-o antes de usar o monitor legado da Amazon."
+      };
+    }
+
     if (processos.has("buscar") || whatsappOcupado()) {
       return {
         ok: false,
@@ -1393,8 +1410,8 @@ async function executarAcao(
       mercadoLivreFluxoAutomatico = false;
       atualizarFluxoMercadoLivre(
         "idle",
-        mercadoLivreMonitorAtivo
-          ? "Envio confirmado. O monitoramento será retomado após o WhatsApp confirmar o envio."
+        monitorAlternadoAtivo
+          ? "Envio confirmado. O ciclo Amazon + Mercado Livre será retomado após o WhatsApp confirmar o envio."
           : "Envio Mercado Livre confirmado. O fluxo será encerrado após o envio."
       );
     }
