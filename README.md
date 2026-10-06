@@ -197,3 +197,34 @@ Depois da revisão:
 - **Enviar + próxima ML**: envia e repete automaticamente o ciclo para outra oferta.
 
 O envio continua exigindo confirmação humana.
+
+
+## Monitoramento contínuo do Mercado Livre
+
+Quando ativado no painel, o Mercado Livre passa a operar como um ciclo persistente:
+
+```text
+monitorar categorias
+→ nenhuma oferta válida: aguardar e tentar outra categoria
+→ limite 429: aplicar backoff maior e continuar
+→ oferta válida: pausar novas buscas
+→ gerar link oficial automaticamente
+→ preparar imagem + mensagem
+→ abrir WhatsApp no grupo
+→ aguardar confirmação humana
+→ envio confirmado
+→ limpar a rodada
+→ retomar monitoramento
+```
+
+Configuração padrão:
+
+```env
+MERCADOLIVRE_MONITOR_ENABLED=false
+MERCADOLIVRE_MONITOR_INTERVAL_MINUTES=3
+MERCADOLIVRE_MONITOR_BACKOFF_MINUTES=8
+```
+
+O monitoramento nunca prepara duas ofertas ao mesmo tempo. Enquanto o WhatsApp está aberto para revisão, novas buscas ficam pausadas.
+
+Quando o monitoramento está ativo, o botão principal de envio vira **Enviar e continuar monitorando**.
