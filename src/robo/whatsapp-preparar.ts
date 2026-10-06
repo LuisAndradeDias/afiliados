@@ -2,6 +2,10 @@ import "dotenv/config";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright";
+import {
+  normalizarImagemAmazonAltaResolucao,
+  renderizarArteOferta
+} from "../imagens/oferta.js";
 import { registrarOfertaEnviada } from "../ofertas/historico.js";
 import {
   captureSendBaseline,
@@ -37,7 +41,9 @@ interface PacotePreparar {
   produtoId?: string;
   titulo?: string;
   precoAtual?: number;
+  precoAnterior?: number;
   descontoPercentual?: number;
+  descontoEfetivoPercentual?: number;
 }
 
 const pacote: PacotePreparar = await readFile(pacotePath, "utf8")
@@ -90,9 +96,46 @@ async function baixarImagemOferta(url?: string): Promise<string | undefined> {
   }
 }
 
-const imagemPath = modoTeste
-  ? undefined
-  : await baixarImagemOferta(pacote.imagemUrl);
+async function prepararImagemOferta(): Promise<string | undefined> {
+  if (!pacote.imagemUrl) return undefined;
+
+  const imagemFonte = /amazon/i.test(pacote.plataforma ?? "")
+    ? normalizarImagemAmazonAltaResolucao(pacote.imagemUrl)
+    : pacote.imagemUrl;
+
+  const caminhoArte = resolve("data", "ultima-imagem-whatsapp.jpg");
+  const arte = await renderizarArteOferta(
+    {
+      plataforma: pacote.plataforma,
+      titulo: pacote.titulo ?? "Oferta",
+      precoAtual: pacote.precoAtual,
+      precoAnterior: pacote.precoAnterior,
+      descontoPercentual: pacote.descontoPercentual,
+      descontoEfetivoPercentual: pacote.descontoEfetivoPercentual,
+      imagemUrl: imagemFonte
+    },
+    caminhoArte
+  );
+
+  if (arte) {
+    await rm(resolve("data", "ultima-imagem-whatsapp.png"), { force: true });
+    await rm(resolve("data", "ultima-imagem-whatsapp.gif"), { force: true });
+    console.log(`Arte da oferta gerada em 1080x1350: ${arte}`);
+    return arte;
+  }
+
+  console.warn(
+    "Renderização da arte falhou; usando a imagem original como fallback."
+  );
+  return (
+    (await baixarImagemOferta(imagemFonte)) ??
+    (imagemFonte !== pacote.imagemUrl
+      ? await baixarImagemOferta(pacote.imagemUrl)
+      : undefined)
+  );
+}
+
+const imagemPath = modoTeste ? undefined : await prepararImagemOferta();
 
 await rm(fecharSignalPath, { force: true });
 await rm(enviarSignalPath, { force: true });
