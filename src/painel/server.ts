@@ -609,10 +609,19 @@ async function prepararMercadoLivreAutomaticamente(): Promise<boolean> {
         );
         iniciar("preparar", "preparar");
       } else if (codigo !== 0) {
-        atualizarFluxoMercadoLivre(
-          "error",
-          "Falha ao montar a oferta Mercado Livre para o WhatsApp."
-        );
+        mercadoLivreFluxoAutomatico = false;
+
+        if (mercadoLivreMonitorAtivo) {
+          agendarMonitorMercadoLivre(
+            mercadoLivreMonitorBackoffMs(),
+            "Falha ao montar a oferta para o WhatsApp. O monitoramento tentará outra promoção."
+          );
+        } else {
+          atualizarFluxoMercadoLivre(
+            "error",
+            "Falha ao montar a oferta Mercado Livre para o WhatsApp."
+          );
+        }
       }
     }
   );
@@ -1375,10 +1384,18 @@ const server = createServer(async (req, res) => {
         };
         if (mercadoLivreFluxoAutomatico) {
           mercadoLivreFluxoAutomatico = false;
-          atualizarFluxoMercadoLivre(
-            "error",
-            `Falha no Gerador de Links: ${erro}`
-          );
+
+          if (mercadoLivreMonitorAtivo) {
+            agendarMonitorMercadoLivre(
+              mercadoLivreMonitorBackoffMs(),
+              `Gerador de Links falhou: ${erro}. O monitoramento tentará novamente.`
+            );
+          } else {
+            atualizarFluxoMercadoLivre(
+              "error",
+              `Falha no Gerador de Links: ${erro}`
+            );
+          }
         }
         registrar("mercadolivre-link", `Falha automática: ${erro}`);
         json(res, 200, { ok: true });
@@ -1429,10 +1446,18 @@ const server = createServer(async (req, res) => {
         };
         if (mercadoLivreFluxoAutomatico) {
           mercadoLivreFluxoAutomatico = false;
-          atualizarFluxoMercadoLivre(
-            "error",
-            `O link automático foi recusado: ${mensagem}`
-          );
+
+          if (mercadoLivreMonitorAtivo) {
+            agendarMonitorMercadoLivre(
+              mercadoLivreMonitorBackoffMs(),
+              `O link automático foi recusado: ${mensagem}. O monitoramento tentará novamente.`
+            );
+          } else {
+            atualizarFluxoMercadoLivre(
+              "error",
+              `O link automático foi recusado: ${mensagem}`
+            );
+          }
         }
         registrar(
           "mercadolivre-link",
