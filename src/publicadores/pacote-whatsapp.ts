@@ -13,6 +13,13 @@ export interface PacoteWhatsapp {
   categoria?: string;
   comissaoEstimadaPercentual?: number;
   scoreOferta?: number;
+  cupomCodigo?: string;
+  cupomPercentual?: number;
+  cupomValor?: number;
+  cupomCompraMinima?: number;
+  cupomDescontoMaximo?: number;
+  precoComCupomEstimado?: number;
+  descontoEfetivoPercentual?: number;
   urlProduto: string;
   urlAfiliado?: string;
 }
@@ -33,6 +40,13 @@ export async function salvarPacoteWhatsapp(
     categoria: oferta.categoria,
     comissaoEstimadaPercentual: oferta.comissaoEstimadaPercentual,
     scoreOferta: oferta.scoreOferta,
+    cupomCodigo: oferta.cupomCodigo,
+    cupomPercentual: oferta.cupomPercentual,
+    cupomValor: oferta.cupomValor,
+    cupomCompraMinima: oferta.cupomCompraMinima,
+    cupomDescontoMaximo: oferta.cupomDescontoMaximo,
+    precoComCupomEstimado: oferta.precoComCupomEstimado,
+    descontoEfetivoPercentual: oferta.descontoEfetivoPercentual,
     urlProduto: oferta.urlProduto,
     urlAfiliado: oferta.urlAfiliado
   };
