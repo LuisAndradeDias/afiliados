@@ -26,7 +26,8 @@ try {
   const baseline = await captureSendBaseline(
     page,
     "*Escumadeira Kit Cozinha*\nhttps://meli.la/1LDnxVi",
-    "Escumadeira Kit Cozinha"
+    "Escumadeira Kit Cozinha",
+    "MLB45737791"
   );
 
   await page.locator("#main").evaluate((root) => {
@@ -54,6 +55,36 @@ try {
   assert(
     await detectManualSend(page, baseline),
     "Nova mensagem enviada com título/link deveria ser reconhecida."
+  );
+
+  const pageAmazon = await browser.newPage();
+  await pageAmazon.setContent(`
+    <div id="main">
+      <div class="message-out" data-id="true_old_amazon">Oferta anterior</div>
+    </div>
+  `);
+
+  const amazonBaseline = await captureSendBaseline(
+    pageAmazon,
+    "*Echo Dot*\nhttps://www.amazon.com.br/dp/B09B8QFYZ2?tag=topoutlet05-20",
+    "Echo Dot",
+    "B09B8QFYZ2"
+  );
+
+  // Simula o caso real mais crítico: o usuário clica em Enviar imediatamente,
+  // antes mesmo da primeira rodada do polling do observador.
+  await pageAmazon.locator("#main").evaluate((root) => {
+    const outgoing = document.createElement("div");
+    outgoing.className = "message-out";
+    outgoing.setAttribute("data-id", "true_fast_amazon");
+    outgoing.textContent =
+      "Echo Dot 49% OFF https://www.amazon.com.br/dp/B09B8QFYZ2";
+    root.appendChild(outgoing);
+  });
+
+  assert(
+    await detectManualSend(pageAmazon, amazonBaseline),
+    "Envio rápido Amazon deveria ser reconhecido mesmo sem o parâmetro ?tag."
   );
 
   console.log("whatsapp-envio-observer: OK");
