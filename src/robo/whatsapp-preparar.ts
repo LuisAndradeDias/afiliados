@@ -12,7 +12,10 @@ import {
   detectManualSend,
   type WhatsappSendBaseline
 } from "./whatsapp-envio-observer.js";
-import { clicarComPonteiro } from "./whatsapp-pointer.js";
+import {
+  clicarComPonteiro,
+  trazerWhatsappParaTelaPrincipal
+} from "./whatsapp-pointer.js";
 import {
   deveAutoEnviar,
   lerConfigAutoEnvio
@@ -420,6 +423,10 @@ async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
 
   await page.waitForTimeout(1_000);
   await fecharAbasExtras(context, page);
+  await trazerWhatsappParaTelaPrincipal();
+  console.log(
+    "Janela do WhatsApp movida para a tela principal e trazida para frente."
+  );
 
   return page;
 }
@@ -504,7 +511,9 @@ try {
     channel: canal,
     headless: modoTeste,
     viewport: modoTeste ? { width: 1280, height: 900 } : null,
-    args: modoTeste ? [] : ["--start-maximized"]
+    args: modoTeste
+      ? []
+      : ["--start-maximized", "--window-position=0,0"]
   });
 } catch (error) {
   throw new Error(

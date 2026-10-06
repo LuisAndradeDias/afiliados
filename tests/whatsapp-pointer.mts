@@ -39,5 +39,15 @@ assert(
   fonte.includes('matches(":hover")'),
   "O clique precisa validar que o cursor físico está sobre o botão."
 );
+assert(
+  fonte.includes("PrimaryScreen") &&
+    fonte.includes("MoveWindow") &&
+    fonte.includes("SetForegroundWindow"),
+  "A janela do WhatsApp precisa ser movida para a tela principal e trazida para frente."
+);
+assert(
+  fonte.includes("SetWindowPos"),
+  "A janela do WhatsApp precisa ser promovida temporariamente ao topo."
+);
 
 console.log("whatsapp-pointer: OK");

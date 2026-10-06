@@ -59,6 +59,174 @@ async function powershellMouse(script: string): Promise<void> {
   );
 }
 
+export async function trazerWhatsappParaTelaPrincipal(): Promise<void> {
+  const script = String.raw`
+Add-Type -AssemblyName System.Windows.Forms
+
+Add-Type @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+
+public static class WhatsappWindowNative {
+  public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+  [DllImport("user32.dll")]
+  public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+  [DllImport("user32.dll")]
+  public static extern bool IsWindowVisible(IntPtr hWnd);
+
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+  [DllImport("user32.dll")]
+  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+  [DllImport("user32.dll")]
+  public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+
+  [DllImport("user32.dll")]
+  public static extern bool MoveWindow(
+    IntPtr hWnd,
+    int X,
+    int Y,
+    int nWidth,
+    int nHeight,
+    bool bRepaint
+  );
+
+  [DllImport("user32.dll")]
+  public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+  [DllImport("user32.dll")]
+  public static extern bool SetWindowPos(
+    IntPtr hWnd,
+    IntPtr hWndInsertAfter,
+    int X,
+    int Y,
+    int cx,
+    int cy,
+    uint uFlags
+  );
+}
+'@
+
+$script:whatsappHandle = [IntPtr]::Zero
+$script:whatsappProcessId = 0
+
+[WhatsappWindowNative]::EnumWindows({
+  param($hWnd, $lParam)
+
+  if (-not [WhatsappWindowNative]::IsWindowVisible($hWnd)) {
+    return $true
+  }
+
+  $titulo = New-Object System.Text.StringBuilder 512
+  [WhatsappWindowNative]::GetWindowText(
+    $hWnd,
+    $titulo,
+    $titulo.Capacity
+  ) | Out-Null
+
+  if ($titulo.ToString() -notmatch "WhatsApp") {
+    return $true
+  }
+
+  [uint32]$processoId = 0
+  [WhatsappWindowNative]::GetWindowThreadProcessId(
+    $hWnd,
+    [ref]$processoId
+  ) | Out-Null
+
+  try {
+    $processo = Get-Process -Id $processoId -ErrorAction Stop
+  } catch {
+    return $true
+  }
+
+  if ($processo.ProcessName -notmatch "^chrome$") {
+    return $true
+  }
+
+  $script:whatsappHandle = $hWnd
+  $script:whatsappProcessId = $processoId
+  return $false
+}, [IntPtr]::Zero) | Out-Null
+
+if ($script:whatsappHandle -eq [IntPtr]::Zero) {
+  throw "Janela visível do WhatsApp no Chrome não encontrada."
+}
+
+$area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+
+[WhatsappWindowNative]::ShowWindowAsync(
+  $script:whatsappHandle,
+  9
+) | Out-Null
+
+Start-Sleep -Milliseconds 120
+
+[WhatsappWindowNative]::MoveWindow(
+  $script:whatsappHandle,
+  $area.X,
+  $area.Y,
+  $area.Width,
+  $area.Height,
+  $true
+) | Out-Null
+
+[WhatsappWindowNative]::ShowWindowAsync(
+  $script:whatsappHandle,
+  3
+) | Out-Null
+
+$SWP_NOMOVE = 0x0002
+$SWP_NOSIZE = 0x0001
+$SWP_SHOWWINDOW = 0x0040
+$flags = $SWP_NOMOVE -bor $SWP_NOSIZE -bor $SWP_SHOWWINDOW
+
+[WhatsappWindowNative]::SetWindowPos(
+  $script:whatsappHandle,
+  [IntPtr](-1),
+  0, 0, 0, 0,
+  $flags
+) | Out-Null
+
+[WhatsappWindowNative]::SetWindowPos(
+  $script:whatsappHandle,
+  [IntPtr](-2),
+  0, 0, 0, 0,
+  $flags
+) | Out-Null
+
+$wsh = New-Object -ComObject WScript.Shell
+$wsh.AppActivate([int]$script:whatsappProcessId) | Out-Null
+
+[WhatsappWindowNative]::SetForegroundWindow(
+  $script:whatsappHandle
+) | Out-Null
+
+Start-Sleep -Milliseconds 180
+Write-Output "OK"
+`;
+
+  const { stdout } = await execFileAsync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    {
+      windowsHide: true,
+      timeout: 10_000
+    }
+  );
+
+  if (!String(stdout).includes("OK")) {
+    throw new Error(
+      "O Windows não confirmou que o WhatsApp foi trazido para a tela principal."
+    );
+  }
+}
+
 async function moverCursorFisico(x: number, y: number): Promise<void> {
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
     throw new Error("Coordenadas inválidas para o cursor físico.");
@@ -138,6 +306,8 @@ export async function clicarComPonteiro(
   }
 
   await page.bringToFront();
+  await trazerWhatsappParaTelaPrincipal();
+  await page.waitForTimeout(180);
 
   const caixa = await botao.boundingBox();
   if (!caixa || caixa.width < 2 || caixa.height < 2) {
