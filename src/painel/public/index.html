@@ -1343,19 +1343,22 @@
             : "consulta em andamento";
         }
 
-        $("grupoCiclo").textContent = s.grupo || "não configurado";
         if (revisaoPronta) {
           $("cycleWhatsapp").textContent = "Pronto para enviar";
-          $("cycleWhatsappDetail").innerHTML = `Grupo <b>${s.grupo || "não configurado"}</b> · revisão aberta`;
+          $("cycleWhatsappDetail").textContent =
+            `Grupo ${s.grupo || "não configurado"} · revisão aberta`;
         } else if (preparando) {
           $("cycleWhatsapp").textContent = "Abrindo / preparando";
-          $("cycleWhatsappDetail").innerHTML = `Grupo <b>${s.grupo || "não configurado"}</b>`;
+          $("cycleWhatsappDetail").textContent =
+            `Grupo ${s.grupo || "não configurado"}`;
         } else if (s.sessaoWhatsapp) {
           $("cycleWhatsapp").textContent = "Conectado";
-          $("cycleWhatsappDetail").innerHTML = `Grupo <b>${s.grupo || "não configurado"}</b>`;
+          $("cycleWhatsappDetail").textContent =
+            `Grupo ${s.grupo || "não configurado"}`;
         } else {
           $("cycleWhatsapp").textContent = "Login necessário";
-          $("cycleWhatsappDetail").innerHTML = "Abra as configurações do WhatsApp.";
+          $("cycleWhatsappDetail").textContent =
+            "Abra as configurações do WhatsApp.";
         }
 
         const amazonAtiva =
