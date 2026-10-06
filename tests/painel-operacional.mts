@@ -159,6 +159,31 @@ try {
   state = {
     ...base,
     monitorAlternadoAtivo: true,
+    operacaoEstado: "sending",
+    operacaoPlataforma: "amazon",
+    ofertaPreparada: true,
+    ofertaPlataformaAtual: "amazon",
+    whatsappRevisaoPronta: true,
+    whatsappEnvioPendente: true,
+    monitorAlternadoProximaPlataforma: "mercado-livre",
+    executando: ["preparar"],
+    mensagem: "OFERTA AMAZON https://www.amazon.com.br/dp/TESTE?tag=topoutlet05-20"
+  };
+  await page.waitForTimeout(1_700);
+
+  assert(
+    (await page.locator("#cycleNow").innerText()) ===
+      "Confirmando envio no WhatsApp",
+    "Autoenvio em confirmação deveria aparecer como sending no painel."
+  );
+  assert(
+    await page.locator("#sendNowButton").isDisabled(),
+    "Botão Enviar deve ficar bloqueado enquanto o WhatsApp confirma o autoenvio."
+  );
+
+  state = {
+    ...base,
+    monitorAlternadoAtivo: true,
     operacaoEstado: "offer-pending",
     operacaoPlataforma: "mercado-livre",
     ofertaPreparada: true,

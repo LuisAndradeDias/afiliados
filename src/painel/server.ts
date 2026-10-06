@@ -42,6 +42,7 @@ let mercadoLivreOauthState = "";
 let origemPreparacaoAtual: "amazon" | "mercado-livre" = "amazon";
 let origemPreparacaoEmExecucao: "amazon" | "mercado-livre" | null = null;
 let whatsappRevisaoPronta = false;
+let whatsappAutoEnvioEmAndamento = false;
 let whatsappPreparacaoIniciadaEm = 0;
 
 type MercadoLivreLinkJobStatus =
@@ -541,6 +542,7 @@ function iniciar(
 
   if (nome === "preparar") {
     whatsappRevisaoPronta = false;
+    whatsappAutoEnvioEmAndamento = false;
     whatsappPreparacaoIniciadaEm = Date.now();
   }
 
@@ -575,11 +577,29 @@ function iniciar(
 
     if (
       nome === "preparar" &&
+      texto.includes("AUTO_ENVIO_INICIADO:")
+    ) {
+      whatsappAutoEnvioEmAndamento = true;
+      const plataforma =
+        origemPreparacaoEmExecucao ?? origemPreparacaoAtual;
+      atualizarFluxoMercadoLivre(
+        "waiting-send",
+        `Enviando oferta ${nomePlataformaMonitor(plataforma)} e aguardando confirmação real do WhatsApp.`
+      );
+      registrar(
+        "painel",
+        "Autoenvio iniciado. Aguardando confirmação real do WhatsApp."
+      );
+    }
+
+    if (
+      nome === "preparar" &&
       (
         texto.includes("ENVIO_CONFIRMADO_MANUAL:") ||
         texto.includes("ENVIO_CONFIRMADO_AUTO:")
       )
     ) {
+      whatsappAutoEnvioEmAndamento = false;
       finalizacaoWhatsappAtual = "enviar";
       carregarProximaAposEnvio = false;
       registrar(
@@ -591,6 +611,7 @@ function iniciar(
     }
 
     if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
+      whatsappAutoEnvioEmAndamento = false;
       finalizacaoWhatsappAtual = null;
       carregarProximaAposEnvio = false;
       registrar(
@@ -611,6 +632,7 @@ function iniciar(
     }
 
     if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
+      whatsappAutoEnvioEmAndamento = false;
       finalizacaoWhatsappAtual = null;
       carregarProximaAposEnvio = false;
       registrar(
@@ -639,6 +661,7 @@ function iniciar(
 
     origemPreparacaoEmExecucao = null;
     whatsappRevisaoPronta = false;
+    whatsappAutoEnvioEmAndamento = false;
     whatsappPreparacaoIniciadaEm = 0;
     finalizacaoWhatsappAtual = null;
     carregarProximaAposEnvio = false;
@@ -1104,7 +1127,8 @@ async function estado() {
           : null;
 
   const operacaoEstado =
-    finalizacaoWhatsappAtual === "enviar"
+    finalizacaoWhatsappAtual === "enviar" ||
+    whatsappAutoEnvioEmAndamento
       ? "sending"
       : whatsappEmExecucao && whatsappRevisaoPronta
         ? "review"
@@ -1175,7 +1199,9 @@ async function estado() {
     operacaoPlataforma,
     ultimoEnvioConcluidoEm,
     ultimoEnvioComProxima,
-    whatsappEnvioPendente: finalizacaoWhatsappAtual === "enviar",
+    whatsappEnvioPendente:
+      finalizacaoWhatsappAtual === "enviar" ||
+      whatsappAutoEnvioEmAndamento,
     descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
     consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
     executando: [...processos.keys()],
