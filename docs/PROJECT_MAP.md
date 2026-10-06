@@ -71,3 +71,17 @@ Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo pa
 - `npm run mercadolivre:preview`: busca melhor oferta ML.
 - `npm run mercadolivre:whatsapp`: gera pacote WhatsApp a partir da oferta ML com link oficial.
 - `npm run typecheck`: valida o projeto.
+
+
+## Monitoramento contínuo Mercado Livre
+
+O estado do monitor vive no servidor do painel.
+
+- `MERCADOLIVRE_MONITOR_ENABLED`: restaura o monitor após reiniciar o painel.
+- `MERCADOLIVRE_MONITOR_INTERVAL_MINUTES`: intervalo normal entre rodadas sem oferta.
+- `MERCADOLIVRE_MONITOR_BACKOFF_MINUTES`: espera maior após limitação da API.
+- uma rodada consulta a próxima categoria da rotação em `data/rotacao-mercadolivre.json`.
+- ao encontrar oferta, o agendamento é suspenso enquanto link/WhatsApp são preparados.
+- após envio confirmado ou descarte, o monitor agenda a próxima rodada.
+- o Gerador de Links continua sendo executado pela extensão local do Chrome.
+- a extensão pode reabrir uma aba de Afiliados em segundo plano quando existir um job pendente.
