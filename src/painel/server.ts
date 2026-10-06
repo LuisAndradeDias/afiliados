@@ -480,14 +480,6 @@ async function iniciarFluxoMercadoLivreAutomatico(): Promise<{
     };
   }
 
-  if (!mercadoLivreExtensionConectada()) {
-    return {
-      ok: false,
-      mensagem:
-        "A extensão Meli não está conectada. Recarregue/ative a extensão do navegador."
-    };
-  }
-
   if (processos.has("mercadolivre-buscar") || processos.has("mercadolivre-whatsapp")) {
     return {
       ok: false,

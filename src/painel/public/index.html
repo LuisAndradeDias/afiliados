@@ -987,8 +987,8 @@
         );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "API conectada" : "API pendente";
         $("meliLaunchState").textContent =
-          s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada
-            ? "Pronto"
+          s.mercadoLivreApiConfigurada
+            ? (s.mercadoLivreExtensionConectada ? "Pronto" : "API pronta · extensão reconecta ao iniciar")
             : "Configuração pendente";
 
         $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
@@ -1155,8 +1155,7 @@
               mlBuscando ||
               mlPreparando ||
               whatsappOcupado ||
-              !s.mercadoLivreApiConfigurada ||
-              !s.mercadoLivreExtensionConectada;
+              !s.mercadoLivreApiConfigurada;
           } else if (acao === "mercadolivre-buscar") {
             b.disabled = mlBuscando || fluxoMlAtivo || !s.mercadoLivreApiConfigurada;
           } else if (acao === "mercadolivre-link-save") {
