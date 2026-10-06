@@ -1036,9 +1036,41 @@
       });
     }
 
+    let toastTimer = null;
+
     function toast(texto, tipo = "warn") {
+      window.clearTimeout(toastTimer);
       $("toast").textContent = texto;
       $("toast").className = tipo;
+
+      if (tipo === "ok") {
+        toastTimer = window.setTimeout(() => {
+          $("toast").textContent = "";
+          $("toast").className = "";
+        }, 5000);
+      }
+    }
+
+    function nomePlataforma(valor) {
+      return valor === "mercado-livre" ? "Mercado Livre" : valor === "amazon" ? "Amazon" : "—";
+    }
+
+    function horario(valor) {
+      const numero = Number(valor || 0);
+      if (!numero) return "ainda não consultada";
+      return new Date(numero).toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function contagemAte(valor) {
+      const alvo = Number(valor || 0);
+      if (!alvo) return "";
+      const segundos = Math.max(0, Math.ceil((alvo - Date.now()) / 1000));
+      const min = Math.floor(segundos / 60);
+      const sec = segundos % 60;
+      return `${min}m ${String(sec).padStart(2, "0")}s`;
     }
 
     function setStep(id, estado) {
@@ -1047,67 +1079,96 @@
       if (estado) el.classList.add(estado);
     }
 
-    function renderFluxoMeli(s, preparando) {
-      const etapa = s.mercadoLivreFluxoEtapa || "idle";
-      const mensagem = s.mercadoLivreFluxoMensagem || "";
-      const ativo =
-        s.mercadoLivreMonitorAtivo ||
-        s.mercadoLivreFluxoAutomatico ||
-        etapa !== "idle";
-      const card = $("flowCard");
+    function renderFluxoMeli(s) {
+      const estado = s.operacaoEstado || "paused";
+      const plataforma = s.operacaoPlataforma || s.ofertaPlataformaAtual || null;
+      const nome = nomePlataforma(plataforma);
+      const proxima = nomePlataforma(s.monitorAlternadoProximaPlataforma);
+      const tempo = contagemAte(
+        s.monitorAlternadoProximaBuscaEm ||
+        s.mercadoLivreMonitorProximaBuscaEm
+      );
 
-      if (!ativo) {
-        card.classList.remove("visible");
-        return;
-      }
+      $("flowCard").classList.add("visible");
 
-      card.classList.add("visible");
-      $("flowTitle").textContent = s.monitorAlternadoAtivo
-        ? "Monitoramento intercalado Amazon + Mercado Livre"
-        : "Fluxo Mercado Livre";
-      $("flowDescription").textContent =
-        mensagem ||
-        (preparando
-          ? "WhatsApp aberto aguardando sua revisão."
-          : "Acompanhando a preparação da oferta.");
-
-      const rotulos = {
-        monitoring: "Monitorando",
-        searching: "Buscando oferta",
-        linking: "Gerando link",
-        preparing: "Preparando WhatsApp",
-        "waiting-send": "Aguardando revisão",
-        error: "Atenção necessária",
-        idle: preparando ? "Aguardando revisão" : "Pronto"
+      const titulos = {
+        paused: "Ciclo automático pausado",
+        scheduled: "Aguardando a próxima busca",
+        searching: `Buscando promoções na ${nome}`,
+        linking: "Mercado Livre: gerando o link oficial",
+        preparing: `Oferta ${nome} encontrada — abrindo WhatsApp`,
+        review: `Oferta ${nome} pronta para revisão`,
+        sending: "Confirmando o envio no WhatsApp",
+        "offer-pending": `Oferta ${nome} pronta, mas WhatsApp não está aberto`,
+        error: "A automação precisa de atenção"
       };
-      $("flowBadge").textContent = rotulos[etapa] || "Processando";
+
+      const badges = {
+        paused: "Pausado",
+        scheduled: "Aguardando",
+        searching: "Buscando",
+        linking: "Gerando link",
+        preparing: "Abrindo WhatsApp",
+        review: "Aguardando você",
+        sending: "Confirmando envio",
+        "offer-pending": "Reabrir WhatsApp",
+        error: "Atenção"
+      };
+
+      const detalhes = {
+        paused: "Clique em “Iniciar ciclo automático” para alternar Mercado Livre e Amazon.",
+        scheduled: tempo
+          ? `Próxima consulta: ${proxima} em ${tempo}.`
+          : `Próxima consulta: ${proxima}.`,
+        searching: `Consultando ofertas e aplicando os filtros configurados na ${nome}.`,
+        linking: "A oferta do Mercado Livre passou pelos filtros. A extensão está gerando o link de afiliado.",
+        preparing: `A promoção da ${nome} já foi escolhida. O sistema está montando imagem, mensagem e janela do WhatsApp.`,
+        review: `O WhatsApp está pronto com a promoção da ${nome}. Revise e envie pelo WhatsApp ou pelo painel.`,
+        sending: "O comando de envio foi disparado. O ciclo só continuará depois que o WhatsApp confirmar o envio.",
+        "offer-pending": "A promoção está salva no painel, mas não existe uma janela ativa de revisão. Use “Reabrir no WhatsApp”.",
+        error: s.mercadoLivreFluxoMensagem || "Consulte os logs em Ferramentas avançadas."
+      };
+
+      $("flowTitle").textContent = titulos[estado] || "Atividade do ciclo";
+      $("flowDescription").textContent = detalhes[estado] || "";
+      $("flowBadge").textContent = badges[estado] || "Processando";
+
+      $("stepSearchText").textContent =
+        plataforma === "amazon"
+          ? "Buscar e filtrar promoções Amazon"
+          : plataforma === "mercado-livre"
+            ? "Buscar e filtrar promoções Meli"
+            : "Encontrar uma oferta elegível";
+      $("stepLinkText").textContent =
+        plataforma === "amazon"
+          ? "Validar preço e aplicar Tracking ID"
+          : "Validar cupom e gerar link oficial";
+      $("stepPrepareText").textContent =
+        "Montar imagem, mensagem e abrir o WhatsApp";
+      $("stepReviewText").textContent =
+        "Aguardar envio confirmado no WhatsApp";
 
       ["stepSearch", "stepLink", "stepPrepare", "stepReview"].forEach((id) => setStep(id, ""));
 
-      if (etapa === "monitoring") setStep("stepSearch", "active");
-      if (etapa === "searching") setStep("stepSearch", "active");
-      if (etapa === "linking") {
+      if (estado === "scheduled") setStep("stepSearch", "active");
+      if (estado === "searching") setStep("stepSearch", "active");
+      if (estado === "linking") {
         setStep("stepSearch", "done");
         setStep("stepLink", "active");
       }
-      if (etapa === "preparing") {
+      if (estado === "preparing") {
         setStep("stepSearch", "done");
         setStep("stepLink", "done");
         setStep("stepPrepare", "active");
       }
-      if (etapa === "waiting-send" || (preparando && s.origemPreparacaoAtual === "mercado-livre")) {
+      if (estado === "review" || estado === "sending" || estado === "offer-pending") {
         setStep("stepSearch", "done");
         setStep("stepLink", "done");
         setStep("stepPrepare", "done");
-        setStep("stepReview", "active");
+        setStep("stepReview", estado === "offer-pending" ? "error" : "active");
       }
-      if (etapa === "error") {
-        if (s.mercadoLivreLinkJob?.status === "error") {
-          setStep("stepSearch", "done");
-          setStep("stepLink", "error");
-        } else {
-          setStep("stepSearch", "error");
-        }
+      if (estado === "error") {
+        setStep("stepSearch", "error");
       }
     }
 
@@ -1171,11 +1232,16 @@
         const mlPreparando = s.executando.includes("mercadolivre-whatsapp");
         const automatico = s.executando.includes("automatico");
         const whatsappOcupado = preparando || logando;
-        const origemPacoteMl = (s.plataformaAtual || "")
-          .toLowerCase()
-          .includes("mercado livre");
-        const origemMl =
-          s.origemPreparacaoAtual === "mercado-livre" || origemPacoteMl;
+        const ofertaPlataforma =
+          s.ofertaPlataformaAtual ||
+          (
+            (s.plataformaAtual || "").toLowerCase().includes("mercado livre")
+              ? "mercado-livre"
+              : (s.plataformaAtual ? "amazon" : null)
+          );
+        const origemMl = ofertaPlataforma === "mercado-livre";
+        const revisaoPronta = Boolean(s.whatsappRevisaoPronta);
+        const ofertaPreparada = Boolean(s.ofertaPreparada);
         const fluxoMlAtivo =
           s.mercadoLivreFluxoAutomatico &&
           s.mercadoLivreFluxoEtapa !== "idle" &&
@@ -1195,71 +1261,147 @@
         setDot("amazonDot", s.afiliadoConfigurado ? "ok" : "warn");
 
         $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? s.monitorAlternadoAtivo
-            ? "Ciclo intercalado ativo"
-            : (s.mercadoLivreExtensionConectada ? "API + automação prontas" : "API conectada · extensão offline")
+          ? (s.mercadoLivreExtensionConectada ? "API + extensão prontas" : "API conectada · extensão offline")
           : "Configuração pendente";
         setDot(
           "meliDot",
           s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada ? "ok" : "warn"
         );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "API conectada" : "API pendente";
-        const monitorButton = $("meliMonitorButton");
+
+        const cycleButton = $("cycleToggleButton");
+        const cycleBadge = $("cycleBadge");
         const proximaBuscaEm = Number(
           s.monitorAlternadoProximaBuscaEm ||
           s.mercadoLivreMonitorProximaBuscaEm ||
           0
         );
-        const segundosProximaBusca = proximaBuscaEm
-          ? Math.max(0, Math.ceil((proximaBuscaEm - Date.now()) / 1000))
-          : 0;
-        const minutosProximaBusca = Math.floor(segundosProximaBusca / 60);
-        const restoSegundos = segundosProximaBusca % 60;
-        const proximaPlataforma =
-          s.monitorAlternadoProximaPlataforma === "amazon"
-            ? "Amazon"
-            : "Mercado Livre";
-        const textoProxima = proximaBuscaEm
-          ? `Próxima: ${proximaPlataforma} em ${minutosProximaBusca}m ${String(restoSegundos).padStart(2, "0")}s`
-          : "";
-
+        const proximaPlataforma = nomePlataforma(
+          s.monitorAlternadoProximaPlataforma
+        );
+        const tempoProxima = contagemAte(proximaBuscaEm);
         const cuponsAtivos = Number(s.mercadoLivreCuponsAtivos || 0);
-        const infoCupons = cuponsAtivos > 0
-          ? ` · ${cuponsAtivos} cupom(ns) ativo(s)`
-          : "";
+        const operacaoPlataforma = nomePlataforma(
+          s.operacaoPlataforma || s.ofertaPlataformaAtual
+        );
+        const estado = s.operacaoEstado || (s.monitorAlternadoAtivo ? "scheduled" : "paused");
+
+        cycleBadge.textContent = s.monitorAlternadoAtivo ? "ATIVO" : "PAUSADO";
+        cycleBadge.classList.toggle("active", Boolean(s.monitorAlternadoAtivo));
 
         if (s.monitorAlternadoAtivo) {
-          monitorButton.textContent = "⏸ Pausar ciclo Amazon + Meli";
-          monitorButton.classList.remove("success");
-          monitorButton.classList.add("secondary");
-
-          $("amazonLaunchState").textContent = preparando
-            ? "Ciclo pausado para revisão"
-            : (
-                s.monitorAlternadoProximaPlataforma === "amazon"
-                  ? textoProxima || "Próxima rodada Amazon"
-                  : "A cada 2 min"
-              );
-
-          $("meliLaunchState").textContent = preparando
-            ? "Ciclo pausado para revisão" + infoCupons
-            : (
-                s.monitorAlternadoProximaPlataforma === "mercado-livre"
-                  ? (textoProxima || "Próxima rodada Meli") + infoCupons
-                  : "A cada 2 min" + infoCupons
-              );
+          cycleButton.textContent = "⏸ Pausar novas buscas";
+          cycleButton.classList.remove("success");
+          cycleButton.classList.add("secondary");
         } else {
-          monitorButton.textContent = "▶ Ativar ciclo Amazon + Meli";
-          monitorButton.classList.remove("secondary");
-          monitorButton.classList.add("success");
-
-          $("amazonLaunchState").textContent = s.afiliadoConfigurado
-            ? "Pronta para o ciclo"
-            : "Configuração pendente";
-          $("meliLaunchState").textContent = s.mercadoLivreApiConfigurada
-            ? "Pronto para o ciclo" + infoCupons
-            : "Configuração pendente";
+          cycleButton.textContent = "▶ Iniciar ciclo automático";
+          cycleButton.classList.remove("secondary");
+          cycleButton.classList.add("success");
         }
+
+        const agoraPorEstado = {
+          paused: "Automação pausada",
+          scheduled: "Aguardando próxima busca",
+          searching: `Buscando na ${operacaoPlataforma}`,
+          linking: "Gerando link do Mercado Livre",
+          preparing: `Abrindo WhatsApp · ${operacaoPlataforma}`,
+          review: `Revisão pronta · ${operacaoPlataforma}`,
+          sending: "Confirmando envio no WhatsApp",
+          "offer-pending": `Oferta pendente · ${operacaoPlataforma}`,
+          error: "Atenção necessária"
+        };
+        $("cycleNow").textContent = agoraPorEstado[estado] || "Processando";
+
+        const detalhePorEstado = {
+          paused: "Nenhuma busca automática será iniciada.",
+          scheduled: "O relógio do ciclo está ativo.",
+          searching: "Aplicando desconto, histórico, comissão e filtros.",
+          linking: "Aguardando o link oficial de afiliado.",
+          preparing: "Montando imagem e mensagem para o grupo.",
+          review: "O ciclo aguarda você enviar a oferta.",
+          sending: "Aguardando confirmação real do WhatsApp.",
+          "offer-pending": "Use Reabrir no WhatsApp para continuar.",
+          error: s.mercadoLivreFluxoMensagem || "Consulte os logs."
+        };
+        $("cycleNowDetail").textContent = detalhePorEstado[estado] || "";
+
+        if (!s.monitorAlternadoAtivo) {
+          $("cycleNext").textContent = "Ciclo pausado";
+          $("cycleCountdown").textContent = "Inicie o ciclo para voltar a procurar ofertas.";
+        } else if (
+          estado === "review" ||
+          estado === "preparing" ||
+          estado === "sending" ||
+          estado === "offer-pending"
+        ) {
+          $("cycleNext").textContent = `Depois desta oferta: ${proximaPlataforma}`;
+          $("cycleCountdown").textContent = "O relógio volta após concluir ou descartar a oferta atual.";
+        } else {
+          $("cycleNext").textContent = proximaPlataforma;
+          $("cycleCountdown").textContent = tempoProxima
+            ? `em ${tempoProxima}`
+            : "consulta em andamento";
+        }
+
+        $("grupoCiclo").textContent = s.grupo || "não configurado";
+        if (revisaoPronta) {
+          $("cycleWhatsapp").textContent = "Pronto para enviar";
+          $("cycleWhatsappDetail").innerHTML = `Grupo <b>${s.grupo || "não configurado"}</b> · revisão aberta`;
+        } else if (preparando) {
+          $("cycleWhatsapp").textContent = "Abrindo / preparando";
+          $("cycleWhatsappDetail").innerHTML = `Grupo <b>${s.grupo || "não configurado"}</b>`;
+        } else if (s.sessaoWhatsapp) {
+          $("cycleWhatsapp").textContent = "Conectado";
+          $("cycleWhatsappDetail").innerHTML = `Grupo <b>${s.grupo || "não configurado"}</b>`;
+        } else {
+          $("cycleWhatsapp").textContent = "Login necessário";
+          $("cycleWhatsappDetail").innerHTML = "Abra as configurações do WhatsApp.";
+        }
+
+        const amazonAtiva =
+          s.operacaoPlataforma === "amazon" &&
+          ["searching", "preparing", "review", "sending", "offer-pending"].includes(estado);
+        const meliAtivo =
+          s.operacaoPlataforma === "mercado-livre" &&
+          ["searching", "linking", "preparing", "review", "sending", "offer-pending"].includes(estado);
+
+        $("amazonLane").classList.toggle("active", amazonAtiva);
+        $("meliLane").classList.toggle("active", meliAtivo);
+
+        $("amazonLaunchState").textContent = amazonAtiva
+          ? (
+              estado === "searching"
+                ? "Buscando agora"
+                : estado === "review"
+                  ? "Oferta em revisão"
+                  : "Oferta encontrada"
+            )
+          : s.monitorAlternadoAtivo && s.monitorAlternadoProximaPlataforma === "amazon"
+            ? "Próxima da fila"
+            : s.monitorAlternadoAtivo
+              ? "Aguardando"
+              : "Ciclo pausado";
+
+        $("meliLaunchState").textContent = meliAtivo
+          ? (
+              estado === "searching"
+                ? "Buscando agora"
+                : estado === "linking"
+                  ? "Gerando link"
+                  : estado === "review"
+                    ? "Oferta em revisão"
+                    : "Oferta encontrada"
+            )
+          : s.monitorAlternadoAtivo && s.monitorAlternadoProximaPlataforma === "mercado-livre"
+            ? "Próxima da fila"
+            : s.monitorAlternadoAtivo
+              ? "Aguardando"
+              : "Ciclo pausado";
+
+        $("amazonLaneMeta").textContent =
+          `Última consulta: ${horario(s.amazonMonitorUltimaBuscaEm)} · cadência ~2 min`;
+        $("meliLaneMeta").textContent =
+          `Última consulta: ${horario(s.mercadoLivreMonitorUltimaBuscaEm)} · ${cuponsAtivos} cupom(ns) ativo(s)`;
 
         $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
 
@@ -1320,7 +1462,7 @@
           mlFlowStatus.style.display = "none";
         }
 
-        renderFluxoMeli(s, preparando);
+        renderFluxoMeli(s);
 
         const mlOferta = s.mercadoLivreOferta || {};
         if (mlOferta.urlProduto) {
