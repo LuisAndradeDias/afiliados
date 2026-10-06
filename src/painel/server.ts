@@ -696,6 +696,10 @@ function iniciarFluxoAmazonMonitor(): {
   }
 
   origemPreparacaoAtual = "amazon";
+  atualizarFluxoMercadoLivre(
+    "searching",
+    "Monitoramento intercalado: buscando a próxima oferta Amazon..."
+  );
   registrar(
     "monitor-amazon",
     "Turno Amazon iniciado pelo monitoramento intercalado."
@@ -713,7 +717,19 @@ function iniciarFluxoAmazonMonitor(): {
           "monitor-amazon",
           "Oferta Amazon encontrada. Pausando o ciclo para revisão no WhatsApp."
         );
-        iniciar("preparar", "preparar");
+        const abriu = iniciar("preparar", "preparar");
+
+        if (abriu) {
+          atualizarFluxoMercadoLivre(
+            "waiting-send",
+            "Oferta Amazon encontrada. WhatsApp aberto para revisão e confirmação."
+          );
+        } else {
+          agendarProximoTurnoAposRodada(
+            "mercado-livre",
+            "Não foi possível abrir a revisão Amazon. Mercado Livre será consultado no próximo minuto."
+          );
+        }
         return;
       }
 
