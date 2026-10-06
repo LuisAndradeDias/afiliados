@@ -630,6 +630,7 @@ function iniciar(
       origemPreparacaoEmExecucao ?? origemPreparacaoAtual;
     const finalizacao = finalizacaoWhatsappAtual;
     const carregarProxima = carregarProximaAposEnvio;
+    const revisaoEstavaPronta = whatsappRevisaoPronta;
 
     origemPreparacaoEmExecucao = null;
     whatsappRevisaoPronta = false;
@@ -638,32 +639,20 @@ function iniciar(
     carregarProximaAposEnvio = false;
 
     if (codigo !== 0) {
-      if (monitorAlternadoAtivo) {
-        const proxima: PlataformaMonitor =
-          origemFinalizada === "mercado-livre"
-            ? "amazon"
-            : "mercado-livre";
+      mercadoLivreFluxoAutomatico = false;
 
-        await limparPreparacaoAtual(origemFinalizada);
-        registrar(
-          "fluxo",
-          `A revisão no WhatsApp foi encerrada antes da confirmação. Retomando o ciclo por ${nomePlataformaMonitor(proxima)}.`
-        );
-        agendarMonitorAlternado(
-          proxima,
-          5_000,
-          `WhatsApp encerrado sem envio. ${nomePlataformaMonitor(proxima)} será consultada em instantes.`
-        );
-        return;
-      }
+      const detalhe = revisaoEstavaPronta
+        ? "A janela do WhatsApp foi fechada antes da confirmação."
+        : "O WhatsApp não terminou de abrir/preparar a oferta.";
 
-      if (origemFinalizada === "mercado-livre") {
-        mercadoLivreFluxoAutomatico = false;
-        atualizarFluxoMercadoLivre(
-          "error",
-          "A janela do WhatsApp foi encerrada antes de confirmar o envio. Reabra a oferta e tente novamente."
-        );
-      }
+      atualizarFluxoMercadoLivre(
+        "idle",
+        `${detalhe} A oferta foi mantida no painel. Use Reabrir no WhatsApp ou Descartar oferta.`
+      );
+      registrar(
+        "fluxo",
+        `${detalhe} A oferta preparada foi preservada para evitar perda ou envio duplicado.`
+      );
       return;
     }
 
@@ -814,8 +803,6 @@ function iniciarFluxoAmazonMonitor(): {
     "buscar",
     {},
     (codigo) => {
-      if (!monitorAlternadoAtivo) return;
-
       if (codigo === 0 && !whatsappOcupado()) {
         registrar(
           "monitor-amazon",
@@ -986,15 +973,6 @@ async function iniciarFluxoMercadoLivreAutomatico(
     "mercadolivre-buscar",
     {},
     async (codigo) => {
-      if (modoMonitor && !monitorAlternadoAtivo) {
-        mercadoLivreFluxoAutomatico = false;
-        atualizarFluxoMercadoLivre(
-          "idle",
-          "Monitoramento intercalado pausado."
-        );
-        return;
-      }
-
       if (codigo !== 0) {
         mercadoLivreFluxoAutomatico = false;
 
@@ -1364,11 +1342,16 @@ async function executarAcao(
       await definirMonitorMercadoLivreAtivo(true);
     }
 
-    if (monitorTemTarefaAtiva()) {
+    const temOfertaPendente =
+      await existe(mensagemPath) &&
+      await existe(pacotePath);
+
+    if (monitorTemTarefaAtiva() || temOfertaPendente) {
       return {
         ok: true,
-        mensagem:
-          "Ciclo automático ativo. A busca ficará pausada enquanto a oferta atual estiver sendo preparada ou revisada."
+        mensagem: temOfertaPendente
+          ? "Ciclo automático ativo, mas há uma oferta pendente. Reabra ou descarte essa oferta antes da próxima busca."
+          : "Ciclo automático ativo. A busca ficará pausada enquanto a oferta atual estiver sendo preparada ou revisada."
       };
     }
 
