@@ -281,13 +281,19 @@
         throw new Error("Não encontrei o botão Gerar.");
       }
 
+      // Em execuções consecutivas o resultado anterior pode continuar visível.
+      // Guardamos os links existentes para nunca devolver o link da oferta anterior.
+      const linksAntes = new Set(linksNaTela());
       botao.click();
 
       const link = await esperar(() => {
         const links = linksNaTela();
         return links.find((url) =>
-          /^https:\/\/meli\.la\//i.test(url) ||
-          /mercadolivre\.com(?:\.br)?\/sec\//i.test(url)
+          (
+            /^https:\/\/meli\.la\//i.test(url) ||
+            /mercadolivre\.com(?:\.br)?\/sec\//i.test(url)
+          ) &&
+          !linksAntes.has(url)
         );
       }, 20000);
 
