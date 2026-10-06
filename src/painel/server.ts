@@ -40,6 +40,9 @@ let ultimoEnvioConcluidoEm = 0;
 let ultimoEnvioComProxima = false;
 let mercadoLivreOauthState = "";
 let origemPreparacaoAtual: "amazon" | "mercado-livre" = "amazon";
+let origemPreparacaoEmExecucao: "amazon" | "mercado-livre" | null = null;
+let whatsappRevisaoPronta = false;
+let whatsappPreparacaoIniciadaEm = 0;
 
 type MercadoLivreLinkJobStatus =
   | "pending"
@@ -116,6 +119,26 @@ function cancelarAgendamentoMonitorAlternado(): void {
 
 function nomePlataformaMonitor(plataforma: PlataformaMonitor): string {
   return plataforma === "mercado-livre" ? "Mercado Livre" : "Amazon";
+}
+
+function plataformaDoValor(valor?: string): PlataformaMonitor | null {
+  const normalizado = (valor ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (normalizado.includes("mercado livre")) return "mercado-livre";
+  if (normalizado.includes("amazon")) return "amazon";
+  return null;
+}
+
+async function plataformaDaOfertaAtual(): Promise<PlataformaMonitor | null> {
+  const pacote = await readFile(pacotePath, "utf8")
+    .then((texto) => JSON.parse(texto) as { plataforma?: string })
+    .catch(() => null);
+
+  return plataformaDoValor(pacote?.plataforma);
 }
 
 function outraPlataformaMonitor(
@@ -515,6 +538,12 @@ function iniciar(
   );
 
   processos.set(nome, child);
+
+  if (nome === "preparar") {
+    whatsappRevisaoPronta = false;
+    whatsappPreparacaoIniciadaEm = Date.now();
+  }
+
   registrar(nome, "Iniciado.");
   child.stdout?.on("data", (d) => {
     const texto = String(d);
@@ -525,6 +554,23 @@ function iniciar(
       (texto.includes("limite de requisicoes") || texto.includes("HTTP 429"))
     ) {
       mercadoLivreBuscaLimitada = true;
+    }
+
+    if (
+      nome === "preparar" &&
+      (
+        texto.includes("Oferta pronta para envio pelo painel.") ||
+        texto.includes("Aguardando sua confirmação no painel ou o envio direto no WhatsApp.")
+      )
+    ) {
+      whatsappRevisaoPronta = true;
+      const plataforma =
+        origemPreparacaoEmExecucao ?? origemPreparacaoAtual;
+
+      atualizarFluxoMercadoLivre(
+        "waiting-send",
+        `Oferta ${nomePlataformaMonitor(plataforma)} pronta no WhatsApp. Aguardando sua confirmação.`
+      );
     }
 
     if (
@@ -580,10 +626,14 @@ function iniciar(
 
     if (nome !== "preparar") return;
 
-    const origemFinalizada = origemPreparacaoAtual;
+    const origemFinalizada =
+      origemPreparacaoEmExecucao ?? origemPreparacaoAtual;
     const finalizacao = finalizacaoWhatsappAtual;
     const carregarProxima = carregarProximaAposEnvio;
 
+    origemPreparacaoEmExecucao = null;
+    whatsappRevisaoPronta = false;
+    whatsappPreparacaoIniciadaEm = 0;
     finalizacaoWhatsappAtual = null;
     carregarProximaAposEnvio = false;
 
@@ -672,9 +722,8 @@ function iniciar(
       registrar("fluxo", "Envio concluído. Buscando a próxima oferta Amazon...");
       iniciar("buscar", "buscar", {}, (codigoBusca) => {
         if (codigoBusca === 0 && !whatsappOcupado()) {
-          origemPreparacaoAtual = "amazon";
           registrar("fluxo", "Próxima oferta pronta. Abrindo WhatsApp...");
-          iniciar("preparar", "preparar");
+          iniciarPreparacaoWhatsapp("amazon");
         }
       });
     } else {
@@ -692,6 +741,30 @@ function iniciar(
 function whatsappOcupado(): boolean {
   return processos.has("login") || processos.has("preparar");
 }
+
+function iniciarPreparacaoWhatsapp(
+  origem: PlataformaMonitor
+): boolean {
+  if (processos.has("preparar")) return false;
+
+  origemPreparacaoAtual = origem;
+  origemPreparacaoEmExecucao = origem;
+  whatsappRevisaoPronta = false;
+  whatsappPreparacaoIniciadaEm = Date.now();
+
+  atualizarFluxoMercadoLivre(
+    "preparing",
+    `Oferta ${nomePlataformaMonitor(origem)} encontrada. Abrindo e preparando o WhatsApp...`
+  );
+
+  const ok = iniciar("preparar", "preparar");
+  if (!ok) {
+    origemPreparacaoEmExecucao = null;
+    whatsappPreparacaoIniciadaEm = 0;
+  }
+  return ok;
+}
+
 
 function iniciarFluxoAmazonMonitor(): {
   ok: boolean;
@@ -748,14 +821,9 @@ function iniciarFluxoAmazonMonitor(): {
           "monitor-amazon",
           "Oferta Amazon encontrada. Pausando o ciclo para revisão no WhatsApp."
         );
-        const abriu = iniciar("preparar", "preparar");
+        const abriu = iniciarPreparacaoWhatsapp("amazon");
 
-        if (abriu) {
-          atualizarFluxoMercadoLivre(
-            "waiting-send",
-            "Oferta Amazon encontrada. WhatsApp aberto para revisão e confirmação."
-          );
-        } else {
+        if (!abriu) {
           agendarProximoTurnoAposRodada(
             "mercado-livre",
             "Não foi possível abrir a revisão Amazon. Mercado Livre será consultado no próximo minuto."
@@ -838,11 +906,7 @@ async function prepararMercadoLivreAutomaticamente(): Promise<boolean> {
     {},
     (codigo) => {
       if (codigo === 0 && !whatsappOcupado()) {
-        atualizarFluxoMercadoLivre(
-          "waiting-send",
-          "Oferta pronta. Abrindo WhatsApp para revisão e confirmação."
-        );
-        iniciar("preparar", "preparar");
+        iniciarPreparacaoWhatsapp("mercado-livre");
       } else if (codigo !== 0) {
         mercadoLivreFluxoAutomatico = false;
 
@@ -1035,6 +1099,51 @@ async function estado() {
     })
     .catch(() => ({}));
 
+  const plataformaPacoteAtual = plataformaDoValor(pacote.plataforma);
+  const ofertaPreparada = Boolean(mensagem.trim() && plataformaPacoteAtual);
+  const whatsappEmExecucao = processos.has("preparar");
+  const operacaoPlataforma: PlataformaMonitor | null =
+    whatsappEmExecucao || finalizacaoWhatsappAtual
+      ? (
+          plataformaPacoteAtual ??
+          origemPreparacaoEmExecucao ??
+          origemPreparacaoAtual
+        )
+      : processos.has("buscar")
+        ? "amazon"
+        : (
+            processos.has("mercadolivre-buscar") ||
+            processos.has("mercadolivre-whatsapp") ||
+            mercadoLivreLinkJob?.status === "pending" ||
+            mercadoLivreLinkJob?.status === "running"
+          )
+          ? "mercado-livre"
+          : null;
+
+  const operacaoEstado =
+    finalizacaoWhatsappAtual === "enviar"
+      ? "sending"
+      : whatsappEmExecucao && whatsappRevisaoPronta
+        ? "review"
+        : whatsappEmExecucao
+          ? "preparing"
+          : processos.has("mercadolivre-whatsapp")
+            ? "preparing"
+            : (
+                mercadoLivreLinkJob?.status === "pending" ||
+                mercadoLivreLinkJob?.status === "running"
+              )
+              ? "linking"
+              : processos.has("buscar") || processos.has("mercadolivre-buscar")
+                ? "searching"
+                : ofertaPreparada
+                  ? "offer-pending"
+                  : mercadoLivreFluxoEtapa === "error"
+                    ? "error"
+                    : monitorAlternadoAtivo
+                      ? "scheduled"
+                      : "paused";
+
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME || "Não configurado",
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
@@ -1072,7 +1181,15 @@ async function estado() {
     mercadoLivreMonitorBackoffMinutos:
       mercadoLivreMonitorBackoffMs() / 60_000,
     origemPreparacaoAtual,
+    origemPreparacaoEmExecucao,
     plataformaAtual: pacote.plataforma ?? "",
+    ofertaPlataformaAtual: plataformaPacoteAtual,
+    ofertaPreparada,
+    whatsappRevisaoPronta:
+      whatsappEmExecucao && whatsappRevisaoPronta,
+    whatsappPreparacaoIniciadaEm,
+    operacaoEstado,
+    operacaoPlataforma,
     ultimoEnvioConcluidoEm,
     ultimoEnvioComProxima,
     whatsappEnvioPendente: finalizacaoWhatsappAtual === "enviar",
@@ -1205,12 +1322,27 @@ async function executarAcao(
     };
   }
 
-  if (acao === "mercadolivre-monitor-toggle") {
-    if (monitorAlternadoAtivo) {
+  if (
+    acao === "monitor-set" ||
+    acao === "mercadolivre-monitor-toggle"
+  ) {
+    const desejado =
+      acao === "monitor-set"
+        ? Boolean(dados.ativo)
+        : !monitorAlternadoAtivo;
+
+    if (!desejado) {
+      if (!monitorAlternadoAtivo) {
+        return {
+          ok: true,
+          mensagem: "O ciclo Amazon + Mercado Livre já está pausado."
+        };
+      }
+
       await definirMonitorMercadoLivreAtivo(false);
       return {
         ok: true,
-        mensagem: "Monitoramento intercalado Amazon + Mercado Livre pausado."
+        mensagem: "Ciclo Amazon + Mercado Livre pausado. A oferta já aberta, se houver, continua disponível para revisão."
       };
     }
 
@@ -1228,17 +1360,29 @@ async function executarAcao(
       };
     }
 
-    await definirMonitorMercadoLivreAtivo(true);
+    if (!monitorAlternadoAtivo) {
+      await definirMonitorMercadoLivreAtivo(true);
+    }
+
+    if (monitorTemTarefaAtiva()) {
+      return {
+        ok: true,
+        mensagem:
+          "Ciclo automático ativo. A busca ficará pausada enquanto a oferta atual estiver sendo preparada ou revisada."
+      };
+    }
+
+    cancelarAgendamentoMonitorAlternado();
     agendarMonitorAlternado(
-      "mercado-livre",
+      monitorAlternadoProximaPlataforma || "mercado-livre",
       750,
-      "Monitoramento intercalado ativado: Mercado Livre agora, Amazon no minuto seguinte."
+      "Ciclo automático ativo. Iniciando a próxima consulta."
     );
 
     return {
       ok: true,
       mensagem:
-        "Monitoramento intercalado ativado: Mercado Livre e Amazon serão consultados alternadamente a cada minuto."
+        "Ciclo Amazon + Mercado Livre ativo: as plataformas serão consultadas alternadamente a cada minuto."
     };
   }
 
@@ -1347,13 +1491,10 @@ async function executarAcao(
     const pacoteAtual = await readFile(pacotePath, "utf8")
       .then((texto) => JSON.parse(texto) as { plataforma?: string })
       .catch(() => ({} as { plataforma?: string }));
-    origemPreparacaoAtual = (pacoteAtual.plataforma ?? "")
-      .toLowerCase()
-      .includes("mercado livre")
-      ? "mercado-livre"
-      : "amazon";
+    const origem =
+      plataformaDoValor(pacoteAtual.plataforma) ?? "amazon";
 
-    const ok = iniciar("preparar", "preparar");
+    const ok = iniciarPreparacaoWhatsapp(origem);
     return { ok, mensagem: ok ? "Preparando oferta no WhatsApp." : "A tarefa já está em andamento." };
   }
 
@@ -1395,7 +1536,7 @@ async function executarAcao(
     iniciar("buscar", "buscar", {}, (codigo) => {
       if (codigo === 0 && !whatsappOcupado()) {
         registrar("fluxo", "Oferta gerada. Abrindo WhatsApp para revisão.");
-        iniciar("preparar", "preparar");
+        iniciarPreparacaoWhatsapp("amazon");
       } else {
         registrar("fluxo", "Fluxo interrompido: não houve oferta pronta ou o WhatsApp está ocupado.");
       }
@@ -1432,6 +1573,14 @@ async function executarAcao(
   }
 
   if (acao === "preparar-send" || acao === "preparar-send-next") {
+    const origemPacote = await plataformaDaOfertaAtual();
+    if (origemPacote) {
+      origemPreparacaoAtual = origemPacote;
+      if (processos.has("preparar")) {
+        origemPreparacaoEmExecucao = origemPacote;
+      }
+    }
+
     if (finalizacaoWhatsappAtual === "enviar") {
       return {
         ok: false,
@@ -1486,6 +1635,14 @@ async function executarAcao(
   }
 
   if (acao === "preparar-cancel") {
+    const origemPacote = await plataformaDaOfertaAtual();
+    if (origemPacote) {
+      origemPreparacaoAtual = origemPacote;
+      if (processos.has("preparar")) {
+        origemPreparacaoEmExecucao = origemPacote;
+      }
+    }
+
     if (!processos.has("preparar")) {
       return { ok: false, mensagem: "Não há preparação do WhatsApp aberta." };
     }
@@ -1799,10 +1956,24 @@ server.listen(porta, "127.0.0.1", () => {
   console.log(`Painel disponível em http://localhost:${porta}`);
 
   if (monitorAlternadoAtivo) {
-    agendarMonitorAlternado(
-      "mercado-livre",
-      1_500,
-      "Monitoramento intercalado restaurado: Mercado Livre inicia, Amazon entra no minuto seguinte."
-    );
+    void (async () => {
+      const temOfertaPendente =
+        await existe(mensagemPath) &&
+        await existe(pacotePath);
+
+      if (temOfertaPendente) {
+        atualizarFluxoMercadoLivre(
+          "idle",
+          "Existe uma oferta preparada de uma execução anterior. Reabra ou descarte essa oferta antes de continuar o ciclo."
+        );
+        return;
+      }
+
+      agendarMonitorAlternado(
+        "mercado-livre",
+        1_500,
+        "Ciclo automático restaurado. Mercado Livre inicia e Amazon entra no minuto seguinte."
+      );
+    })();
   }
 });
