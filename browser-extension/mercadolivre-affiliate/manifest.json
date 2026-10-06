@@ -3,7 +3,7 @@
   "name": "Afiliados - Link Meli Automático",
   "version": "0.1.0",
   "description": "Automatiza o Gerador de Links oficial do Mercado Livre e devolve o link ao painel local.",
-  "permissions": ["alarms"],
+  "permissions": ["alarms", "tabs"],
   "host_permissions": [
     "http://127.0.0.1:3030/*",
     "http://localhost:3030/*",
