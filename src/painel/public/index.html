@@ -691,10 +691,126 @@
       font: 11px/1.55 Consolas, monospace;
     }
 
+
+    .instagram-card { padding: 20px; }
+    .instagram-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .instagram-head p { margin: 6px 0 0; color: var(--muted); }
+    .instagram-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      background: #e7f8f1;
+      color: #08734e;
+      white-space: nowrap;
+    }
+    .instagram-grid {
+      display: grid;
+      grid-template-columns: 220px 220px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .instagram-preview {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #f7f9fb;
+      padding: 10px;
+      min-height: 290px;
+    }
+    .instagram-preview strong {
+      display: block;
+      margin: 2px 0 9px;
+      font-size: 12px;
+    }
+    .instagram-preview img {
+      display: none;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: cover;
+      border-radius: 12px;
+      background: #e8edf1;
+    }
+    .instagram-placeholder {
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 18px;
+    }
+    .instagram-info {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+    .instagram-score-box {
+      border: 1px solid var(--line);
+      background: #f8fafb;
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .instagram-score-box small {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .instagram-score-box strong {
+      font-size: 18px;
+    }
+    .instagram-reasons {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .instagram-copy {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: #fff;
+    }
+    .instagram-copy h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+    .instagram-copy pre {
+      margin: 0;
+      white-space: pre-wrap;
+      max-height: 135px;
+      overflow: auto;
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #263744;
+      background: #f7f9fb;
+      padding: 12px;
+      border: 1px solid #e3e9ee;
+    }
+    .instagram-copy-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .instagram-copy-actions button {
+      width: auto;
+      padding: 9px 11px;
+      font-size: 11px;
+    }
     @media (max-width: 900px) {
       .hero-inner { flex-direction: column; align-items: flex-start; }
       .runtime { width: 100%; }
-      .launch-grid, .review-grid, .tool-grid, .cycle-status-grid, .platform-lanes { grid-template-columns: 1fr; }
+      .launch-grid, .review-grid, .tool-grid, .cycle-status-grid, .platform-lanes, .instagram-grid { grid-template-columns: 1fr; }
       .cycle-head { flex-direction: column; }
       .cycle-toggle { width: 100%; min-width: 0; }
       .review-side { border-left: 0; border-top: 1px solid var(--line); padding: 16px 0 0; }
@@ -889,6 +1005,72 @@
       </div>
     </section>
 
+
+    <section id="instagramCard" class="card instagram-card section">
+      <div class="instagram-head">
+        <div>
+          <span class="section-kicker">CONTEÚDO INSTAGRAM</span>
+          <h2>Melhores ofertas para divulgar</h2>
+          <p>O sistema só gera conteúdo quando a oferta tiver potencial suficiente para Story ou Reel.</p>
+        </div>
+        <span id="instagramBadge" class="instagram-badge">Aguardando avaliação</span>
+      </div>
+
+      <div class="instagram-grid">
+        <div class="instagram-preview">
+          <strong>Story · 1080×1920</strong>
+          <img id="instagramStory" alt="Story gerado para Instagram" />
+          <div id="instagramStoryEmpty" class="instagram-placeholder">
+            Nenhum Story premium gerado ainda.
+          </div>
+        </div>
+
+        <div class="instagram-preview">
+          <strong>Capa do Reel · 1080×1920</strong>
+          <img id="instagramReel" alt="Capa de Reel gerada para Instagram" />
+          <div id="instagramReelEmpty" class="instagram-placeholder">
+            Reels são reservados para ofertas premium e destaque.
+          </div>
+        </div>
+
+        <div class="instagram-info">
+          <div class="instagram-score-box">
+            <small>Avaliação da oferta atual</small>
+            <strong id="instagramScore">Ainda não avaliada</strong>
+            <div id="instagramReasons" class="instagram-reasons">
+              Mínimo recomendado: desconto forte, imagem utilizável e score de conteúdo suficiente.
+            </div>
+          </div>
+
+          <div class="instagram-score-box">
+            <small>Último pacote pronto</small>
+            <strong id="instagramPackageTitle">Nenhum pacote gerado</strong>
+            <div id="instagramPackageMeta" class="instagram-reasons"></div>
+          </div>
+
+          <div class="instagram-copy">
+            <h3>Legenda pronta</h3>
+            <pre id="instagramLegenda">Aguardando uma oferta selecionada.</pre>
+            <div class="instagram-copy-actions">
+              <button type="button" class="primary" data-instagram-copy="legenda">Copiar legenda</button>
+              <button type="button" class="primary" data-instagram-copy="roteiro">Copiar roteiro</button>
+              <button type="button" class="primary" data-instagram-copy="hashtags">Copiar hashtags</button>
+            </div>
+          </div>
+
+          <div class="instagram-copy">
+            <h3>Roteiro do Reel</h3>
+            <pre id="instagramRoteiro">Disponível quando a oferta for premium ou destaque.</pre>
+          </div>
+
+          <div class="instagram-copy">
+            <h3>Hashtags</h3>
+            <pre id="instagramHashtags">#ofertas #promocao #achadinhos</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="section">
       <details class="toolbox">
         <summary>Ferramentas avançadas e fallback manual</summary>
@@ -1049,6 +1231,33 @@
           $("toast").className = "";
         }, 5000);
       }
+    }
+
+
+    async function copiarInstagram(campo) {
+      const pacote = estadoAtual.instagramConteudo || {};
+      const valor =
+        campo === "hashtags"
+          ? (pacote.hashtags || []).join(" ")
+          : pacote[campo];
+
+      if (!valor) {
+        toast("Ainda não existe conteúdo Instagram para copiar.", "warn");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(String(valor));
+        toast("Conteúdo copiado.", "ok");
+      } catch {
+        toast("Não foi possível copiar automaticamente.", "bad");
+      }
+    }
+
+    for (const botao of document.querySelectorAll("[data-instagram-copy]")) {
+      botao.addEventListener("click", () => {
+        void copiarInstagram(botao.dataset.instagramCopy);
+      });
     }
 
     function nomePlataforma(valor) {
@@ -1575,6 +1784,86 @@
         } else {
           imagem.removeAttribute("src");
           imagem.style.display = "none";
+        }
+
+
+        const instagramAvaliacao = s.instagramAvaliacao || null;
+        const instagramConteudo = s.instagramConteudo || null;
+        const instagramBadge = $("instagramBadge");
+        const instagramStory = $("instagramStory");
+        const instagramReel = $("instagramReel");
+
+        if (instagramAvaliacao) {
+          const classificacao =
+            instagramAvaliacao.classificacaoFinal ||
+            instagramAvaliacao.classificacao ||
+            "normal";
+          $("instagramScore").textContent =
+            `${instagramAvaliacao.score || 0}/100 · ${classificacao}`;
+          $("instagramReasons").textContent = [
+            ...(instagramAvaliacao.motivos || []),
+            ...(instagramAvaliacao.bloqueios || []),
+            instagramAvaliacao.motivoGeracao
+          ].filter(Boolean).join(" · ");
+          instagramBadge.textContent = instagramAvaliacao.gerado
+            ? `🔥 ${classificacao} · ${instagramAvaliacao.score}/100`
+            : `${classificacao} · ${instagramAvaliacao.score}/100`;
+        } else {
+          $("instagramScore").textContent = "Ainda não avaliada";
+          $("instagramReasons").textContent =
+            `O sistema avalia automaticamente ofertas com pelo menos ${s.instagramMinimoDesconto || 35}% de desconto.`;
+          instagramBadge.textContent = "Aguardando avaliação";
+        }
+
+        if (instagramConteudo) {
+          $("instagramPackageTitle").textContent =
+            instagramConteudo.titulo || "Pacote Instagram";
+          $("instagramPackageMeta").textContent =
+            `${instagramConteudo.classificacao || "story"} · score ${instagramConteudo.instagramScore || 0}/100 · ${instagramConteudo.plataforma || ""}`;
+          $("instagramLegenda").textContent =
+            instagramConteudo.legenda || "Legenda não disponível.";
+          $("instagramRoteiro").textContent =
+            instagramConteudo.roteiro || "Roteiro não disponível.";
+          $("instagramHashtags").textContent =
+            (instagramConteudo.hashtags || []).join(" ");
+
+          if (instagramConteudo.storyArquivo) {
+            instagramStory.src =
+              `/api/instagram/story?v=${encodeURIComponent(instagramConteudo.geradoEm || "")}`;
+            instagramStory.style.display = "block";
+            $("instagramStoryEmpty").style.display = "none";
+          } else {
+            instagramStory.removeAttribute("src");
+            instagramStory.style.display = "none";
+            $("instagramStoryEmpty").style.display = "grid";
+          }
+
+          if (instagramConteudo.reelCapaArquivo) {
+            instagramReel.src =
+              `/api/instagram/reel-capa?v=${encodeURIComponent(instagramConteudo.geradoEm || "")}`;
+            instagramReel.style.display = "block";
+            $("instagramReelEmpty").style.display = "none";
+          } else {
+            instagramReel.removeAttribute("src");
+            instagramReel.style.display = "none";
+            $("instagramReelEmpty").style.display = "grid";
+          }
+        } else {
+          $("instagramPackageTitle").textContent = "Nenhum pacote gerado";
+          $("instagramPackageMeta").textContent =
+            "Quando uma oferta atingir o score mínimo, o pacote aparecerá aqui.";
+          $("instagramLegenda").textContent =
+            "Aguardando uma oferta selecionada.";
+          $("instagramRoteiro").textContent =
+            "Disponível quando a oferta for premium ou destaque.";
+          $("instagramHashtags").textContent =
+            "#ofertas #promocao #achadinhos";
+          instagramStory.removeAttribute("src");
+          instagramStory.style.display = "none";
+          instagramReel.removeAttribute("src");
+          instagramReel.style.display = "none";
+          $("instagramStoryEmpty").style.display = "grid";
+          $("instagramReelEmpty").style.display = "grid";
         }
 
         $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
