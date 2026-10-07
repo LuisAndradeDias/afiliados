@@ -1,6 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Oferta } from "../fontes/types.js";
+import {
+  gerarConteudoInstagramSeElegivel
+} from "../instagram/pacote.js";
 
 export interface PacoteWhatsapp {
   mensagem: string;
@@ -55,4 +58,28 @@ export async function salvarPacoteWhatsapp(
 
   await mkdir(dirname(caminho), { recursive: true });
   await writeFile(caminho, JSON.stringify(pacote, null, 2), "utf8");
+
+  try {
+    const instagram =
+      await gerarConteudoInstagramSeElegivel(oferta);
+
+    if (instagram) {
+      console.log(
+        `INSTAGRAM_CONTEUDO_GERADO: ${instagram.classificacao} · score ${instagram.instagramScore}/100 · ${instagram.produtoId}`
+      );
+    } else {
+      console.log(
+        "Instagram: oferta avaliada, mas não selecionada para geração de conteúdo."
+      );
+    }
+  } catch (error) {
+    const mensagem =
+      error instanceof Error
+        ? error.message
+        : String(error);
+
+    console.warn(
+      `Instagram: falha ao gerar conteúdo; WhatsApp continuará normalmente: ${mensagem}`
+    );
+  }
 }

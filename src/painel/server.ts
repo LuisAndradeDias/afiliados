@@ -27,6 +27,18 @@ const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
 const ofertaMercadoLivrePath = resolve(raiz, "data", "ultima-oferta-mercadolivre.json");
 const perfilPath = resolve(raiz, "data", "whatsapp-profile");
 const perfilMercadoLivrePath = resolve(raiz, "data", "mercadolivre-profile");
+const instagramDirPath = resolve(
+  raiz,
+  process.env.INSTAGRAM_DATA_DIR?.trim() || "data/instagram"
+);
+const instagramAvaliacaoPath = resolve(
+  instagramDirPath,
+  "ultima-avaliacao.json"
+);
+const instagramPacotePath = resolve(
+  instagramDirPath,
+  "ultimo-pacote.json"
+);
 const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
 const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
@@ -1089,6 +1101,18 @@ async function estado() {
   const pacote: PacotePainel = await readFile(pacotePath, "utf8")
     .then((texto) => JSON.parse(texto) as PacotePainel)
     .catch(() => ({}));
+  const instagramAvaliacao = await readFile(
+    instagramAvaliacaoPath,
+    "utf8"
+  )
+    .then((texto) => JSON.parse(texto))
+    .catch(() => null);
+  const instagramConteudo = await readFile(
+    instagramPacotePath,
+    "utf8"
+  )
+    .then((texto) => JSON.parse(texto))
+    .catch(() => null);
   const ofertaMercadoLivre = await readFile(
     ofertaMercadoLivrePath,
     "utf8"
@@ -1224,6 +1248,11 @@ async function estado() {
     cooldownHoras: cooldownHoras(),
     previewCooldownMinutos: previewCooldownMinutos(),
     ofertasBloqueadas: await contarBloqueadas(),
+    instagramAvaliacao,
+    instagramConteudo,
+    instagramMinimoDesconto: Number(
+      process.env.INSTAGRAM_MIN_DISCOUNT_PERCENT ?? 35
+    ),
     logs
   };
 }
@@ -1236,6 +1265,60 @@ async function lerJson(req: import("node:http").IncomingMessage) {
   let corpo = "";
   for await (const parte of req) corpo += String(parte);
   return corpo ? JSON.parse(corpo) : {};
+}
+
+async function servirImagemInstagram(
+  tipo: "story" | "reel",
+  res: import("node:http").ServerResponse
+): Promise<void> {
+  const pacote = await readFile(
+    instagramPacotePath,
+    "utf8"
+  )
+    .then((texto) => JSON.parse(texto) as {
+      storyArquivo?: string;
+      reelCapaArquivo?: string;
+    })
+    .catch(() => null);
+
+  const relativo =
+    tipo === "story"
+      ? pacote?.storyArquivo
+      : pacote?.reelCapaArquivo;
+
+  if (!relativo) {
+    res.writeHead(404, {
+      "content-type": "text/plain; charset=utf-8"
+    });
+    res.end("Imagem Instagram ainda não disponível.");
+    return;
+  }
+
+  const caminho = resolve(raiz, relativo);
+  if (!caminho.startsWith(instagramDirPath)) {
+    res.writeHead(403, {
+      "content-type": "text/plain; charset=utf-8"
+    });
+    res.end("Caminho de imagem inválido.");
+    return;
+  }
+
+  const bytes = await readFile(caminho).catch(
+    () => null
+  );
+  if (!bytes) {
+    res.writeHead(404, {
+      "content-type": "text/plain; charset=utf-8"
+    });
+    res.end("Imagem Instagram não encontrada.");
+    return;
+  }
+
+  res.writeHead(200, {
+    "content-type": "image/jpeg",
+    "cache-control": "no-store"
+  });
+  res.end(bytes);
 }
 
 async function executarAcao(
@@ -1759,6 +1842,22 @@ const server = createServer(async (req, res) => {
       );
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+
+    if (
+      req.method === "GET" &&
+      requestUrl.pathname === "/api/instagram/story"
+    ) {
+      await servirImagemInstagram("story", res);
+      return;
+    }
+
+    if (
+      req.method === "GET" &&
+      requestUrl.pathname === "/api/instagram/reel-capa"
+    ) {
+      await servirImagemInstagram("reel", res);
       return;
     }
 
