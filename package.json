@@ -27,6 +27,7 @@
     "test:historico-antiduplicado": "tsx tests/historico-antiduplicado.mts",
     "test:whatsapp-grupo": "tsx tests/whatsapp-grupo.mts",
     "test:precos-qualidade": "tsx tests/precos-qualidade.mts",
+    "test:variedade-ofertas": "tsx tests/variedade-ofertas.mts",
     "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts",
     "test:instagram-content": "tsx tests/instagram-content.mts"
   },

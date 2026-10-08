@@ -1,7 +1,7 @@
 import type { Oferta } from "../fontes/types.js";
 
 const PRODUTOS_PRIORITARIOS =
-  /\b(?:smartphone|celular|iphone|galaxy|ipad|tablet|notebook|laptop|ultrabook|macbook|computador|desktop|pc\s*gamer|placa\s+de\s+video|processador|memoria\s+ram|ssd|monitor|smart\s*tv|televisor|televisao|tv|fone(?:s)?|headphone|headset|earbuds|airpods|caixa\s+de\s+som|soundbar|home\s*theater|console|playstation|xbox|nintendo|switch|roteador|impressora|camera\s+digital|smartwatch|relogio\s+inteligente|echo|fire\s*tv|kindle|air\s*fryer|fritadeira\s+eletrica|cafeteira|aspirador|robo\s+aspirador|microondas|micro-ondas|geladeira|refrigerador|freezer|liquidificador|batedeira|maquina\s+de\s+lavar|lavadora|lava\s+e\s+seca|lava\s*loucas|fogao|cooktop|forno\s+eletrico|ventilador|climatizador|ar\s*condicionado|purificador\s+de\s+agua)\b/i;
+  /\b(?:smartphone|celular|iphone|galaxy|ipad|tablet|notebook|laptop|ultrabook|macbook|computador|desktop|pc\s*gamer|placa\s+de\s+video|processador|memoria\s+ram|ssd|pendrive|monitor|smart\s*tv|televisor|televisao|tv|fone(?:s)?|headphone|headset|earbuds|airpods|caixa\s+de\s+som|soundbar|home\s*theater|microfone|mouse|teclado|webcam|power\s*bank|carregador\s+por\s+inducao|console|playstation|xbox|nintendo|switch|controle\s+gamer|controle\s+sem\s+fio|roteador|repetidor\s+wifi|impressora|camera\s+digital|camera\s+wifi|camera\s+de\s+seguranca|smartwatch|smartband|relogio\s+inteligente|tomada\s+inteligente|smart\s+plug|lampada\s+(?:inteligente|smart)|echo|fire\s*tv|kindle|projetor|air\s*fryer|fritadeira\s+eletrica|cafeteira|aspirador|robo\s+aspirador|microondas|micro-ondas|geladeira|refrigerador|freezer|liquidificador|batedeira|maquina\s+de\s+lavar|lavadora|lava\s+e\s+seca|lava\s*loucas|fogao|cooktop|forno\s+eletrico|ventilador|climatizador|ar\s*condicionado|purificador\s+de\s+agua|ferro\s+de\s+passar|barbeador\s+eletrico|secador\s+de\s+cabelo)\b/i;
 
 const ACESSORIOS_E_CONSUMIVEIS =
   /\b(?:capa|capinha|pelicula|case\s+para|suporte\s+para|pelicula\s+de|adesivo|papel\s+para|forma\s+para|forro\s+para|protetor\s+para|bolsa\s+para|manual\s+de|refil|reposicao|peca\s+de|limpador\s+de|limpeza\s+de|cabo\s+para|alca\s+para|filtro\s+de|filtro\s+para|cartucho\s+para|kit\s+de\s+limpeza)\b/i;
@@ -25,6 +25,12 @@ export function produtoPrioritario(oferta: Pick<Oferta, "titulo">): boolean {
 
 export function acessorioOuConsumivel(oferta: Pick<Oferta, "titulo">): boolean {
   return ACESSORIOS_E_CONSUMIVEIS.test(normalizar(oferta.titulo));
+}
+
+export type FaixaPrecoOferta = "acessivel" | "intermediaria" | "maiorValor";
+
+export function faixaPrecoOferta(preco: number): FaixaPrecoOferta {
+  return preco < 250 ? "acessivel" : preco < 1_200 ? "intermediaria" : "maiorValor";
 }
 
 export function economiaRealOferta(oferta: Oferta): number {
@@ -78,8 +84,14 @@ export function avaliarQualidadeOferta(
   env: NodeJS.ProcessEnv = process.env
 ): AvaliacaoQualidadeOferta {
   const minimoDesconto = configuracaoPositiva(env.MIN_DISCOUNT_PERCENT, 25);
-  const minimoPreco = configuracaoPositiva(env.MIN_OFFER_PRICE_BRL, 79);
-  const minimoEconomia = configuracaoPositiva(env.MIN_OFFER_SAVINGS_BRL, 35);
+  const minimoPreco = configuracaoPositiva(env.MIN_OFFER_PRICE_BRL, 49);
+  const minimoEconomiaBase = configuracaoPositiva(env.MIN_OFFER_SAVINGS_BRL, 20);
+  const faixa = faixaPrecoOferta(oferta.precoAtual);
+  const minimoEconomia = faixa === "acessivel"
+    ? minimoEconomiaBase
+    : faixa === "intermediaria"
+      ? Math.max(35, minimoEconomiaBase)
+      : Math.max(100, minimoEconomiaBase);
   const economiaReais = economiaRealOferta(oferta);
   const prioritario = produtoPrioritario(oferta);
   const retorno = (elegivel: boolean, motivo: string): AvaliacaoQualidadeOferta => ({

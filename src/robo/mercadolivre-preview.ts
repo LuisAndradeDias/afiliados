@@ -5,8 +5,9 @@ import { MercadoLivreApiFonte } from "../fontes/mercadolivre/api.js";
 import { MercadoLivreReautorizacaoNecessaria } from "../afiliados/mercadolivre-token.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
-import { avaliarQualidadeOferta, economiaRealOferta } from "../ofertas/qualidade.js";
-import { filtroHistoricoOfertas } from "../ofertas/historico.js";
+import { avaliarQualidadeOferta } from "../ofertas/qualidade.js";
+import { filtroHistoricoOfertas, ultimasOfertasEnviadas } from "../ofertas/historico.js";
+import { escolherOfertaVariada, planejarBuscasMercadoLivre } from "../ofertas/diversidade.js";
 import {
   aplicarMelhorCupomMercadoLivre,
   obterCuponsMercadoLivre
@@ -27,7 +28,7 @@ const consultasPorRodada = Math.max(
   1,
   Math.min(
     consultas.length,
-    Number(process.env.MERCADOLIVRE_QUERIES_PER_RUN ?? 1)
+    Number(process.env.MERCADOLIVRE_QUERIES_PER_RUN ?? 2)
   )
 );
 const rotacaoPath = "data/rotacao-mercadolivre.json";
@@ -39,12 +40,17 @@ const indiceRotacao = await readFile(rotacaoPath, "utf8")
     return Number(dados.indice ?? 0);
   })
   .catch(() => 0);
-const consultasUsadas = Array.from(
-  { length: consultasPorRodada },
-  (_, offset) =>
-    consultas[(indiceRotacao + offset) % consultas.length]
+const recentes = await ultimasOfertasEnviadas(5);
+const plano = planejarBuscasMercadoLivre(
+  consultas,
+  indiceRotacao,
+  consultasPorRodada,
+  recentes,
+  process.env.MERCADOLIVRE_EXTRA_IF_LOW_SHARE !== "false"
 );
+const consultasUsadas = plano.consultas;
 const bloqueadoPorHistorico = await filtroHistoricoOfertas();
+let consultasRealizadas = 0;
 const cupons = await obterCuponsMercadoLivre().catch((error) => {
   const mensagem = error instanceof Error ? error.message : String(error);
   console.warn(`Mercado Livre: catálogo de cupons indisponível: ${mensagem}`);
@@ -53,6 +59,17 @@ const cupons = await obterCuponsMercadoLivre().catch((error) => {
 const porProduto = new Map<string, Oferta>();
 
 for (const consulta of consultasUsadas) {
+  if (consultasRealizadas >= plano.minimo) {
+    const elegivelJaEncontrada = [...porProduto.values()].some((oferta) =>
+      avaliarQualidadeOferta(oferta).elegivel &&
+      !bloqueadoPorHistorico(oferta)
+    );
+    if (elegivelJaEncontrada) break;
+    console.log(
+      "Mercado Livre: procurando mais uma categoria para ampliar a variedade."
+    );
+  }
+  consultasRealizadas += 1;
   console.log(`Buscando Mercado Livre: "${consulta}"`);
   let ofertas: Oferta[];
   try {
@@ -94,21 +111,38 @@ await writeFile(
   rotacaoPath,
   JSON.stringify({
     indice:
-      (indiceRotacao + consultasPorRodada) % consultas.length
+      (indiceRotacao + consultasRealizadas) % consultas.length
   }, null, 2),
   "utf8"
 );
 
 const todas = [...porProduto.values()];
+const motivos = new Map<string, number>();
+for (const oferta of todas) {
+  const avaliacao = avaliarQualidadeOferta(oferta);
+  const motivo = !avaliacao.elegivel
+    ? avaliacao.motivo
+    : bloqueadoPorHistorico(oferta) ? "ja enviada ou vista" : "elegivel";
+  motivos.set(motivo, (motivos.get(motivo) ?? 0) + 1);
+}
+if (motivos.size) {
+  console.log(
+    "Mercado Livre: diagnóstico dos filtros: " +
+    [...motivos].map(([motivo, total]) => `${motivo}=${total}`).join(", ")
+  );
+}
+
 const elegiveis = todas
   .filter((oferta) => avaliarQualidadeOferta(oferta).elegivel)
-  .filter((oferta) => !bloqueadoPorHistorico(oferta))
-  .sort((a, b) =>
-    (b.scoreOferta ?? 0) - (a.scoreOferta ?? 0) ||
-    economiaRealOferta(b) - economiaRealOferta(a)
+  .filter((oferta) => !bloqueadoPorHistorico(oferta));
+const escolhida = escolherOfertaVariada(elegiveis, recentes);
+const melhor = escolhida?.oferta;
+if (escolhida) {
+  console.log(
+    `Variedade Mercado Livre: faixa=${escolhida.faixa}, categoria=${escolhida.categoria}, ` +
+    `pontuacao ajustada=${escolhida.scoreFinal}.`
   );
-
-const melhor = elegiveis[0];
+}
 
 console.log(
   `Mercado Livre: ${todas.length} ofertas encontradas, ` +
