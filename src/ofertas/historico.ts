@@ -233,6 +233,15 @@ export async function contarBloqueadas(): Promise<number> {
   return registros.filter((registro) => dentroDoCooldown(registro)).length;
 }
 
+/** Últimas postagens confirmadas, usadas somente para diversificar o grupo. */
+export async function ultimasOfertasEnviadas(limite = 5): Promise<RegistroHistoricoOferta[]> {
+  const registros = await lerHistorico();
+  return registros
+    .filter((registro) => registro.enviadoEm && Number.isFinite(Date.parse(registro.enviadoEm)))
+    .sort((a, b) => Date.parse(b.enviadoEm!) - Date.parse(a.enviadoEm!))
+    .slice(0, Math.max(0, Math.trunc(limite)));
+}
+
 /** Usado na seleção das duas plataformas, inclusive anúncios com IDs diferentes. */
 export async function filtroHistoricoOfertas(): Promise<
   (oferta: OfertaHistoricoInput) => boolean
