@@ -22,6 +22,7 @@
     "test:imagem-oferta": "tsx tests/imagem-oferta.mts",
     "test:whatsapp-pointer": "tsx tests/whatsapp-pointer.mts",
     "test:whatsapp-auto-send": "tsx tests/whatsapp-auto-send.mts",
+    "test:whatsapp-grupo": "tsx tests/whatsapp-grupo.mts",
     "test:instagram-content": "tsx tests/instagram-content.mts"
   },
   "dependencies": {
