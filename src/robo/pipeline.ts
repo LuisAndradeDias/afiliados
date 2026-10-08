@@ -2,6 +2,7 @@ import { aplicarAfiliadoAmazon } from "../afiliados/amazon.js";
 import { AmazonBrowserFonte } from "../fontes/amazon/browser.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
+import { avaliarQualidadeOferta } from "../ofertas/qualidade.js";
 import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
 import { lerIndiceRotacao, salvarIndiceRotacao } from "../ofertas/rotacao.js";
 import {
@@ -85,7 +86,7 @@ export interface ResultadoBusca {
 export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   const consultas = (process.env.AMAZON_QUERIES ??
     process.env.AMAZON_QUERY ??
-    "ofertas")
+    "smartphone")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
@@ -95,7 +96,6 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   }
 
   const limite = Number(process.env.AMAZON_LIMIT ?? 20);
-  const descontoMinimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
   const tag = process.env.AMAZON_ASSOCIATE_TAG;
   const porId = new Map<string, Oferta>();
 
@@ -144,7 +144,7 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   const bloqueadasIds = await chavesBloqueadas();
 
   const elegiveis = todas
-    .filter((oferta) => (oferta.descontoPercentual ?? 0) >= descontoMinimo)
+    .filter((oferta) => avaliarQualidadeOferta(oferta).elegivel)
     .map((oferta) => ({ oferta, score: calcularScore(oferta) }))
     .sort((a, b) => b.score - a.score);
 
