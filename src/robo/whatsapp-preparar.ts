@@ -20,6 +20,7 @@ import {
   deveAutoEnviar,
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
+import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -544,7 +545,10 @@ if (modoTeste) {
   await page.setContent(`
     <div contenteditable="true" role="textbox" data-tab="3" aria-label="Pesquisar"></div>
     <div id="lista"><span title="${nomeGrupo}">${nomeGrupo}</span></div>
-    <footer><div contenteditable="true" role="textbox" data-tab="10"></div></footer>
+    <footer>
+      <div contenteditable="true" role="textbox" data-tab="10"></div>
+      <button aria-label="Enviar" type="button">Enviar</button>
+    </footer>
   `);
 } else {
   console.log("Aguardando o WhatsApp Web ficar pronto...");
@@ -552,7 +556,13 @@ if (modoTeste) {
 }
 try {
   const busca = await localizarBusca(page);
-  await busca.fill(nomeGrupo);
+  // O WhatsApp pode nao localizar grupos quando a busca inclui emojis.
+  // Pesquise sem emojis, mas confira o destino pelo nome completo.
+  const termoBusca = termoBuscaGrupoWhatsapp(nomeGrupo);
+  await busca.fill(termoBusca);
+  if (modoTeste && (await busca.textContent())?.trim() !== termoBusca) {
+    throw new Error("O termo de pesquisa do grupo foi preenchido incorretamente.");
+  }
 
   const resultadoGrupo = await primeiroVisivel(
     [
