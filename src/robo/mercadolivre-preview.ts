@@ -2,6 +2,7 @@ import "dotenv/config";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { MercadoLivreApiFonte } from "../fontes/mercadolivre/api.js";
+import { MercadoLivreReautorizacaoNecessaria } from "../afiliados/mercadolivre-token.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
 import { avaliarQualidadeOferta, economiaRealOferta } from "../ofertas/qualidade.js";
@@ -53,10 +54,19 @@ const porProduto = new Map<string, Oferta>();
 
 for (const consulta of consultasUsadas) {
   console.log(`Buscando Mercado Livre: "${consulta}"`);
-  const ofertas = await new MercadoLivreApiFonte(
-    consulta,
-    limite
-  ).buscar();
+  let ofertas: Oferta[];
+  try {
+    ofertas = await new MercadoLivreApiFonte(
+      consulta,
+      limite
+    ).buscar();
+  } catch (error) {
+    if (error instanceof MercadoLivreReautorizacaoNecessaria) {
+      console.error("MERCADOLIVRE_RECONNECT_REQUIRED: " + error.message);
+      process.exit(3);
+    }
+    throw error;
+  }
 
   for (const ofertaBase of ofertas) {
     const oferta = aplicarMelhorCupomMercadoLivre(
