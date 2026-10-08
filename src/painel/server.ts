@@ -678,6 +678,27 @@ function iniciar(
     finalizacaoWhatsappAtual = null;
     carregarProximaAposEnvio = false;
 
+    if (codigo === 4) {
+      // O preparador detectou repetição antes do clique no WhatsApp.
+      // Não registrar como enviado; limpar só o pacote e seguir para outra oferta.
+      await limparPreparacaoAtual(origemFinalizada);
+      registrar(
+        "fluxo",
+        "DUPLICADO_BLOQUEADO: mesma promoção já enviada recentemente. Nenhum novo envio foi feito."
+      );
+
+      if (monitorAlternadoAtivo) {
+        const proxima: PlataformaMonitor =
+          origemFinalizada === "mercado-livre" ? "amazon" : "mercado-livre";
+        agendarMonitorAlternado(
+          proxima,
+          5_000,
+          "Oferta repetida ignorada. Seguindo para a próxima categoria."
+        );
+      }
+      return;
+    }
+
     if (codigo !== 0) {
       mercadoLivreFluxoAutomatico = false;
 

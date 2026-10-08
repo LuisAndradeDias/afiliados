@@ -3,7 +3,7 @@ import { AmazonBrowserFonte } from "../fontes/amazon/browser.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
 import { avaliarQualidadeOferta } from "../ofertas/qualidade.js";
-import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
+import { filtroHistoricoOfertas } from "../ofertas/historico.js";
 import { lerIndiceRotacao, salvarIndiceRotacao } from "../ofertas/rotacao.js";
 import {
   estimarComissaoAmazon,
@@ -141,7 +141,7 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   }
 
   const todas = [...porId.values()];
-  const bloqueadasIds = await chavesBloqueadas();
+  const bloqueadoPorHistorico = await filtroHistoricoOfertas();
 
   const elegiveis = todas
     .filter((oferta) => avaliarQualidadeOferta(oferta).elegivel)
@@ -149,7 +149,7 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
     .sort((a, b) => b.score - a.score);
 
   const disponiveis = elegiveis.filter(
-    ({ oferta }) => !bloqueadasIds.has(chaveOferta(oferta))
+    ({ oferta }) => !bloqueadoPorHistorico(oferta)
   );
 
   const melhor = disponiveis[0]?.oferta;

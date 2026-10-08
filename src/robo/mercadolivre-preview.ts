@@ -6,7 +6,7 @@ import { MercadoLivreReautorizacaoNecessaria } from "../afiliados/mercadolivre-t
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
 import { avaliarQualidadeOferta, economiaRealOferta } from "../ofertas/qualidade.js";
-import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
+import { filtroHistoricoOfertas } from "../ofertas/historico.js";
 import {
   aplicarMelhorCupomMercadoLivre,
   obterCuponsMercadoLivre
@@ -44,7 +44,7 @@ const consultasUsadas = Array.from(
   (_, offset) =>
     consultas[(indiceRotacao + offset) % consultas.length]
 );
-const bloqueadas = await chavesBloqueadas();
+const bloqueadoPorHistorico = await filtroHistoricoOfertas();
 const cupons = await obterCuponsMercadoLivre().catch((error) => {
   const mensagem = error instanceof Error ? error.message : String(error);
   console.warn(`Mercado Livre: catálogo de cupons indisponível: ${mensagem}`);
@@ -102,7 +102,7 @@ await writeFile(
 const todas = [...porProduto.values()];
 const elegiveis = todas
   .filter((oferta) => avaliarQualidadeOferta(oferta).elegivel)
-  .filter((oferta) => !bloqueadas.has(chaveOferta(oferta)))
+  .filter((oferta) => !bloqueadoPorHistorico(oferta))
   .sort((a, b) =>
     (b.scoreOferta ?? 0) - (a.scoreOferta ?? 0) ||
     economiaRealOferta(b) - economiaRealOferta(a)
