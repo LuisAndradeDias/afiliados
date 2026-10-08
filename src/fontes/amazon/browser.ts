@@ -1,12 +1,49 @@
 import { chromium, type Locator } from "playwright";
 import type { FonteDeOfertas, Oferta } from "../types.js";
-import { calcularDesconto, parsePrecoBR } from "./preco.js";
+import {
+  extrairPrecosAnuncioAmazon,
+  type PrecosAnuncioAmazon
+} from "./preco-anuncio.js";
 
 const AMAZON_BR = "https://www.amazon.com.br";
 
 async function texto(locator: Locator): Promise<string | undefined> {
   if ((await locator.count()) === 0) return undefined;
   return (await locator.first().textContent())?.trim() || undefined;
+}
+
+/**
+ * Lê os valores de um card da Amazon sem confundir preço da unidade
+ * com preço por kg/100ml. Exportado para testes do DOM.
+ */
+export async function extrairPrecosCardAmazon(
+  card: Locator
+): Promise<PrecosAnuncioAmazon> {
+  const precos = await card.locator(".a-price").evaluateAll((elementos) =>
+    elementos.map((elemento) => {
+      const referencia = elemento.classList.contains("a-text-price");
+      const textoPreco =
+        elemento.querySelector(".a-offscreen")?.textContent?.trim() ?? "";
+      const contexto = referencia
+        ? elemento.parentElement?.textContent?.replace(/\s+/g, " ").trim() ?? ""
+        : elemento.textContent?.replace(/\s+/g, " ").trim() ?? "";
+      const riscado =
+        elemento.getAttribute("data-a-strike") === "true" ||
+        elemento.classList.contains("a-text-strike") ||
+        Boolean(elemento.closest(".a-text-strike"));
+      const unidade = Boolean(
+        elemento.closest(
+          '[class*="unit-price"],[class*="price-per-unit"],[data-testid*="unit-price"]'
+        )
+      );
+      return { texto: textoPreco, contexto, riscado, unidade, referencia };
+    })
+  );
+
+  return extrairPrecosAnuncioAmazon(
+    precos.filter((preco) => !preco.referencia),
+    precos.filter((preco) => preco.referencia)
+  );
 }
 
 export class AmazonBrowserFonte implements FonteDeOfertas {
@@ -62,21 +99,9 @@ export class AmazonBrowserFonte implements FonteDeOfertas {
         if (!asin) continue;
 
         const titulo = await texto(card.locator("h2 span"));
-        const precoAtualTexto = await texto(
-          card.locator(".a-price:not(.a-text-price) .a-offscreen")
-        );
-        const precoAnteriorTexto = await texto(
-          card.locator(".a-price.a-text-price .a-offscreen")
-        );
-
-        const precoAtual = parsePrecoBR(precoAtualTexto);
-        const precoAnteriorLido = parsePrecoBR(precoAnteriorTexto);
+        const { precoAtual, precoAnterior, descontoPercentual } =
+          await extrairPrecosCardAmazon(card);
         if (!titulo || !precoAtual) continue;
-
-        const precoAnterior =
-          precoAnteriorLido && precoAnteriorLido > precoAtual
-            ? precoAnteriorLido
-            : undefined;
 
         const imagem =
           (await card.locator("img.s-image").count()) > 0
@@ -91,7 +116,7 @@ export class AmazonBrowserFonte implements FonteDeOfertas {
           titulo,
           precoAtual,
           precoAnterior,
-          descontoPercentual: calcularDesconto(precoAtual, precoAnterior),
+          descontoPercentual,
           cupom: cupomMatch?.[0]?.replace(/\s+/g, " ").trim(),
           imagem: imagem ?? undefined,
           urlProduto: `${AMAZON_BR}/dp/${asin}`,

@@ -3,7 +3,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { MercadoLivreApiFonte } from "../fontes/mercadolivre/api.js";
 import type { Oferta } from "../fontes/types.js";
-import { calcularScorePromocao } from "../ofertas/score.js";
+import { calcularScore } from "../ofertas/score.js";
+import { avaliarQualidadeOferta, economiaRealOferta } from "../ofertas/qualidade.js";
 import { chaveOferta, chavesBloqueadas } from "../ofertas/historico.js";
 import {
   aplicarMelhorCupomMercadoLivre,
@@ -13,7 +14,7 @@ import {
 const consultas = (
   process.env.MERCADOLIVRE_QUERIES ??
   process.env.MERCADOLIVRE_QUERY ??
-  "perfume"
+  "smartphone"
 )
   .split(",")
   .map((item) => item.trim())
@@ -62,7 +63,7 @@ for (const consulta of consultasUsadas) {
       ofertaBase,
       cupons
     );
-    oferta.scoreOferta = calcularScorePromocao(oferta);
+    oferta.scoreOferta = calcularScore(oferta);
 
     const atual = porProduto.get(oferta.produtoId);
     if (
@@ -90,21 +91,12 @@ await writeFile(
 
 const todas = [...porProduto.values()];
 const elegiveis = todas
-  .filter(
-    (oferta) =>
-      (oferta.descontoEfetivoPercentual ??
-        oferta.descontoPercentual ??
-        0) >= minimo
-  )
+  .filter((oferta) => avaliarQualidadeOferta(oferta).elegivel)
   .filter((oferta) => !bloqueadas.has(chaveOferta(oferta)))
-  .sort((a, b) => {
-    const descontoA =
-      a.descontoEfetivoPercentual ?? a.descontoPercentual ?? 0;
-    const descontoB =
-      b.descontoEfetivoPercentual ?? b.descontoPercentual ?? 0;
-    return descontoB - descontoA ||
-      (b.scoreOferta ?? 0) - (a.scoreOferta ?? 0);
-  });
+  .sort((a, b) =>
+    (b.scoreOferta ?? 0) - (a.scoreOferta ?? 0) ||
+    economiaRealOferta(b) - economiaRealOferta(a)
+  );
 
 const melhor = elegiveis[0];
 

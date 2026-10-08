@@ -23,6 +23,8 @@
     "test:whatsapp-pointer": "tsx tests/whatsapp-pointer.mts",
     "test:whatsapp-auto-send": "tsx tests/whatsapp-auto-send.mts",
     "test:whatsapp-grupo": "tsx tests/whatsapp-grupo.mts",
+    "test:precos-qualidade": "tsx tests/precos-qualidade.mts",
+    "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts",
     "test:instagram-content": "tsx tests/instagram-content.mts"
   },
   "dependencies": {
