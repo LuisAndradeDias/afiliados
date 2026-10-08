@@ -1016,6 +1016,17 @@ async function iniciarFluxoMercadoLivreAutomatico(
       if (codigo !== 0) {
         mercadoLivreFluxoAutomatico = false;
 
+        if (codigo === 3) {
+          if (monitorAlternadoAtivo) {
+            await definirMonitorMercadoLivreAtivo(false);
+          }
+          atualizarFluxoMercadoLivre(
+            "error",
+            "Mercado Livre precisa de nova autorização. Clique em Conectar Mercado Livre. Ciclo pausado para evitar consultas inválidas; a oferta já aberta foi preservada."
+          );
+          return;
+        }
+
         if (modoMonitor && monitorAlternadoAtivo) {
           const limitado = mercadoLivreBuscaLimitada;
 
@@ -1028,14 +1039,18 @@ async function iniciarFluxoMercadoLivreAutomatico(
             "amazon",
             limitado
               ? "Mercado Livre entrou em backoff por limite da API. Amazon será consultada no próximo minuto."
-              : "Nenhuma oferta Mercado Livre passou pelos filtros. Amazon será consultada no próximo minuto."
+              : codigo === 2
+                ? "Nenhuma oferta Mercado Livre passou pelos filtros. Amazon será consultada no próximo minuto."
+                : "Falha na consulta ao Mercado Livre; consulte os logs. Amazon será consultada no próximo minuto."
           );
           return;
         }
 
         atualizarFluxoMercadoLivre(
           "error",
-          "Nenhuma oferta Mercado Livre atingiu os filtros nesta rodada."
+          codigo === 2
+            ? "Nenhuma oferta Mercado Livre atingiu os filtros nesta rodada."
+            : "Erro ao consultar o Mercado Livre. Verifique os logs e a autenticação."
         );
         return;
       }

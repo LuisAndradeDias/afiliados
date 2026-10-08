@@ -1,4 +1,8 @@
 import type { Oferta } from "../types.js";
+import {
+  MercadoLivreReautorizacaoNecessaria,
+  obterTokenMercadoLivreValido
+} from "../../afiliados/mercadolivre-token.js";
 
 interface ProdutoBusca {
   id: string;
@@ -65,11 +69,17 @@ export class MercadoLivreApiFonte {
   private readonly reputacaoVerdePorVendedor = new Map<number, boolean>();
   private ultimaRequisicaoEm = 0;
 
+  private accessToken?: string;
+  private readonly tokenInformadoManualmente: boolean;
+
   constructor(
     private readonly consulta: string,
     private readonly limite = 20,
-    private readonly accessToken = process.env.MERCADOLIVRE_ACCESS_TOKEN
-  ) {}
+    accessToken?: string
+  ) {
+    this.tokenInformadoManualmente = accessToken !== undefined;
+    this.accessToken = accessToken ?? process.env.MERCADOLIVRE_ACCESS_TOKEN;
+  }
 
   private async requisicao(
     url: URL | string
@@ -80,6 +90,11 @@ export class MercadoLivreApiFonte {
       Number(process.env.MERCADOLIVRE_REQUEST_INTERVAL_MS ?? 500)
     );
 
+    if (!this.tokenInformadoManualmente) {
+      this.accessToken = await obterTokenMercadoLivreValido();
+    }
+
+    let renovouApos401 = false;
     for (let tentativa = 1; tentativa <= 4; tentativa += 1) {
       const espera = Math.max(
         0,
@@ -93,9 +108,25 @@ export class MercadoLivreApiFonte {
       resposta = await fetch(url, {
         headers: {
           accept: "application/json",
-          authorization: `Bearer ${this.accessToken}`
+          authorization: "Bearer " + this.accessToken
         }
       });
+
+      if (resposta.status === 401) {
+        if (renovouApos401 || this.tokenInformadoManualmente) {
+          throw new MercadoLivreReautorizacaoNecessaria(
+            "A API recusou o token de acesso do Mercado Livre."
+          );
+        }
+
+        this.accessToken = await obterTokenMercadoLivreValido({
+          forcar: true,
+          tokenRejeitado: this.accessToken
+        });
+        renovouApos401 = true;
+        tentativa -= 1;
+        continue;
+      }
 
       if (resposta.status !== 429) return resposta;
 
@@ -193,6 +224,7 @@ export class MercadoLivreApiFonte {
         );
       }
     } catch (error) {
+      if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
       const mensagem = error instanceof Error ? error.message : String(error);
       console.warn(
         `Mercado Livre: reputacao em lote indisponivel: ${mensagem}`
@@ -241,8 +273,13 @@ export class MercadoLivreApiFonte {
   }
 
   async buscar(): Promise<Oferta[]> {
-    if (!this.accessToken?.trim()) {
-      throw new Error("Mercado Livre API nao conectada.");
+    if (
+      !this.accessToken?.trim() &&
+      !process.env.MERCADOLIVRE_REFRESH_TOKEN?.trim()
+    ) {
+      throw new MercadoLivreReautorizacaoNecessaria(
+        "Mercado Livre API sem autorização configurada."
+      );
     }
 
     const ofertas: Oferta[] = [];
@@ -302,6 +339,7 @@ export class MercadoLivreApiFonte {
         try {
           publicacoes = await this.buscarPublicacoes(produto.id);
         } catch (error) {
+          if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
           const mensagem =
             error instanceof Error ? error.message : String(error);
           console.warn(
