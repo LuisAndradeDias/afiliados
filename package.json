@@ -24,6 +24,7 @@
     "test:imagem-oferta": "tsx tests/imagem-oferta.mts",
     "test:whatsapp-pointer": "tsx tests/whatsapp-pointer.mts",
     "test:whatsapp-auto-send": "tsx tests/whatsapp-auto-send.mts",
+    "test:historico-antiduplicado": "tsx tests/historico-antiduplicado.mts",
     "test:whatsapp-grupo": "tsx tests/whatsapp-grupo.mts",
     "test:precos-qualidade": "tsx tests/precos-qualidade.mts",
     "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts",

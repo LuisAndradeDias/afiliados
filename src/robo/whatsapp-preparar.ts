@@ -6,7 +6,10 @@ import {
   normalizarImagemAmazonAltaResolucao,
   renderizarArteOferta
 } from "../imagens/oferta.js";
-import { registrarOfertaEnviada } from "../ofertas/historico.js";
+import {
+  ofertaJaEnviadaRecentemente,
+  registrarOfertaEnviada
+} from "../ofertas/historico.js";
 import {
   captureSendBaseline,
   detectManualSend,
@@ -58,6 +61,22 @@ interface PacotePreparar {
 const pacote: PacotePreparar = await readFile(pacotePath, "utf8")
   .then((texto) => JSON.parse(texto) as PacotePreparar)
   .catch(() => ({}));
+
+// Reconfere o histórico antes de abrir o navegador: um produto com outro
+// ASIN/código de anúncio não pode ser republicado só por isso.
+if (!modoTeste) {
+  if (!pacote.produtoId || !pacote.titulo) {
+    throw new Error("Oferta sem identificação; envio bloqueado para evitar duplicatas.");
+  }
+  if (await ofertaJaEnviadaRecentemente({
+    plataforma: pacote.plataforma,
+    produtoId: pacote.produtoId,
+    titulo: pacote.titulo
+  })) {
+    console.log("DUPLICADO_BLOQUEADO: oferta já enviada recentemente. Nenhum envio executado.");
+    process.exit(4);
+  }
+}
 
 async function baixarImagemOferta(url?: string): Promise<string | undefined> {
   if (!url) return undefined;
@@ -363,6 +382,19 @@ async function aguardarFinalizacao(
     );
 
     if (enviarPorPainel || enviarAutomaticamente) {
+      // Última proteção antes do clique físico: nenhuma oferta já enviada
+      // pode ser publicada novamente, mesmo se o histórico mudou durante a revisão.
+      if (pacote.produtoId && pacote.titulo &&
+          await ofertaJaEnviadaRecentemente({
+            plataforma: pacote.plataforma,
+            produtoId: pacote.produtoId,
+            titulo: pacote.titulo
+          })) {
+        console.log("DUPLICADO_BLOQUEADO: repetição detectada antes do clique. Nenhum envio executado.");
+        await context.close().catch(() => undefined);
+        process.exitCode = 4;
+        return;
+      }
       autoEnvioTentado = true;
       const origemEnvio = enviarPorPainel ? "painel" : "automatico";
 
