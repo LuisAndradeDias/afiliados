@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { iniciarAnaliticos, normalizarOrigem, autorizarChave } from './analytics.mjs';
 import { iniciarContatos } from './contatos.mjs';
 import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
+import { iniciarImportacaoAutorizada } from './importacao-autorizada.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderPainelCrm, renderDescadastro } from './crm-ui.mjs';
 
@@ -15,6 +16,7 @@ const planilhaModelo = readFileSync(join(sourceDir, '..', 'modelos', 'Modelo_Con
 const scripts = new Map([
   ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
   ['/assets/painel.js', readFileSync(join(sourceDir, 'assets', 'painel.js'), 'utf8')],
+  ['/assets/importacao.js', readFileSync(join(sourceDir, 'assets', 'importacao.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
 ]);
 const headersBase = {
@@ -57,7 +59,7 @@ function convitesCsv(dados) {
   return '\ufeff' + linhas.join('\r\n') + '\r\n';
 }
 
-async function corpoJson(req) {
+async function corpoJson(req, limiteBytes = 4096) {
   if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
     throw new Error('Envie JSON com content-type application/json.');
   }
@@ -65,7 +67,7 @@ async function corpoJson(req) {
   const chunks = [];
   for await (const chunk of req) {
     bytes += chunk.length;
-    if (bytes > 4096) throw new Error('Dados acima do tamanho permitido.');
+    if (bytes > limiteBytes) throw new Error('Dados acima do tamanho permitido.');
     chunks.push(chunk);
   }
   const text = Buffer.concat(chunks).toString('utf8');
@@ -106,6 +108,7 @@ export function criarPiloto({
   const metricas = iniciarAnaliticos(dataDir, agora);
   const contatos = iniciarContatos(dataDir, agora);
   const grupos = iniciarGrupos(dataDir, agora);
+  const importacoes = iniciarImportacaoAutorizada(dataDir, agora);
   const sessoes = new Map();
   const limites = new Map();
 
@@ -251,6 +254,23 @@ export function criarPiloto({
         }
         if (pathname === '/api/admin/contatos' && leitura) return json(res, 200, { ok: true, contatos: contatos.listar() });
         if (pathname === '/api/admin/grupos' && leitura) return json(res, 200, { ok: true, grupos: grupos.listar() });
+        if (pathname === '/api/admin/importados' && leitura) {
+          return json(res, 200, { ok: true, ...importacoes.listar() });
+        }
+        if (pathname === '/api/admin/importados.csv' && leitura) {
+          let origem = null;
+          if (endereco.searchParams.has('origem')) {
+            try { origem = validarOrigemGrupo(endereco.searchParams.get('origem')); }
+            catch { return codigoTexto(res, 400, 'Origem inválida.'); }
+          }
+          const csv = importacoes.exportarCsv(origem);
+          res.writeHead(200, {
+            ...headersBase,
+            'content-type': 'text/csv; charset=utf-8',
+            'content-disposition': 'attachment; filename="participantes-importados.csv"',
+          });
+          return res.end(csv);
+        }
         if (pathname === '/api/admin/modelo.xlsx' && leitura) {
           res.writeHead(200, {
             ...headersBase,
@@ -280,9 +300,19 @@ export function criarPiloto({
         }
         if (method === 'POST') {
           let dados;
-          try { dados = await corpoJson(req); }
-          catch { return json(res, 400, { ok: false, mensagem: 'Dados JSON inválidos.' }); }
+          try { dados = await corpoJson(req, pathname === '/api/admin/importados' ? 128_000 : 4096); }
+          catch { return json(res, 400, { ok: false, mensagem: 'Dados JSON inválidos ou acima do tamanho permitido.' }); }
           try {
+            if (pathname === '/api/admin/importados') {
+              if (!limitar(req, 'admin-importacao', 20)) return json(res, 429, { ok: false, mensagem: 'Muitas importações. Tente novamente mais tarde.' });
+              const grupo = grupos.listar().find(item => item.id === dados.grupoId);
+              if (!grupo) throw new Error('Cadastre e selecione um grupo de origem antes de importar.');
+              const resultado = importacoes.importar({ ...dados, origem: grupo.origem });
+              return json(res, 200, { ok: true, resultado });
+            }
+            if (pathname === '/api/admin/importados/excluir') {
+              return json(res, 200, { ok: importacoes.excluir(dados.id) });
+            }
             if (pathname === '/api/admin/grupos') {
               return json(res, 200, { ok: true, grupo: grupos.cadastrar(dados) });
             }
