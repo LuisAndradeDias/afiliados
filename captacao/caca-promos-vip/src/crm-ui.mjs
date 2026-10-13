@@ -91,7 +91,7 @@ export function renderPainelCrm() {
       <div class="card">
         <p class="mini-label">Acesso administrativo</p>
         <h2>Seus contatos, suas permissões.</h2>
-        <p>Use a chave privada salva no computador em <code>dados/chave-admin.txt</code>. Esta área não é pública.</p>
+        <p>Use a chave desta instalação, em <code>C:\projeto01\captacao\caca-promos-vip\dados\chave-admin.txt</code>. Abra o arquivo pelo atalho <strong>Abrir Chave Administrativa.cmd</strong> na pasta da Central. Não use chaves de prévias ou instalações antigas.</p>
         <form id="loginForm" autocomplete="off">
           <label for="adminKey">Chave de acesso</label>
           <input id="adminKey" type="password" placeholder="Cole a chave de administrador" required autocomplete="off">
