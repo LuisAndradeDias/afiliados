@@ -22,6 +22,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run test:intervalos-envio
+      - run: npm run test:painel-operacional
       - run: npm run test:historico-antiduplicado
       - run: npm run test:precos-qualidade
       - run: npm run test:whatsapp-auto-send
