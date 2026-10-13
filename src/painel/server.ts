@@ -784,8 +784,9 @@ function iniciar(
     try {
       // Somente confirmações reais do WhatsApp iniciam a próxima espera.
       await sincronizarIntervaloPublicacoes();
-      if (intervaloCalculado.ultimoEnvioEm <= 0) {
-        throw new Error("Histórico sem envio confirmado após o WhatsApp enviar.");
+      if (intervaloCalculado.ultimoEnvioEm <= 0 ||
+          Math.abs(intervaloCalculado.ultimoEnvioEm - ultimoEnvioConcluidoEm) > 120_000) {
+        throw new Error("Histórico sem o envio recém-confirmado pelo WhatsApp.");
       }
       const restante = Math.max(0, Math.ceil(
         (intervaloCalculado.proximaLiberacaoEm - Date.now()) / 1000
@@ -1533,7 +1534,8 @@ async function executarAcao(
     intervaloCalculado = calculado;
     intervaloInicializado = true;
 
-    if (monitorAlternadoAtivo && !monitorTemTarefaAtiva()) {
+    const temOfertaPendente = await existe(mensagemPath) && await existe(pacotePath);
+    if (monitorAlternadoAtivo && !monitorTemTarefaAtiva() && !temOfertaPendente) {
       agendarMonitorAlternado(
         monitorAlternadoProximaPlataforma,
         750,
