@@ -1,8 +1,14 @@
-# 👑 Caça Promos VIP — Central de Captação v0.2
+# 👑 Caça Promos VIP — Central de Captação v0.3
 
 Aplicativo independente do robô principal Afiliados. Permite **divulgar um convite aprovado pelo administrador de uma comunidade**, receber **pré-cadastros voluntários**, registrar **autorização comprovada em duas etapas**, preparar convites individuais manualmente com **um segundo WhatsApp Business** e exportar planilhas.
 
-**Não faz:** extração de telefones de grupos alheios, importação de listas raspadas, conexão ao WhatsApp Web para ler grupos ou disparos automáticos de mensagens. Configurar o número secundário **não** ativa nenhuma integração de envio.
+**Não faz:** extração de telefones de grupos alheios, importação de listas raspadas, conexão ao WhatsApp Web para ler grupos ou disparos automáticos de mensagens.
+
+## Novidade da versão 0.3 — Grupos de origem
+
+A aba **Grupos** guarda links de convite de comunidades onde você participa, abre o grupo **manualmente** no WhatsApp e registra se o administrador autorizou a divulgação. Os links de campanha identificam os interessados que optaram pelo cadastro. O botão **Planilha da origem** exporta somente os contatos daquele canal, com status de consentimento. O painel ganhou contraste mais forte, navegação por seções, melhor disposição no celular e notificações discretas.
+
+Consulte [o guia de grupos e planilhas](docs/grupos-de-origem.md). Configurar o número secundário **não** ativa nenhuma integração de envio.
 
 ## Como funciona
 

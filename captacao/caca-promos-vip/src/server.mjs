@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { iniciarAnaliticos, normalizarOrigem, autorizarChave } from './analytics.mjs';
 import { iniciarContatos } from './contatos.mjs';
+import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderPainelCrm, renderDescadastro } from './crm-ui.mjs';
 
@@ -104,6 +105,7 @@ export function criarPiloto({
 
   const metricas = iniciarAnaliticos(dataDir, agora);
   const contatos = iniciarContatos(dataDir, agora);
+  const grupos = iniciarGrupos(dataDir, agora);
   const sessoes = new Map();
   const limites = new Map();
 
@@ -248,6 +250,7 @@ export function criarPiloto({
           });
         }
         if (pathname === '/api/admin/contatos' && leitura) return json(res, 200, { ok: true, contatos: contatos.listar() });
+        if (pathname === '/api/admin/grupos' && leitura) return json(res, 200, { ok: true, grupos: grupos.listar() });
         if (pathname === '/api/admin/modelo.xlsx' && leitura) {
           res.writeHead(200, {
             ...headersBase,
@@ -257,12 +260,19 @@ export function criarPiloto({
           return res.end(planilhaModelo);
         }
         if (pathname === '/api/admin/contatos.csv' && leitura) {
+          let origemFiltro = null;
+          if (endereco.searchParams.has('origem')) {
+            try { origemFiltro = validarOrigemGrupo(endereco.searchParams.get('origem')); }
+            catch { return codigoTexto(res, 400, 'Origem inválida para exportação.'); }
+          }
+          // Gerar e validar os dados antes de enviar cabeçalhos para a resposta.
+          const csv = contatos.exportarCsv(origemFiltro);
           res.writeHead(200, {
             ...headersBase,
             'content-type': 'text/csv; charset=utf-8',
             'content-disposition': 'attachment; filename="contatos-autorizados.csv"',
           });
-          return res.end(contatos.exportarCsv());
+          return res.end(csv);
         }
         if (pathname === '/api/admin/convite' && leitura) {
           try { return json(res, 200, { ok: true, ...contatos.prepararMensagem(endereco.searchParams.get('id')) }); }
@@ -273,6 +283,15 @@ export function criarPiloto({
           try { dados = await corpoJson(req); }
           catch { return json(res, 400, { ok: false, mensagem: 'Dados JSON inválidos.' }); }
           try {
+            if (pathname === '/api/admin/grupos') {
+              return json(res, 200, { ok: true, grupo: grupos.cadastrar(dados) });
+            }
+            if (pathname === '/api/admin/grupos/permissao') {
+              return json(res, 200, { ok: true, grupo: grupos.alterarPermissao(dados) });
+            }
+            if (pathname === '/api/admin/grupos/excluir') {
+              return json(res, 200, { ok: grupos.excluir(dados.id) });
+            }
             if (pathname === '/api/admin/remetente') {
               return json(res, 200, { ok: true, remetente: contatos.configurarRemetente(dados.telefone) });
             }
@@ -313,7 +332,7 @@ export function criarPiloto({
       return json(res, 500, { ok: false, mensagem: 'Erro interno. Consulte o administrador.' });
     }
   });
-  return { servidor, chave: metricas.chave, contatos };
+  return { servidor, chave: metricas.chave, contatos, grupos };
 }
 
 export async function iniciarServidor({

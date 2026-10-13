@@ -214,13 +214,13 @@ export function iniciarContatos(dataDir, agora = () => new Date()) {
     return true;
   }
 
-  function exportarCsv() {
+  function exportarCsv(origemFiltro = null) {
     const cabecalho = [
       'nome', 'telefone', 'origem', 'status', 'consentimento_declarado_em_utc',
       'consentimento_confirmado_em_utc', 'evidencia', 'versao_termo',
       'ultimo_envio_manual_em_utc', 'descadastro_em_utc', 'codigo_confirmacao'
     ];
-    const linhas = ler().contatos.map((contato) => [
+    const linhas = ler().contatos.filter((contato) => !origemFiltro || contato.origem === origemFiltro).map((contato) => [
       contato.nome, contato.telefone, contato.origem, contato.status,
       contato.consentimentoDeclaradoEm, contato.consentimentoConfirmadoEm,
       contato.evidencia, contato.versaoTermo, contato.ultimoEnvioManualEm,

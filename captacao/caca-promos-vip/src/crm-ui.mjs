@@ -1,4 +1,5 @@
 import { styles as baseStyles } from './templates.mjs';
+import { minimalStyles } from './ui-polish.mjs';
 
 const appStyles = `
 ${baseStyles}
@@ -77,7 +78,7 @@ button.sm {min-height:0;padding:9px 10px;font-size:12px;}
 `;
 
 function htmlPage(title, content, script) {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#031722"><meta name="referrer" content="no-referrer"><title>${title}</title><link rel="icon" href="/favicon.svg"><style>${appStyles}</style><script defer src="${script}"></script></head><body>${content}</body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#031722"><meta name="referrer" content="no-referrer"><title>${title}</title><link rel="icon" href="/favicon.svg"><style>${appStyles}\n${minimalStyles}</style><script defer src="${script}"></script></head><body>${content}</body></html>`;
 }
 
 const brand = `<div class="brand"><span class="mark" aria-hidden="true">◎</span><span>CAÇA PROMOS<br><strong>VIP 👑</strong></span></div>`;
@@ -85,7 +86,7 @@ const brand = `<div class="brand"><span class="mark" aria-hidden="true">◎</spa
 export function renderPainelCrm() {
   return htmlPage('Central de Captação | Caça Promos VIP', `
   <div class="crm-container">
-    <header>${brand}<span class="tag">Central de Captação · Versão 0.2</span></header>
+    <header>${brand}<span class="tag">Central de Captação · Versão 0.3</span></header>
     <section id="loginView" class="login-view">
       <div class="card">
         <p class="mini-label">Acesso administrativo</p>
@@ -105,14 +106,15 @@ export function renderPainelCrm() {
         <div><div class="mini-label">Gestão de contatos voluntários</div><h1>Captação <span>inteligente.</span></h1><p>Convites para grupos autorizados, contatos que pediram mensagens e campanhas pelo segundo WhatsApp — com o controle nas suas mãos.</p></div>
         <button type="button" class="ghost" id="logoutBtn">Sair do painel</button>
       </div>
-      <div class="notice">⚠ Os participantes de grupos de terceiros não são importados automaticamente. Cada interessado precisa se cadastrar e confirmar o próprio número. Este sistema <b>não faz disparos automáticos</b>.</div>
+      <nav class="quick-nav" aria-label="Seções da central"><a href="#overview">Visão geral</a><a href="#groupCard">Grupos</a><a href="#contactsCard">Contatos</a><a href="#senderCard">Segundo WhatsApp</a><a href="#reportCard">Resultados</a></nav>
+      <div class="notice">Os grupos de terceiros são abertos manualmente no seu WhatsApp. Só entram na planilha os interessados que se cadastrarem e autorizarem contato individual. Não há coleta de participantes nem disparos automáticos.</div>
       <section class="stats-v2" aria-label="Indicadores">
         <div class="metric"><small>Visitas ao convite</small><b id="statVisits">—</b><small>Todos os canais</small></div>
         <div class="metric"><small>Cliques no grupo</small><b id="statClicks">—</b><small>Convites abertos</small></div>
         <div class="metric"><small>Autorizados</small><b id="statActive">—</b><small>Confirmação recebida</small></div>
         <div class="metric"><small>Aguardando</small><b id="statPending">—</b><small>Pré-cadastro realizado</small></div>
       </section>
-      <section class="board">
+      <section class="board section-anchor" id="overview">
         <article class="card" id="campaignCard">
           <div class="mini-label">01 · Parcerias e comunidades</div>
           <h2>Criar link de convite</h2>
@@ -135,22 +137,47 @@ export function renderPainelCrm() {
           <p class="fineprint">Após cadastrar o número, o visitante poderá iniciar uma conversa e enviar <strong>QUERO VIP + código</strong>. A confirmação precisa ser verificada por você.</p>
         </article>
       </section>
-      <section class="card" id="contactsCard">
+      <section class="card group-section section-anchor" id="groupCard">
         <div class="section-heading">
-          <div><div class="mini-label">03 · Contatos com permissão</div><h2>Planilha de interessados</h2></div>
+          <div><div class="mini-label">03 · Comunidades de origem</div><h2>Seus grupos e convites</h2><p>Guarde os links que você acompanha e registre a autorização do administrador antes de divulgar.</p></div>
+          <span class="badge wait" id="groupCount">0 grupos</span>
+        </div>
+        <div class="group-form-layout">
+          <form id="groupForm" class="form-stack" autocomplete="off">
+            <div><label for="groupName">Nome para identificar o grupo</label><input id="groupName" type="text" minlength="3" maxlength="70" placeholder="Ex.: Promoções de tecnologia" required></div>
+            <div><label for="groupLink">Link de convite do grupo no WhatsApp</label><input id="groupLink" type="url" inputmode="url" maxlength="200" placeholder="https://chat.whatsapp.com/..." required></div>
+            <div><label for="groupOrigin">Código de origem na planilha</label><input id="groupOrigin" maxlength="32" pattern="[a-z][a-z0-9-]{2,31}" placeholder="ex.: tecnologia-01" required><p class="fineprint">Cada contato voluntário poderá ser identificado por este código.</p></div>
+            <label class="consent-box" for="groupPermission"><input id="groupPermission" type="checkbox"><span>Confirmo que o administrador deste grupo autorizou divulgar o convite do Caça Promos VIP. Posso cadastrar o grupo sem marcar esta opção e pedir autorização depois.</span></label>
+            <div class="actions"><button class="primary" type="submit" id="saveGroup">Adicionar grupo</button><span class="fineprint">Nenhum participante será coletado.</span></div>
+          </form>
+          <aside class="group-explainer">
+            <div class="mini-label">Fluxo seguro</div><h3>Abra no seu WhatsApp. Receba apenas quem quiser.</h3>
+            <p><strong>1.</strong> Salve o link e clique em <b>Abrir no WhatsApp</b> para consultar o grupo manualmente.</p>
+            <p><strong>2.</strong> Após a autorização do administrador, use a origem salva para compartilhar o convite voluntário.</p>
+            <p><strong>3.</strong> Os interessados se cadastram por conta própria. Cada origem ganha sua planilha CSV, com status e consentimento.</p>
+            <p class="fineprint">O programa não entra na sua conta, não lê membros de grupos e não extrai números. Os links e registros ficam no computador, fora do GitHub.</p>
+          </aside>
+        </div>
+        <div class="group-list-head"><h3>Grupos cadastrados</h3><span class="fineprint">Abra, selecione ou exporte os interessados</span></div>
+        <div class="group-list" id="groupsList" aria-live="polite"><div class="group-empty">Carregando grupos…</div></div>
+      </section>
+      <section class="card section-anchor" id="contactsCard">
+        <div class="section-heading">
+          <div><div class="mini-label">04 · Contatos com permissão</div><h2>Planilha de interessados</h2></div>
           <div class="actions"><a class="button secondary" id="exportCsv" href="/api/admin/contatos.csv" download="contatos-autorizados.csv">↓ Exportar CSV</a><a class="button secondary" id="exportModel" href="/api/admin/modelo.xlsx" download="Modelo_Contatos_Autorizados.xlsx">Modelo Excel</a></div>
         </div>
         <p>O cadastro começa <strong>pendente</strong>. Somente após você conferir a mensagem iniciada pelo interessado no segundo WhatsApp o contato passa para <strong>autorizado</strong>.</p>
         <div class="tools">
           <input id="searchContacts" type="search" placeholder="Buscar por nome, telefone ou origem" aria-label="Buscar contatos">
           <select id="filterContacts" style="max-width:220px" aria-label="Filtrar contatos"><option value="todos">Todos os contatos</option><option value="pendente">Aguardando confirmação</option><option value="ativo">Autorizados</option><option value="descadastrado">Descadastrados</option></select>
+          <select id="groupContactsFilter" style="max-width:220px" aria-label="Filtrar por origem"><option value="todos">Todas as origens</option></select>
         </div>
         <div class="table-scroll"><table class="crm-table"><thead><tr><th>Contato</th><th>Origem</th><th>Situação</th><th>Consentimento</th><th>Ação</th></tr></thead><tbody id="contactsBody"><tr><td colspan="5">Carregando…</td></tr></tbody></table></div>
         <p class="fineprint">O arquivo CSV inclui a data de autorização e o registro de confirmação. Não importe listas obtidas de participantes de grupos.</p>
       </section>
       <section class="grid2" style="margin-top:18px">
-        <article class="card"><div class="mini-label">04 · Campanhas individuais</div><h2>Envio supervisionado</h2><p>Selecione um contato autorizado para preparar uma mensagem. Você abre a conversa, confere que está usando o <strong>segundo WhatsApp</strong> e decide enviar manualmente.</p><div class="alert">Sem disparos em massa, sem troca automática de contas e sem envios a contatos pendentes ou descadastrados.</div></article>
-        <article class="card"><div class="mini-label">05 · Mensuração</div><h2>Origem dos interessados</h2><div class="table-scroll"><table class="crm-table" style="min-width:0"><thead><tr><th>Origem</th><th>Visitas</th><th>Cliques</th></tr></thead><tbody id="originsBody"><tr><td colspan="3">Sem dados.</td></tr></tbody></table></div><p class="fineprint">Um clique no link do grupo não confirma adesão ao WhatsApp.</p></article>
+        <article class="card"><div class="mini-label">05 · Campanhas individuais</div><h2>Envio supervisionado</h2><p>Selecione um contato autorizado para preparar uma mensagem. Você abre a conversa, confere que está usando o <strong>segundo WhatsApp</strong> e decide enviar manualmente.</p><div class="alert">Sem disparos em massa, sem troca automática de contas e sem envios a contatos pendentes ou descadastrados.</div></article>
+        <article class="card section-anchor" id="reportCard"><div class="mini-label">06 · Mensuração</div><h2>Origem dos interessados</h2><div class="table-scroll"><table class="crm-table" style="min-width:0"><thead><tr><th>Origem</th><th>Visitas</th><th>Cliques</th></tr></thead><tbody id="originsBody"><tr><td colspan="3">Sem dados.</td></tr></tbody></table></div><p class="fineprint">Um clique no link do grupo não confirma adesão ao WhatsApp.</p></article>
       </section>
       <div class="alert" id="appFeedback" role="status" aria-live="polite" hidden></div>
     </main>
