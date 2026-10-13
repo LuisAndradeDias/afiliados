@@ -1,0 +1,12 @@
+{
+  "name": "cacapromos-captacao-piloto",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Central de captacao voluntaria com consentimento em duas etapas do Caca Promos VIP",
+  "engines": { "node": ">=18.0.0" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test"
+  }
+}

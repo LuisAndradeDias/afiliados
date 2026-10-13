@@ -1,0 +1,354 @@
+import { createServer } from 'node:http';
+import { join, dirname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { iniciarAnaliticos, normalizarOrigem, autorizarChave } from './analytics.mjs';
+import { iniciarContatos } from './contatos.mjs';
+import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
+import { renderPainelCrm, renderDescadastro } from './crm-ui.mjs';
+
+const GROUP_URL = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
+const sourceDir = dirname(fileURLToPath(import.meta.url));
+const planilhaModelo = readFileSync(join(sourceDir, '..', 'modelos', 'Modelo_Contatos_Autorizados.xlsx'));
+const scripts = new Map([
+  ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
+  ['/assets/painel.js', readFileSync(join(sourceDir, 'assets', 'painel.js'), 'utf8')],
+  ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
+]);
+const headersBase = {
+  'cache-control': 'no-store',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+  'x-frame-options': 'DENY',
+  'cross-origin-resource-policy': 'same-origin',
+};
+
+function codigoHtml(res, status, html) {
+  res.writeHead(status, {
+    ...headersBase,
+    'content-type': 'text/html; charset=utf-8',
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  });
+  res.end(html);
+}
+
+function codigoTexto(res, status, texto, contentType = 'text/plain; charset=utf-8') {
+  res.writeHead(status, { ...headersBase, 'content-type': contentType });
+  res.end(texto);
+}
+
+function json(res, status, valor, extraHeaders = {}) {
+  res.writeHead(status, {
+    ...headersBase,
+    'content-type': 'application/json; charset=utf-8',
+    ...extraHeaders,
+  });
+  res.end(JSON.stringify(valor));
+}
+
+function convitesCsv(dados) {
+  const linhas = ['origem;visitas;cliques;taxa_cliques_percentual'];
+  for (const [origem, stats] of Object.entries(dados.campanhas).sort()) {
+    const ratio = stats.visitas ? (100 * stats.cliques / stats.visitas).toFixed(1).replace('.', ',') : '0,0';
+    linhas.push(`${origem};${stats.visitas};${stats.cliques};${ratio}`);
+  }
+  return '\ufeff' + linhas.join('\r\n') + '\r\n';
+}
+
+async function corpoJson(req) {
+  if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
+    throw new Error('Envie JSON com content-type application/json.');
+  }
+  let bytes = 0;
+  const chunks = [];
+  for await (const chunk of req) {
+    bytes += chunk.length;
+    if (bytes > 4096) throw new Error('Dados acima do tamanho permitido.');
+    chunks.push(chunk);
+  }
+  const text = Buffer.concat(chunks).toString('utf8');
+  const data = JSON.parse(text || '{}');
+  if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error('JSON inválido.');
+  return data;
+}
+
+function validarOrigem(req) {
+  const origem = req.headers.origin;
+  if (!origem) return true;
+  try {
+    const parsed = new URL(origem);
+    return parsed.host === req.headers.host && (parsed.protocol === 'http:' || parsed.protocol === 'https:');
+  } catch {
+    return false;
+  }
+}
+
+function extrairSessao(req) {
+  const cookies = String(req.headers.cookie || '').split(';').map(v => v.trim());
+  const item = cookies.find(v => /^cpv_admin=[0-9a-f]{64}$/.test(v));
+  return item ? item.slice('cpv_admin='.length) : '';
+}
+
+export function criarPiloto({
+  dataDir = join(process.cwd(), 'dados'),
+  inviteUrl = GROUP_URL,
+  agora = () => new Date(),
+} = {}) {
+  let urlGrupo;
+  try { urlGrupo = new URL(inviteUrl); }
+  catch { throw new Error('O link de convite do grupo é inválido.'); }
+  if (urlGrupo.protocol !== 'https:' || urlGrupo.hostname !== 'chat.whatsapp.com') {
+    throw new Error('Use um link HTTPS de chat.whatsapp.com como convite do grupo.');
+  }
+
+  const metricas = iniciarAnaliticos(dataDir, agora);
+  const contatos = iniciarContatos(dataDir, agora);
+  const sessoes = new Map();
+  const limites = new Map();
+
+  function limitar(req, prefixo, maximo = 8) {
+    const chave = prefixo + ':' + req.socket.remoteAddress;
+    const t = Date.now();
+    const atual = limites.get(chave);
+    const info = atual && t - atual.iniciado < 3_600_000
+      ? atual : { iniciado: t, contador: 0 };
+    info.contador += 1;
+    limites.set(chave, info);
+    // Mantém somente poucas entradas efêmeras na memória, sem registrar IP em arquivo.
+    if (limites.size > 2048) limites.clear();
+    return info.contador <= maximo;
+  }
+
+  function autenticado(req) {
+    const token = extrairSessao(req);
+    const expira = sessoes.get(token);
+    if (!expira) return false;
+    if (expira < Date.now()) {
+      sessoes.delete(token);
+      return false;
+    }
+    return true;
+  }
+
+  function autorizado(req, res, alteracao = false) {
+    if (!autenticado(req)) {
+      json(res, 401, { ok: false, mensagem: 'Entre com a chave administrativa para continuar.' });
+      return false;
+    }
+    if (alteracao && req.headers['x-cpv-admin'] !== '1') {
+      json(res, 403, { ok: false, mensagem: 'Verificação de proteção administrativa necessária.' });
+      return false;
+    }
+    return true;
+  }
+
+  const servidor = createServer(async (req, res) => {
+    try {
+      const endereco = new URL(req.url ?? '/', 'http://localhost');
+      const pathname = endereco.pathname;
+      const method = req.method || 'GET';
+      const leitura = method === 'GET' || method === 'HEAD';
+
+      if (method === 'POST' && !validarOrigem(req)) {
+        json(res, 403, { ok: false, mensagem: 'Origem da solicitação não autorizada.' });
+        return;
+      }
+
+      if (pathname === '/saude' && leitura) return codigoTexto(res, 200, 'OK');
+      if (pathname === '/favicon.svg' && leitura) return codigoTexto(res, 200, renderFavicon(), 'image/svg+xml; charset=utf-8');
+      if (scripts.has(pathname) && leitura) return codigoTexto(res, 200, scripts.get(pathname), 'text/javascript; charset=utf-8');
+      if (pathname === '/robots.txt' && leitura) return codigoTexto(res, 200,
+        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /api/\nDisallow: /sair\n');
+
+      if (pathname === '/relatorio' || pathname === '/relatorio.csv') {
+        if (!leitura) return codigoTexto(res, 405, 'Método não permitido');
+        if (!autorizarChave(endereco.searchParams.get('chave'), metricas.chave)) {
+          return codigoTexto(res, 403, 'Acesso restrito');
+        }
+        const dados = metricas.ler();
+        return pathname.endsWith('.csv')
+          ? codigoTexto(res, 200, convitesCsv(dados), 'text/csv; charset=utf-8')
+          : codigoHtml(res, 200, renderRelatorio(dados, metricas.chave));
+      }
+
+      if (pathname === '/entrar' && leitura) {
+        if (method === 'HEAD') return codigoTexto(res, 405, 'Método não permitido');
+        metricas.registrar('cliques', endereco.searchParams.get('origem'));
+        res.writeHead(303, {
+          location: urlGrupo.toString(), ...headersBase,
+        });
+        res.end();
+        return;
+      }
+
+      if (pathname === '/painel' && leitura) return codigoHtml(res, 200, renderPainelCrm());
+      if (pathname === '/sair' && leitura) return codigoHtml(res, 200, renderDescadastro());
+
+      if (pathname === '/api/cadastro' && method === 'POST') {
+        if (!limitar(req, 'cadastro', 10)) {
+          return json(res, 429, { ok: false, mensagem: 'Muitas solicitações. Tente novamente mais tarde.' });
+        }
+        let entrada;
+        try { entrada = await corpoJson(req); }
+        catch { return json(res, 400, { ok: false, mensagem: 'Dados inválidos para cadastro.' }); }
+        try {
+          const dados = contatos.cadastrar(entrada);
+          return json(res, 200, { ok: true, ...dados });
+        } catch (error) {
+          return json(res, 400, { ok: false, mensagem: error.message });
+        }
+      }
+      if (pathname === '/api/descadastro' && method === 'POST') {
+        if (!limitar(req, 'descadastro', 15)) {
+          return json(res, 429, { ok: false, mensagem: 'Tente novamente mais tarde.' });
+        }
+        let entrada;
+        try { entrada = await corpoJson(req); }
+        catch { return json(res, 400, { ok: false, mensagem: 'Dados inválidos.' }); }
+        return contatos.descadastrarPorToken(entrada.token)
+          ? json(res, 200, { ok: true })
+          : json(res, 404, { ok: false, mensagem: 'Link de descadastro não encontrado.' });
+      }
+
+      if (pathname === '/api/admin/login' && method === 'POST') {
+        if (!limitar(req, 'admin-login', 12)) {
+          return json(res, 429, { ok: false, mensagem: 'Muitas tentativas de login; tente mais tarde.' });
+        }
+        let dados;
+        try { dados = await corpoJson(req); }
+        catch { return json(res, 400, { ok: false, mensagem: 'Requisição inválida.' }); }
+        if (!autorizarChave(dados.chave, metricas.chave)) {
+          return json(res, 401, { ok: false, mensagem: 'Chave administrativa incorreta.' });
+        }
+        const token = randomBytes(32).toString('hex');
+        sessoes.set(token, Date.now() + 8 * 3_600_000);
+        const secure = req.socket.encrypted || process.env.CAPTACAO_PUBLIC_HTTPS === 'true';
+        const cookie = `cpv_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${secure ? '; Secure' : ''}`;
+        return json(res, 200, { ok: true }, { 'set-cookie': cookie });
+      }
+      if (pathname === '/api/admin/logout' && method === 'POST') {
+        if (!autorizado(req, res, true)) return;
+        sessoes.delete(extrairSessao(req));
+        return json(res, 200, { ok: true }, { 'set-cookie': 'cpv_admin=; Max-Age=0; Path=/; SameSite=Strict; HttpOnly' });
+      }
+      if (pathname.startsWith('/api/admin/')) {
+        if (!autorizado(req, res, method === 'POST')) return;
+        if (pathname === '/api/admin/resumo' && leitura) {
+          const dados = metricas.ler();
+          const campanhas = dados.campanhas;
+          return json(res, 200, {
+            ok: true,
+            contatos: contatos.resumo(),
+            metricas: {
+              totalVisitas: Object.values(campanhas).reduce((s, x) => s + x.visitas, 0),
+              totalCliques: Object.values(campanhas).reduce((s, x) => s + x.cliques, 0),
+              campanhas,
+            },
+          });
+        }
+        if (pathname === '/api/admin/contatos' && leitura) return json(res, 200, { ok: true, contatos: contatos.listar() });
+        if (pathname === '/api/admin/modelo.xlsx' && leitura) {
+          res.writeHead(200, {
+            ...headersBase,
+            'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'content-disposition': 'attachment; filename="Modelo_Contatos_Autorizados.xlsx"',
+          });
+          return res.end(planilhaModelo);
+        }
+        if (pathname === '/api/admin/contatos.csv' && leitura) {
+          res.writeHead(200, {
+            ...headersBase,
+            'content-type': 'text/csv; charset=utf-8',
+            'content-disposition': 'attachment; filename="contatos-autorizados.csv"',
+          });
+          return res.end(contatos.exportarCsv());
+        }
+        if (pathname === '/api/admin/convite' && leitura) {
+          try { return json(res, 200, { ok: true, ...contatos.prepararMensagem(endereco.searchParams.get('id')) }); }
+          catch (error) { return json(res, 409, { ok: false, mensagem: error.message }); }
+        }
+        if (method === 'POST') {
+          let dados;
+          try { dados = await corpoJson(req); }
+          catch { return json(res, 400, { ok: false, mensagem: 'Dados JSON inválidos.' }); }
+          try {
+            if (pathname === '/api/admin/remetente') {
+              return json(res, 200, { ok: true, remetente: contatos.configurarRemetente(dados.telefone) });
+            }
+            if (pathname === '/api/admin/confirmar') {
+              return json(res, 200, { ok: true, id: contatos.confirmar(dados) });
+            }
+            if (pathname === '/api/admin/descadastrar') {
+              return json(res, 200, { ok: contatos.descadastrarPorId(dados.id) });
+            }
+            if (pathname === '/api/admin/excluir') {
+              return json(res, 200, { ok: contatos.excluirPorId(dados.id) });
+            }
+            if (pathname === '/api/admin/registrar-envio') {
+              return json(res, 200, { ok: true, enviadoEm: contatos.marcarEnvioManual(dados.id) });
+            }
+          } catch (error) {
+            return json(res, 409, { ok: false, mensagem: error.message });
+          }
+        }
+        return json(res, 404, { ok: false, mensagem: 'Ação administrativa desconhecida.' });
+      }
+
+      if ((pathname === '/' || pathname.startsWith('/c/')) && leitura) {
+        if (method === 'HEAD') {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+          return res.end();
+        }
+        const origem = pathname.startsWith('/c/')
+          ? normalizarOrigem(pathname.slice(3))
+          : normalizarOrigem(endereco.searchParams.get('origem'));
+        metricas.registrar('visitas', origem);
+        return codigoHtml(res, 200, renderLanding(origem));
+      }
+      if (!leitura) return codigoTexto(res, 405, 'Método não permitido');
+      return codigoTexto(res, 404, 'Página não encontrada');
+    } catch (error) {
+      console.error('Erro interno do piloto:', error.message);
+      return json(res, 500, { ok: false, mensagem: 'Erro interno. Consulte o administrador.' });
+    }
+  });
+  return { servidor, chave: metricas.chave, contatos };
+}
+
+export async function iniciarServidor({
+  port = Number(process.env.PORT ?? 3040),
+  host = process.env.HOST ?? '127.0.0.1',
+  dataDir = process.env.DATA_DIR ?? join(process.cwd(), 'dados'),
+  inviteUrl = process.env.CAPTACAO_GROUP_URL ?? GROUP_URL,
+  agora,
+} = {}) {
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error('Porta inválida');
+  }
+  const { servidor, chave, contatos } = criarPiloto({ dataDir, inviteUrl, agora });
+  await new Promise((resolve, reject) => {
+    servidor.once('error', reject);
+    servidor.listen(port, host, resolve);
+  });
+  const endereco = servidor.address();
+  const base = `http://${host}:${endereco.port}`;
+  return { servidor, base, chave, contatos };
+}
+
+const arquivoPrincipal = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
+if (arquivoPrincipal) {
+  iniciarServidor().then(({ base }) => {
+    console.log('\n=== CAÇA PROMOS VIP — CAPTAÇÃO VOLUNTÁRIA 0.2 ===');
+    console.log('Página de convite: ' + base + '/c/instagram');
+    console.log('Painel de contatos: ' + base + '/painel');
+    console.log('Relatório existente continua disponível pelo atalho privado.');
+    console.log('A chave administrativa está em dados/chave-admin.txt (não divulgue).');
+    console.log('Nenhuma mensagem é enviada automaticamente.');
+    console.log('Um cadastro só vira autorizado após confirmação recebida no segundo WhatsApp.');
+    console.log('\nPressione Ctrl+C para encerrar.\n');
+  }).catch(error => {
+    console.error('Não foi possível iniciar o piloto:', error.message);
+    process.exitCode = 1;
+  });
+}
