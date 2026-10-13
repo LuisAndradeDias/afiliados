@@ -29,7 +29,8 @@
     "test:precos-qualidade": "tsx tests/precos-qualidade.mts",
     "test:variedade-ofertas": "tsx tests/variedade-ofertas.mts",
     "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts",
-    "test:instagram-content": "tsx tests/instagram-content.mts"
+    "test:instagram-content": "tsx tests/instagram-content.mts",
+    "test:intervalos-envio": "tsx tests/intervalos-envio.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

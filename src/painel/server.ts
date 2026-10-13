@@ -9,8 +9,15 @@ import {
   cooldownHoras,
   contarBloqueadas,
   limparHistoricoOfertas,
+  ultimasOfertasEnviadas,
   previewCooldownMinutos
 } from "../ofertas/historico.js";
+import {
+  calcularProximaPublicacao,
+  modoIntervaloValido,
+  normalizarModoIntervalo,
+  type ModoIntervalo
+} from "../ofertas/intervalos-envio.js";
 import {
   lerOfertaMercadoLivre,
   salvarLinkAfiliadoMercadoLivre
@@ -104,6 +111,18 @@ let amazonMonitorUltimaBuscaEm = 0;
 let mercadoLivreBuscaLimitada = false;
 let mercadoLivreBloqueadoAte = 0;
 
+let intervaloModo: ModoIntervalo = normalizarModoIntervalo(process.env.PROMO_INTERVAL_MODE);
+let intervaloCalculado = calcularProximaPublicacao([], intervaloModo);
+let intervaloInicializado = false;
+
+// O histórico já é persistente: reconstituir a espera evita pular o intervalo
+// ao reiniciar o painel e não exige um segundo arquivo de controle.
+async function sincronizarIntervaloPublicacoes(): Promise<void> {
+  const confirmados = await ultimasOfertasEnviadas(1000);
+  intervaloCalculado = calcularProximaPublicacao(confirmados, intervaloModo);
+  intervaloInicializado = true;
+}
+
 function monitorAlternadoSlotMs(): number {
   const segundos = Number(
     process.env.ALTERNATING_MONITOR_SLOT_SECONDS ?? 60
@@ -179,11 +198,21 @@ function agendarMonitorAlternado(
   cancelarAgendamentoMonitorAlternado();
   if (!monitorAlternadoAtivo) return;
 
-  const atraso = Math.max(500, atrasoMs);
+  if (!intervaloInicializado) {
+    registrar("monitor", "Histórico ainda não carregado; nenhuma busca automática foi agendada.");
+    return;
+  }
+
+  // Todas as rotas de continuação passam por esta barreira, inclusive
+  // retomadas de erro, duplicata, cancelamento e reinicialização.
+  const esperaRestante = Math.max(0, intervaloCalculado.proximaLiberacaoEm - Date.now());
+  const atraso = Math.max(500, atrasoMs, esperaRestante);
   monitorAlternadoProximaPlataforma = plataforma;
   mercadoLivreMonitorProximaBuscaEm = Date.now() + atraso;
 
-  atualizarFluxoMercadoLivre("monitoring", mensagem);
+  atualizarFluxoMercadoLivre("monitoring", esperaRestante > 0
+    ? "Intervalo entre promoções ativo. Próxima consulta aguardando a liberação do envio."
+    : mensagem);
 
   monitorAlternadoTimer = setTimeout(() => {
     monitorAlternadoTimer = null;
@@ -205,6 +234,16 @@ async function executarTurnoMonitorAlternado(
   plataforma: PlataformaMonitor
 ): Promise<void> {
   if (!monitorAlternadoAtivo) return;
+
+  // Rechecagem defensiva no momento em que o timer dispara.
+  if (Date.now() < intervaloCalculado.proximaLiberacaoEm) {
+    agendarMonitorAlternado(
+      plataforma,
+      intervaloCalculado.proximaLiberacaoEm - Date.now(),
+      "Respeitando a espera configurada antes da próxima promoção."
+    );
+    return;
+  }
 
   if (monitorTemTarefaAtiva()) {
     agendarMonitorAlternado(
@@ -742,6 +781,29 @@ function iniciar(
       carregarProxima || monitorAlternadoAtivo;
     await limparPreparacaoAtual(origemFinalizada);
 
+    try {
+      // Somente confirmações reais do WhatsApp iniciam a próxima espera.
+      await sincronizarIntervaloPublicacoes();
+      if (intervaloCalculado.ultimoEnvioEm <= 0 ||
+          Math.abs(intervaloCalculado.ultimoEnvioEm - ultimoEnvioConcluidoEm) > 120_000) {
+        throw new Error("Histórico sem o envio recém-confirmado pelo WhatsApp.");
+      }
+      const restante = Math.max(0, Math.ceil(
+        (intervaloCalculado.proximaLiberacaoEm - Date.now()) / 1000
+      ));
+      registrar("intervalo", "Tempo " + intervaloModo +
+        ": próxima publicação liberada em " +
+        Math.ceil(restante / 60) + " min" +
+        (intervaloCalculado.pausaLonga ? " (pausa prolongada após 4 envios)" : "") +
+        (intervaloCalculado.limitadoPorHora ? " (limite de 4 por hora)" : "") + ".");
+    } catch (erro) {
+      const detalhe = erro instanceof Error ? erro.message : String(erro);
+      registrar("intervalo", "Não foi possível verificar o histórico: " + detalhe);
+      if (monitorAlternadoAtivo) await definirMonitorMercadoLivreAtivo(false);
+      atualizarFluxoMercadoLivre("error", "Ciclo pausado: verifique o histórico de envios antes de retomar.");
+      return;
+    }
+
     if (monitorAlternadoAtivo) {
       const proxima: PlataformaMonitor =
         origemFinalizada === "mercado-livre"
@@ -755,7 +817,7 @@ function iniciar(
       agendarMonitorAlternado(
         proxima,
         5_000,
-        `Envio concluído. ${nomePlataformaMonitor(proxima)} será consultada em instantes.`
+        `Envio concluído. ${nomePlataformaMonitor(proxima)} será consultada após o intervalo selecionado.`
       );
       return;
     }
@@ -1238,6 +1300,13 @@ async function estado() {
     monitorAlternadoUltimaPlataforma,
     monitorAlternadoProximaBuscaEm: mercadoLivreMonitorProximaBuscaEm,
     monitorAlternadoSlotSegundos: monitorAlternadoSlotMs() / 1_000,
+    intervaloModo,
+    intervaloProximaLiberacaoEm: intervaloCalculado.proximaLiberacaoEm,
+    intervaloUltimoEnvioEm: intervaloCalculado.ultimoEnvioEm,
+    intervaloPausaLonga: intervaloCalculado.pausaLonga,
+    intervaloLimitadoPorHora: intervaloCalculado.limitadoPorHora,
+    intervaloPublicacoesNoDia: intervaloCalculado.publicacoesNoDia,
+    intervaloCarregado: intervaloInicializado,
     mercadoLivreMonitorProximaBuscaEm,
     mercadoLivreMonitorUltimaBuscaEm,
     amazonMonitorUltimaBuscaEm,
@@ -1450,6 +1519,39 @@ async function executarAcao(
     };
   }
 
+  if (acao === "intervalo-set") {
+    if (!modoIntervaloValido(dados.modo)) {
+      return { ok: false, mensagem: "Escolha Tempo médio ou Tempo curto." };
+    }
+
+    const novoModo = dados.modo;
+    // Primeiro valida o histórico e só então grava a escolha permanentemente.
+    const calculado = calcularProximaPublicacao(
+      await ultimasOfertasEnviadas(1000), novoModo
+    );
+    await salvarVariavelEnv("PROMO_INTERVAL_MODE", novoModo);
+    intervaloModo = novoModo;
+    intervaloCalculado = calculado;
+    intervaloInicializado = true;
+
+    const temOfertaPendente = await existe(mensagemPath) && await existe(pacotePath);
+    if (monitorAlternadoAtivo && !monitorTemTarefaAtiva() && !temOfertaPendente) {
+      agendarMonitorAlternado(
+        monitorAlternadoProximaPlataforma,
+        750,
+        "Intervalo de publicações atualizado no painel."
+      );
+    }
+
+    registrar("intervalo", "Ritmo de publicações alterado para " + novoModo + ".");
+    return {
+      ok: true,
+      mensagem: novoModo === "curto"
+        ? "Tempo curto ativado: 5–12min30s; após 4 envios, 15–22min30s."
+        : "Tempo médio ativado: 10–25min; após 4 envios, 30–45min."
+    };
+  }
+
   if (
     acao === "monitor-set" ||
     acao === "mercadolivre-monitor-toggle"
@@ -1488,6 +1590,10 @@ async function executarAcao(
       };
     }
 
+    // Recarrega a última confirmação antes de retomar, inclusive após
+    // interrupção do processo ou envio manual ocorrido enquanto estava parado.
+    await sincronizarIntervaloPublicacoes();
+
     if (!monitorAlternadoAtivo) {
       await definirMonitorMercadoLivreAtivo(true);
     }
@@ -1515,7 +1621,7 @@ async function executarAcao(
     return {
       ok: true,
       mensagem:
-        "Ciclo Amazon + Mercado Livre ativo: as plataformas serão consultadas alternadamente a cada minuto."
+        "Ciclo Amazon + Mercado Livre ativo. Os intervalos entre publicações seguem o ritmo selecionado."
     };
   }
 
@@ -2126,25 +2232,40 @@ server.listen(porta, "127.0.0.1", () => {
   registrar("painel", `Painel disponível em http://localhost:${porta}`);
   console.log(`Painel disponível em http://localhost:${porta}`);
 
-  if (monitorAlternadoAtivo) {
-    void (async () => {
-      const temOfertaPendente =
-        await existe(mensagemPath) &&
-        await existe(pacotePath);
+  void (async () => {
+    try {
+      await sincronizarIntervaloPublicacoes();
+    } catch (erro) {
+      // Se o histórico estiver indisponível, a opção segura é não publicar.
+      registrar("intervalo", "Histórico indisponível; monitor não pode iniciar: " +
+        (erro instanceof Error ? erro.message : String(erro)));
+      if (monitorAlternadoAtivo) await definirMonitorMercadoLivreAtivo(false);
+      atualizarFluxoMercadoLivre("error",
+        "Ciclo pausado: não foi possível restaurar o intervalo de publicações.");
+      return;
+    }
 
-      if (temOfertaPendente) {
-        atualizarFluxoMercadoLivre(
-          "idle",
-          "Existe uma oferta preparada de uma execução anterior. Reabra ou descarte essa oferta antes de continuar o ciclo."
-        );
-        return;
-      }
+    if (!monitorAlternadoAtivo) return;
 
-      agendarMonitorAlternado(
-        "mercado-livre",
-        1_500,
-        "Ciclo automático restaurado. Mercado Livre inicia e Amazon entra no minuto seguinte."
+    const temOfertaPendente =
+      await existe(mensagemPath) &&
+      await existe(pacotePath);
+
+    if (temOfertaPendente) {
+      atualizarFluxoMercadoLivre(
+        "idle",
+        "Existe uma oferta preparada de uma execução anterior. Reabra ou descarte essa oferta antes de continuar o ciclo."
       );
-    })();
-  }
+      return;
+    }
+
+    agendarMonitorAlternado(
+      "mercado-livre",
+      1_500,
+      "Ciclo restaurado. Próxima publicação respeitará o intervalo configurado."
+    );
+  })().catch((erro) => {
+    registrar("intervalo", "Falha na inicialização do monitor: " +
+      (erro instanceof Error ? erro.message : String(erro)));
+  });
 });

@@ -1,0 +1,28 @@
+name: Validar Afiliados
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:intervalos-envio
+      - run: npm run test:painel-operacional
+      - run: npm run test:historico-antiduplicado
+      - run: npm run test:precos-qualidade
+      - run: npm run test:whatsapp-auto-send

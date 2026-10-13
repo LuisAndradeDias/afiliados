@@ -331,6 +331,56 @@
       min-height: 48px;
       flex: 0 0 auto;
     }
+    .intervalo-area {
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface-2);
+    }
+    .intervalo-topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .intervalo-topo strong { font-size: 13px; }
+    .intervalo-topo span { font-size: 11px; color: var(--muted); }
+    .intervalo-opcoes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .intervalo-opcao {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 13px;
+      background: #fff;
+      color: var(--text);
+      text-align: left;
+    }
+    .intervalo-opcao strong { font-size: 14px; }
+    .intervalo-opcao span { font-size: 12px; color: #475467; }
+    .intervalo-opcao small { font-size: 11px; color: var(--muted); }
+    .intervalo-opcao.ativo {
+      background: var(--green-soft);
+      border-color: #75dba4;
+      box-shadow: 0 0 0 2px rgba(7,148,85,.10);
+    }
+    .intervalo-opcao.ativo strong { color: var(--green-dark); }
+    .intervalo-aviso {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
     .cycle-status-grid {
       display: grid;
       grid-template-columns: 1.25fr 1fr 1fr;
@@ -813,6 +863,7 @@
       .launch-grid, .review-grid, .tool-grid, .cycle-status-grid, .platform-lanes, .instagram-grid { grid-template-columns: 1fr; }
       .cycle-head { flex-direction: column; }
       .cycle-toggle { width: 100%; min-width: 0; }
+      .intervalo-opcoes { grid-template-columns: 1fr; }
       .review-side { border-left: 0; border-top: 1px solid var(--line); padding: 16px 0 0; }
     }
     @media (max-width: 680px) {
@@ -879,11 +930,35 @@
             <h2>Ciclo Amazon + Mercado Livre</h2>
             <span id="cycleBadge" class="cycle-badge">Verificando...</span>
           </div>
-          <p>Mercado Livre → 1 min → Amazon → 1 min → repetir. Cada plataforma é consultada aproximadamente a cada 2 minutos.</p>
+          <p>As ofertas alternam Amazon e Mercado Livre, respeitando pausas variáveis entre publicações confirmadas. Escolha abaixo o ritmo do seu grupo.</p>
         </div>
         <button id="cycleToggleButton" class="success cycle-toggle" data-action="monitor-set">
           Iniciar ciclo automático
         </button>
+      </div>
+
+      <div class="intervalo-area">
+        <div class="intervalo-topo">
+          <strong>Ritmo das promoções</strong>
+          <span>Selecione uma das duas opções</span>
+        </div>
+        <div class="intervalo-opcoes" role="group" aria-label="Tempo de espera entre promoções">
+          <button type="button" id="tempoMedioButton" class="intervalo-opcao ativo"
+            data-action="intervalo-set" data-modo="medio" aria-pressed="true">
+            <strong>Tempo médio</strong>
+            <span>10 a 25 minutos</span>
+            <small>Após 4 envios: 30 a 45 minutos</small>
+          </button>
+          <button type="button" id="tempoCurtoButton" class="intervalo-opcao"
+            data-action="intervalo-set" data-modo="curto" aria-pressed="false">
+            <strong>Tempo curto</strong>
+            <span>5 a 12min30s</span>
+            <small>Após 4 envios: 15 a 22min30s</small>
+          </button>
+        </div>
+        <p id="intervaloAviso" class="intervalo-aviso" aria-live="polite">
+          Limite de 4 ofertas por hora. O intervalo inicia após o WhatsApp confirmar o envio.
+        </p>
       </div>
 
       <div class="cycle-status-grid">
@@ -1498,6 +1573,24 @@
         cycleBadge.textContent = s.monitorAlternadoAtivo ? "ATIVO" : "PAUSADO";
         cycleBadge.classList.toggle("active", Boolean(s.monitorAlternadoAtivo));
 
+        const modoIntervalo = s.intervaloModo === "curto" ? "curto" : "medio";
+        for (const [id, nome] of [
+          ["tempoMedioButton", "medio"],
+          ["tempoCurtoButton", "curto"]
+        ]) {
+          $(id).classList.toggle("ativo", modoIntervalo === nome);
+          $(id).setAttribute("aria-pressed", String(modoIntervalo === nome));
+        }
+        const liberacaoEm = Number(s.intervaloProximaLiberacaoEm || 0);
+        const aguardandoIntervalo =
+          s.monitorAlternadoAtivo && liberacaoEm > Date.now();
+        $("intervaloAviso").textContent = aguardandoIntervalo
+          ? "Próxima publicação em " + contagemAte(liberacaoEm) +
+            (s.intervaloPausaLonga ? " · pausa prolongada" : "") +
+            (s.intervaloLimitadoPorHora ? " · limite de 4 por hora" : "") +
+            ". O contador continua após reiniciar o painel."
+          : "Após 4 envios do dia, há uma pausa maior. Limite de 4 publicações por hora.";
+
         if (s.monitorAlternadoAtivo) {
           cycleButton.textContent = "⏸ Pausar novas buscas";
           cycleButton.classList.remove("success");
@@ -1519,7 +1612,9 @@
           "offer-pending": `Oferta pendente · ${operacaoPlataforma}`,
           error: "Atenção necessária"
         };
-        $("cycleNow").textContent = agoraPorEstado[estado] || "Processando";
+        $("cycleNow").textContent = aguardandoIntervalo && estado === "scheduled"
+          ? "Intervalo entre promoções"
+          : agoraPorEstado[estado] || "Processando";
 
         const detalhePorEstado = {
           paused: "Nenhuma busca automática será iniciada.",
@@ -1532,7 +1627,9 @@
           "offer-pending": "Use Reabrir no WhatsApp para continuar.",
           error: s.mercadoLivreFluxoMensagem || "Consulte os logs."
         };
-        $("cycleNowDetail").textContent = detalhePorEstado[estado] || "";
+        $("cycleNowDetail").textContent = aguardandoIntervalo && estado === "scheduled"
+          ? "Tempo restante: " + contagemAte(liberacaoEm) + ". Próxima oferta somente após a espera."
+          : detalhePorEstado[estado] || "";
 
         if (!s.monitorAlternadoAtivo) {
           $("cycleNext").textContent = "Ciclo pausado";
@@ -2000,6 +2097,8 @@
           }).then(() => { $("mlClientSecret").value = ""; });
         } else if (nome === "mercadolivre-redirect-save") {
           acao(nome, { redirectUri: $("mlRedirectUriInput").value });
+        } else if (nome === "intervalo-set") {
+          acao("intervalo-set", { modo: button.dataset.modo });
         } else if (nome === "monitor-set") {
           acao("monitor-set", {
             ativo: !Boolean(estadoAtual.monitorAlternadoAtivo)
