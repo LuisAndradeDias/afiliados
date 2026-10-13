@@ -77,8 +77,22 @@ button.sm {min-height:0;padding:9px 10px;font-size:12px;}
 @media(max-width:640px){.crm-container{padding:0 16px 50px;}.card{padding:18px;}.stats-v2{gap:8px;}.metric{padding:14px;}.metric b{font-size:27px;}.form-row{grid-template-columns:1fr;} .crm-container header{flex-direction:column;align-items:flex-start;gap:14px;} .tools input{width:100%;}}
 `;
 
+const importStyles = `
+.import-area {margin:22px 0;padding:0;overflow:hidden;}
+.import-area summary {list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px;cursor:pointer;}
+.import-area summary::-webkit-details-marker {display:none;}
+.import-area summary > span:first-child {display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;}
+.import-area summary strong {font-size:20px;color:#f1fbf8;letter-spacing:-.02em;}
+.import-area summary small {font-size:13px;color:#b5cbd0;line-height:1.5;}
+.import-area[open] summary {border-bottom:1px solid #31545b;}
+.import-body {padding:20px 22px 24px;}
+.import-area textarea {min-height:130px;line-height:1.5;resize:vertical;}
+.import-area .crm-table {min-width:700px;}
+@media(max-width:640px){.import-area summary{padding:18px;align-items:flex-start;flex-wrap:wrap;}.import-body{padding:16px;}}
+`;
+
 function htmlPage(title, content, script) {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#031722"><meta name="referrer" content="no-referrer"><title>${title}</title><link rel="icon" href="/favicon.svg"><style>${appStyles}\n${minimalStyles}</style><script defer src="${script}"></script></head><body>${content}</body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#031722"><meta name="referrer" content="no-referrer"><title>${title}</title><link rel="icon" href="/favicon.svg"><style>${appStyles}\n${minimalStyles}\n${importStyles}</style><script defer src="${script}"></script><script defer src="/assets/importacao.js"></script></head><body>${content}</body></html>`;
 }
 
 const brand = `<div class="brand"><span class="mark" aria-hidden="true">◎</span><span>CAÇA PROMOS<br><strong>VIP 👑</strong></span></div>`;
@@ -86,7 +100,7 @@ const brand = `<div class="brand"><span class="mark" aria-hidden="true">◎</spa
 export function renderPainelCrm() {
   return htmlPage('Central de Captação | Caça Promos VIP', `
   <div class="crm-container">
-    <header>${brand}<span class="tag">Central de Captação · Versão 0.3</span></header>
+    <header>${brand}<span class="tag">Central de Captação · Versão 0.4</span></header>
     <section id="loginView" class="login-view">
       <div class="card">
         <p class="mini-label">Acesso administrativo</p>
@@ -106,7 +120,7 @@ export function renderPainelCrm() {
         <div><div class="mini-label">Gestão de contatos voluntários</div><h1>Captação <span>inteligente.</span></h1><p>Convites para grupos autorizados, contatos que pediram mensagens e campanhas pelo segundo WhatsApp — com o controle nas suas mãos.</p></div>
         <button type="button" class="ghost" id="logoutBtn">Sair do painel</button>
       </div>
-      <nav class="quick-nav" aria-label="Seções da central"><a href="#overview">Visão geral</a><a href="#groupCard">Grupos</a><a href="#contactsCard">Contatos</a><a href="#senderCard">Segundo WhatsApp</a><a href="#reportCard">Resultados</a></nav>
+      <nav class="quick-nav" aria-label="Seções da central"><a href="#overview">Visão geral</a><a href="#groupCard">Grupos</a><a href="#importCard">Importar</a><a href="#contactsCard">Contatos</a><a href="#senderCard">Segundo WhatsApp</a><a href="#reportCard">Resultados</a></nav>
       <div class="notice">Os grupos de terceiros são abertos manualmente no seu WhatsApp. Só entram na planilha os interessados que se cadastrarem e autorizarem contato individual. Não há coleta de participantes nem disparos automáticos.</div>
       <section class="stats-v2" aria-label="Indicadores">
         <div class="metric"><small>Visitas ao convite</small><b id="statVisits">—</b><small>Todos os canais</small></div>
@@ -161,9 +175,29 @@ export function renderPainelCrm() {
         <div class="group-list-head"><h3>Grupos cadastrados</h3><span class="fineprint">Abra, selecione ou exporte os interessados</span></div>
         <div class="group-list" id="groupsList" aria-live="polite"><div class="group-empty">Carregando grupos…</div></div>
       </section>
+      <details class="card import-area section-anchor" id="importCard">
+        <summary><span><span class="mini-label">04 · Importação autorizada</span><strong>Importar participantes de grupos</strong><small>Selecione a origem, adicione os números e baixe uma planilha.</small></span><span class="badge wait" id="importTotal">Abrir para consultar</span></summary>
+        <div class="import-body">
+          <div class="notice">Esta função organiza listas de números obtidas com autorização. <strong>Não lê participantes automaticamente do WhatsApp</strong> e não envia mensagens. A permissão para armazenar números não substitui a autorização individual para receber publicidade.</div>
+          <form class="form-stack" id="importForm" autocomplete="off">
+            <div class="form-row">
+              <div><label for="importGroup">Grupo de origem</label><select id="importGroup" required><option value="">Selecione um grupo cadastrado</option></select></div>
+              <div><label for="importEvidence">Referência da autorização</label><input id="importEvidence" required minlength="5" maxlength="180" placeholder="Ex.: autorizações individuais registradas em 13/10"></div>
+            </div>
+            <div><label for="importFile">Arquivo autorizado (.csv ou .txt)</label><input type="file" id="importFile" accept=".csv,.txt,.tsv,text/csv,text/plain"><p class="fineprint">O arquivo é lido somente após sua confirmação. Máximo: 110 KB ou 1.500 linhas.</p></div>
+            <div><label for="importList">Números a importar (um por linha ou nome;telefone)</label><textarea id="importList" rows="5" required maxlength="110000" placeholder="(11) 98888-7777&#10;Maria;(21) 99999-7777"></textarea></div>
+            <label class="consent-box" for="importConsent"><input type="checkbox" id="importConsent" required><span>Declaro que <strong>cada participante desta lista</strong> autorizou a coleta do telefone para a finalidade informada. Registrarei a evidência da autorização e atenderei pedidos de exclusão.</span></label>
+            <div class="actions"><button type="submit" class="primary" id="importSave">Importar números</button><a class="button secondary" href="/api/admin/importados.csv" id="importExport" download="participantes-importados.csv">Exportar CSV para Excel</a></div>
+          </form>
+          <div id="importNotice" class="alert" role="status" hidden></div>
+          <div class="section-heading"><h3>Base importada</h3><span class="fineprint">Importados ≠ liberados para mensagens</span></div>
+          <div class="table-scroll"><table class="crm-table"><thead><tr><th>Nome</th><th>WhatsApp</th><th>Origem</th><th>Ação</th></tr></thead><tbody id="importBody"><tr><td colspan="4">Abra a seção para carregar os registros.</td></tr></tbody></table></div>
+          <p class="fineprint" id="importShowing"></p>
+        </div>
+      </details>
       <section class="card section-anchor" id="contactsCard">
         <div class="section-heading">
-          <div><div class="mini-label">04 · Contatos com permissão</div><h2>Planilha de interessados</h2></div>
+          <div><div class="mini-label">05 · Contatos com permissão</div><h2>Planilha de interessados</h2></div>
           <div class="actions"><a class="button secondary" id="exportCsv" href="/api/admin/contatos.csv" download="contatos-autorizados.csv">↓ Exportar CSV</a><a class="button secondary" id="exportModel" href="/api/admin/modelo.xlsx" download="Modelo_Contatos_Autorizados.xlsx">Modelo Excel</a></div>
         </div>
         <p>O cadastro começa <strong>pendente</strong>. Somente após você conferir a mensagem iniciada pelo interessado no segundo WhatsApp o contato passa para <strong>autorizado</strong>.</p>
@@ -176,8 +210,8 @@ export function renderPainelCrm() {
         <p class="fineprint">O arquivo CSV inclui a data de autorização e o registro de confirmação. Não importe listas obtidas de participantes de grupos.</p>
       </section>
       <section class="grid2" style="margin-top:18px">
-        <article class="card"><div class="mini-label">05 · Campanhas individuais</div><h2>Envio supervisionado</h2><p>Selecione um contato autorizado para preparar uma mensagem. Você abre a conversa, confere que está usando o <strong>segundo WhatsApp</strong> e decide enviar manualmente.</p><div class="alert">Sem disparos em massa, sem troca automática de contas e sem envios a contatos pendentes ou descadastrados.</div></article>
-        <article class="card section-anchor" id="reportCard"><div class="mini-label">06 · Mensuração</div><h2>Origem dos interessados</h2><div class="table-scroll"><table class="crm-table" style="min-width:0"><thead><tr><th>Origem</th><th>Visitas</th><th>Cliques</th></tr></thead><tbody id="originsBody"><tr><td colspan="3">Sem dados.</td></tr></tbody></table></div><p class="fineprint">Um clique no link do grupo não confirma adesão ao WhatsApp.</p></article>
+        <article class="card"><div class="mini-label">06 · Campanhas individuais</div><h2>Envio supervisionado</h2><p>Selecione um contato autorizado para preparar uma mensagem. Você abre a conversa, confere que está usando o <strong>segundo WhatsApp</strong> e decide enviar manualmente.</p><div class="alert">Sem disparos em massa, sem troca automática de contas e sem envios a contatos pendentes ou descadastrados.</div></article>
+        <article class="card section-anchor" id="reportCard"><div class="mini-label">07 · Mensuração</div><h2>Origem dos interessados</h2><div class="table-scroll"><table class="crm-table" style="min-width:0"><thead><tr><th>Origem</th><th>Visitas</th><th>Cliques</th></tr></thead><tbody id="originsBody"><tr><td colspan="3">Sem dados.</td></tr></tbody></table></div><p class="fineprint">Um clique no link do grupo não confirma adesão ao WhatsApp.</p></article>
       </section>
       <div class="alert" id="appFeedback" role="status" aria-live="polite" hidden></div>
     </main>
