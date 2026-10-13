@@ -92,7 +92,7 @@ function extrairSessao(req) {
 }
 
 export function criarPiloto({
-  dataDir = join(process.cwd(), 'dados'),
+  dataDir = join(sourceDir, '..', 'dados'),
   inviteUrl = GROUP_URL,
   agora = () => new Date(),
 } = {}) {
@@ -338,7 +338,7 @@ export function criarPiloto({
 export async function iniciarServidor({
   port = Number(process.env.PORT ?? 3040),
   host = process.env.HOST ?? '127.0.0.1',
-  dataDir = process.env.DATA_DIR ?? join(process.cwd(), 'dados'),
+  dataDir = process.env.DATA_DIR ?? join(sourceDir, '..', 'dados'),
   inviteUrl = process.env.CAPTACAO_GROUP_URL ?? GROUP_URL,
   agora,
 } = {}) {
@@ -358,7 +358,7 @@ export async function iniciarServidor({
 const arquivoPrincipal = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
 if (arquivoPrincipal) {
   iniciarServidor().then(({ base }) => {
-    console.log('\n=== CAÇA PROMOS VIP — CAPTAÇÃO VOLUNTÁRIA 0.2 ===');
+    console.log('\n=== CAÇA PROMOS VIP — CAPTAÇÃO VOLUNTÁRIA 0.3 ===');
     console.log('Página de convite: ' + base + '/c/instagram');
     console.log('Painel de contatos: ' + base + '/painel');
     console.log('Relatório existente continua disponível pelo atalho privado.');
