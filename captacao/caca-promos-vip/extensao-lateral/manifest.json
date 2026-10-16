@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Caça Promos VIP — Painel Lateral",
+  "version": "0.2.1",
+  "minimum_chrome_version": "116",
+  "description": "Painel lateral para organizar números autorizados copiados manualmente do WhatsApp Web e exportar CSV local.",
+  "permissions": [
+    "sidePanel"
+  ],
+  "action": {
+    "default_title": "Abrir painel lateral Caça Promos VIP"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

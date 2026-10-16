@@ -1,0 +1,67 @@
+:root{color-scheme:dark;--bg:#061c26;--surface:#0c2a34;--surface2:#0e333c;--line:#25525a;--muted:#b2cbd0;--text:#eefaf6;--mint:#67ebbf;--gold:#dfb94e;}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+body{background:radial-gradient(circle at 105% -10%,#114a4c 0,transparent 37%),linear-gradient(165deg,#071d29,#041a24 75%)}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #a3ffdc;outline-offset:3px}
+button:disabled{opacity:.45;cursor:not-allowed}
+[hidden]{display:none!important}
+.shell{max-width:580px;min-width:0;margin:0 auto}
+.topbar{min-height:88px;display:flex;align-items:center;gap:11px;padding:17px 19px;border-bottom:1px solid #26515a}
+.logo{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:13px;color:#082b27;background:linear-gradient(145deg,#bfeaa2,#58e2b1 65%,#22a9a5);font-size:17px;font-weight:950;letter-spacing:-.12em;box-shadow:0 3px 17px #071a1f80}
+.brand-copy{flex:1;min-width:0}
+.brand-name{color:#f6fff8;font-size:13px;font-weight:850;letter-spacing:.018em;white-space:nowrap}
+.brand-name span{color:var(--gold)}
+.brand-sub{display:flex;align-items:center;gap:10px;margin-top:5px}
+.pill{display:inline-flex;align-items:center;padding:3px 10px;border:1px solid #227d68;background:#0d3434;color:#b4ffe2;border-radius:999px;font-size:11px}
+.version{font-size:11px;color:var(--muted)}
+.icon-button{display:grid;place-items:center;border:0;background:transparent;color:#c9dddb;font-size:28px;width:28px;height:34px;border-radius:8px}
+.icon-button:hover{background:#14404b}
+main{padding:22px 18px 24px}
+.hero{display:grid;grid-template-columns:41px 1fr;gap:0 10px;margin-bottom:18px}
+.hero-icon{color:var(--mint);display:flex;align-items:center;padding-top:4px}
+.eyebrow{font-size:10px;letter-spacing:.12em;font-weight:850;color:var(--mint)}
+h1{margin:4px 0 0;font-size:24px;letter-spacing:-.045em;line-height:1.16;font-weight:850}
+h1 em{font-style:normal;color:var(--mint)}
+.hero p{grid-column:1/-1;color:#c8dde0;margin:14px 0 0;font-size:13px;line-height:1.63}
+.panel{background:linear-gradient(150deg,#0e3039,#0b2731);border:1px solid var(--line);border-radius:14px}
+.steps{padding:16px;margin-bottom:14px}
+.section-title{font-size:15px;font-weight:750;letter-spacing:-.01em;margin-bottom:11px}
+.steps ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px}
+.steps li{display:flex;align-items:flex-start;gap:11px;font-size:13px;font-weight:650}
+.steps li span:nth-child(2){padding-top:2px;min-width:0}
+.steps small{display:block;color:#a9c8cb;font-size:11px;font-weight:450;line-height:1.5;margin-top:2px}
+.number{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:999px;background:linear-gradient(145deg,#8cffe0,#56e4b4);color:#08362f;font-size:13px;font-weight:900}
+.paste-field{display:flex;flex-direction:column;gap:7px;margin:0 0 13px}
+.paste-field label{font-size:12px;font-weight:750;color:#e6f8f1}
+.paste-field textarea{display:block;width:100%;resize:vertical;min-height:96px;max-height:260px;padding:10px 12px;border-radius:11px;border:1px solid #38636a;background:#082631;color:#f0fff8;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+.paste-field textarea::placeholder{color:#83a9ae}
+.paste-field small{font-size:11px;color:#a9c8cb}
+.consent{display:flex;gap:10px;align-items:flex-start;color:#d3e6e4;background:#082b33;border-radius:10px;border:1px solid #326067;padding:12px;margin-bottom:13px;font-size:12px;line-height:1.55;cursor:pointer}
+.consent input{margin:2px 0 0;width:16px;height:16px;accent-color:var(--mint);flex:none}
+.buttons{display:flex;flex-direction:column;gap:10px;margin-bottom:15px}
+.primary{display:flex;align-items:center;justify-content:center;gap:9px;min-height:49px;padding:11px;border:1px solid #98ffd8;border-radius:11px;background:linear-gradient(140deg,#68f1c0,#51ddb8);color:#072d2f;font-size:13px;font-weight:850;box-shadow:0 6px 18px #3dd6a719}
+.primary:hover:enabled{background:#9cfcda}
+.secondary-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.secondary{display:flex;align-items:center;justify-content:center;gap:7px;min-height:43px;padding:9px 6px;border:1px solid #36917d;background:#0a2831;color:#edfdf5;border-radius:10px;font-size:12px;font-weight:700}
+.secondary:hover:enabled{background:#143e42}
+.secondary span{font-size:19px;line-height:1}
+.results{padding:14px 14px 12px;margin-bottom:13px;border-color:#2e9d81}
+.result-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:750}
+.link-button{border:0;background:transparent;color:var(--mint);font-size:12px}
+.result-metric{display:flex;align-items:center;gap:10px;margin:9px 0}
+.result-metric strong{font-size:31px;letter-spacing:-.05em;color:var(--mint)}
+.result-metric span{font-size:12px;color:#c9dedb}
+.fineprint{color:#a9c8cb;font-size:11px;line-height:1.5;margin:0 0 6px}
+.results ul{margin:0;padding:0;display:grid;gap:5px;max-height:140px;overflow:auto;list-style:none}
+.results li{padding:6px 9px;border-radius:7px;border:1px solid #275760;background:#0a2933;font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
+.status{padding:13px 14px;margin-bottom:13px;border-color:#28745f}
+.status-heading{display:flex;align-items:center;gap:8px;font-size:12px}
+.dot{width:11px;height:11px;border-radius:100%;background:var(--mint);box-shadow:0 0 0 4px #68eac01b}
+.dot.warning{background:var(--gold);box-shadow:0 0 0 4px #dfb94e20}
+.dot.error{background:#ff9385;box-shadow:0 0 0 4px #ff938520}
+.status p{margin:9px 0 0;padding:9px 10px;border-radius:8px;background:#10443f;color:#ecfff8;font-size:12px}
+.security{display:flex;align-items:flex-start;gap:9px;border:1px solid #957323;border-radius:11px;padding:11px 12px;background:#231f13;color:#f7e9b3}
+.security>span{font-size:22px;color:#ffda63;line-height:1}
+.security p{margin:0;font-size:11px;line-height:1.5}
+@media (max-width:340px){.topbar{padding:12px}.brand-name{font-size:11px}main{padding:15px 12px}h1{font-size:21px}.secondary{font-size:11px}}
