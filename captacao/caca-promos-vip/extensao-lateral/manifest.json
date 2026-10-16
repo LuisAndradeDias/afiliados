@@ -1,19 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Caça Promos VIP — Painel Lateral",
-  "version": "0.2.1",
+  "name": "Caça Promos VIP — Participantes",
+  "version": "0.4.1",
   "minimum_chrome_version": "116",
-  "description": "Painel lateral para organizar números autorizados copiados manualmente do WhatsApp Web e exportar CSV local.",
+  "description": "Leitura supervisionada do texto visível no popup Pesquisar membros, com revisão local e CSV. OCR alternativo.",
   "permissions": [
-    "sidePanel"
+    "sidePanel",
+    "activeTab",
+    "scripting"
   ],
   "action": {
-    "default_title": "Abrir painel lateral Caça Promos VIP"
+    "default_title": "Abrir Caça Promos VIP — Participantes"
   },
   "side_panel": {
     "default_path": "sidepanel.html"
   },
   "background": {
     "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
 }
