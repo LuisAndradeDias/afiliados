@@ -208,7 +208,12 @@
         }
       } catch { /* URL inválida nunca é aberta. */ }
 
-      buttons.append(action('Selecionar origem', () => {
+      buttons.append(action('Importar lista autorizada', () => {
+        const destino = $('importCard');
+        window.dispatchEvent(new CustomEvent('cpv-select-group', { detail: { id: grupo.id } }));
+        destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }));
+      buttons.append(action('Usar nesta campanha', () => {
         $('campaignSlug').value = grupo.origem;
         $('groupContactsFilter').value = grupo.origem;
         updateCampaign();

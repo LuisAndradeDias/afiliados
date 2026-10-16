@@ -1,8 +1,22 @@
-# 👑 Caça Promos VIP — Central de Captação v0.3
+# 👑 Caça Promos VIP — Central de Captação v0.5
 
 Aplicativo independente do robô principal Afiliados. Permite **divulgar um convite aprovado pelo administrador de uma comunidade**, receber **pré-cadastros voluntários**, registrar **autorização comprovada em duas etapas**, preparar convites individuais manualmente com **um segundo WhatsApp Business** e exportar planilhas.
 
 **Não faz:** extração de telefones de grupos alheios, importação de listas raspadas, conexão ao WhatsApp Web para ler grupos ou disparos automáticos de mensagens.
+
+## Versão 0.5 — Fluxo guiado para grupos e importação
+
+- Comece pela área **Comece por aqui**, que explica três passos sem exigir conhecimentos técnicos.
+- Em **Grupos**, selecione **Importar lista autorizada** para abrir diretamente o grupo correspondente no formulário.
+- No formulário, o botão **Abrir grupo no WhatsApp** abre apenas o convite cadastrado, mediante clique.
+- Adicione um CSV/TXT ou números autorizados e clique em **Conferir números antes de salvar**.
+- A prévia informa novos, repetidos, inválidos e até oito linhas problemáticas, **sem gravar contatos ou devolver os números na resposta**.
+- Registre onde estão as autorizações individuais, confirme a declaração e salve. Exporte o CSV da origem.
+- Os contatos importados permanecem separados dos destinatários que autorizaram comunicações individuais.
+
+**Limitação técnica:** não há leitura automática da lista de membros de grupos comuns do WhatsApp. Não adicione automação de raspagem de participantes ou sessões ao produto. Consulte [o plano de integração](docs/plano-integracao-whatsapp-v05.md).
+
+**Instalação futura no computador Luis:** após a revisão e integração do PR, execute `scripts/instalar-v05-no-luis.ps1 -Aplicar` a partir de uma sessão PowerShell autorizada no computador Luis. O script verifica a branch, faz backup, sincroniza somente por fast-forward, executa testes e reinicia apenas a porta 3040. Jamais copie o arquivo `dados/` para o GitHub.
 
 ## Novidade da versão 0.3 — Grupos de origem
 
