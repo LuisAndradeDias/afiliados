@@ -4,6 +4,12 @@ Aplicativo independente do robô principal Afiliados. Permite **divulgar um conv
 
 **Não faz:** extração de telefones de grupos alheios, importação de listas raspadas, conexão ao WhatsApp Web para ler grupos ou disparos automáticos de mensagens.
 
+## Extensão Chrome — Painel lateral v0.2.1
+
+A pasta [`extensao-lateral`](extensao-lateral/README.md) contém um painel lateral independente para organizar **números autorizados copiados manualmente** do WhatsApp Web, revisar duplicados e baixar um CSV compatível com a Central de Captação.
+
+O protótipo **não lê automaticamente os integrantes dos grupos**, não envia mensagens e não requer acesso às conversas. Ele substitui o popup inacabado da versão 0.1, cujo carregamento falhava por arquivos ausentes.
+
 ## Versão 0.5 — Fluxo guiado para grupos e importação
 
 - Comece pela área **Comece por aqui**, que explica três passos sem exigir conhecimentos técnicos.
