@@ -15,7 +15,7 @@
       <div class="logo" aria-hidden="true">CP</div>
       <div class="brand-copy">
         <div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div>
-        <div class="brand-sub"><span class="pill">Painel lateral</span> <span class="version">v0.2.1</span></div>
+        <div class="brand-sub"><span class="pill">Painel lateral</span> <span class="version">v0.3.0</span></div>
       </div>
       <button class="close icon-button" type="button" id="close" aria-label="Fechar painel">×</button>
     </header>
@@ -30,34 +30,51 @@
           </svg>
         </div>
         <div>
-          <div class="eyebrow">REVISÃO LOCAL · SEM ACESSO ÀS CONVERSAS</div>
-          <h1>Participantes <em>visíveis</em></h1>
+          <div class="eyebrow">ORGANIZAÇÃO LOCAL · SEM ENVIO DE MENSAGENS</div>
+          <h1>Lista de <em>participantes</em></h1>
         </div>
-        <p>Abra as informações do grupo permitido no WhatsApp Web, copie os números que estiverem visíveis e cole abaixo. A extensão não varre a página automaticamente.</p>
+        <p>Copie de uma vez o texto com nomes e telefones visíveis no grupo autorizado. O painel lê o conteúdo copiado, associa os nomes, elimina números repetidos e prepara um CSV.</p>
       </section>
 
       <section class="steps panel" aria-labelledby="stepsTitle">
         <div class="section-title" id="stepsTitle">Como funciona</div>
         <ol>
-          <li><span class="number">1</span><span>Abra a lateral do grupo <small>No WhatsApp Web, clique no nome do grupo</small></span></li>
-          <li><span class="number">2</span><span>Copie os telefones <small>Cole abaixo apenas os números autorizados</small></span></li>
-          <li><span class="number">3</span><span>Confira e exporte <small>CSV local para a Central de Captação</small></span></li>
+          <li><span class="number">1</span><span>Abra o grupo autorizado <small>Exiba a lista de membros no WhatsApp Web</small></span></li>
+          <li><span class="number">2</span><span>Selecione e copie o texto <small>Inclua apenas nomes e telefones autorizados (Ctrl+C)</small></span></li>
+          <li><span class="number">3</span><span>Importe, confira e exporte <small>CSV local, sem números duplicados</small></span></li>
         </ol>
       </section>
 
-      <div class="paste-field"><label for="numbers">Números copiados do grupo</label><textarea id="numbers" rows="5" placeholder="+55 11 98888-7777&#10;+55 21 99999-7777" spellcheck="false"></textarea><small>Um por linha ou misturados com nomes. Nada é enviado para servidores.</small></div>
+      <div class="paste-field origin-field">
+        <label for="group">Nome do grupo (opcional)</label>
+        <input id="group" type="text" maxlength="60" autocomplete="off" placeholder="Ex.: Comunidade de ofertas">
+        <small>Usado somente para identificar o nome do arquivo. Selecione a origem correta na Central.</small>
+      </div>
+
       <label class="consent">
         <input id="consent" type="checkbox">
-        <span>Confirmo que os participantes autorizam registrar os números para esta finalidade.</span>
+        <span>Confirmo que os participantes incluídos autorizaram registrar seus números para esta finalidade.</span>
       </label>
 
       <div class="buttons">
-        <button class="primary" id="start" type="button">
+        <button class="primary" id="clipboard" type="button">
           <svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-dasharray="4 3" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>
+            <rect x="5" y="5" width="14" height="16" rx="2"/>
+            <path d="M9 3h6v4H9zM9 11h6M9 15h6"/>
           </svg>
-          <span>Conferir números copiados</span>
+          <span>Importar texto copiado</span>
         </button>
+
+        <details class="manual-input">
+          <summary>Ou colar a lista manualmente</summary>
+          <div class="paste-field">
+            <label for="numbers">Texto com nomes e telefones</label>
+            <textarea id="numbers" rows="5" maxlength="110000" placeholder="~ Nome Exemplo&#10;+55 11 98888-7777&#10;~ Outro Nome&#10;+55 21 99999-7777" spellcheck="false"></textarea>
+            <small>Um número por linha ou com o nome na mesma linha.</small>
+          </div>
+          <button class="secondary full" type="button" id="start">Conferir texto colado</button>
+        </details>
+
         <div class="secondary-actions">
           <button class="secondary" type="button" id="demo">
             <span aria-hidden="true">◉</span> Ver exemplo
@@ -68,20 +85,20 @@
         </div>
       </div>
 
-      <section id="resultPanel" class="results panel" aria-label="Resultado da seleção" hidden>
-        <div class="result-heading"><span>Resultado da seleção</span><button type="button" class="link-button" id="clear">Limpar</button></div>
-        <div class="result-metric"><strong id="count">0</strong><span>números distintos encontrados</span></div>
+      <section id="resultPanel" class="results panel" aria-label="Resultado da revisão" hidden>
+        <div class="result-heading"><span>Resultado da revisão</span><button type="button" class="link-button" id="clear">Limpar</button></div>
+        <div class="result-metric"><strong id="count">0</strong><span>números distintos identificados</span></div>
         <p id="resultNote" class="fineprint"></p>
-        <ul id="resultItems" aria-label="Prévia dos números"></ul>
+        <ul id="resultItems" aria-label="Prévia dos contatos"></ul>
       </section>
 
       <section class="status panel" aria-live="polite" aria-atomic="true">
         <div class="status-heading"><span class="dot" id="statusDot"></span><strong>Status</strong></div>
-        <p id="statusText">Aguardando números copiados</p>
+        <p id="statusText">Aguardando texto selecionado e copiado pelo operador.</p>
       </section>
       <aside class="security">
         <span aria-hidden="true">♢</span>
-        <p>Não lê conversas, não envia mensagens e não transmite dados automaticamente. Os números são processados somente depois que você os cola aqui.</p>
+        <p>A leitura da área copiada só ocorre quando você clicar no botão. A extensão não vasculha grupos, não acessa conversas e não envia contatos para servidores.</p>
       </aside>
     </main>
   </div>

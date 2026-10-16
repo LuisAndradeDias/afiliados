@@ -64,4 +64,12 @@ h1 em{font-style:normal;color:var(--mint)}
 .security{display:flex;align-items:flex-start;gap:9px;border:1px solid #957323;border-radius:11px;padding:11px 12px;background:#231f13;color:#f7e9b3}
 .security>span{font-size:22px;color:#ffda63;line-height:1}
 .security p{margin:0;font-size:11px;line-height:1.5}
+.origin-field input{width:100%;min-height:41px;background:#082631;border:1px solid #38636a;border-radius:10px;color:#f0fff8;padding:10px 12px;font:inherit}
+.origin-field input::placeholder{color:#8cabb1}
+.manual-input{margin:3px 0 7px;border:1px solid #28535a;border-radius:12px;background:#0a2c34;padding:12px}
+.manual-input summary{cursor:pointer;font-weight:700;color:#c7f5e3;font-size:12px}
+.manual-input[open] summary{margin-bottom:13px}
+.manual-input .paste-field{margin-bottom:10px}
+.secondary.full{width:100%}
+.results li{overflow-wrap:anywhere}
 @media (max-width:340px){.topbar{padding:12px}.brand-name{font-size:11px}main{padding:15px 12px}h1{font-size:21px}.secondary{font-size:11px}}
