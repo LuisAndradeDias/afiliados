@@ -1,67 +1,49 @@
-# Caça Promos VIP — Painel lateral v0.3.0
+# Caça Promos VIP — Leitor de tela v0.4 (experimental)
 
-Extensão Chrome Manifest V3 para organizar nomes e telefones **fornecidos com autorização individual**.
-O painel roda localmente e exporta CSV compatível com a área de importação da Central de Captação.
+Versão de desenvolvimento do painel lateral do Chrome para **OCR local de imagem**.
 
-## Onde fica a extensão (pasta única no ACER)
+## Pasta oficial única
 
 `C:\projeto01\captacao\caca-promos-vip\extensao-lateral`
 
-No Chrome, abra `chrome://extensions`. Recarregue a extensão já instalada por essa pasta.
-Se ainda estiver vinculada ao caminho antigo, remova essa instalação e use
-**Carregar sem compactação** para escolher a pasta oficial acima.
+O leitor está dentro dessa pasta. Não existe outra cópia de projeto no disco C:.
 
-## Como usar
+## Como experimentar no ACER
 
-1. No WhatsApp Web, abra o grupo autorizado e a janela **Pesquisar membros**.
-2. Selecione **manualmente** o texto com nomes e telefones visíveis e pressione `Ctrl+C`.
-   Não precisa copiar cada número individualmente.
-3. No painel da extensão, informe opcionalmente o nome do grupo e confirme que as
-   pessoas listadas autorizaram o registro de seus dados para essa finalidade.
-4. Clique em **Importar texto copiado**. A leitura da área de transferência só
-   acontece após esse clique.
-5. Para adicionar mais pessoas, role manualmente a lista no WhatsApp Web, selecione
-   o novo trecho, copie e clique novamente. Números repetidos não entram duas vezes.
-6. Confira a prévia mascarada e clique em **Exportar CSV**.
-7. Na Central de Captação, selecione o grupo de origem, registre a referência das
-   autorizações individuais e importe o CSV.
+1. Abra `chrome://extensions` e localize a extensão carregada a partir da pasta oficial. Clique em **Recarregar**.
+2. Abra a página que deseja ler e deixe visível o trecho permitido.
+3. Abra a lateral da extensão, marque a confirmação de autorização e pressione **Capturar tela visível**.
+4. Se o Chrome impedir a captura, use **Ou selecionar uma imagem do computador** para escolher uma captura de tela salva.
+5. Arraste o mouse sobre a imagem para selecionar somente o trecho relevante.
+6. Clique em **Ler texto selecionado**. O OCR poderá levar alguns segundos.
+7. Confira e corrija o conteúdo no campo **Texto reconhecido**. A leitura pode trocar ou omitir caracteres, especialmente números pequenos.
+8. Use **Copiar texto**. Se necessário, clique em **Organizar contatos** e depois **Exportar CSV** para listas autorizadas.
 
-Se o navegador não permitir ler a área de transferência ou a lista não permitir
-selecionar texto, use **Ou colar a lista manualmente** para revisar registros obtidos
-por meios autorizados. Não existe modo de leitura automática do popup nessa versão.
+### Comportamento e restrições
 
-## Formato
+- Captura por clique, não monitoramento contínuo: nenhuma imagem é capturada ao abrir a extensão.
+- A captura da aba pelo Chrome depende da permissão temporária `activeTab`, recebida quando a extensão é acionada pelo usuário. Em caso de erro, use a escolha manual de imagem.
+- A imagem completa fica apenas em memória durante a seleção. O OCR reconhece somente o retângulo escolhido e descarta a imagem após apresentar o texto.
+- O OCR é local: biblioteca Tesseract.js e modelo de português distribuídos em `ocr/`, sem CDN nem servidor remoto.
+- Não acessa o conteúdo oculto, não lê APIs internas ou conversas do WhatsApp, não rola listas nem envia mensagens.
+- Os textos e contatos identificados permanecem na memória do painel, até você limpar ou fechar a lateral.
+- A interpretação dos números **não é garantida**. Revise os dígitos no texto antes de exportar.
+- O CSV é opcional e exige a confirmação de autorização de registro. A importação não autoriza mensagens comerciais.
+- OCR em língua portuguesa, com limite de até 30.000 caracteres no texto editável.
+- Imagens escolhidas devem ser PNG, JPG ou WebP com até 12 MB.
 
-- CSV UTF-8 com cabeçalho `nome;telefone`, compatível com a Central.
-- Telefones brasileiros saem normalizados com código do país (ex. `5511988887777`).
-- Telefones internacionais válidos mantêm o prefixo `+`; sua compatibilidade com
-  Excel e a Central deve ser conferida antes de importar.
-- Um nome exibido na linha imediatamente anterior ao telefone é associado quando
-  a correspondência é inequívoca; confira manualmente os nomes antes de usar.
-- Nome do grupo, se preenchido, aparece somente no nome do arquivo.
-- Limite de 1.500 linhas ou 110 KB por leitura; múltiplas leituras acumulam sem repetição.
+### Estado da validação
 
-## Privacidade e limitações
+- A leitura de imagem com texto fictício em página local foi validada no Chrome usando Playwright.
+- O teste identificou três números fictícios após tratar pontuação comum que o OCR pode acrescentar; isso **não demonstra precisão perfeita** em imagens reais.
+- Verificou-se que as solicitações de arquivos do motor OCR ficaram limitadas ao servidor de testes local.
+- Os testes de normalização de recorte e carregamento local do motor foram aprovados.
+- A execução de um teste carregando diretamente a extensão como `chrome-extension://` foi bloqueada pela ferramenta nesta sessão. Portanto, **a captura real por activeTab ainda requer teste manual no Chrome**.
+- Testes legados da extensão v0.3 precisam ser atualizados antes de integrar esta versão à branch principal.
 
-- A extensão solicita as permissões `sidePanel` e `clipboardRead`.
-- Ela **não** lê o DOM do WhatsApp, não acessa conversas nem percorre grupos.
-- Não captura telefones apenas pelo fato de você ter aberto o WhatsApp Web.
-- Não rola a lista sozinha, não coleta membros ocultos, não envia mensagens e não
-  transmite contatos para servidores.
-- Os contatos permanecem em memória na lateral até você limpar ou fechar o painel.
-- O registro de um telefone **não** é permissão para enviar mensagens comerciais.
+Os arquivos temporários de instalação (`ocr/.deps`) foram excluídos. Permanecem somente os arquivos locais necessários ao OCR e as licenças das bibliotecas.
 
-## Testes
+## Referências técnicas
 
-A partir da pasta `extensao-lateral`:
-
-```powershell
-node --test tests\parser.test.mjs tests\painel.test.mjs
-node --check extractor-core.js
-node --check sidepanel.js
-```
-
-Os testes automatizados usam dados fictícios e simulam o clique de importar texto
-copiado e a exportação CSV. O teste visual completo no Chrome ainda não foi
-concluído nesta sessão; será necessário recarregar a extensão e verificar
-a permissão do clipboard no navegador.
+- Chrome Extensions — tabs.captureVisibleTab: https://developer.chrome.com/docs/extensions/reference/api/tabs/
+- Tesseract.js local: https://github.com/naptha/tesseract.js

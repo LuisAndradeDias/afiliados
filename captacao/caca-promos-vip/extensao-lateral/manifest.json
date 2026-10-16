@@ -1,20 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Caça Promos VIP — Painel Lateral",
-  "version": "0.3.0",
+  "name": "Caça Promos VIP — Leitor de Tela",
+  "version": "0.4.0",
   "minimum_chrome_version": "116",
-  "description": "Importa texto copiado pelo operador, identifica nomes e telefones autorizados e exporta CSV sem enviar dados.",
+  "description": "Leitor OCR local de uma região escolhida na imagem visível da aba, com texto editável e exportação assistida.",
   "permissions": [
     "sidePanel",
-    "clipboardRead"
+    "activeTab"
   ],
   "action": {
-    "default_title": "Abrir painel lateral Caça Promos VIP"
+    "default_title": "Abrir leitor de tela Caça Promos VIP"
   },
   "side_panel": {
     "default_path": "sidepanel.html"
   },
   "background": {
     "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
 }

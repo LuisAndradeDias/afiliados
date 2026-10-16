@@ -2,7 +2,7 @@
 (() => {
   // Processa somente texto entregue pelo operador ao painel lateral.
   // Nao le dados do WhatsApp, conversas, DOM de outras abas ou paginas.
-  const intl = /\+\s*[1-9](?:[ \t().-]*\d){7,14}/g;
+  const intl = /\+\s*[1-9](?:[ \t().\/-]*\d){7,14}/g;
   const br = /(?<!\d)\(?[1-9]\d\)?[ .-]*\d{4,5}[ .-]*\d{4}(?!\d)/g;
   const cabecalho = /^\s*["']?(nome|telefone|n[uú]mero|whatsapp)\s*[;,\t]/i;
   const desconsiderar = /^(pesquisar membros|pesquisar contatos|membros|participantes|dados do grupo|todos|contatos)$/i;

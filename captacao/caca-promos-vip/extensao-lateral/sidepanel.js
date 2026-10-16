@@ -2,186 +2,271 @@
 (() => {
   const $ = id => document.getElementById(id);
   const contatos = new Map();
-  let exemplo = false;
-
-  const mascarar = telefone => {
-    const digitos = telefone.replace(/\D/g, '');
-    return '+' + digitos.slice(0, Math.max(2, digitos.length - 8)) +
-      ' •••• ' + digitos.slice(-4);
-  };
+  const leitor = globalThis.CPVScreenReader;
+  let selecao = null;
+  let inicio = null;
+  let lendo = false;
+  let capturaOrigem = null;
 
   function status(mensagem, tipo = 'ok') {
     $('statusText').textContent = mensagem;
     $('statusDot').className = 'dot' +
-      (tipo === 'error' ? ' error' : tipo === 'warning' ? ' warning' : '');
+      (tipo === 'warning' ? ' warning' : tipo === 'error' ? ' error' : '');
   }
 
-  function limpar(mensagem = 'Aguardando texto copiado pelo operador.') {
-    contatos.clear();
-    exemplo = false;
-    $('resultPanel').hidden = true;
-    $('resultItems').replaceChildren();
-    $('export').disabled = true;
-    status(mensagem);
-  }
-
-  function mostrar(quantidade, lista, nota) {
-    $('resultPanel').hidden = false;
-    $('count').textContent = String(quantidade);
-    $('resultNote').textContent = nota;
-    $('resultItems').replaceChildren();
-    for (const contato of lista.slice(0, 25)) {
-      const li = document.createElement('li');
-      li.textContent = (contato.nome ? contato.nome + '  ·  ' : '') +
-        mascarar(contato.telefone);
-      $('resultItems').append(li);
-    }
-  }
-
-  function autorizacaoConfirmada() {
+  function autorizado() {
     if ($('consent').checked) return true;
-    status('Confirme a autorização individual antes de importar qualquer número.', 'warning');
+    status('Confirme que pode processar o texto mostrado na imagem.', 'warning');
     $('consent').focus();
     return false;
   }
 
-  function importarTexto(texto, origem) {
-    if (!autorizacaoConfirmada()) return;
-    if (!texto || !texto.trim()) {
-      status('Não encontrei texto copiado. Selecione e copie a lista primeiro.', 'warning');
-      return;
-    }
-    const leitor = globalThis.CPVVisibleExtraction;
-    const revisao = leitor.analisarDetalhado(texto);
-    if (!revisao.contatos.length) {
-      status('Nenhum telefone válido encontrado. Confira o texto selecionado.', 'warning');
-      return;
-    }
-    if (exemplo) limpar();
-    let novos = 0;
-    let jaExistiam = 0;
-    for (const contato of revisao.contatos) {
-      const anterior = contatos.get(contato.telefone);
-      if (anterior) {
-        jaExistiam++;
-        if (!anterior.nome && contato.nome) anterior.nome = contato.nome;
-      } else {
-        contatos.set(contato.telefone, { ...contato });
-        novos++;
-      }
-    }
-    exemplo = false;
-    const registros = [...contatos.values()];
-    $('export').disabled = !registros.length;
-    mostrar(registros.length, registros,
-      novos + ' novo(s) nesta importação · ' +
-      (jaExistiam + revisao.repetidos) + ' repetido(s) · ' +
-      revisao.invalidos + ' linha(s) ignorada(s). ' +
-      'Prévia mascarada; dados mantidos somente nesta lateral.');
-    status(registros.length + ' contato(s) na lista. ' + novos +
-      ' acrescentado(s) via ' + origem + '. Pronto para exportar.');
+  function limparSelecao() {
+    selecao = null;
+    $('selection').hidden = true;
+    $('read').disabled = true;
   }
 
-  $('clipboard').addEventListener('click', async () => {
-    if (!autorizacaoConfirmada()) return;
-    const botao = $('clipboard');
-    botao.disabled = true;
-    status('Lendo apenas o texto que você copiou para a área de transferência...', 'warning');
+  function mostrarImagem(url, origem) {
+    limparSelecao();
+    const img = $('screenshot');
+    img.onload = () => {
+      $('previewPanel').hidden = false;
+      status('Imagem pronta. Arraste sobre o trecho que deseja reconhecer.');
+    };
+    img.onerror = () => {
+      $('previewPanel').hidden = true;
+      status('Não foi possível abrir esta imagem.', 'error');
+    };
+    capturaOrigem = origem;
+    img.src = url;
+  }
+
+  $('capture').addEventListener('click', async () => {
+    if (!autorizado()) return;
+    $('capture').disabled = true;
+    status('Capturando somente a aba visível...', 'warning');
     try {
-      if (!navigator.clipboard?.readText) {
-        throw new Error('Leitura da área de transferência indisponível neste navegador.');
+      if (!chrome?.tabs?.captureVisibleTab) {
+        throw new Error('Captura indisponível nesta página. Use a opção de imagem.');
       }
-      const texto = await navigator.clipboard.readText();
-      importarTexto(texto, 'texto copiado');
+      const [aba] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!aba?.id) throw new Error('Nenhuma aba ativa foi encontrada.');
+      const url = await chrome.tabs.captureVisibleTab(aba.windowId, { format: 'png' });
+      if (!url?.startsWith('data:image/png;base64,')) {
+        throw new Error('O Chrome não retornou uma imagem da aba.');
+      }
+      mostrarImagem(url, 'aba visível');
     } catch (erro) {
-      status((erro?.message || 'Falha ao ler texto copiado.') +
-        ' Alternativa: cole com Ctrl+V no campo manual.', 'error');
+      status((erro?.message || 'Falha na captura.') +
+        ' Abra o site, clique no ícone da extensão e tente novamente, ou selecione uma imagem.', 'error');
     } finally {
-      botao.disabled = false;
+      $('capture').disabled = false;
     }
   });
 
-  $('start').addEventListener('click', () => {
+  $('imageFile').addEventListener('change', async () => {
+    const file = $('imageFile').files?.[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+        file.size > 12 * 1024 * 1024) {
+      status('Escolha uma imagem PNG, JPG ou WebP de até 12 MB.', 'error');
+      return;
+    }
+    if (!autorizado()) return;
+    const reader = new FileReader();
+    reader.onload = () => mostrarImagem(String(reader.result), 'imagem escolhida');
+    reader.onerror = () => status('Não foi possível abrir o arquivo local.', 'error');
+    reader.readAsDataURL(file);
+  });
+
+  const painel = $('preview');
+  const posicao = evento => {
+    const rect = $('screenshot').getBoundingClientRect();
+    return {
+      x: Math.min(rect.width, Math.max(0, evento.clientX - rect.left)),
+      y: Math.min(rect.height, Math.max(0, evento.clientY - rect.top)),
+    };
+  };
+
+  function desenhar() {
+    if (!selecao) return;
+    const box = $('selection');
+    box.hidden = false;
+    box.style.left = selecao.left + 'px';
+    box.style.top = selecao.top + 'px';
+    box.style.width = selecao.width + 'px';
+    box.style.height = selecao.height + 'px';
+    $('read').disabled = selecao.width < 18 || selecao.height < 18;
+  }
+
+  painel.addEventListener('pointerdown', evento => {
+    if (!$('screenshot').complete || !$('screenshot').naturalWidth) return;
+    evento.preventDefault();
+    inicio = posicao(evento);
+    selecao = { left: inicio.x, top: inicio.y, width: 0, height: 0 };
+    painel.setPointerCapture?.(evento.pointerId);
+    desenhar();
+  });
+  painel.addEventListener('pointermove', evento => {
+    if (!inicio) return;
+    const at = posicao(evento);
+    const img = $('screenshot');
+    selecao = leitor.normalizarSelecao(inicio.x, inicio.y, at.x, at.y,
+      img.getBoundingClientRect().width, img.getBoundingClientRect().height);
+    desenhar();
+  });
+  painel.addEventListener('pointerup', () => {
+    inicio = null;
+    desenhar();
+  });
+  painel.addEventListener('pointercancel', () => { inicio = null; });
+
+  $('read').addEventListener('click', async () => {
+    if (!autorizado() || !selecao || lendo) return;
+    lendo = true;
+    $('read').disabled = true;
+    status('Reconhecendo o texto na imagem, localmente...', 'warning');
     try {
-      importarTexto($('numbers').value, 'texto colado');
+      const img = $('screenshot');
+      const rect = img.getBoundingClientRect();
+      const { texto, confianca } = await leitor.reconhecer(
+        img, selecao, rect.width, rect.height,
+        (etapa, percentual) => {
+          if (etapa) status('OCR: ' + etapa + ' (' + percentual + '%)', 'warning');
+        });
+      if (!texto) {
+        status('Nenhum texto encontrado. Tente outra seleção ou uma imagem mais nítida.', 'warning');
+        return;
+      }
+      const atual = $('recognized').value.trim();
+      const junto = [atual, texto].filter(Boolean).join('\n');
+      $('recognized').value = junto.slice(0, 30000);
+      status('Texto reconhecido (' + Math.round(confianca) +
+        '% de confiança aproximada). Confira antes de usar os números.');
+      // Descartar a captura integral assim que o resultado estiver disponível.
+      img.removeAttribute('src');
+      $('previewPanel').hidden = true;
+      capturaOrigem = null;
+      limparSelecao();
+      $('recognized').focus();
     } catch (erro) {
-      status(erro?.message || 'Não foi possível analisar a lista.', 'error');
+      status((erro?.message || 'Falha no OCR.') +
+        ' Experimente selecionar outra região ou carregar uma imagem.', 'error');
+    } finally {
+      lendo = false;
+      $('read').disabled = !selecao;
     }
   });
 
-  $('demo').addEventListener('click', () => {
-    limpar();
-    exemplo = true;
-    mostrar(3, [
-      { nome: 'Pessoa Exemplo A', telefone: '+5511988881234' },
-      { nome: 'Pessoa Exemplo B', telefone: '+5521999995678' },
-      { nome: 'Pessoa Exemplo C', telefone: '+5531988889012' },
-    ], 'Demonstração fictícia. Nenhum contato foi importado.');
-    status('Exemplo exibido. Copie ou cole sua lista autorizada para começar.');
-  });
-
-  $('clear').addEventListener('click', () =>
-    limpar('Lista limpa. Nenhum contato está armazenado no painel.'));
-
-  $('consent').addEventListener('change', () => {
-    if (!$('consent').checked) {
-      limpar('Autorização desmarcada. Os registros foram descartados.');
+  $('copyText').addEventListener('click', async () => {
+    const texto = $('recognized').value;
+    if (!texto.trim()) { status('Ainda não há texto para copiar.', 'warning'); return; }
+    try {
+      await navigator.clipboard.writeText(texto);
+      status('Texto reconhecido copiado para a área de transferência.');
+    } catch {
+      $('recognized').focus();
+      $('recognized').select();
+      status('O Chrome não permitiu copiar automaticamente. Pressione Ctrl+C.', 'warning');
     }
   });
 
-  $('group').addEventListener('change', () => {
-    if (contatos.size) {
-      limpar('Grupo alterado. Cole novamente os contatos da origem correta.');
+  function mascara(numero) {
+    const dig = numero.replace(/\D/g, '');
+    return '+' + dig.slice(0, Math.max(2, dig.length - 8)) + ' •••• ' + dig.slice(-4);
+  }
+
+  function atualizarLista(novos = 0, duplicados = 0) {
+    $('count').textContent = String(contatos.size);
+    $('resultItems').replaceChildren();
+    for (const contato of [...contatos.values()].slice(0, 30)) {
+      const el = document.createElement('li');
+      el.textContent = (contato.nome ? contato.nome + ' · ' : '') +
+        mascara(contato.telefone);
+      $('resultItems').append(el);
     }
+    $('resultNote').textContent = novos + ' novo(s), ' + duplicados +
+      ' repetido(s) nesta análise. Confira nomes e telefones antes de exportar.';
+    $('export').disabled = !contatos.size;
+  }
+
+  $('analyze').addEventListener('click', () => {
+    if (!autorizado()) return;
+    const texto = $('recognized').value.trim();
+    if (!texto) { status('Ainda não há texto para organizar.', 'warning'); return; }
+    try {
+      const r = globalThis.CPVVisibleExtraction.analisarDetalhado(texto);
+      let novos = 0, repetidos = r.repetidos;
+      for (const contato of r.contatos) {
+        const anterior = contatos.get(contato.telefone);
+        if (anterior) {
+          repetidos++;
+          if (!anterior.nome && contato.nome) anterior.nome = contato.nome;
+        } else {
+          contatos.set(contato.telefone, { ...contato });
+          novos++;
+        }
+      }
+      atualizarLista(novos, repetidos);
+      document.querySelector('.extra').open = true;
+      status(contatos.size + ' contato(s) organizados localmente. Reveja antes do CSV.');
+    } catch (erro) { status(erro?.message || 'Falha ao analisar texto.', 'error'); }
+  });
+
+  $('clear').addEventListener('click', () => {
+    contatos.clear();
+    atualizarLista();
+    status('Lista de contatos limpa. O texto reconhecido continua editável.');
   });
 
   function csvSeguro(valor) {
-    let texto = String(valor || '')
-      .replace(/[\x00-\x1f]/g, ' ').trim().slice(0, 80);
-    if (/^\s*[=+@-]/.test(texto)) texto = "'" + texto;
-    return '"' + texto.replace(/"/g, '""') + '"';
-  }
-
-  function arquivoNome() {
-    const grupo = $('group').value.normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase().replace(/[^a-z0-9-]+/g, '-')
-      .replace(/^-+|-+$/g, '').slice(0, 48);
-    return 'cpv-contatos-' + (grupo || 'autorizados') + '.csv';
+    let v = String(valor || '').replace(/[\x00-\x1f]/g, ' ').trim().slice(0, 80);
+    if (/^[=+@-]/.test(v)) v = "'" + v;
+    return '"' + v.replace(/"/g, '""') + '"';
   }
 
   $('export').addEventListener('click', () => {
-    if (!contatos.size || exemplo || !autorizacaoConfirmada()) return;
-    // Apenas um campo de telefone validado: digitos puros no Brasil para
-    // evitar interpretacao como formula de planilha. A Central escolhe a origem.
+    if (!autorizado() || !contatos.size) return;
     const linhas = ['nome;telefone'];
     for (const contato of contatos.values()) {
       const numero = /^\+55\d{10,11}$/.test(contato.telefone)
         ? contato.telefone.slice(1) : contato.telefone;
-      // Telefone vem exclusivamente do normalizador (+ e digitos), sem texto arbitrario.
       linhas.push(csvSeguro(contato.nome) + ';"' + numero + '"');
     }
     const blob = new Blob(['\ufeff' + linhas.join('\r\n') + '\r\n'],
-      { type: 'text/csv;charset=utf-8' });
+      {type:'text/csv;charset=utf-8'});
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = arquivoNome();
-    document.body.append(link);
-    link.click();
-    link.remove();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    const group = $('group').value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 45);
+    anchor.download = 'cpv-contatos-' + (group || 'autorizados') + '.csv';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
-    status('CSV exportado localmente com ' + contatos.size +
-      ' contato(s). Escolha o grupo e registre a autorização na Central.');
+    status('CSV local exportado. Revise os registros e selecione a origem na Central.');
   });
 
-  $('close').addEventListener('click', async () => {
-    try {
-      if (chrome?.sidePanel?.close && chrome?.tabs?.query) {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab?.id) await chrome.sidePanel.close({ tabId: tab.id });
-        else window.close();
-      } else window.close();
-    } catch { window.close(); }
+  $('consent').addEventListener('change', () => {
+    if ($('consent').checked) return;
+    contatos.clear();
+    atualizarLista();
+    $('recognized').value = '';
+    $('screenshot').removeAttribute('src');
+    $('previewPanel').hidden = true;
+    limparSelecao();
+    status('Autorização desmarcada: texto e resultados descartados.');
   });
+
+  $('close').addEventListener('click', () => {
+    leitor.liberar();
+    $('screenshot').removeAttribute('src');
+    $('recognized').value = '';
+    contatos.clear();
+    try { window.close(); } catch { /* Chrome controla o fechamento. */ }
+  });
+
+  window.addEventListener('beforeunload', () => { leitor.liberar(); });
 })();

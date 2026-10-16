@@ -2,11 +2,13 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Caça Promos VIP — Painel lateral</title>
+  <title>Caça Promos VIP — Leitor de tela</title>
   <link rel="stylesheet" href="sidepanel.css">
+  <script src="ocr/tesseract.min.js" defer></script>
   <script src="extractor-core.js" defer></script>
+  <script src="screen-reader.js" defer></script>
   <script src="sidepanel.js" defer></script>
 </head>
 <body>
@@ -15,91 +17,63 @@
       <div class="logo" aria-hidden="true">CP</div>
       <div class="brand-copy">
         <div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div>
-        <div class="brand-sub"><span class="pill">Painel lateral</span> <span class="version">v0.3.0</span></div>
+        <div class="brand-sub"><span class="pill">Leitor de tela</span><span class="version">v0.4</span></div>
       </div>
-      <button class="close icon-button" type="button" id="close" aria-label="Fechar painel">×</button>
+      <button class="icon-button" id="close" type="button" aria-label="Fechar painel">×</button>
     </header>
     <main>
-      <section class="hero">
-        <div class="hero-icon" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="32" height="32" fill="none">
-            <circle cx="12" cy="10" r="5" fill="currentColor"/>
-            <path d="M3 27c0-6 3-9 9-9s9 3 9 9" fill="currentColor"/>
-            <circle cx="24" cy="11" r="4" fill="currentColor" opacity=".64"/>
-            <path d="M22 19c5 0 7 2.5 7 8h-5" fill="currentColor" opacity=".64"/>
-          </svg>
+      <div class="eyebrow">OCR LOCAL · SOMENTE COM SUA AÇÃO</div>
+      <h1>Ler o texto <em>na tela</em></h1>
+      <p class="intro">Capture a aba atual, selecione o trecho que deseja ler e veja o texto reconhecido. Não acessa o conteúdo oculto.</p>
+
+      <section class="step">
+        <div class="step-head"><b>1</b><strong>Escolher imagem</strong></div>
+        <label class="consent"><input id="consent" type="checkbox">
+          <span>Confirmo que posso processar as informações visíveis nesta área.</span></label>
+        <button class="primary" id="capture" type="button"> <span aria-hidden="true">▣</span> Capturar tela visível</button>
+        <label class="file-label" for="imageFile">Ou selecionar uma imagem do computador</label>
+        <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp">
+      </section>
+
+      <section id="previewPanel" class="step" hidden>
+        <div class="step-head"><b>2</b><strong>Selecionar trecho</strong></div>
+        <p class="hint">Arraste sobre a imagem para selecionar apenas o texto desejado.</p>
+        <div id="preview" class="preview" tabindex="0" aria-label="Imagem e seleção de área">
+          <img id="screenshot" alt="Imagem da tela capturada" draggable="false">
+          <div id="selection" class="selection" hidden></div>
         </div>
-        <div>
-          <div class="eyebrow">ORGANIZAÇÃO LOCAL · SEM ENVIO DE MENSAGENS</div>
-          <h1>Lista de <em>participantes</em></h1>
+        <button class="primary" id="read" type="button" disabled>Ler texto selecionado</button>
+      </section>
+
+      <section class="step" id="textPanel">
+        <div class="step-head"><b>3</b><strong>Texto reconhecido</strong></div>
+        <label for="recognized" class="field-label">Confira e corrija o texto, se necessário</label>
+        <textarea id="recognized" rows="7" maxlength="30000" spellcheck="false"
+          placeholder="O texto lido aparecerá aqui. Você também pode colar texto manualmente."></textarea>
+        <div class="button-row">
+          <button class="secondary" id="copyText" type="button">Copiar texto</button>
+          <button class="secondary" id="analyze" type="button">Organizar contatos</button>
         </div>
-        <p>Copie de uma vez o texto com nomes e telefones visíveis no grupo autorizado. O painel lê o conteúdo copiado, associa os nomes, elimina números repetidos e prepara um CSV.</p>
       </section>
 
-      <section class="steps panel" aria-labelledby="stepsTitle">
-        <div class="section-title" id="stepsTitle">Como funciona</div>
-        <ol>
-          <li><span class="number">1</span><span>Abra o grupo autorizado <small>Exiba a lista de membros no WhatsApp Web</small></span></li>
-          <li><span class="number">2</span><span>Selecione e copie o texto <small>Inclua apenas nomes e telefones autorizados (Ctrl+C)</small></span></li>
-          <li><span class="number">3</span><span>Importe, confira e exporte <small>CSV local, sem números duplicados</small></span></li>
-        </ol>
-      </section>
-
-      <div class="paste-field origin-field">
-        <label for="group">Nome do grupo (opcional)</label>
-        <input id="group" type="text" maxlength="60" autocomplete="off" placeholder="Ex.: Comunidade de ofertas">
-        <small>Usado somente para identificar o nome do arquivo. Selecione a origem correta na Central.</small>
-      </div>
-
-      <label class="consent">
-        <input id="consent" type="checkbox">
-        <span>Confirmo que os participantes incluídos autorizaram registrar seus números para esta finalidade.</span>
-      </label>
-
-      <div class="buttons">
-        <button class="primary" id="clipboard" type="button">
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="5" y="5" width="14" height="16" rx="2"/>
-            <path d="M9 3h6v4H9zM9 11h6M9 15h6"/>
-          </svg>
-          <span>Importar texto copiado</span>
-        </button>
-
-        <details class="manual-input">
-          <summary>Ou colar a lista manualmente</summary>
-          <div class="paste-field">
-            <label for="numbers">Texto com nomes e telefones</label>
-            <textarea id="numbers" rows="5" maxlength="110000" placeholder="~ Nome Exemplo&#10;+55 11 98888-7777&#10;~ Outro Nome&#10;+55 21 99999-7777" spellcheck="false"></textarea>
-            <small>Um número por linha ou com o nome na mesma linha.</small>
-          </div>
-          <button class="secondary full" type="button" id="start">Conferir texto colado</button>
-        </details>
-
-        <div class="secondary-actions">
-          <button class="secondary" type="button" id="demo">
-            <span aria-hidden="true">◉</span> Ver exemplo
-          </button>
-          <button class="secondary" type="button" id="export" disabled>
-            <span aria-hidden="true">↓</span> Exportar CSV
-          </button>
+      <details class="extra">
+        <summary>Exportar lista autorizada em CSV (opcional)</summary>
+        <label class="field-label" for="group">Nome da origem</label>
+        <input id="group" type="text" maxlength="60" placeholder="Ex.: grupo autorizado">
+        <div class="result-line">
+          <span><strong id="count">0</strong> número(s) distintos</span>
+          <button id="clear" type="button" class="link-button">Limpar lista</button>
         </div>
-      </div>
+        <p class="hint" id="resultNote">Use “Organizar contatos” depois de revisar o texto.</p>
+        <ul class="results" id="resultItems"></ul>
+        <button class="primary" id="export" type="button" disabled>Exportar CSV</button>
+      </details>
 
-      <section id="resultPanel" class="results panel" aria-label="Resultado da revisão" hidden>
-        <div class="result-heading"><span>Resultado da revisão</span><button type="button" class="link-button" id="clear">Limpar</button></div>
-        <div class="result-metric"><strong id="count">0</strong><span>números distintos identificados</span></div>
-        <p id="resultNote" class="fineprint"></p>
-        <ul id="resultItems" aria-label="Prévia dos contatos"></ul>
+      <section class="status" aria-live="polite" aria-atomic="true">
+        <strong><span id="statusDot" class="dot"></span> Status</strong>
+        <p id="statusText">Pronto. A leitura só começa quando você clicar.</p>
       </section>
-
-      <section class="status panel" aria-live="polite" aria-atomic="true">
-        <div class="status-heading"><span class="dot" id="statusDot"></span><strong>Status</strong></div>
-        <p id="statusText">Aguardando texto selecionado e copiado pelo operador.</p>
-      </section>
-      <aside class="security">
-        <span aria-hidden="true">♢</span>
-        <p>A leitura da área copiada só ocorre quando você clicar no botão. A extensão não vasculha grupos, não acessa conversas e não envia contatos para servidores.</p>
-      </aside>
+      <p class="privacy">O reconhecimento funciona neste computador, com arquivos de OCR incluídos na extensão. Nada é enviado a servidores nem salvo automaticamente.</p>
     </main>
   </div>
 </body>
