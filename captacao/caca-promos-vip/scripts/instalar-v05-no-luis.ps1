@@ -74,6 +74,11 @@ try {
     $log = Join-Path $central 'dados\central-servidor.log'
     $erro = Join-Path $central 'dados\central-erros.log'
     $entry = Join-Path $central 'src\server.mjs'
+    # Garante que o serviço reiniciado use a porta local e os dados preservados
+    # mesmo quando a sessão do terminal herdou variáveis de outros projetos.
+    $env:PORT = '3040'
+    $env:HOST = '127.0.0.1'
+    $env:DATA_DIR = Join-Path $central 'dados'
     $novo = Start-Process -FilePath $node -ArgumentList ('"' + $entry + '"') -WorkingDirectory $central -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError $erro -PassThru
     $ok = $false
     for ($tentativa = 0; $tentativa -lt 30; $tentativa++) {
