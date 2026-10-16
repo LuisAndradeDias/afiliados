@@ -17,26 +17,37 @@
       <div class="logo" aria-hidden="true">CP</div>
       <div class="brand-copy">
         <div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div>
-        <div class="brand-sub"><span class="pill">Leitor de tela</span><span class="version">v0.4</span></div>
+        <div class="brand-sub"><span class="pill">Leitor de tela</span><span class="version">v0.4.1</span></div>
       </div>
       <button class="icon-button" id="close" type="button" aria-label="Fechar painel">×</button>
     </header>
     <main>
       <div class="eyebrow">OCR LOCAL · SOMENTE COM SUA AÇÃO</div>
-      <h1>Ler o texto <em>na tela</em></h1>
-      <p class="intro">Capture a aba atual, selecione o trecho que deseja ler e veja o texto reconhecido. Não acessa o conteúdo oculto.</p>
+      <h1>Listar texto <em>visível</em></h1>
+      <p class="intro">No WhatsApp Web, abra <strong>Pesquisar membros</strong> e clique abaixo. A extensão identificará apenas o texto que está visível nesse popup, sem rolar a lista.</p>
 
-      <section class="step">
-        <div class="step-head"><b>1</b><strong>Escolher imagem</strong></div>
+      <section class="step" id="popupPanel">
+        <div class="step-head"><b>1</b><strong>Ler o popup aberto</strong></div>
         <label class="consent"><input id="consent" type="checkbox">
-          <span>Confirmo que posso processar as informações visíveis nesta área.</span></label>
+          <span>Confirmo que tenho autorização para registrar os dados que desejo listar.</span>
+        </label>
+        <button class="primary" type="button" id="readPopup">
+          <span aria-hidden="true">◎</span> Ler participantes visíveis
+        </button>
+        <p class="hint" style="margin-top:10px">Se rolar a lista manualmente, clique novamente para acrescentar o novo trecho.</p>
+      </section>
+
+      <details class="extra" id="ocrBackup">
+      <summary>Alternativa: usar captura de tela com OCR</summary>
+      <section class="step">
+        <div class="step-head"><b>2</b><strong>Escolher imagem</strong></div>
         <button class="primary" id="capture" type="button"> <span aria-hidden="true">▣</span> Capturar tela visível</button>
         <label class="file-label" for="imageFile">Ou selecionar uma imagem do computador</label>
         <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp">
       </section>
 
       <section id="previewPanel" class="step" hidden>
-        <div class="step-head"><b>2</b><strong>Selecionar trecho</strong></div>
+        <div class="step-head"><b>3</b><strong>Selecionar trecho</strong></div>
         <p class="hint">Arraste sobre a imagem para selecionar apenas o texto desejado.</p>
         <div id="preview" class="preview" tabindex="0" aria-label="Imagem e seleção de área">
           <img id="screenshot" alt="Imagem da tela capturada" draggable="false">
@@ -44,19 +55,20 @@
         </div>
         <button class="primary" id="read" type="button" disabled>Ler texto selecionado</button>
       </section>
+      </details>
 
       <section class="step" id="textPanel">
-        <div class="step-head"><b>3</b><strong>Texto reconhecido</strong></div>
+        <div class="step-head"><b>2</b><strong>Texto encontrado</strong></div>
         <label for="recognized" class="field-label">Confira e corrija o texto, se necessário</label>
         <textarea id="recognized" rows="7" maxlength="30000" spellcheck="false"
-          placeholder="O texto lido aparecerá aqui. Você também pode colar texto manualmente."></textarea>
+          placeholder="Os nomes e telefones visíveis aparecerão aqui. Confira e corrija antes de exportar."></textarea>
         <div class="button-row">
           <button class="secondary" id="copyText" type="button">Copiar texto</button>
           <button class="secondary" id="analyze" type="button">Organizar contatos</button>
         </div>
       </section>
 
-      <details class="extra">
+      <details class="extra export-area">
         <summary>Exportar lista autorizada em CSV (opcional)</summary>
         <label class="field-label" for="group">Nome da origem</label>
         <input id="group" type="text" maxlength="60" placeholder="Ex.: grupo autorizado">
@@ -73,7 +85,7 @@
         <strong><span id="statusDot" class="dot"></span> Status</strong>
         <p id="statusText">Pronto. A leitura só começa quando você clicar.</p>
       </section>
-      <p class="privacy">O reconhecimento funciona neste computador, com arquivos de OCR incluídos na extensão. Nada é enviado a servidores nem salvo automaticamente.</p>
+      <p class="privacy">A leitura só acontece após seu clique, apenas no popup aberto. Não lê conversas, não percorre outros grupos e não envia nada para servidores.</p>
     </main>
   </div>
 </body>

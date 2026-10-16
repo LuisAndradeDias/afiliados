@@ -1,15 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Caça Promos VIP — Leitor de Tela",
-  "version": "0.4.0",
+  "name": "Caça Promos VIP — Participantes",
+  "version": "0.4.1",
   "minimum_chrome_version": "116",
-  "description": "Leitor OCR local de uma região escolhida na imagem visível da aba, com texto editável e exportação assistida.",
+  "description": "Leitura supervisionada do texto visível no popup Pesquisar membros, com revisão local e CSV. OCR alternativo.",
   "permissions": [
     "sidePanel",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "action": {
-    "default_title": "Abrir leitor de tela Caça Promos VIP"
+    "default_title": "Abrir Caça Promos VIP — Participantes"
   },
   "side_panel": {
     "default_path": "sidepanel.html"

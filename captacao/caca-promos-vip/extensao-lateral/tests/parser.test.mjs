@@ -64,11 +64,11 @@ test('rejeita formulas, numeros invalidos e aplica limites locais', () => {
   assert.throws(() => core.analisarDetalhado('x'.repeat(110001)), /110 KB/);
 });
 
-test('a extensao solicita apenas permissao do painel e da area copiada', () => {
+test('a extensao usa apenas permissão temporaria na aba ativa', () => {
   const manifest = JSON.parse(readFileSync(join(base, 'manifest.json'), 'utf8'));
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.side_panel.default_path, 'sidepanel.html');
-  assert.deepEqual([...manifest.permissions], ['sidePanel', 'clipboardRead']);
+  assert.deepEqual([...manifest.permissions], ['sidePanel', 'activeTab', 'scripting']);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.content_scripts, undefined);
   assert.equal(manifest.action.default_popup, undefined);

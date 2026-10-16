@@ -42,6 +42,44 @@
     img.src = url;
   }
 
+  $('readPopup').addEventListener('click', async () => {
+    if (!autorizado()) return;
+    const botao = $('readPopup');
+    botao.disabled = true;
+    status('Procurando o popup Pesquisar membros na aba atual...', 'warning');
+    try {
+      if (!chrome?.scripting?.executeScript) {
+        throw new Error('Recarregue a extensão para habilitar a leitura do popup.');
+      }
+      const [aba] = await chrome.tabs.query({ active:true, currentWindow:true });
+      if (!aba?.id || !aba.url || new URL(aba.url).origin !== 'https://web.whatsapp.com') {
+        throw new Error('Abra o WhatsApp Web e o popup Pesquisar membros.');
+      }
+      await chrome.scripting.executeScript({
+        target:{tabId:aba.id}, files:['popup-visivel.js'],
+      });
+      const [resposta] = await chrome.scripting.executeScript({
+        target:{tabId:aba.id},
+        func:() => globalThis.CPVPopup?.lerTextoDoPopupVisivel() ||
+          {ok:false,mensagem:'Módulo de leitura não carregou.'},
+      });
+      const lido = resposta?.result;
+      if (!lido?.ok) throw new Error(lido?.mensagem || 'Popup não identificado.');
+      const texto = String(lido.texto || '').trim();
+      if (!texto) throw new Error('O popup está aberto, mas não há texto visível para ler.');
+      const campo = $('recognized');
+      const anterior = campo.value.trim();
+      campo.value = (anterior ? anterior + '\n' + texto : texto).slice(0,30000);
+      status(lido.quantidadeLinhas + ' trecho(s) de texto visível adicionados. Confira os números.');
+      campo.scrollIntoView({behavior:'smooth',block:'nearest'});
+    } catch (erro) {
+      status((erro?.message || 'Não foi possível ler este popup.') +
+        ' Use a captura OCR como alternativa.', 'error');
+    } finally {
+      botao.disabled = false;
+    }
+  });
+
   $('capture').addEventListener('click', async () => {
     if (!autorizado()) return;
     $('capture').disabled = true;
@@ -209,7 +247,7 @@
         }
       }
       atualizarLista(novos, repetidos);
-      document.querySelector('.extra').open = true;
+      document.querySelector('details.export-area').open = true;
       status(contatos.size + ' contato(s) organizados localmente. Reveja antes do CSV.');
     } catch (erro) { status(erro?.message || 'Falha ao analisar texto.', 'error'); }
   });
