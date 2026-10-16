@@ -110,6 +110,44 @@ export function iniciarImportacaoAutorizada(dataDir, agora = () => new Date()) {
     salvar(dados);
     return resultado;
   }
+  // Prévia somente em memória: não salva telefones nem altera evidências.
+  function simular({ origem, grupoId, lista }) {
+    const slug = validarOrigemGrupo(origem);
+    if (typeof grupoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(grupoId)) {
+      throw new Error('Selecione um grupo válido para conferir a lista.');
+    }
+    if (typeof lista !== 'string' || !lista.trim() || Buffer.byteLength(lista, 'utf8') > LIMITE_BYTES) {
+      throw new Error('Cole uma lista de até 110 KB para conferir os números.');
+    }
+    const linhas = lista.split(/\r?\n/).map((texto, indice) => ({ texto, numero: indice + 1 }))
+      .filter(linha => linha.texto.trim());
+    if (linhas.length > LIMITE_LINHAS) throw new Error('Máximo de 1.500 linhas por importação.');
+    const existentes = new Set(ler().contatos.map(contato => contato.telefone));
+    const vistos = new Set();
+    const resumo = {
+      origem: slug, linhas: linhas.length, novos: 0, repetidos: 0,
+      invalidos: 0, cabecalhos: 0, validosDistintos: 0, linhasInvalidas: [],
+    };
+    for (let i = 0; i < linhas.length; i++) {
+      const item = lerLinha(linhas[i].texto);
+      if (item.cabecalho) { resumo.cabecalhos++; continue; }
+      if (item.invalido || item.vazio) {
+        resumo.invalidos++;
+        if (resumo.linhasInvalidas.length < 8) resumo.linhasInvalidas.push(linhas[i].numero);
+        continue;
+      }
+      if (vistos.has(item.telefone) || existentes.has(item.telefone)) {
+        resumo.repetidos++;
+      } else {
+        resumo.novos++;
+      }
+      vistos.add(item.telefone);
+    }
+    resumo.validosDistintos = vistos.size;
+    if (!vistos.size) throw new Error('Nenhum número válido foi encontrado nesta lista.');
+    return resumo;
+  }
+
   function listar(origem = null) {
     const filtro = origem === null ? null : validarOrigemGrupo(origem);
     const contatos = ler().contatos.filter(contato => filtro === null || contato.origens.includes(filtro));
@@ -135,5 +173,5 @@ export function iniciarImportacaoAutorizada(dataDir, agora = () => new Date()) {
     salvar(dados);
     return true;
   }
-  return { ler, importar, listar, exportarCsv, excluir };
+  return { ler, importar, simular, listar, exportarCsv, excluir };
 }

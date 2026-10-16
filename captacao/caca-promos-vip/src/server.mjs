@@ -300,9 +300,17 @@ export function criarPiloto({
         }
         if (method === 'POST') {
           let dados;
-          try { dados = await corpoJson(req, pathname === '/api/admin/importados' ? 128_000 : 4096); }
+          try { dados = await corpoJson(req, (pathname === '/api/admin/importados' || pathname === '/api/admin/importados/previa') ? 128_000 : 4096); }
           catch { return json(res, 400, { ok: false, mensagem: 'Dados JSON inválidos ou acima do tamanho permitido.' }); }
           try {
+            if (pathname === '/api/admin/importados/previa') {
+              if (!limitar(req, 'admin-previa', 60)) {
+                return json(res, 429, { ok: false, mensagem: 'Muitas prévias. Tente novamente mais tarde.' });
+              }
+              const grupo = grupos.listar().find(item => item.id === dados.grupoId);
+              if (!grupo) throw new Error('Selecione um grupo cadastrado antes de conferir os números.');
+              return json(res, 200, { ok: true, previa: importacoes.simular({ ...dados, origem: grupo.origem }) });
+            }
             if (pathname === '/api/admin/importados') {
               if (!limitar(req, 'admin-importacao', 20)) return json(res, 429, { ok: false, mensagem: 'Muitas importações. Tente novamente mais tarde.' });
               const grupo = grupos.listar().find(item => item.id === dados.grupoId);
@@ -388,7 +396,7 @@ export async function iniciarServidor({
 const arquivoPrincipal = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
 if (arquivoPrincipal) {
   iniciarServidor().then(({ base }) => {
-    console.log('\n=== CAÇA PROMOS VIP — CAPTAÇÃO VOLUNTÁRIA 0.3 ===');
+    console.log('\n=== CAÇA PROMOS VIP — CAPTAÇÃO VOLUNTÁRIA 0.5 ===');
     console.log('Página de convite: ' + base + '/c/instagram');
     console.log('Painel de contatos: ' + base + '/painel');
     console.log('Relatório existente continua disponível pelo atalho privado.');
