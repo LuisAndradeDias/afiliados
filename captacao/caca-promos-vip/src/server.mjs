@@ -8,6 +8,8 @@ import { iniciarContatos } from './contatos.mjs';
 import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
 import { iniciarImportacaoAutorizada } from './importacao-autorizada.mjs';
 import { iniciarCampanhas } from './campanhas.mjs';
+import { iniciarDenuncias } from './denuncias.mjs';
+import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderPainelCrm, renderDescadastro } from './crm-ui.mjs';
@@ -79,6 +81,17 @@ async function corpoJson(req, limiteBytes = 4096) {
   return data;
 }
 
+async function corpoAssinado(req, limiteBytes = 256_000) {
+  const partes=[];
+  let bytes=0;
+  for await (const pedaco of req) {
+    bytes += pedaco.length;
+    if (bytes > limiteBytes) throw new Error('Evento acima do limite permitido.');
+    partes.push(pedaco);
+  }
+  return Buffer.concat(partes);
+}
+
 function validarOrigem(req) {
   const origem = req.headers.origin;
   if (!origem) return true;
@@ -100,6 +113,7 @@ export function criarPiloto({
   dataDir = join(sourceDir, '..', 'dados'),
   inviteUrl = GROUP_URL,
   agora = () => new Date(),
+  metaAmbiente = process.env,
 } = {}) {
   let urlGrupo;
   try { urlGrupo = new URL(inviteUrl); }
@@ -112,7 +126,9 @@ export function criarPiloto({
   const contatos = iniciarContatos(dataDir, agora);
   const grupos = iniciarGrupos(dataDir, agora);
   const importacoes = iniciarImportacaoAutorizada(dataDir, agora);
-  const campanhas = iniciarCampanhas(dataDir, contatos, agora);
+  const denuncias = iniciarDenuncias(dataDir, contatos, agora);
+  const campanhas = iniciarCampanhas(dataDir, contatos, agora, denuncias);
+  const configMeta = obterConfigMeta(metaAmbiente);
   const sessoes = new Map();
   const limites = new Map();
 
@@ -186,6 +202,47 @@ export function criarPiloto({
       if (pathname === '/robots.txt' && leitura) return codigoTexto(res, 200,
         'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /api/\nDisallow: /sair\n');
 
+      // Endpoint preparado para o webhook HTTPS oficial da Meta.
+      // Nunca libera dados ou contatos sem HMAC valido; sem segredos, fica desativado.
+      if (pathname === '/webhooks/whatsapp') {
+        if (method === 'GET') {
+          if (!configMeta.webhookToken || configMeta.webhookToken.length < 24) {
+            return codigoTexto(res, 503, 'Webhook nao configurado');
+          }
+          const desafio = verificarDesafioMeta(endereco.searchParams, configMeta.webhookToken);
+          return desafio === null
+            ? codigoTexto(res, 403, 'Verificacao recusada')
+            : codigoTexto(res, 200, desafio);
+        }
+        if (method === 'POST') {
+          if (!configMeta.appSecret || !/^[0-9]{6,30}$/.test(configMeta.telefoneId)) {
+            return json(res, 503, { ok:false, mensagem:'Webhook nao configurado.' });
+          }
+          let bytes;
+          try { bytes = await corpoAssinado(req); }
+          catch { return json(res, 413, { ok:false, mensagem:'Evento acima do limite.' }); }
+          if (!verificarAssinaturaMeta(bytes, req.headers['x-hub-signature-256'], configMeta.appSecret)) {
+            return json(res, 403, { ok:false, mensagem:'Assinatura Meta invalida.' });
+          }
+          let payload;
+          try { payload = JSON.parse(bytes.toString('utf8')); }
+          catch { return json(res, 400, { ok:false, mensagem:'Evento Meta invalido.' }); }
+          const eventos = lerEventosMeta(payload, configMeta.telefoneId);
+          for (const evento of eventos) {
+            if (evento.tipo === 'denuncia' || evento.tipo === 'sair') {
+              denuncias.registrar({
+                telefone:evento.from, mensagemId:evento.id,
+                motivo:evento.tipo === 'denuncia' ? 'denuncia-convite' : 'saida-solicitada',
+              });
+            }
+            // "Entrar no grupo" sera conectado ao envio do link numa etapa
+            // posterior. Nenhuma resposta automatica esta habilitada aqui.
+          }
+          return json(res, 200, { ok:true });
+        }
+        return codigoTexto(res, 405, 'Metodo nao permitido');
+      }
+
       if (pathname === '/relatorio' || pathname === '/relatorio.csv') {
         if (!leitura) return codigoTexto(res, 405, 'Método não permitido');
         if (!autorizarChave(endereco.searchParams.get('chave'), metricas.chave)) {
@@ -251,6 +308,13 @@ export function criarPiloto({
         }
         if (pathname === '/api/local/campanhas' && leitura) {
           return json(res, 200, { ok: true, campanhas: campanhas.listar() });
+        }
+        if (pathname === '/api/local/campanhas/meta' && leitura) {
+          return json(res, 200, { ok:true, integracao:resumoMeta(configMeta),
+            denuncias:denuncias.resumo() });
+        }
+        if (pathname === '/api/local/campanhas/denuncias' && leitura) {
+          return json(res, 200, { ok:true, ocorrencias:denuncias.listar() });
         }
         if (pathname === '/api/local/campanhas/destinatarios' && leitura) {
           return json(res, 200, { ok: true, destinatarios: campanhas.destinatarios() });
@@ -496,12 +560,13 @@ export async function iniciarServidor({
   host = process.env.HOST ?? '127.0.0.1',
   dataDir = process.env.DATA_DIR ?? join(sourceDir, '..', 'dados'),
   inviteUrl = process.env.CAPTACAO_GROUP_URL ?? GROUP_URL,
+  metaAmbiente = process.env,
   agora,
 } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new Error('Porta inválida');
   }
-  const { servidor, chave, contatos } = criarPiloto({ dataDir, inviteUrl, agora });
+  const { servidor, chave, contatos } = criarPiloto({ dataDir, inviteUrl, agora, metaAmbiente });
   await new Promise((resolve, reject) => {
     servidor.once('error', reject);
     servidor.listen(port, host, resolve);

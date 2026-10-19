@@ -85,6 +85,25 @@ export function renderCampanhas() {
     <div class="metric"><small>Enviados na campanha</small><b id="metricSent">0</b></div>
   </section>
 
+  <section class="card surface" id="metaStage" aria-labelledby="metaTitle" style="margin-bottom:18px">
+    <div class="view-title">
+      <div><span class="eyebrow">Integração oficial · Em preparação</span>
+      <h3 id="metaTitle">WhatsApp Business Platform (Meta)</h3>
+      <p id="metaStatus">Conferindo a conexão da Cloud API...</p></div>
+      <button id="reloadMeta" type="button" class="quiet">Atualizar status</button>
+    </div>
+    <div class="counts" aria-live="polite">
+      <span class="counter" id="metaDenuncias">0 denúncias internas</span>
+      <span class="counter" id="metaBloqueios">0 bloqueados</span>
+      <span class="counter">Envio por API: desativado</span>
+    </div>
+    <div class="row-actions">
+      <a class="secondary" href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer">Abrir Meta Business ↗</a>
+      <a class="secondary" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Meta for Developers ↗</a>
+    </div>
+    <p style="margin:13px 0 0">O modelo previsto terá dois botões: <strong>Entrar no grupo</strong> e <strong>Denunciar convite</strong>. O webhook verificará a assinatura da Meta; a denúncia bloqueia novos envios. A Cloud API permanece sem envio até concluir o cadastro e aprovar o modelo.</p>
+  </section>
+
   <section class="stage-grid">
     <article class="card surface" id="importStage">
       <h2><span class="step">1</span>Importar a planilha</h2>
