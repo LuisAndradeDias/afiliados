@@ -209,6 +209,19 @@
     listarCampanhas();
   }
 
+  async function carregarMeta() {
+    try {
+      const resp=await api('/api/local/campanhas/meta');
+      $('metaStatus').textContent=resp.integracao.configuracaoPreenchida
+        ? 'Configuração da Meta encontrada. Webhook precisa estar acessível por HTTPS e o modelo precisa de aprovação antes de enviar.'
+        : 'Aguardando cadastro na Meta e configuração segura dos identificadores e credenciais.';
+      $('metaDenuncias').textContent=resp.denuncias.denuncias+' denúncias internas';
+      $('metaBloqueios').textContent=resp.denuncias.bloqueados+' bloqueados';
+    } catch(erro) {
+      $('metaStatus').textContent='Não foi possível verificar a Cloud API local: '+erro.message;
+    }
+  }
+
   async function carregar() {
     const [destinatarios,campanhas,config]=await Promise.all([
       api('/api/local/campanhas/destinatarios'),
@@ -224,6 +237,7 @@
       : 'Informe seu número de WhatsApp Business acima, sem chave administrativa.';
     renderResumo();
     listarCampanhas();
+    await carregarMeta();
   }
 
   async function salvarRemetente() {
@@ -426,6 +440,7 @@
   }));
   $('createCampaign').addEventListener('click',criarCampanha);
   $('reloadCampaigns').addEventListener('click',()=>carregarCampanhas().catch(e=>flash(e.message,true)));
+  $('reloadMeta').addEventListener('click',carregarMeta);
   $('queueSearch').addEventListener('input',renderFila);
   $('reportCsv').addEventListener('click',exportarRelatorio);
   $('sentConfirm').addEventListener('change',()=>{

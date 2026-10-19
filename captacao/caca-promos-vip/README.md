@@ -4,6 +4,10 @@ Aplicativo independente do robô principal Afiliados. Permite **divulgar um conv
 
 **Não faz:** disparos automáticos nem envios para números sem autorização de mensagens. A extensão de leitura de participantes é separada da Central; importar a planilha não torna seus números elegíveis para publicidade.
 
+## Integração WhatsApp Business Platform — preparação
+
+A integração inicial com a **Cloud API da Meta** está documentada em [`INTEGRACAO_META.md`](INTEGRACAO_META.md). Já existem verificações de webhook assinado e bloqueio persistente por denúncia. **Ainda não há conta Meta conectada, modelo aprovado ou envio pela API habilitado.** O painel local mostra o status de configuração e as ocorrências sem expor credenciais.
+
 ## Extensão Chrome — Captura supervisionada v0.4.1
 
 A pasta [`extensao-lateral`](extensao-lateral/README.md) contém o leitor do popup **Pesquisar membros** do WhatsApp Web. Por clique do operador, o painel copia apenas os textos visíveis do popup, oferece revisão e exporta um CSV. Não percorre automaticamente toda a lista nem envia mensagens.

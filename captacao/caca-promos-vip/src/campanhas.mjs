@@ -26,7 +26,10 @@ function mascarar(valor) {
   return digitos ? '+' + digitos.slice(0, 4) + ' •••• ' + digitos.slice(-4) : '';
 }
 
-export function iniciarCampanhas(dataDir, contatos, agora = () => new Date()) {
+export function iniciarCampanhas(dataDir, contatos, agora = () => new Date(), bloqueios = null) {
+  function elegivel(contato) {
+    return confirmarContato(contato) && !bloqueios?.estaBloqueado(contato.telefone);
+  }
   mkdirSync(dataDir, { recursive: true });
   const arquivo = join(dataDir, 'campanhas-manuais.json');
 
@@ -54,7 +57,7 @@ export function iniciarCampanhas(dataDir, contatos, agora = () => new Date()) {
   }
 
   function destinatarios() {
-    return contatos.listar().filter(confirmarContato).map(c => ({
+    return contatos.listar().filter(elegivel).map(c => ({
       id:c.id, nome:c.nome || '', telefone:c.telefone, origem:c.origem,
       consentimentoConfirmadoEm:c.consentimentoConfirmadoEm,
     }));
@@ -83,7 +86,7 @@ export function iniciarCampanhas(dataDir, contatos, agora = () => new Date()) {
       throw new Error('Há destinatários duplicados ou inválidos.');
     }
     const mapa = contatoMap();
-    if (ids.some(id => !confirmarContato(mapa.get(id)))) {
+    if (ids.some(id => !elegivel(mapa.get(id)))) {
       throw new Error('Campanhas só podem incluir contatos ativos com consentimento de mensagens confirmado.');
     }
     const dados = ler();
@@ -104,7 +107,7 @@ export function iniciarCampanhas(dataDir, contatos, agora = () => new Date()) {
     const estado = campanha.itens.map(item => {
       const c = mapa.get(item.contatoId);
       return item.status === 'enviado' || item.status === 'ignorado'
-        ? item.status : !confirmarContato(c) ? 'bloqueado' : item.status;
+        ? item.status : !elegivel(c) ? 'bloqueado' : item.status;
     });
     const enviado = estado.filter(s => s === 'enviado').length;
     const bloqueado = estado.filter(s => s === 'bloqueado').length;
@@ -129,7 +132,7 @@ export function iniciarCampanhas(dataDir, contatos, agora = () => new Date()) {
     const mapa = contatoMap();
     const itens = campanha.itens.map(item => {
       const c = mapa.get(item.contatoId);
-      const permitido = confirmarContato(c);
+      const permitido = elegivel(c);
       return {
         id:item.contatoId,
         nome:c?.nome || 'Contato indisponível',
@@ -154,7 +157,7 @@ export function iniciarCampanhas(dataDir, contatos, agora = () => new Date()) {
     const item = campanha.itens.find(i => i.contatoId === contatoId);
     if (!item) throw new Error('Contato não pertence a esta campanha.');
     const contato = contatoMap().get(contatoId);
-    if (!confirmarContato(contato)) {
+    if (!elegivel(contato)) {
       throw new Error('Contato sem autorização atual para mensagens. Envio bloqueado.');
     }
     return { dados, campanha, item, contato };
