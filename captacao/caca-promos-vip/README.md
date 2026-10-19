@@ -1,14 +1,29 @@
-# 👑 Caça Promos VIP — Central de Captação v0.5
+# 👑 Caça Promos VIP — Central de Captação v0.5 e Campanhas
 
 Aplicativo independente do robô principal Afiliados. Permite **divulgar um convite aprovado pelo administrador de uma comunidade**, receber **pré-cadastros voluntários**, registrar **autorização comprovada em duas etapas**, preparar convites individuais manualmente com **um segundo WhatsApp Business** e exportar planilhas.
 
-**Não faz:** extração de telefones de grupos alheios, importação de listas raspadas, conexão ao WhatsApp Web para ler grupos ou disparos automáticos de mensagens.
+**Não faz:** disparos automáticos nem envios para números sem autorização de mensagens. A extensão de leitura de participantes é separada da Central; importar a planilha não torna seus números elegíveis para publicidade.
 
-## Extensão Chrome — Painel lateral v0.2.1
+## Extensão Chrome — Captura supervisionada v0.4.1
 
-A pasta [`extensao-lateral`](extensao-lateral/README.md) contém um painel lateral independente para organizar **números autorizados copiados manualmente** do WhatsApp Web, revisar duplicados e baixar um CSV compatível com a Central de Captação.
+A pasta [`extensao-lateral`](extensao-lateral/README.md) contém o leitor do popup **Pesquisar membros** do WhatsApp Web. Por clique do operador, o painel copia apenas os textos visíveis do popup, oferece revisão e exporta um CSV. Não percorre automaticamente toda a lista nem envia mensagens.
 
-O protótipo **não lê automaticamente os integrantes dos grupos**, não envia mensagens e não requer acesso às conversas. Ele substitui o popup inacabado da versão 0.1, cujo carregamento falhava por arquivos ausentes.
+## Painel de Campanhas — Primeira versão
+
+Acesse **`http://127.0.0.1:3045/campanhas` no ACER**. Ele utiliza a mesma chave administrativa da Central. No computador Luis, após futura atualização, será `http://127.0.0.1:3040/campanhas`.
+
+O fluxo é:
+1. Importe o CSV `nome;telefone` exportado pela extensão (até 110 KB / 1.500 linhas).
+2. A planilha fica no navegador. O servidor cruza os números com os contatos que **confirmaram consentimento de mensagens** no CRM; números sem opt-in ficam fora da fila.
+3. Crie a campanha, escreva a mensagem e personalize com `{nome}` ou `{grupo}`. A indicação de descadastro `SAIR` é adicionada quando ausente.
+4. Somente contatos aptos podem receber uma mensagem pré-preenchida por meio de `wa.me`; cada conversa é aberta individualmente, mediante clique. **Não há envio automático.**
+5. Após realmente enviar pelo WhatsApp, marque `Enviei manualmente` e registre o resultado na campanha.
+6. Revogue permissão de quem solicitar saída. O sistema impede preparar novas mensagens para contatos descadastrados.
+7. Exporte um relatório CSV de andamento da campanha, sem os números completos.
+
+Os registros persistentes de campanhas guardam referências aos contatos por ID, não uma cópia dos números importados, em `dados/campanhas-manuais.json`. Nenhum CSV é enviado a serviços externos. Configure o segundo WhatsApp no CRM antes de registrar envios.
+
+**Importante:** o cadastro de coleta não equivale a consentimento de mensagens; o painel não transforma essa permissão automaticamente. Para automação futura, será necessária integração oficial WhatsApp Business Platform e opt-in específico.
 
 ## Versão 0.5 — Fluxo guiado para grupos e importação
 

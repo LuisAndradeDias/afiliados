@@ -137,7 +137,7 @@ export function renderPainelCrm() {
         <div><div class="mini-label">Gestão de contatos voluntários</div><h1>Captação <span>inteligente.</span></h1><p>Convites para grupos autorizados, contatos que pediram mensagens e campanhas pelo segundo WhatsApp — com o controle nas suas mãos.</p></div>
         <button type="button" class="ghost" id="logoutBtn">Sair do painel</button>
       </div>
-      <nav class="quick-nav" aria-label="Seções da central"><a href="#overview">Visão geral</a><a href="#groupCard">Grupos</a><a href="#importCard">Importar</a><a href="#contactsCard">Contatos</a><a href="#senderCard">Segundo WhatsApp</a><a href="#reportCard">Resultados</a></nav>
+      <nav class="quick-nav" aria-label="Seções da central"><a href="/campanhas" style="color:#77f3c8;font-weight:800">Campanhas e envios ↗</a><a href="#overview">Visão geral</a><a href="#groupCard">Grupos</a><a href="#importCard">Importar</a><a href="#contactsCard">Contatos</a><a href="#senderCard">Segundo WhatsApp</a><a href="#reportCard">Resultados</a></nav>
       <section class="card start-guide" id="startGuide" aria-label="Comece por aqui">
         <div class="mini-label">Comece por aqui · Três passos</div>
         <h2>Seu grupo, seus contatos autorizados, sua planilha.</h2>
