@@ -34,6 +34,7 @@ test('fluxo no Chrome: planilha, campanha, prévia, confirmação, relatório',a
   assert.equal(await page.locator('#adminKey').count(),0,'Painel não deve pedir chave');
   assert.equal(await page.locator('#loginForm').count(),0,'Formulário de login foi removido');
   await page.locator('#appView').waitFor({state:'visible',timeout:10000});
+  await page.locator('#manualLegacy > summary').click();
   await page.locator('#senderPhone').fill('11999998888');
   await page.locator('#saveSender').click();
   await page.waitForFunction(()=>document.querySelector('#senderStatus')

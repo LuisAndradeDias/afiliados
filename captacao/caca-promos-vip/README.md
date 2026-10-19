@@ -4,9 +4,28 @@ Aplicativo independente do robô principal Afiliados. Permite **divulgar um conv
 
 **Não faz:** disparos automáticos nem envios para números sem autorização de mensagens. A extensão de leitura de participantes é separada da Central; importar a planilha não torna seus números elegíveis para publicidade.
 
-## Integração WhatsApp Business Platform — preparação
+## Convite único com dois botões — pronto para preparar sem número
 
-A integração inicial com a **Cloud API da Meta** está documentada em [`INTEGRACAO_META.md`](INTEGRACAO_META.md). Já existem verificações de webhook assinado e bloqueio persistente por denúncia. **Ainda não há conta Meta conectada, modelo aprovado ou envio pela API habilitado.** O painel local mostra o status de configuração e as ocorrências sem expor credenciais.
+O painel `http://127.0.0.1:3045/campanhas` no ACER (sem chave, apenas em
+`127.0.0.1`) agora oferece um **fluxo de WhatsApp Business Cloud API**:
+
+1. Escreva **uma única mensagem idêntica para todas as pessoas**, sem variáveis.
+2. Configure o link do grupo e salve o rascunho mesmo sem número cadastrado.
+3. Visualize a prévia com os botões **Entrar no grupo** e **Denunciar convite**.
+4. Exporte um arquivo JSON com o modelo MARKETING a submeter à Meta.
+5. Importe o CSV, confira autorizados x bloqueados e simule sem disparos.
+6. Prepare filas persistentes; consulte status, denúncias e relatórios com
+   números mascarados.
+
+A lógica de envio está integrada ao backend: após obter o número, configurar
+o token e a infraestrutura HTTPS, aprovar o modelo e ativar explicitamente
+o serviço, as mensagens podem ser enviadas em lotes de até dez por clique,
+com verificação de consentimento e limite diário. **Agora os envios reais
+estão desativados** e nenhum contato de grupo é tratado como opt-in.
+
+Documentação completa e checklist de ativação:
+[`INTEGRACAO_META.md`](INTEGRACAO_META.md). O receptor HTTPS público
+ainda precisa ser disponibilizado quando o número for conectado.
 
 ## Extensão Chrome — Captura supervisionada v0.4.1
 
@@ -27,7 +46,7 @@ O fluxo é:
 
 Os registros persistentes de campanhas guardam referências aos contatos por ID, não uma cópia dos números importados, em `dados/campanhas-manuais.json`. Nenhum CSV é enviado a serviços externos. O número do WhatsApp de envio pode ser configurado na própria página de campanhas, sem chave. A validação do consentimento para mensagens continua vindo do CRM.
 
-**Importante:** o cadastro de coleta não equivale a consentimento de mensagens; o painel não transforma essa permissão automaticamente. Para automação futura, será necessária integração oficial WhatsApp Business Platform e opt-in específico.
+**Importante:** o cadastro de coleta não equivale a consentimento de mensagens; o painel não transforma essa permissão automaticamente. A Cloud API usa somente contatos com opt-in comprovado, e o envio real permanece desabilitado até concluir o cadastro do número e a infraestrutura oficial.
 
 ## Versão 0.5 — Fluxo guiado para grupos e importação
 
