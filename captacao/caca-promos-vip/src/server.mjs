@@ -8,8 +8,9 @@ import { iniciarContatos } from './contatos.mjs';
 import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
 import { iniciarImportacaoAutorizada } from './importacao-autorizada.mjs';
 import { iniciarCampanhas } from './campanhas.mjs';
+import { iniciarConvitesUnicos } from './convites-unicos.mjs';
 import { iniciarDenuncias } from './denuncias.mjs';
-import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta } from './meta-cloud.mjs';
+import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta, lerStatusMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderPainelCrm, renderDescadastro } from './crm-ui.mjs';
@@ -129,6 +130,9 @@ export function criarPiloto({
   const denuncias = iniciarDenuncias(dataDir, contatos, agora);
   const campanhas = iniciarCampanhas(dataDir, contatos, agora, denuncias);
   const configMeta = obterConfigMeta(metaAmbiente);
+  const convitesUnicos = iniciarConvitesUnicos({
+    dataDir,contatos,bloqueios:denuncias,configMeta,grupoInicial:urlGrupo.toString(),agora,
+  });
   const sessoes = new Map();
   const limites = new Map();
 
@@ -234,9 +238,14 @@ export function criarPiloto({
                 telefone:evento.from, mensagemId:evento.id,
                 motivo:evento.tipo === 'denuncia' ? 'denuncia-convite' : 'saida-solicitada',
               });
+            } else if (evento.tipo === 'entrar') {
+              await convitesUnicos.processarCliqueEntrar({
+                telefone:evento.from,mensagemId:evento.id,
+              });
             }
-            // "Entrar no grupo" sera conectado ao envio do link numa etapa
-            // posterior. Nenhuma resposta automatica esta habilitada aqui.
+          }
+          for (const status of lerStatusMeta(payload,configMeta.telefoneId)) {
+            convitesUnicos.registrarStatus(status);
           }
           return json(res, 200, { ok:true });
         }
@@ -316,6 +325,25 @@ export function criarPiloto({
         if (pathname === '/api/local/campanhas/denuncias' && leitura) {
           return json(res, 200, { ok:true, ocorrencias:denuncias.listar() });
         }
+        if (pathname === '/api/local/campanhas/convite/modelo' && leitura) {
+          return json(res, 200, { ok:true, configuracao:convitesUnicos.configuracao(),
+            modeloMeta:convitesUnicos.templateParaMeta() });
+        }
+        if (pathname === '/api/local/campanhas/convite/filas' && leitura) {
+          return json(res, 200, { ok:true, filas:convitesUnicos.listarFilas() });
+        }
+        if (pathname === '/api/local/campanhas/convite/fila' && leitura) {
+          try {return json(res, 200, {ok:true,
+            fila:convitesUnicos.detalhesFila(endereco.searchParams.get('id'))});}
+          catch(erro){return json(res,404,{ok:false,mensagem:erro.message});}
+        }
+        if (pathname === '/api/local/campanhas/convite/validacao' && leitura) {
+          if (!limitar(req,'meta-validacao',60))return json(res,429,
+            {ok:false,mensagem:'Limite de verificacoes atingido.'});
+          try {return json(res, 200, {ok:true,validacao:await convitesUnicos.conferirModelo()});}
+          catch {return json(res, 502, {ok:false,
+            mensagem:'Nao foi possivel verificar o modelo na Meta.'});}
+        }
         if (pathname === '/api/local/campanhas/destinatarios' && leitura) {
           return json(res, 200, { ok: true, destinatarios: campanhas.destinatarios() });
         }
@@ -346,6 +374,23 @@ export function criarPiloto({
               return json(res, 429, { ok: false, mensagem: 'Limite de criação de campanhas atingido.' });
             }
             return json(res, 200, { ok: true, campanha: campanhas.criar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/convite/modelo') {
+            return json(res, 200, {ok:true,
+              configuracao:convitesUnicos.salvarConfiguracao(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/simular') {
+            return json(res, 200, {ok:true,simulacao:convitesUnicos.simular(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/fila') {
+            if (!limitar(req,'convite-criar',30))return json(res,429,
+              {ok:false,mensagem:'Limite de criacao de filas atingido.'});
+            return json(res, 200, {ok:true,fila:convitesUnicos.criarFila(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/enviar') {
+            if (!limitar(req,'convite-enviar',100))return json(res,429,
+              {ok:false,mensagem:'Limite de requisicoes de envio atingido.'});
+            return json(res, 200, {ok:true,resultado:await convitesUnicos.processarLote(dados)});
           }
           if (pathname === '/api/local/campanhas/remetente') {
             return json(res, 200, { ok: true,

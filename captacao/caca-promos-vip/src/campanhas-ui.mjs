@@ -46,7 +46,37 @@ footer{margin-top:40px;text-align:center;color:var(--soft);font-size:11px}
 .sender-setup summary{cursor:pointer;color:var(--mint);font-weight:750;font-size:12px}
 .sender-setup[open] summary{margin-bottom:13px}
 #senderStatus{font-size:11px;margin:4px 0 13px;line-height:1.45}
-@media(max-width:900px){.stage-grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+.legacy{padding:14px;align-self:start}
+.legacy>summary{cursor:pointer;font-size:13px;font-weight:800;color:#adedd8}
+.legacy[open]>summary{margin-bottom:8px}
+.legacy .card{padding:10px 0;border:0}
+.setup-steps{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0 20px}
+.setup-step{padding:7px 10px;border-radius:100px;border:1px solid #31545c;background:#092b36;color:#accbd0;font-size:11px}
+.setup-step.active{background:#16443e;border-color:#397866;color:#a5ffe0;font-weight:850}
+.cloud-grid{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);gap:20px;align-items:start}
+.cloud-grid textarea{min-height:218px;line-height:1.55;font-size:13px}
+.cloud-grid .field{margin:0 0 14px}
+.cloud-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cloud-lower{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cloud-lower h3{font-size:15px;margin:0 0 7px}
+.cloud-lower p{font-size:12px;margin:0 0 13px}
+.divider-thin{height:1px;background:var(--stroke);margin:24px 0}
+.phone-preview{background:linear-gradient(135deg,#132d36,#0b222e);padding:15px;border:1px solid #3b6b68;border-radius:18px;max-width:380px;margin:0 auto}
+.phone-top{display:flex;align-items:center;gap:10px;border-bottom:1px solid #355560;padding:0 0 14px}
+.phone-top strong{font-size:13px;display:block}.phone-top small{font-size:11px;color:var(--soft);display:block}
+.phone-avatar{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:99px;background:#59d8b0;color:#06372d;font-weight:950}
+.bubble{position:relative;background:#164238;border:1px solid #397468;border-radius:13px 13px 4px 13px;margin:18px 0 8px;padding:14px 13px 25px;color:#ecfff7}
+.bubble-body{font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.bubble-time{position:absolute;right:11px;bottom:5px;font-size:9px;color:#acccbf}
+.phone-choice{background:#103941;border:1px solid #3b6a73;border-radius:7px;color:#87eecb;padding:11px;text-align:center;font-size:12px;font-weight:800;margin-top:6px}
+.phone-note{color:var(--soft);font-size:10px;text-align:center;margin:11px 0 0!important}
+.cloud-queues{display:grid;gap:9px}
+.cloud-queue-item{border:1px solid var(--stroke);background:#0d3340;padding:13px;border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cloud-queue-item strong{display:block;font-size:13px}
+.cloud-queue-item small{display:block;color:var(--soft);font-size:11px}
+.cloud-queue-item button{font-size:11px;flex:none}
+@media(max-width:900px){.stage-grid,.cloud-grid,.cloud-lower{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){.cloud-mini-grid{grid-template-columns:1fr}.cloud-queue-item{align-items:flex-start;flex-direction:column}}
 @media(max-width:580px){.wrap{padding:0 15px 40px}.top-actions{gap:8px}.brand-name{font-size:12px}.hero{align-items:start;flex-direction:column}.card{padding:17px}.metrics{gap:8px}.metric{padding:13px}.metric b{font-size:25px}.list-row{padding:14px;align-items:flex-start;flex-direction:column}.toolbar input{max-width:100%}.dialog{padding:17px}}
 `;
 
@@ -74,34 +104,126 @@ export function renderCampanhas() {
   <section class="hero">
     <div><div class="eyebrow">Campanhas supervisionadas · Nova fase</div>
       <h1>Mensagens com <em>controle.</em></h1>
-      <p>Importe a planilha gerada pela extensão, prepare um texto personalizado e abra conversas somente para contatos com consentimento de mensagens confirmado.</p></div>
-    <span class="sticker">Sem disparos automáticos</span>
+      <p>Crie uma única mensagem para todos, visualize os dois botões e prepare sua fila com contatos autorizados. Não é necessário ter o número da Meta agora.</p></div>
+    <span class="sticker">Modo de preparação · sem número</span>
   </section>
 
   <section class="metrics" aria-label="Resumo">
     <div class="metric"><small>Números na planilha</small><b id="metricImported">0</b></div>
     <div class="metric"><small>Aptos a receber</small><b id="metricEligible">0</b></div>
     <div class="metric"><small>Sem opt-in confirmado</small><b id="metricBlocked">0</b></div>
-    <div class="metric"><small>Enviados na campanha</small><b id="metricSent">0</b></div>
+    <div class="metric"><small>Registros manuais de envio</small><b id="metricSent">0</b></div>
   </section>
 
   <section class="card surface" id="metaStage" aria-labelledby="metaTitle" style="margin-bottom:18px">
     <div class="view-title">
-      <div><span class="eyebrow">Integração oficial · Em preparação</span>
-      <h3 id="metaTitle">WhatsApp Business Platform (Meta)</h3>
-      <p id="metaStatus">Conferindo a conexão da Cloud API...</p></div>
-      <button id="reloadMeta" type="button" class="quiet">Atualizar status</button>
+      <div><span class="eyebrow">Convite único · WhatsApp Business Platform</span>
+        <h2 id="metaTitle">Uma mensagem. Dois botões.</h2>
+        <p id="metaStatus">Preparando a conexão com a Meta. Ainda não é necessário ter número.</p></div>
+      <span id="metaConnectionBadge" class="tag warn">Aguardando número</span>
     </div>
-    <div class="counts" aria-live="polite">
-      <span class="counter" id="metaDenuncias">0 denúncias internas</span>
-      <span class="counter" id="metaBloqueios">0 bloqueados</span>
-      <span class="counter">Envio por API: desativado</span>
+    <div class="setup-steps" aria-label="Etapas de preparação">
+      <span class="setup-step active">01 · Escrever convite</span>
+      <span class="setup-step">02 · Importar CSV</span>
+      <span class="setup-step">03 · Simular fila</span>
+      <span class="setup-step">04 · Conectar Meta</span>
     </div>
+    <div class="cloud-grid">
+      <div>
+        <div class="field"><label for="singleText">Mensagem enviada a TODOS, sem alterações</label>
+          <textarea id="singleText" maxlength="1024" rows="9" spellcheck="true"
+            placeholder="Escreva um convite único para todos os destinatários..."></textarea>
+          <small class="muted"><span id="singleLength">0</span>/1.024 caracteres · Não usa nomes nem variáveis</small>
+        </div>
+        <div class="field"><label for="groupLink">Link do grupo de ofertas</label>
+          <input id="groupLink" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/...">
+          <small class="muted">O link será enviado somente após o destinatário clicar em Entrar no grupo.</small>
+        </div>
+        <div class="cloud-mini-grid">
+          <div class="field"><label for="cloudCampaignName">Nome da campanha</label>
+            <input id="cloudCampaignName" maxlength="80" value="Convite para grupo de ofertas"></div>
+          <div class="field"><label for="templateName">Modelo na Meta</label>
+            <input id="templateName" maxlength="128" value="convite_ofertas_v1" spellcheck="false"></div>
+        </div>
+        <div class="row-actions">
+          <button id="saveSingle" type="button" class="primary">Salvar mensagem e link</button>
+          <button id="simulateSingle" type="button" class="secondary">Simular envio</button>
+          <button id="downloadModel" type="button" class="quiet">Exportar modelo Meta</button>
+        </div>
+        <p id="singleSaveStatus" class="muted" aria-live="polite">Rascunho salvo neste computador, mesmo sem número.</p>
+      </div>
+      <div>
+        <div class="phone-preview">
+          <div class="phone-top"><span class="phone-avatar">CP</span>
+            <div><strong>Caça Promos VIP 👑</strong><small>Prévia · mesmo texto para todos</small></div></div>
+          <div class="bubble"><div id="singlePreview" class="bubble-body">Carregando convite...</div>
+            <span class="bubble-time">Prévia</span></div>
+          <div class="phone-choice">↗ &nbsp; Entrar no grupo</div>
+          <div class="phone-choice">⚑ &nbsp; Denunciar convite</div>
+          <p class="phone-note">Botões ilustrativos. Não enviam mensagens nesta tela.</p>
+        </div>
+        <div class="hint" id="cloudPreviewNotice">Não haverá envio para números sem opt-in. Denúncias internas bloqueiam campanhas futuras.</div>
+      </div>
+    </div>
+    <div class="divider-thin"></div>
+    <div class="cloud-lower">
+      <div>
+        <h3>Fila de envio oficial</h3>
+        <p>Depois de importar a planilha, crie a fila apenas com contatos que consentiram receber convites. Você pode prepará-la agora, mesmo sem o número Meta.</p>
+        <div class="counts" aria-live="polite">
+          <span class="counter" id="cloudEligible">0 autorizados na planilha</span>
+          <span class="counter" id="cloudBlocked">0 fora da fila</span>
+          <span class="counter" id="metaDenuncias">0 denúncias internas</span>
+          <span class="counter" id="metaBloqueios">0 bloqueados</span>
+        </div>
+        <div class="row-actions">
+          <button id="createCloudQueue" type="button" class="primary" disabled>Preparar fila de convites</button>
+          <button id="refreshCloudQueues" type="button" class="quiet">Atualizar filas</button>
+        </div>
+      </div>
+      <div>
+        <h3>Conexão com a Meta</h3>
+        <p id="cloudActivationStatus">Envio pela API desativado. Preencha os dados da Meta quando tiver o novo número.</p>
+        <div class="row-actions">
+          <button id="checkMetaModel" type="button" class="secondary">Verificar modelo na Meta</button>
+          <button id="reloadMeta" type="button" class="quiet">Verificar conexão</button>
+        </div>
+        <div class="row-actions">
+          <a class="quiet" href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer">Meta Business ↗</a>
+          <a class="quiet" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Developers ↗</a>
+        </div>
+        <details class="legacy" id="metaChecklist" style="margin-top:12px">
+          <summary>O que falta quando eu tiver o número?</summary>
+          <p style="margin:12px 0 6px">1. Criar o WhatsApp Business Account e cadastrar o número na Meta.</p>
+          <p>2. Obter Phone Number ID, WABA ID, token de sistema e App Secret.</p>
+          <p>3. Aprovar o modelo MARKETING exportado aqui, com a mensagem idêntica e dois botões.</p>
+          <p>4. Configurar um webhook público HTTPS seguro; não expor a porta 3045.</p>
+          <p>5. Ativar envios controlados após testar a conta e revisar o custo e o opt-in.</p>
+        </details>
+      </div>
+    </div>
+    <div class="divider-thin"></div>
+    <h3>Campanhas de convite preparadas</h3>
+    <div id="cloudQueueList" class="cloud-queues"><div class="empty">Nenhuma fila criada.</div></div>
+    <details class="legacy surface" id="complaintsDetail" style="margin-top:17px">
+      <summary>Denúncias e bloqueios internos</summary>
+      <p style="margin-top:12px">Quem denunciar será bloqueado para campanhas futuras, mesmo se o número reaparecer em outra planilha.</p>
+      <div id="complaintsList" class="ledger surface"><div class="empty">Nenhuma denúncia registrada.</div></div>
+    </details>
+  </section>
+  <section id="cloudQueueDetail" class="card surface" hidden aria-labelledby="cloudQueueTitle" style="margin-bottom:18px">
+    <div class="view-title">
+      <div><span class="eyebrow">Fila oficial de convites</span><h2 id="cloudQueueTitle">Campanha</h2>
+        <p id="cloudQueueSummary">Envios ainda não iniciados.</p></div>
+      <button id="closeCloudQueue" class="quiet" type="button">Fechar detalhes</button>
+    </div>
+    <div class="hint">O envio real exige número configurado, modelo MARKETING aprovado, consentimento e sua confirmação. Sem esses requisitos só existe a simulação.</div>
     <div class="row-actions">
-      <a class="secondary" href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer">Abrir Meta Business ↗</a>
-      <a class="secondary" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Meta for Developers ↗</a>
+      <button id="sendCloudBatch" class="primary" type="button" disabled>Enviar próximo lote (até 10)</button>
+      <button id="refreshCloudDetail" class="secondary" type="button">Atualizar status</button>
+      <button id="exportCloudReport" class="quiet" type="button">Baixar relatório CSV</button>
     </div>
-    <p style="margin:13px 0 0">O modelo previsto terá dois botões: <strong>Entrar no grupo</strong> e <strong>Denunciar convite</strong>. O webhook verificará a assinatura da Meta; a denúncia bloqueia novos envios. A Cloud API permanece sem envio até concluir o cadastro e aprovar o modelo.</p>
+    <div id="cloudQueuePeople" class="ledger surface"></div>
   </section>
 
   <section class="stage-grid">
@@ -121,8 +243,10 @@ export function renderCampanhas() {
       </div>
     </article>
 
-    <article class="card surface" id="composeStage">
-      <h2><span class="step">2</span>Criar mensagem</h2>
+    <details class="legacy surface" id="manualLegacy">
+      <summary>Modo manual anterior (opcional) · wa.me</summary>
+      <article class="card" id="composeStage">
+      <h2><span class="step">2</span>Convite manual por conversa</h2>
       <div class="field"><label for="campaignName">Nome da campanha</label><input id="campaignName" maxlength="90" placeholder="Ex.: Ofertas da semana"></div>
       <div class="field"><label for="campaignGroup">Grupo ou origem</label><input id="campaignGroup" maxlength="90" placeholder="Ex.: Comunidade de promoções"></div>
       <div class="field">
@@ -145,7 +269,8 @@ export function renderCampanhas() {
       <p id="senderStatus" class="muted" aria-live="polite">Verificando número de envio...</p>
       <div class="row-actions"><button id="createCampaign" type="button" class="primary" disabled>Criar fila de envios autorizados</button></div>
       <p style="margin:13px 0 0">Nenhuma mensagem é enviada ao criar a campanha.</p>
-    </article>
+      </article>
+    </details>
   </section>
 
   <section class="section-header">

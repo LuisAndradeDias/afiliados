@@ -52,9 +52,9 @@ test('modelo com duas respostas rápidas, sem envio externo',()=>{
   });
   assert.equal(body.messaging_product,'whatsapp');
   assert.equal(body.template.name,'convite_ofertas_v1');
-  assert.equal(body.template.components[1].parameters[0].payload,'CPV_ENTRAR');
-  assert.equal(body.template.components[2].parameters[0].payload,'CPV_DENUNCIAR');
-  assert.equal(body.template.components[0].parameters[0].text,'Ana');
+  assert.equal(body.template.components[0].parameters[0].payload,'CPV_ENTRAR');
+  assert.equal(body.template.components[1].parameters[0].payload,'CPV_DENUNCIAR');
+  assert.equal(body.template.components.length,2,'Mensagem identica para todos, sem variaveis');
   assert.throws(()=>montarConviteMeta({para:'inválido'}),/inválido/);
 });
 test('validação de desafio e assinatura HMAC em tempo constante',()=>{
