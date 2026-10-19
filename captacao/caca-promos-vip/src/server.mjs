@@ -7,6 +7,8 @@ import { iniciarAnaliticos, normalizarOrigem, autorizarChave } from './analytics
 import { iniciarContatos } from './contatos.mjs';
 import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
 import { iniciarImportacaoAutorizada } from './importacao-autorizada.mjs';
+import { iniciarCampanhas } from './campanhas.mjs';
+import { renderCampanhas } from './campanhas-ui.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderPainelCrm, renderDescadastro } from './crm-ui.mjs';
 
@@ -17,6 +19,7 @@ const scripts = new Map([
   ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
   ['/assets/painel.js', readFileSync(join(sourceDir, 'assets', 'painel.js'), 'utf8')],
   ['/assets/importacao.js', readFileSync(join(sourceDir, 'assets', 'importacao.js'), 'utf8')],
+  ['/assets/campanhas.js', readFileSync(join(sourceDir, 'assets', 'campanhas.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
 ]);
 const headersBase = {
@@ -109,6 +112,7 @@ export function criarPiloto({
   const contatos = iniciarContatos(dataDir, agora);
   const grupos = iniciarGrupos(dataDir, agora);
   const importacoes = iniciarImportacaoAutorizada(dataDir, agora);
+  const campanhas = iniciarCampanhas(dataDir, contatos, agora);
   const sessoes = new Map();
   const limites = new Map();
 
@@ -148,6 +152,22 @@ export function criarPiloto({
     return true;
   }
 
+  // Painel SEM senha somente no próprio computador. Em instalações públicas,
+  // em outras interfaces de rede ou com Host adulterado, o acesso é negado.
+  // POST exige Origin idêntica e cabeçalho não-simples contra CSRF.
+  function acessoCampanhasLocais(req, alteracao = false) {
+    const escuta = servidor.address();
+    if (!escuta || typeof escuta === 'string' || escuta.address !== '127.0.0.1' ||
+        req.socket.remoteAddress !== '127.0.0.1' ||
+        req.socket.localAddress !== '127.0.0.1' ||
+        req.headers.host !== '127.0.0.1:' + escuta.port) return false;
+    const site = req.headers['sec-fetch-site'];
+    if (site && site !== 'same-origin' && site !== 'none') return false;
+    if (!alteracao) return true;
+    return req.headers.origin === 'http://127.0.0.1:' + escuta.port &&
+      req.headers['x-cpv-local'] === '1';
+  }
+
   const servidor = createServer(async (req, res) => {
     try {
       const endereco = new URL(req.url ?? '/', 'http://localhost');
@@ -164,7 +184,7 @@ export function criarPiloto({
       if (pathname === '/favicon.svg' && leitura) return codigoTexto(res, 200, renderFavicon(), 'image/svg+xml; charset=utf-8');
       if (scripts.has(pathname) && leitura) return codigoTexto(res, 200, scripts.get(pathname), 'text/javascript; charset=utf-8');
       if (pathname === '/robots.txt' && leitura) return codigoTexto(res, 200,
-        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /api/\nDisallow: /sair\n');
+        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /api/\nDisallow: /sair\n');
 
       if (pathname === '/relatorio' || pathname === '/relatorio.csv') {
         if (!leitura) return codigoTexto(res, 405, 'Método não permitido');
@@ -188,6 +208,11 @@ export function criarPiloto({
       }
 
       if (pathname === '/painel' && leitura) return codigoHtml(res, 200, renderPainelCrm());
+      if (pathname === '/campanhas' && leitura) {
+        if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
+          'Painel de campanhas disponível somente no computador local, via 127.0.0.1.');
+        return codigoHtml(res, 200, renderCampanhas());
+      }
       if (pathname === '/sair' && leitura) return codigoHtml(res, 200, renderDescadastro());
 
       if (pathname === '/api/cadastro' && method === 'POST') {
@@ -214,6 +239,70 @@ export function criarPiloto({
         return contatos.descadastrarPorToken(entrada.token)
           ? json(res, 200, { ok: true })
           : json(res, 404, { ok: false, mensagem: 'Link de descadastro não encontrado.' });
+      }
+
+      // As campanhas têm um fluxo local sem senha; o CRM administrativo e
+      // suas demais APIs continuam exigindo autenticação como antes.
+      if (pathname === '/api/local/campanhas' ||
+          pathname.startsWith('/api/local/campanhas/')) {
+        if (!acessoCampanhasLocais(req, method === 'POST')) {
+          return json(res, 403, { ok: false,
+            mensagem: 'Operação permitida somente neste computador e nesta página local.' });
+        }
+        if (pathname === '/api/local/campanhas' && leitura) {
+          return json(res, 200, { ok: true, campanhas: campanhas.listar() });
+        }
+        if (pathname === '/api/local/campanhas/destinatarios' && leitura) {
+          return json(res, 200, { ok: true, destinatarios: campanhas.destinatarios() });
+        }
+        if (pathname === '/api/local/campanhas/configuracao' && leitura) {
+          const resumo = contatos.resumo();
+          return json(res, 200, { ok: true, remetente: resumo.remetente,
+            remetenteConfigurado: resumo.remetenteConfigurado });
+        }
+        if (pathname === '/api/local/campanhas/detalhe' && leitura) {
+          try {
+            return json(res, 200, { ok: true, campanha: campanhas.obter(endereco.searchParams.get('id')) });
+          } catch (erro) { return json(res, 404, { ok: false, mensagem: erro.message }); }
+        }
+        if (method !== 'POST') return json(res, 405, {
+          ok: false, mensagem: 'Método não permitido para campanhas.' });
+        if (!limitar(req, 'campanhas-locais', 4500)) {
+          return json(res, 429, { ok: false, mensagem: 'Limite de operações locais atingido.' });
+        }
+        let dados;
+        try {
+          dados = await corpoJson(req, pathname === '/api/local/campanhas' ? 90_000 : 4096);
+        } catch {
+          return json(res, 400, { ok: false, mensagem: 'Dados inválidos para campanhas.' });
+        }
+        try {
+          if (pathname === '/api/local/campanhas') {
+            if (!limitar(req, 'campanhas-locais-criar', 30)) {
+              return json(res, 429, { ok: false, mensagem: 'Limite de criação de campanhas atingido.' });
+            }
+            return json(res, 200, { ok: true, campanha: campanhas.criar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/remetente') {
+            return json(res, 200, { ok: true,
+              remetente: contatos.configurarRemetente(dados.telefone) });
+          }
+          if (pathname === '/api/local/campanhas/preparar') {
+            return json(res, 200, { ok: true, mensagem: campanhas.prepararMensagem(dados) });
+          }
+          if (pathname === '/api/local/campanhas/registrar') {
+            return json(res, 200, { ok: true, resultado: campanhas.registrar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/ignorar') {
+            return json(res, 200, { ok: true, resultado: campanhas.ignorar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/descadastrar') {
+            return json(res, 200, { ok: contatos.descadastrarPorId(dados.id) });
+          }
+        } catch (erro) {
+          return json(res, 409, { ok: false, mensagem: erro.message });
+        }
+        return json(res, 404, { ok: false, mensagem: 'Ação de campanha inexistente.' });
       }
 
       if (pathname === '/api/admin/login' && method === 'POST') {
@@ -253,6 +342,17 @@ export function criarPiloto({
           });
         }
         if (pathname === '/api/admin/contatos' && leitura) return json(res, 200, { ok: true, contatos: contatos.listar() });
+        if (pathname === '/api/admin/campanhas/destinatarios' && leitura) {
+          return json(res, 200, { ok: true, destinatarios: campanhas.destinatarios() });
+        }
+        if (pathname === '/api/admin/campanhas' && leitura) {
+          return json(res, 200, { ok: true, campanhas: campanhas.listar() });
+        }
+        if (pathname === '/api/admin/campanhas/detalhe' && leitura) {
+          try {
+            return json(res, 200, { ok: true, campanha: campanhas.obter(endereco.searchParams.get('id')) });
+          } catch (erro) {return json(res, 404, { ok: false, mensagem: erro.message });}
+        }
         if (pathname === '/api/admin/grupos' && leitura) return json(res, 200, { ok: true, grupos: grupos.listar() });
         if (pathname === '/api/admin/importados' && leitura) {
           return json(res, 200, { ok: true, ...importacoes.listar() });
@@ -300,9 +400,27 @@ export function criarPiloto({
         }
         if (method === 'POST') {
           let dados;
-          try { dados = await corpoJson(req, (pathname === '/api/admin/importados' || pathname === '/api/admin/importados/previa') ? 128_000 : 4096); }
+          try { dados = await corpoJson(req, (pathname === '/api/admin/importados' || pathname === '/api/admin/importados/previa') ? 128_000 : pathname === '/api/admin/campanhas' ? 90_000 : 4096); }
           catch { return json(res, 400, { ok: false, mensagem: 'Dados JSON inválidos ou acima do tamanho permitido.' }); }
           try {
+            if (pathname === '/api/admin/campanhas') {
+              if (!limitar(req, 'campanhas-criar', 30)) {
+                return json(res, 429, { ok: false, mensagem: 'Muitas campanhas criadas. Tente mais tarde.' });
+              }
+              return json(res, 200, { ok: true, campanha: campanhas.criar(dados) });
+            }
+            if (pathname === '/api/admin/campanhas/preparar') {
+              if (!limitar(req, 'campanhas-preparar', 150)) {
+                return json(res, 429, { ok: false, mensagem: 'Muitas mensagens preparadas.' });
+              }
+              return json(res, 200, { ok: true, mensagem: campanhas.prepararMensagem(dados) });
+            }
+            if (pathname === '/api/admin/campanhas/registrar') {
+              return json(res, 200, { ok: true, resultado: campanhas.registrar(dados) });
+            }
+            if (pathname === '/api/admin/campanhas/ignorar') {
+              return json(res, 200, { ok: true, resultado: campanhas.ignorar(dados) });
+            }
             if (pathname === '/api/admin/importados/previa') {
               if (!limitar(req, 'admin-previa', 60)) {
                 return json(res, 429, { ok: false, mensagem: 'Muitas prévias. Tente novamente mais tarde.' });
