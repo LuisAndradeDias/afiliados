@@ -17,7 +17,7 @@
   async function api(url, method = 'GET', data = null) {
     const options = { credentials:'same-origin', method };
     if (method !== 'GET') {
-      options.headers = {'content-type':'application/json','x-cpv-admin':'1'};
+      options.headers = {'content-type':'application/json','x-cpv-local':'1'};
       options.body = JSON.stringify(data || {});
     }
     let response;
@@ -26,20 +26,11 @@
     let body;
     try {body = await response.json();} catch {body = {};}
     if (!response.ok || body.ok === false) {
-      if (response.status === 401) mostrarLogin();
       throw new Error(body.mensagem || 'Falha de comunicação: ' + response.status);
     }
     return body;
   }
 
-  function mostrarLogin() {
-    $('loginView').hidden = false;
-    $('appView').hidden = true;
-  }
-  function mostrarApp() {
-    $('loginView').hidden = true;
-    $('appView').hidden = false;
-  }
 
   function telefone(valor) {
     const texto = String(valor || '').trim();
@@ -213,21 +204,47 @@
   }
 
   async function carregarCampanhas() {
-    const dados=await api('/api/admin/campanhas');
+    const dados=await api('/api/local/campanhas');
     state.campanhas=dados.campanhas;
     listarCampanhas();
   }
 
   async function carregar() {
-    const [destinatarios,campanhas]=await Promise.all([
-      api('/api/admin/campanhas/destinatarios'),
-      api('/api/admin/campanhas'),
+    const [destinatarios,campanhas,config]=await Promise.all([
+      api('/api/local/campanhas/destinatarios'),
+      api('/api/local/campanhas'),
+      api('/api/local/campanhas/configuracao'),
     ]);
     state.autorizados=destinatarios.destinatarios;
     state.campanhas=campanhas.campanhas;
+    $('senderPhone').value=config.remetente ? '+'+config.remetente : '';
+    $('senderSetup').open=!config.remetenteConfigurado;
+    $('senderStatus').textContent=config.remetenteConfigurado
+      ? 'Número de envio configurado. Confira a conta no WhatsApp antes de cada mensagem.'
+      : 'Informe seu número de WhatsApp Business acima, sem chave administrativa.';
     renderResumo();
     listarCampanhas();
-    mostrarApp();
+  }
+
+  async function salvarRemetente() {
+    const botao=$('saveSender');
+    botao.disabled=true;
+    try {
+      const dados=await api('/api/local/campanhas/remetente','POST',{
+        telefone:$('senderPhone').value.trim(),
+      });
+      $('senderPhone').value=dados.remetente ? '+'+dados.remetente : '';
+      $('senderStatus').textContent=dados.remetente
+        ? 'Número de envio salvo. Confira a conta no WhatsApp antes de cada mensagem.'
+        : 'Número de envio removido.';
+      if(state.atual) {
+        state.atual.remetenteConfigurado=Boolean(dados.remetente);
+        renderFila();
+      }
+      $('senderSetup').open=false;
+      flash('Configuração salva neste computador. Nenhuma mensagem foi enviada.');
+    } catch(erro) { flash(erro.message,true); }
+    finally { botao.disabled=false; }
   }
 
   function limparImportacao() {
@@ -256,7 +273,7 @@
     if(!$('campaignText').value.trim())return;
     $('createCampaign').disabled=true;
     try {
-      const dados=await api('/api/admin/campanhas','POST',{
+      const dados=await api('/api/local/campanhas','POST',{
         nome:$('campaignName').value.trim(),grupo:$('campaignGroup').value.trim(),
         modelo:$('campaignText').value.trim(),
         contatoIds:state.aptos.map(c=>c.id),
@@ -285,7 +302,7 @@
     $('queueSection').hidden=false;
     $('queueNotice').textContent=c.remetenteConfigurado ?
       'Abra uma conversa por vez no WhatsApp Business configurado. Depois de enviar, registre manualmente o resultado.' :
-      'Configure seu segundo WhatsApp em Contatos e permissões antes de registrar envios. Abrir conversa não significa enviar.';
+      'Configure o número de envio na seção Criar mensagem, acima. Abrir conversa não significa enviar.';
     const query=$('queueSearch').value.trim().toLowerCase();
     const filtrados=c.itens.filter(item=>
       [item.nome,item.telefoneMascarado,item.status].some(v=>
@@ -317,7 +334,7 @@
 
   async function abrirCampanha(id) {
     try {
-      const detalhe=await api('/api/admin/campanhas/detalhe?id='+encodeURIComponent(id));
+      const detalhe=await api('/api/local/campanhas/detalhe?id='+encodeURIComponent(id));
       state.atual=detalhe.campanha;
       renderFila();
       $('queueSection').scrollIntoView({behavior:'smooth',block:'start'});
@@ -327,7 +344,7 @@
   async function preparar(id) {
     if(!state.atual)return;
     try{
-      const resp=await api('/api/admin/campanhas/preparar','POST',{
+      const resp=await api('/api/local/campanhas/preparar','POST',{
         campanhaId:state.atual.id,contatoId:id,
       });
       state.previa={...resp.mensagem,contatoId:id};
@@ -346,7 +363,7 @@
     const id=state.atual?.id;
     $('recordSent').disabled=true;
     try {
-      await api('/api/admin/campanhas/registrar','POST',{
+      await api('/api/local/campanhas/registrar','POST',{
         campanhaId:id,contatoId:state.previa.contatoId,enviado:true,
       });
       $('sendDialog').close();
@@ -360,7 +377,7 @@
     if(!state.atual || !confirm('Ignorar este contato nesta campanha?'))return;
     const campanhaId=state.atual.id;
     try{
-      await api('/api/admin/campanhas/ignorar','POST',{campanhaId,contatoId:id});
+      await api('/api/local/campanhas/ignorar','POST',{campanhaId,contatoId:id});
       await Promise.all([abrirCampanha(campanhaId),carregarCampanhas()]);
     }catch(erro){flash(erro.message,true);}
   }
@@ -368,7 +385,7 @@
   async function descadastrar(item) {
     if(!confirm('Registrar descadastro definitivo deste contato? Ele ficará impedido de receber novas mensagens.'))return;
     try {
-      await api('/api/admin/descadastrar','POST',{id:item.id});
+      await api('/api/local/campanhas/descadastrar','POST',{id:item.id});
       await carregar();
       if(state.atual)await abrirCampanha(state.atual.id);
       flash('Descadastro registrado. Contato bloqueado para novas mensagens.');
@@ -395,18 +412,7 @@
     setTimeout(()=>URL.revokeObjectURL(url),1500);
   }
 
-  $('loginForm').addEventListener('submit',async evento=>{
-    evento.preventDefault();
-    try {
-      await api('/api/admin/login','POST',{chave:$('adminKey').value});
-      $('adminKey').value='';
-      await carregar();
-    }catch(erro){flash(erro.message,true);}
-  });
-  $('logout').addEventListener('click',async()=>{
-    try{await api('/api/admin/logout','POST',{});}catch{}
-    state.autorizados=[];limparImportacao();state.atual=null;mostrarLogin();
-  });
+  $('saveSender').addEventListener('click',salvarRemetente);
   $('importFile').addEventListener('change',importarArquivo);
   $('clearImport').addEventListener('click',limparImportacao);
   $('campaignName').addEventListener('input',atualizarPreview);
@@ -430,5 +436,9 @@
     $('sendDialog').close();state.previa=null;
   });
 
-  carregar().catch(erro=>{mostrarLogin();if(!/Entre com a chave/.test(erro.message))flash(erro.message,true);});
+  carregar().catch(erro=>{
+    $('campaignsList').replaceChildren(elemento('div','empty',
+      'Não foi possível carregar as campanhas locais. Verifique se o servidor está aberto.'));
+    flash(erro.message,true);
+  });
 })();

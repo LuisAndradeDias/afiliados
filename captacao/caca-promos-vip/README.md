@@ -8,9 +8,9 @@ Aplicativo independente do robô principal Afiliados. Permite **divulgar um conv
 
 A pasta [`extensao-lateral`](extensao-lateral/README.md) contém o leitor do popup **Pesquisar membros** do WhatsApp Web. Por clique do operador, o painel copia apenas os textos visíveis do popup, oferece revisão e exporta um CSV. Não percorre automaticamente toda a lista nem envia mensagens.
 
-## Painel de Campanhas — Primeira versão
+## Painel de Campanhas — Acesso local sem chave
 
-Acesse **`http://127.0.0.1:3045/campanhas` no ACER**. Ele utiliza a mesma chave administrativa da Central. No computador Luis, após futura atualização, será `http://127.0.0.1:3040/campanhas`.
+Acesse **`http://127.0.0.1:3045/campanhas` no ACER**. O painel de campanhas agora **abre diretamente, sem senha, login ou chave administrativa**. O acesso sem autenticação fica restrito ao processo que atende em `127.0.0.1`, no próprio computador; requisições externas e origens diferentes são bloqueadas. No computador Luis, após futura atualização local, será `http://127.0.0.1:3040/campanhas`. **A Central de Contatos `/painel` continua protegida.**
 
 O fluxo é:
 1. Importe o CSV `nome;telefone` exportado pela extensão (até 110 KB / 1.500 linhas).
@@ -21,7 +21,7 @@ O fluxo é:
 6. Revogue permissão de quem solicitar saída. O sistema impede preparar novas mensagens para contatos descadastrados.
 7. Exporte um relatório CSV de andamento da campanha, sem os números completos.
 
-Os registros persistentes de campanhas guardam referências aos contatos por ID, não uma cópia dos números importados, em `dados/campanhas-manuais.json`. Nenhum CSV é enviado a serviços externos. Configure o segundo WhatsApp no CRM antes de registrar envios.
+Os registros persistentes de campanhas guardam referências aos contatos por ID, não uma cópia dos números importados, em `dados/campanhas-manuais.json`. Nenhum CSV é enviado a serviços externos. O número do WhatsApp de envio pode ser configurado na própria página de campanhas, sem chave. A validação do consentimento para mensagens continua vindo do CRM.
 
 **Importante:** o cadastro de coleta não equivale a consentimento de mensagens; o painel não transforma essa permissão automaticamente. Para automação futura, será necessária integração oficial WhatsApp Business Platform e opt-in específico.
 

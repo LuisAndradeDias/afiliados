@@ -152,6 +152,22 @@ export function criarPiloto({
     return true;
   }
 
+  // Painel SEM senha somente no próprio computador. Em instalações públicas,
+  // em outras interfaces de rede ou com Host adulterado, o acesso é negado.
+  // POST exige Origin idêntica e cabeçalho não-simples contra CSRF.
+  function acessoCampanhasLocais(req, alteracao = false) {
+    const escuta = servidor.address();
+    if (!escuta || typeof escuta === 'string' || escuta.address !== '127.0.0.1' ||
+        req.socket.remoteAddress !== '127.0.0.1' ||
+        req.socket.localAddress !== '127.0.0.1' ||
+        req.headers.host !== '127.0.0.1:' + escuta.port) return false;
+    const site = req.headers['sec-fetch-site'];
+    if (site && site !== 'same-origin' && site !== 'none') return false;
+    if (!alteracao) return true;
+    return req.headers.origin === 'http://127.0.0.1:' + escuta.port &&
+      req.headers['x-cpv-local'] === '1';
+  }
+
   const servidor = createServer(async (req, res) => {
     try {
       const endereco = new URL(req.url ?? '/', 'http://localhost');
@@ -192,7 +208,11 @@ export function criarPiloto({
       }
 
       if (pathname === '/painel' && leitura) return codigoHtml(res, 200, renderPainelCrm());
-      if (pathname === '/campanhas' && leitura) return codigoHtml(res, 200, renderCampanhas());
+      if (pathname === '/campanhas' && leitura) {
+        if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
+          'Painel de campanhas disponível somente no computador local, via 127.0.0.1.');
+        return codigoHtml(res, 200, renderCampanhas());
+      }
       if (pathname === '/sair' && leitura) return codigoHtml(res, 200, renderDescadastro());
 
       if (pathname === '/api/cadastro' && method === 'POST') {
@@ -219,6 +239,70 @@ export function criarPiloto({
         return contatos.descadastrarPorToken(entrada.token)
           ? json(res, 200, { ok: true })
           : json(res, 404, { ok: false, mensagem: 'Link de descadastro não encontrado.' });
+      }
+
+      // As campanhas têm um fluxo local sem senha; o CRM administrativo e
+      // suas demais APIs continuam exigindo autenticação como antes.
+      if (pathname === '/api/local/campanhas' ||
+          pathname.startsWith('/api/local/campanhas/')) {
+        if (!acessoCampanhasLocais(req, method === 'POST')) {
+          return json(res, 403, { ok: false,
+            mensagem: 'Operação permitida somente neste computador e nesta página local.' });
+        }
+        if (pathname === '/api/local/campanhas' && leitura) {
+          return json(res, 200, { ok: true, campanhas: campanhas.listar() });
+        }
+        if (pathname === '/api/local/campanhas/destinatarios' && leitura) {
+          return json(res, 200, { ok: true, destinatarios: campanhas.destinatarios() });
+        }
+        if (pathname === '/api/local/campanhas/configuracao' && leitura) {
+          const resumo = contatos.resumo();
+          return json(res, 200, { ok: true, remetente: resumo.remetente,
+            remetenteConfigurado: resumo.remetenteConfigurado });
+        }
+        if (pathname === '/api/local/campanhas/detalhe' && leitura) {
+          try {
+            return json(res, 200, { ok: true, campanha: campanhas.obter(endereco.searchParams.get('id')) });
+          } catch (erro) { return json(res, 404, { ok: false, mensagem: erro.message }); }
+        }
+        if (method !== 'POST') return json(res, 405, {
+          ok: false, mensagem: 'Método não permitido para campanhas.' });
+        if (!limitar(req, 'campanhas-locais', 4500)) {
+          return json(res, 429, { ok: false, mensagem: 'Limite de operações locais atingido.' });
+        }
+        let dados;
+        try {
+          dados = await corpoJson(req, pathname === '/api/local/campanhas' ? 90_000 : 4096);
+        } catch {
+          return json(res, 400, { ok: false, mensagem: 'Dados inválidos para campanhas.' });
+        }
+        try {
+          if (pathname === '/api/local/campanhas') {
+            if (!limitar(req, 'campanhas-locais-criar', 30)) {
+              return json(res, 429, { ok: false, mensagem: 'Limite de criação de campanhas atingido.' });
+            }
+            return json(res, 200, { ok: true, campanha: campanhas.criar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/remetente') {
+            return json(res, 200, { ok: true,
+              remetente: contatos.configurarRemetente(dados.telefone) });
+          }
+          if (pathname === '/api/local/campanhas/preparar') {
+            return json(res, 200, { ok: true, mensagem: campanhas.prepararMensagem(dados) });
+          }
+          if (pathname === '/api/local/campanhas/registrar') {
+            return json(res, 200, { ok: true, resultado: campanhas.registrar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/ignorar') {
+            return json(res, 200, { ok: true, resultado: campanhas.ignorar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/descadastrar') {
+            return json(res, 200, { ok: contatos.descadastrarPorId(dados.id) });
+          }
+        } catch (erro) {
+          return json(res, 409, { ok: false, mensagem: erro.message });
+        }
+        return json(res, 404, { ok: false, mensagem: 'Ação de campanha inexistente.' });
       }
 
       if (pathname === '/api/admin/login' && method === 'POST') {

@@ -30,7 +30,7 @@ test('painel de campanhas requer administrador e só permite fila com opt-in', a
   assert.match(html,/id="createCampaign"/);
   const javascript=await fetch(url+'/assets/campanhas.js');
   assert.equal(javascript.status,200);
-  assert.match(await javascript.text(),/api\/admin\/campanhas\/preparar/);
+  assert.match(await javascript.text(),/api\/local\/campanhas\/preparar/);
 
   assert.equal((await req('/api/admin/campanhas')).status,401);
   assert.equal((await req('/api/admin/campanhas',{nome:'Nao permitido'})).status,401);

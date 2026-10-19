@@ -42,6 +42,10 @@ footer{margin-top:40px;text-align:center;color:var(--soft);font-size:11px}
 .dialog::backdrop{background:#000b}.dialog h2{font-size:23px;margin:0 0 8px}.dialog p{font-size:12px;color:var(--soft)}
 .dialog textarea{min-height:160px}.consent-line{display:flex;align-items:flex-start;gap:10px;margin:13px 0;font-size:12px}
 .consent-line input{width:18px;height:18px;flex:none;accent-color:var(--mint);margin:0}
+.sender-setup{margin:18px 0 10px;padding:12px;border:1px solid var(--stroke);border-radius:12px;background:#0a313a}
+.sender-setup summary{cursor:pointer;color:var(--mint);font-weight:750;font-size:12px}
+.sender-setup[open] summary{margin-bottom:13px}
+#senderStatus{font-size:11px;margin:4px 0 13px;line-height:1.45}
 @media(max-width:900px){.stage-grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:580px){.wrap{padding:0 15px 40px}.top-actions{gap:8px}.brand-name{font-size:12px}.hero{align-items:start;flex-direction:column}.card{padding:17px}.metrics{gap:8px}.metric{padding:13px}.metric b{font-size:25px}.list-row{padding:14px;align-items:flex-start;flex-direction:column}.toolbar input{max-width:100%}.dialog{padding:17px}}
 `;
@@ -59,25 +63,14 @@ export function renderCampanhas() {
 <header>
   <div class="brand"><span class="brand-mark">CP</span><div><div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div><small>CENTRAL DE CAMPANHAS</small></div></div>
   <nav class="top-actions" aria-label="Navegação">
-    <a href="/painel">Contatos e permissões</a>
+    <a href="/painel" title="A Central de Contatos mantém seu próprio acesso protegido">Cadastro de contatos ↗</a>
     <a href="/campanhas" aria-current="page">Campanhas</a>
-    <button type="button" id="logout">Sair</button>
+    <span class="sticker">Uso local · sem login</span>
   </nav>
 </header>
 <div id="feedback" class="toast" role="status" aria-live="polite" hidden></div>
 
-<section id="loginView" class="login surface">
-  <span class="eyebrow">Acesso administrativo</span>
-  <h1>Seu painel de <span class="good">mensagens.</span></h1>
-  <p>Entre com a mesma chave administrativa da Central de Captação. Seus dados ficam nesta instalação.</p>
-  <form id="loginForm" autocomplete="off">
-    <label for="adminKey">Chave de acesso</label>
-    <input id="adminKey" type="password" autocomplete="off" required placeholder="Cole a chave administrativa">
-    <button class="primary" type="submit" style="width:100%">Entrar no painel</button>
-  </form>
-</section>
-
-<main id="appView" hidden>
+<main id="appView">
   <section class="hero">
     <div><div class="eyebrow">Campanhas supervisionadas · Nova fase</div>
       <h1>Mensagens com <em>controle.</em></h1>
@@ -121,6 +114,16 @@ export function renderCampanhas() {
       </div>
       <label>Prévia da mensagem</label>
       <div class="preview" id="messagePreview">Sua mensagem personalizada aparecerá aqui.</div>
+      <details class="sender-setup" id="senderSetup">
+        <summary>Configurar número do WhatsApp de envio (uma vez)</summary>
+        <div class="field">
+          <label for="senderPhone">Seu número do WhatsApp Business</label>
+          <input id="senderPhone" type="tel" maxlength="25" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999">
+          <small>Usado apenas para o registro de envios manuais. Confira a conta antes de mandar cada mensagem.</small>
+        </div>
+        <button id="saveSender" type="button" class="secondary">Salvar número de envio</button>
+      </details>
+      <p id="senderStatus" class="muted" aria-live="polite">Verificando número de envio...</p>
       <div class="row-actions"><button id="createCampaign" type="button" class="primary" disabled>Criar fila de envios autorizados</button></div>
       <p style="margin:13px 0 0">Nenhuma mensagem é enviada ao criar a campanha.</p>
     </article>
@@ -130,7 +133,7 @@ export function renderCampanhas() {
     <h2>Campanhas salvas</h2>
     <button id="reloadCampaigns" type="button" class="quiet">Atualizar lista</button>
   </section>
-  <div class="ledger surface" id="campaignsList"><div class="empty">Entre para visualizar suas campanhas.</div></div>
+  <div class="ledger surface" id="campaignsList"><div class="empty">Carregando campanhas locais...</div></div>
 
   <section id="queueSection" hidden>
     <div class="section-header">

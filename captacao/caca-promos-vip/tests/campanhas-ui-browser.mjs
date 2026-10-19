@@ -18,6 +18,8 @@ test('fluxo no Chrome: planilha, campanha, prévia, confirmação, relatório',a
     telefone:'11988887777',origem:'origem-teste',consentimento:true});
   const autorizado=app.contatos.listar().find(c=>c.telefone==='5511988887777');
   app.contatos.confirmar({id:autorizado.id,codigo:reg.codigo,evidencia:'mensagem-recebida'});
+  // Testa o ajuste do número pelo painel sem exigir chave de acesso.
+  app.contatos.configurarRemetente('');
   app.contatos.cadastrar({nome:'Contato Sem Optin',telefone:'21999997777',
     origem:'origem-teste',consentimento:true});
 
@@ -27,11 +29,15 @@ test('fluxo no Chrome: planilha, campanha, prévia, confirmação, relatório',a
   const page=await browser.newPage({viewport:{width:1280,height:900},acceptDownloads:true});
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  page.on('console',msg=>{if(msg.type()==='error' && !msg.text().includes('401 (Unauthorized)'))errors.push(msg.text());});
+  page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
   await page.goto(app.base+'/campanhas',{waitUntil:'domcontentloaded'});
-  await page.locator('#adminKey').fill(app.chave);
-  await page.locator('#loginForm button[type=submit]').click();
+  assert.equal(await page.locator('#adminKey').count(),0,'Painel não deve pedir chave');
+  assert.equal(await page.locator('#loginForm').count(),0,'Formulário de login foi removido');
   await page.locator('#appView').waitFor({state:'visible',timeout:10000});
+  await page.locator('#senderPhone').fill('11999998888');
+  await page.locator('#saveSender').click();
+  await page.waitForFunction(()=>document.querySelector('#senderStatus')
+    .textContent.includes('Número de envio salvo'));
   await page.locator('#importFile').setInputFiles({
     name:'planilha-contatos.csv',mimeType:'text/csv',
     buffer:Buffer.from('\ufeffnome;telefone\n"Ana de Exemplo";"+55 (11) 98888-7777"\n"Contato Sem Optin";"55 21 99999-7777"\n"Duplicado";"11988887777"','utf8'),
