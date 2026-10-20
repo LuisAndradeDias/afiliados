@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { contatoComConsentimento } from './contatos.mjs';
 import {
   montarModeloMeta, montarConviteMeta, consultarModeloMeta,
   enviarConviteMeta, responderLinkMeta, validarTextoModelo,
@@ -105,9 +106,7 @@ export function iniciarConvitesUnicos({
 
   function contatoMap() {return new Map(contatos.listar().map(c=>[c.id,c]));}
   function elegivel(c) {
-    return Boolean(c && c.status==='ativo' && c.consentimentoConfirmadoEm &&
-      c.evidencia==='checkbox-e-mensagem-iniciada-pelo-titular' &&
-      !c.descadastroEm && !bloqueios.estaBloqueado(c.telefone));
+    return contatoComConsentimento(c) && !bloqueios.estaBloqueado(c.telefone);
   }
   function pessoasElegiveis() {
     return contatos.listar().filter(elegivel).map(c=>({

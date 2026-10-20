@@ -37,20 +37,44 @@ O modo de conexão e o modo de envio compartilham uma trava de sessão local.
 ## Por que a fila pode ficar desabilitada?
 
 Conectar o WhatsApp Web **não ativa a fila de envio**. O botão
-**Criar fila para WhatsApp Web** só é habilitado quando um arquivo CSV
-foi importado **nesta aba do navegador** e pelo menos um telefone nele
-corresponde a um contato com consentimento comercial **confirmado**
-no cadastro do painel. A planilha é processada apenas no navegador;
-ao atualizar a página, importe-a novamente.
+**Criar fila para WhatsApp Web** será habilitado quando houver um CSV
+importado **nesta aba** e pelo menos um telefone estiver registrado
+como autorizado.
 
-Se não houver nenhum cadastro confirmado, o painel mostra uma explicação
-junto ao botão. A pessoa deve se inscrever voluntariamente pelo fluxo
-`/c/<origem>` e confirmar a solicitação enviando a mensagem de código
-`QUERO VIP` pelo seu próprio WhatsApp. Sem essa confirmação o contato
-permanece `pendente` e o envio não é liberado. Os dados ficam na
-pasta privada `dados/` da instalação escolhida — as portas 3040 e
-3045 possuem bases independentes. **Não copie a lista de participantes
-de grupos para a base de opt-in sem consentimento expresso.**
+### Planilha com autorização obtida anteriormente
+
+Para listas de pessoas que **já autorizaram expressamente convites
+comerciais**, não é necessário solicitar novo cadastro por QR Code nem
+exigir que cada pessoa envie `QUERO VIP`.
+
+1. Selecione o arquivo `nome;telefone`, que será lido no navegador.
+2. Em **Registrar autorização da sua planilha**, informe **onde** a
+   autorização foi obtida, **a data verdadeira** e uma **referência
+   onde o aceite pode ser comprovado**.
+3. Marque a declaração de que cada pessoa da planilha já autorizou o
+   recebimento **dessas mensagens promocionais individuais**.
+4. Clique em **Registrar autorizações da planilha**. Contatos aceitos
+   são gravados somente no servidor local, identificados com
+   `autorizacao-externa-declarada-com-origem-e-data`, sem simular
+   uma confirmação do próprio destinatário pelo sistema.
+5. Os números autorizados são liberados para criar a fila. Bloqueados
+   ou descadastrados **não são reativados**, mesmo após reimportação.
+
+A declaração do operador é um **registro da informação fornecida**,
+não uma prova independente do consentimento. Guarde as evidências reais.
+Não invente uma data comum para autorizações recebidas em dias
+diferentes: divida a planilha em lotes por data, se necessário.
+
+Quem ainda não autorizou pode se inscrever pelo fluxo voluntário
+`/c/<origem>` e confirmar o pedido pelo próprio WhatsApp.
+Só participar de um grupo, aparecer numa planilha ou fornecer o
+telefone não constitui autorização para publicidade.
+
+Os contatos aprovados são gravados em `dados/contatos-autorizados.json`
+na instalação local; as portas 3040 e 3045 possuem bases privadas
+separadas. O CSV permanece no navegador até a confirmação. Nenhum
+arquivo de contatos é publicado no GitHub. Reimporte o CSV após
+recarregar a página para fazer outra campanha.
 
 ## Fluxo de envio pelo WhatsApp Web
 

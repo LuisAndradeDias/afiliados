@@ -120,7 +120,7 @@ export function renderCampanhas() {
   <section class="metrics" aria-label="Resumo">
     <div class="metric"><small>Números na planilha</small><b id="metricImported">0</b></div>
     <div class="metric"><small>Aptos a receber</small><b id="metricEligible">0</b></div>
-    <div class="metric"><small>Sem opt-in confirmado</small><b id="metricBlocked">0</b></div>
+    <div class="metric"><small>Fora da fila / bloqueados</small><b id="metricBlocked">0</b></div>
     <div class="metric"><small>Filas de convites</small><b id="metricQueues">0</b></div>
   </section>
 
@@ -334,14 +334,39 @@ export function renderCampanhas() {
   <section class="import-only">
     <article class="card surface" id="importStage">
       <h2><span class="step">1</span>Importar a planilha</h2>
-      <p>Selecione o CSV exportado pela extensão. Ele será lido apenas no navegador e cruzado com as autorizações existentes nesta Central.</p>
+      <p>Selecione o CSV de contatos que já autorizaram receber convites do Caça Promos VIP. Primeiro ele é lido no navegador. Ao confirmar as autorizações, os contatos serão salvos somente no servidor local.</p>
       <label class="upload"><strong>Selecionar arquivo CSV ou TXT</strong><small>Até 110 KB / 1.500 linhas • nome;telefone</small>
         <input id="importFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" aria-label="Selecionar CSV">
       </label>
       <div id="importInfo" class="counts" aria-live="polite">
         <span class="counter">Nenhum arquivo selecionado</span>
       </div>
-      <div class="hint"><strong>Importante:</strong> participar do grupo ou ter autorizado o registro do telefone não autoriza mensagens comerciais. Apenas contatos que já confirmaram esse consentimento estarão na fila.</div>
+      <div class="connection-box" aria-labelledby="importConsentTitle">
+        <span class="eyebrow">Contatos que autorizaram antes da importação</span>
+        <h3 id="importConsentTitle">Registrar autorização da sua planilha</h3>
+        <p class="muted">Se essas pessoas já permitiram o envio de promoções e convites, informe onde e quando isso ocorreu. Não é necessário repetir o cadastro por QR Code ou enviar QUERO VIP.</p>
+        <div class="field">
+          <label for="consentOrigin">Onde os contatos autorizaram?</label>
+          <input id="consentOrigin" maxlength="140" placeholder="Ex.: conversa individual no WhatsApp">
+        </div>
+        <div class="field">
+          <label for="consentDate">Data da autorização</label>
+          <input id="consentDate" type="date">
+        </div>
+        <div class="field">
+          <label for="consentReference">Referência do consentimento</label>
+          <input id="consentReference" maxlength="240" placeholder="Ex.: mensagens de aceite registradas no WhatsApp">
+        </div>
+        <label class="consent-line">
+          <input type="checkbox" id="consentDeclaration">
+          <span>Confirmo que <strong>cada contato deste CSV autorizou mensagens promocionais e convites individuais</strong>, e que posso demonstrar essa autorização caso necessário.</span>
+        </label>
+        <div class="row-actions">
+          <button type="button" id="confirmConsentImport" class="primary" disabled>Registrar autorizações da planilha</button>
+        </div>
+        <p class="muted" id="consentImportResult" role="status" aria-live="polite">A confirmação não envia mensagens. Contatos que solicitaram SAIR ou foram bloqueados não serão reativados.</p>
+      </div>
+      <div class="hint"><strong>Importante:</strong> participar de um grupo ou aparecer numa planilha não comprova consentimento. Registre somente pessoas que aceitaram receber esses convites; números descadastrados ou denunciados continuam excluídos.</div>
       <div class="row-actions">
         <span class="muted" style="font-size:12px">Contatos sem autorização de mensagens não entram na fila.</span>
         <button id="clearImport" type="button" class="quiet">Limpar planilha</button>

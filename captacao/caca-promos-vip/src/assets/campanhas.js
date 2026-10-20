@@ -4,7 +4,7 @@
   const state = { autorizados:[], importados:[], aptos:[], bloqueados:[],
     cloudMetaReady:false,cloudModeloAprovado:false,cloudQueue:null,cloudModel:null,
     manualQueue:null,manualConversa:null,chromeTimer:null,chromeFase:'inativo',
-    conexaoTimer:null,conexaoAtiva:false };
+    conexaoTimer:null,conexaoAtiva:false,importandoAutorizacoes:false };
   const linhasMaximas = 1500;
   const tamanhoMaximo = 110000;
 
@@ -148,6 +148,7 @@
       el.append(chip);
     }
     atualizarAptosCloud();
+    atualizarFormularioConsentimento();
   }
 
   function elemento(tag,classe,texto) {
@@ -226,13 +227,14 @@
       motivo='Há '+state.autorizados.length+' contato(s) autorizado(s), mas '+
         'nenhuma planilha foi importada nesta aba. Selecione seu CSV em Importar planilha.';
     }else if(!state.autorizados.length){
-      motivo='A planilha tem '+state.importados.length+' número(s), mas nenhum '+
-        'contato com autorização confirmada no cadastro. Números de grupos ou '+
-        'planilhas, por si só, não habilitam o envio.';
+      motivo='A planilha tem '+state.importados.length+' número(s), mas ainda '+
+        'não há autorizações registradas. Se todos já autorizaram convites, '+
+        'preencha a origem, a data e a referência na seção Importar planilha e '+
+        'clique em Registrar autorizações da planilha.';
     }else{
       motivo='Nenhum telefone importado corresponde aos '+state.autorizados.length+
-        ' contato(s) autorizados no cadastro. Confira o DDD, o número e '+
-        'a confirmação voluntária antes de criar a fila.';
+        ' contato(s) previamente autorizados. Confira o DDD ou, se esta '+
+        'planilha também já possui autorização documentada, registre-a no formulário abaixo.';
     }
     $('manualQueueRequirement').textContent=motivo;
     $('createManualQueue').title=state.aptos.length
@@ -845,9 +847,69 @@
       carregarConexaoWhatsapp(),carregarDenuncias()]);
   }
 
+  function atualizarFormularioConsentimento() {
+    const valido=state.importados.length>0 &&
+      $('consentDeclaration').checked &&
+      $('consentOrigin').value.trim().length>=6 &&
+      $('consentReference').value.trim().length>=8 &&
+      /^20\d{2}-\d{2}-\d{2}$/.test($('consentDate').value);
+    $('confirmConsentImport').disabled=state.importandoAutorizacoes || !valido;
+  }
+
+  async function registrarImportacaoConsentida() {
+    atualizarFormularioConsentimento();
+    if ($('confirmConsentImport').disabled || !state.importados.length) return;
+    state.importandoAutorizacoes=true;
+    atualizarFormularioConsentimento();
+    const totais={importados:0,atualizados:0,jaRegistrados:0,
+      bloqueados:0,invalidos:0,duplicados:0};
+    const origemAutorizacao=$('consentOrigin').value.trim();
+    const referenciaAutorizacao=$('consentReference').value.trim();
+    const dataAutorizacao=$('consentDate').value;
+    const pessoas=[...state.importados];
+    try{
+      for(let i=0;i<pessoas.length;i+=60){
+        const parte=pessoas.slice(i,i+60);
+        const {resultado}=await api('/api/local/campanhas/importar-autorizados','POST',{
+          pessoas:parte,origemAutorizacao,referenciaAutorizacao,
+          dataAutorizacao,declaracao:true,
+        });
+        for(const key of Object.keys(totais))totais[key]+=resultado[key]||0;
+        $('consentImportResult').textContent='Registrando autorizações: '+
+          Math.min(i+parte.length,pessoas.length)+' de '+pessoas.length+
+          '. Nenhuma mensagem foi enviada.';
+      }
+      const resp=await api('/api/local/campanhas/destinatarios');
+      state.autorizados=resp.destinatarios;
+      renderResumo();
+      $('consentImportResult').textContent=
+        'Autorizados registrados: '+(totais.importados+totais.atualizados)+
+        '. Já registrados: '+totais.jaRegistrados+
+        '. Bloqueados/descadastrados: '+totais.bloqueados+
+        '. Contatos liberados desta planilha: '+state.aptos.length+
+        '. Clique em Criar fila para WhatsApp Web quando desejar.';
+      flash('Planilha registrada com consentimento declarado e histórico local. '+
+        'Nenhuma mensagem foi enviada.');
+      $('consentDeclaration').checked=false;
+    }catch(erro){
+      // Lotes já confirmados ficam gravados. Uma nova tentativa pode
+      // continuar sem duplicar pessoas, preservando os bloqueios.
+      const atualizado=await api('/api/local/campanhas/destinatarios').catch(()=>null);
+      if(atualizado){state.autorizados=atualizado.destinatarios;renderResumo();}
+      $('consentImportResult').textContent='A importação não terminou: '+
+        erro.message+'; confira os registros e tente novamente.';
+      flash(erro.message,true);
+    }finally{
+      state.importandoAutorizacoes=false;
+      atualizarFormularioConsentimento();
+    }
+  }
+
   function limparImportacao() {
     state.importados=[];
     $('importFile').value='';
+    $('consentDeclaration').checked=false;
+    $('consentImportResult').textContent='Nenhum arquivo selecionado. Registre apenas autorizações que realmente ocorreram.';
     renderResumo();
     $('importInfo').replaceChildren(elemento('span','counter','Nenhum arquivo selecionado'));
   }
@@ -861,6 +923,8 @@
     try {
       const dados=lerLista(await file.text());
       state.importados=dados.contatos;
+      $('consentDeclaration').checked=false;
+      $('consentImportResult').textContent='Planilha selecionada. Informe a origem e a data das autorizações, marque a declaração e clique em Registrar autorizações da planilha.';
       renderResumo();
       flash('Planilha carregada: '+dados.contatos.length+' telefones distintos. '+
         dados.duplicados+' duplicados e '+dados.invalidos+' linhas inválidas.');
@@ -919,6 +983,11 @@
   });
   $('importFile').addEventListener('change',importarArquivo);
   $('clearImport').addEventListener('click',limparImportacao);
+  $('confirmConsentImport').addEventListener('click',registrarImportacaoConsentida);
+  for(const campo of ['consentOrigin','consentReference','consentDate','consentDeclaration']){
+    $(campo).addEventListener('input',atualizarFormularioConsentimento);
+    $(campo).addEventListener('change',atualizarFormularioConsentimento);
+  }
   $('reloadMeta').addEventListener('click',()=>Promise.all([
     carregarMeta(),carregarDenuncias(),
   ]));

@@ -388,7 +388,9 @@ export function criarPiloto({
         }
         let dados;
         try {
-          dados = await corpoJson(req, pathname === '/api/local/campanhas' ? 90_000 : 4096);
+          dados = await corpoJson(req, pathname === '/api/local/campanhas'
+            ? 90_000 : pathname === '/api/local/campanhas/importar-autorizados'
+              ? 24_000 : 4096);
         } catch {
           return json(res, 400, { ok: false, mensagem: 'Dados inválidos para campanhas.' });
         }
@@ -398,6 +400,18 @@ export function criarPiloto({
               return json(res, 429, { ok: false, mensagem: 'Limite de criação de campanhas atingido.' });
             }
             return json(res, 200, { ok: true, campanha: campanhas.criar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/importar-autorizados') {
+            if (!limitar(req,'campanhas-importar-consentimento',50)) {
+              return json(res,429,{ok:false,
+                mensagem:'Muitos lotes importados nesta hora. Aguarde para continuar.'});
+            }
+            // Apenas contatos que o operador declara ter autorizado a publicidade.
+            // A origem e a data ficam documentadas e SAIR/denuncia nunca e reativado.
+            return json(res,200,{ok:true,
+              resultado:contatos.importarConsentimentosExternos({
+                ...dados,verificarBloqueio:telefone=>denuncias.estaBloqueado(telefone),
+              })});
           }
           if (pathname === '/api/local/campanhas/convite/modelo') {
             return json(res, 200, {ok:true,

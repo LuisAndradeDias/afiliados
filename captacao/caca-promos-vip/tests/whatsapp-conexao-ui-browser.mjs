@@ -51,7 +51,7 @@ test('painel abre conexão, reconhece QR/conversas e fecha sem mensagens reais',
     ?.textContent==='1');
   assert.equal(await page.locator('#createManualQueue').isDisabled(),true);
   assert.match(await page.locator('#manualQueueRequirement').innerText(),
-    /nenhum contato com autorização confirmada/);
+    /ainda não há autorizações registradas/);
   assert.equal(await page.locator('#whatsappConnectClose').isDisabled(),true);
   assert.equal(await page.locator('#whatsappConnectOpen').isEnabled(),true);
   await page.locator('#whatsappConnectOpen').click();

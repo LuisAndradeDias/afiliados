@@ -4,6 +4,18 @@ import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { normalizarOrigem } from './analytics.mjs';
 
 export const VERSAO_TERMO = '2026-10-13-v1';
+export const EVIDENCIA_IMPORTADA = 'autorizacao-externa-declarada-com-origem-e-data';
+
+export function contatoComConsentimento(contato) {
+  if (!contato || contato.status !== 'ativo' ||
+      !contato.consentimentoConfirmadoEm || contato.descadastroEm) return false;
+  if (contato.evidencia === 'checkbox-e-mensagem-iniciada-pelo-titular') return true;
+  return contato.evidencia === EVIDENCIA_IMPORTADA &&
+    Boolean(contato.registroAutorizacao?.origem &&
+      contato.registroAutorizacao?.dataAutorizacao &&
+      contato.registroAutorizacao?.referencia &&
+      contato.registroAutorizacao?.declaradoEm);
+}
 const LINK_GRUPO = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
 
 function agoraIso(agora) {
@@ -92,6 +104,92 @@ export function iniciarContatos(dataDir, agora = () => new Date()) {
       codigo: contato.codigoConfirmacao,
       remetente: dados.remetente,
     };
+  }
+
+  // Importa autorizacoes anteriores registradas pelo operador, sem fingir
+  // que houve uma mensagem QUERO VIP recebida pelo proprio sistema.
+  // Cada lote exige origem, referencia e data; descadastros nunca sao revertidos.
+  function importarConsentimentosExternos({
+    pessoas, origemAutorizacao, referenciaAutorizacao,
+    dataAutorizacao, declaracao, verificarBloqueio = () => false,
+  }) {
+    if (declaracao !== true) {
+      throw new Error('Confirme que cada pessoa da planilha autorizou receber convites comerciais.');
+    }
+    const origem = String(origemAutorizacao ?? '').trim();
+    const referencia = String(referenciaAutorizacao ?? '').trim();
+    const data = String(dataAutorizacao ?? '').trim();
+    if (origem.length < 6 || origem.length > 140 ||
+        referencia.length < 8 || referencia.length > 240 ||
+        /[\x00-\x1f<>]/.test(origem + referencia)) {
+      throw new Error('Informe onde a autorizacao ocorreu e a referencia do consentimento.');
+    }
+    if (!/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(data)) {
+      throw new Error('Informe a data real da autorizacao no formato AAAA-MM-DD.');
+    }
+    const instante = new Date(data + 'T12:00:00.000Z');
+    if (!Number.isFinite(instante.valueOf()) ||
+        instante.toISOString().slice(0, 10) !== data ||
+        instante.valueOf() > agora().valueOf() ||
+        instante.valueOf() < Date.UTC(2020, 0, 1)) {
+      throw new Error('A data da autorizacao nao pode ser invalida ou futura.');
+    }
+    if (!Array.isArray(pessoas) || !pessoas.length || pessoas.length > 75) {
+      throw new Error('Importe lotes de 1 a 75 contatos autorizados.');
+    }
+    const dados = ler();
+    const porNumero = new Map(dados.contatos.map(c => [c.telefone, c]));
+    const vistos = new Set();
+    const totais = {importados:0, atualizados:0, jaRegistrados:0,
+      bloqueados:0, invalidos:0, duplicados:0};
+    const referenciaRegistro = {
+      origem, referencia, dataAutorizacao:data,
+      declaradoEm:agoraIso(agora), tipo:'declaracao-do-operador',
+    };
+    for (const pessoa of pessoas) {
+      const numero = telefoneBrasil(pessoa?.telefone);
+      if (!numero) { totais.invalidos++; continue; }
+      if (vistos.has(numero)) { totais.duplicados++; continue; }
+      vistos.add(numero);
+      const anterior = porNumero.get(numero);
+      if (anterior?.status === 'descadastrado' ||
+          anterior?.descadastroEm || verificarBloqueio(numero)) {
+        totais.bloqueados++;
+        continue;
+      }
+      if (anterior && contatoComConsentimento(anterior)) {
+        totais.jaRegistrados++;
+        continue;
+      }
+      const nome = String(pessoa?.nome ?? '').trim().replace(/[<>\x00-\x1f]/g, ' ').slice(0, 80);
+      if (anterior) {
+        anterior.nome = anterior.nome || nome;
+        anterior.status = 'ativo';
+        anterior.consentimentoConfirmadoEm = instante.toISOString();
+        anterior.evidencia = EVIDENCIA_IMPORTADA;
+        anterior.registroAutorizacao = {...referenciaRegistro};
+        anterior.descadastroEm = null;
+        totais.atualizados++;
+      } else {
+        const novo = {
+          id:randomUUID(), nome, telefone:numero,
+          origem:'importacao-consentida', status:'ativo',
+          consentimentoDeclaradoEm:instante.toISOString(),
+          consentimentoConfirmadoEm:instante.toISOString(),
+          versaoTermo:'consentimento-externo-documentado-v1',
+          evidencia:EVIDENCIA_IMPORTADA,
+          registroAutorizacao:{...referenciaRegistro},
+          codigoConfirmacao:null,
+          tokenDescadastro:randomBytes(24).toString('hex'),
+          ultimoEnvioManualEm:null, descadastroEm:null,
+        };
+        dados.contatos.push(novo);
+        porNumero.set(numero, novo);
+        totais.importados++;
+      }
+    }
+    if (totais.importados || totais.atualizados) salvar(dados);
+    return {...totais, autorizadosNovos:totais.importados+totais.atualizados};
   }
 
   function resumo() {
@@ -233,5 +331,6 @@ export function iniciarContatos(dataDir, agora = () => new Date()) {
     ler, cadastrar, resumo, listar, configurarRemetente, confirmar,
     descadastrarPorId, descadastrarPorToken, prepararMensagem,
     marcarEnvioManual, excluirPorId, exportarCsv,
+    importarConsentimentosExternos,
   };
 }
