@@ -54,9 +54,12 @@ test('API exige admin e importa apenas números com autorização declarada por 
     const removido = await post(base, '/api/admin/importados/excluir', { id: corpo.contatos[0].id }, administrador);
     assert.equal(removido.status, 200);
     assert.equal((await (await fetch(base + '/api/admin/importados', { headers: { cookie } })).json()).total, 0);
-    const ui = await (await fetch(base + '/painel')).text();
-    assert.match(ui, /id="importCard"/);
-    assert.match((await (await fetch(base + '/assets/importacao.js')).text()), /importForm/);
+    const antiga = await fetch(base + '/painel', { redirect:'manual' });
+    assert.equal(antiga.status, 302);
+    assert.equal(antiga.headers.get('location'), '/campanhas');
+    assert.equal((await fetch(base + '/assets/importacao.js')).status, 404);
+    const novo = await (await fetch(base + '/campanhas')).text();
+    assert.match(novo, /id="importFile"/);
   } finally {
     if (servidor) await new Promise(resolve => servidor.close(resolve));
     rmSync(pasta, { recursive: true, force: true });

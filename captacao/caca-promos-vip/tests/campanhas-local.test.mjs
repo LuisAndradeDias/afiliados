@@ -33,7 +33,7 @@ test('campanhas abrem sem chave apenas no localhost, com protecao de origem',asy
   assert.equal(initial.status,200);
   assert.doesNotMatch(initial.body,/id="loginForm"|id="adminKey"/);
   assert.match(initial.body,/id="importFile"/);
-  assert.match(initial.body,/id="senderPhone"/);
+  assert.match(initial.body,/id="singleText"/);
   const endpoint=await req('/api/local/campanhas');
   assert.equal(endpoint.status,200);
   assert.deepEqual(endpoint.body.campanhas,[]);

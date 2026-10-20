@@ -70,6 +70,8 @@ footer{margin-top:40px;text-align:center;color:var(--soft);font-size:11px}
 .bubble-time{position:absolute;right:11px;bottom:5px;font-size:9px;color:#acccbf}
 .phone-choice{background:#103941;border:1px solid #3b6a73;border-radius:7px;color:#87eecb;padding:11px;text-align:center;font-size:12px;font-weight:800;margin-top:6px}
 .phone-note{color:var(--soft);font-size:10px;text-align:center;margin:11px 0 0!important}
+.import-only{display:block;margin-top:18px}
+.import-only .card{width:100%}
 .cloud-queues{display:grid;gap:9px}
 .cloud-queue-item{border:1px solid var(--stroke);background:#0d3340;padding:13px;border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .cloud-queue-item strong{display:block;font-size:13px}
@@ -93,7 +95,9 @@ export function renderCampanhas() {
 <header>
   <div class="brand"><span class="brand-mark">CP</span><div><div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div><small>CENTRAL DE CAMPANHAS</small></div></div>
   <nav class="top-actions" aria-label="Navegação">
-    <a href="/painel" title="A Central de Contatos mantém seu próprio acesso protegido">Cadastro de contatos ↗</a>
+    <a href="#metaStage">Convites</a>
+    <a href="#importStage">Planilha</a>
+    <a href="#complaintsDetail">Denúncias</a>
     <a href="/campanhas" aria-current="page">Campanhas</a>
     <span class="sticker">Uso local · sem login</span>
   </nav>
@@ -112,7 +116,7 @@ export function renderCampanhas() {
     <div class="metric"><small>Números na planilha</small><b id="metricImported">0</b></div>
     <div class="metric"><small>Aptos a receber</small><b id="metricEligible">0</b></div>
     <div class="metric"><small>Sem opt-in confirmado</small><b id="metricBlocked">0</b></div>
-    <div class="metric"><small>Registros manuais de envio</small><b id="metricSent">0</b></div>
+    <div class="metric"><small>Filas de convites</small><b id="metricQueues">0</b></div>
   </section>
 
   <section class="card surface" id="metaStage" aria-labelledby="metaTitle" style="margin-bottom:18px">
@@ -226,7 +230,7 @@ export function renderCampanhas() {
     <div id="cloudQueuePeople" class="ledger surface"></div>
   </section>
 
-  <section class="stage-grid">
+  <section class="import-only">
     <article class="card surface" id="importStage">
       <h2><span class="step">1</span>Importar a planilha</h2>
       <p>Selecione o CSV exportado pela extensão. Ele será lido apenas no navegador e cruzado com as autorizações existentes nesta Central.</p>
@@ -238,68 +242,15 @@ export function renderCampanhas() {
       </div>
       <div class="hint"><strong>Importante:</strong> participar do grupo ou ter autorizado o registro do telefone não autoriza mensagens comerciais. Apenas contatos que já confirmaram esse consentimento estarão na fila.</div>
       <div class="row-actions">
-        <a class="secondary" href="/painel#contactsCard">Ver autorizações</a>
+        <span class="muted" style="font-size:12px">Contatos sem autorização de mensagens não entram na fila.</span>
         <button id="clearImport" type="button" class="quiet">Limpar planilha</button>
       </div>
     </article>
 
-    <details class="legacy surface" id="manualLegacy">
-      <summary>Modo manual anterior (opcional) · wa.me</summary>
-      <article class="card" id="composeStage">
-      <h2><span class="step">2</span>Convite manual por conversa</h2>
-      <div class="field"><label for="campaignName">Nome da campanha</label><input id="campaignName" maxlength="90" placeholder="Ex.: Ofertas da semana"></div>
-      <div class="field"><label for="campaignGroup">Grupo ou origem</label><input id="campaignGroup" maxlength="90" placeholder="Ex.: Comunidade de promoções"></div>
-      <div class="field">
-        <label for="campaignText">Texto da mensagem</label>
-        <textarea id="campaignText" maxlength="1200" placeholder="Olá, {nome}! Temos novas ofertas no {grupo}. Quer receber novidades?"></textarea>
-        <small class="muted">Variáveis permitidas: <strong>{nome}</strong> e <strong>{grupo}</strong>. A opção SAIR será incluída automaticamente.</small>
-        <div class="pills"><button type="button" class="pill-button" data-add="{nome}">Inserir {nome}</button><button type="button" class="pill-button" data-add="{grupo}">Inserir {grupo}</button></div>
-      </div>
-      <label>Prévia da mensagem</label>
-      <div class="preview" id="messagePreview">Sua mensagem personalizada aparecerá aqui.</div>
-      <details class="sender-setup" id="senderSetup">
-        <summary>Configurar número do WhatsApp de envio (uma vez)</summary>
-        <div class="field">
-          <label for="senderPhone">Seu número do WhatsApp Business</label>
-          <input id="senderPhone" type="tel" maxlength="25" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999">
-          <small>Usado apenas para o registro de envios manuais. Confira a conta antes de mandar cada mensagem.</small>
-        </div>
-        <button id="saveSender" type="button" class="secondary">Salvar número de envio</button>
-      </details>
-      <p id="senderStatus" class="muted" aria-live="polite">Verificando número de envio...</p>
-      <div class="row-actions"><button id="createCampaign" type="button" class="primary" disabled>Criar fila de envios autorizados</button></div>
-      <p style="margin:13px 0 0">Nenhuma mensagem é enviada ao criar a campanha.</p>
-      </article>
-    </details>
-  </section>
-
-  <section class="section-header">
-    <h2>Campanhas salvas</h2>
-    <button id="reloadCampaigns" type="button" class="quiet">Atualizar lista</button>
-  </section>
-  <div class="ledger surface" id="campaignsList"><div class="empty">Carregando campanhas locais...</div></div>
-
-  <section id="queueSection" hidden>
-    <div class="section-header">
-      <div><span class="eyebrow">Fila supervisionada</span><h2 id="queueTitle">Mensagens preparadas</h2></div>
-      <div class="toolbar"><input id="queueSearch" type="search" placeholder="Buscar destinatário" aria-label="Buscar na fila"><button id="reportCsv" class="secondary" type="button">Exportar relatório</button></div>
-    </div>
-    <div class="hint" id="queueNotice">Ao clicar em Abrir conversa, o WhatsApp apresentará o texto pronto, mas você ainda precisará enviar manualmente.</div>
-    <div class="ledger surface" id="queueList"></div>
   </section>
   <footer>Caça Promos VIP • Dados locais • Cada envio exige sua confirmação • Respeite solicitações de SAIR</footer>
 </main>
 </div>
 
-<dialog class="dialog" id="sendDialog" aria-labelledby="sendTitle">
-  <h2 id="sendTitle">Conferir mensagem</h2>
-  <p id="sendRecipient"></p>
-  <label for="messageReady">Texto preparado para o destinatário</label>
-  <textarea id="messageReady" readonly></textarea>
-  <div class="hint">Abrir a conversa não é enviar a mensagem. Confira a conta do WhatsApp e pressione Enviar manualmente na conversa.</div>
-  <a id="openWhatsApp" class="primary" href="#" target="_blank" rel="noopener noreferrer">Abrir conversa no WhatsApp ↗</a>
-  <label class="consent-line"><input id="sentConfirm" type="checkbox"><span>Confirmo que <strong>enviei manualmente</strong> a mensagem na conversa.</span></label>
-  <div class="row-actions"><button id="recordSent" type="button" class="secondary" disabled>Registrar envio confirmado</button><button id="closeDialog" class="quiet" type="button">Fechar</button></div>
-</dialog>
 </body></html>`;
 }
