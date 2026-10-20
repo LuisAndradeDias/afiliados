@@ -148,10 +148,53 @@ limites operacionais.
    utilize a alternativa **Abrir conversa no WhatsApp** para enviar
    manualmente.
 
-A mensagem no WhatsApp Web inclui o link do grupo e a opção de responder
-`SAIR` / `DENUNCIAR`. **Botões interativos nativos não estão disponíveis
-neste modo gratuito**. O botão de denúncia gera ocorrência interna, não
-denúncia oficial ao WhatsApp.
+A mensagem no WhatsApp Web inclui o link do grupo, a opção de responder
+`SAIR` / `DENUNCIAR` e, **quando houver um endereço HTTPS público
+configurado**, um link exclusivo `Denunciar mensagem` para cada contato.
+**O WhatsApp Web gratuito não admite botões interativos nativos.**
+
+## Denúncia interna por clique (sem API Meta)
+
+- Cada link é gerado com HMAC-SHA256 e uma chave guardada só no servidor
+  (`dados/denuncias-chave-local.txt`). O link **não contém telefone ou nome**.
+- `GET /denunciar?token=...` **não registra nada**, inclusive quando
+  solicitado por um robô de prévia de links do WhatsApp.
+- Na página, a pessoa escolhe **Confirmar denúncia e bloquear convites**.
+  O `POST /api/denunciar` valida o token, registra a reclamação e descadastra
+  o número. O bloqueio persistente impede convites em filas atuais e
+  reimportações. A operação é idempotente: repetir não duplica a denúncia.
+- O painel local mostra **Denúncias internas recebidas** com telefone
+  mascarado, data e origem `Confirmada pelo link`. Verifica novidades a cada
+  30 segundos enquanto estiver aberto.
+- A mensagem ao destinatário é verdadeira: **a denúncia é apenas interna
+  ao Caça Promos VIP, não é enviada ao WhatsApp nem à Meta**.
+
+### Ativar um endereço HTTPS público
+
+Sem `CAPTACAO_PUBLIC_BASE_URL`, o envio **não insere** um link que não
+funcionaria fora do computador. Continua existindo a resposta `SAIR`
+ou `DENUNCIAR` para registro manual.
+
+Com domínio e HTTPS públicos estáveis, configure no ambiente do
+processo que executa o servidor:
+
+```powershell
+$env:CAPTACAO_PUBLIC_BASE_URL = "https://denuncias.seudominio.com"
+```
+
+O HTTPS público deve encaminhar **somente** estas rotas ao backend local,
+por meio de um proxy ou túnel com filtro de caminhos:
+
+- `GET /denunciar`
+- `GET /assets/denuncia.js`
+- `POST /api/denunciar`
+
+**Não publique diretamente a porta 3045 nem encaminhe `/campanhas`,
+`/api/local`, `/api/admin`, `/relatorio` ou o diretório `dados/`.**
+Use TLS válido, domínio estável e preserve `Host` e `Origin` conforme
+o domínio público. O envio do link só deve ser habilitado depois de
+validar externamente a página e o registro por HTTPS. Um túnel
+temporário com URL variável não é adequado para convites duradouros.
 
 ## Limites, duplicações e proteção
 

@@ -16,6 +16,7 @@ import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaM
 import { renderCampanhas } from './campanhas-ui.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderDescadastro } from './descadastro-ui.mjs';
+import { renderDenuncia } from './denuncia-ui.mjs';
 
 const GROUP_URL = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
 const sourceDir = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,7 @@ const scripts = new Map([
   ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
   ['/assets/campanhas.js', readFileSync(join(sourceDir, 'assets', 'campanhas.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
+  ['/assets/denuncia.js', readFileSync(join(sourceDir, 'assets', 'denuncia.js'), 'utf8')],
 ]);
 const headersBase = {
   'cache-control': 'no-store',
@@ -115,6 +117,7 @@ export function criarPiloto({
   inviteUrl = GROUP_URL,
   agora = () => new Date(),
   metaAmbiente = process.env,
+  publicBaseUrl = process.env.CAPTACAO_PUBLIC_BASE_URL || '',
   whatsappWorkerTeste = false,
 } = {}) {
   let urlGrupo;
@@ -133,6 +136,7 @@ export function criarPiloto({
   const configMeta = obterConfigMeta(metaAmbiente);
   const convitesUnicos = iniciarConvitesUnicos({
     dataDir,contatos,bloqueios:denuncias,configMeta,grupoInicial:urlGrupo.toString(),agora,
+    publicBaseUrl,
   });
   const controleWhatsapp = iniciarControleWhatsapp({
     convites:convitesUnicos,sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
@@ -211,7 +215,7 @@ export function criarPiloto({
       if (pathname === '/favicon.svg' && leitura) return codigoTexto(res, 200, renderFavicon(), 'image/svg+xml; charset=utf-8');
       if (scripts.has(pathname) && leitura) return codigoTexto(res, 200, scripts.get(pathname), 'text/javascript; charset=utf-8');
       if (pathname === '/robots.txt' && leitura) return codigoTexto(res, 200,
-        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /api/\nDisallow: /sair\n');
+        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /api/\nDisallow: /sair\nDisallow: /denunciar\n');
 
       // Endpoint preparado para o webhook HTTPS oficial da Meta.
       // Nunca libera dados ou contatos sem HMAC valido; sem segredos, fica desativado.
@@ -295,6 +299,19 @@ export function criarPiloto({
         return codigoHtml(res, 200, renderCampanhas());
       }
       if (pathname === '/sair' && leitura) return codigoHtml(res, 200, renderDescadastro());
+      // A página pública é inerte até o clique explícito no botão.
+      if (pathname === '/denunciar' && leitura) return codigoHtml(res,200,renderDenuncia());
+      if (pathname === '/api/denunciar' && method === 'POST') {
+        if (!limitar(req,'denuncia-link',30)) return json(res,429,
+          {ok:false,mensagem:'Muitas tentativas. Aguarde um pouco.'});
+        let entrada;
+        try { entrada=await corpoJson(req,1024); }
+        catch { return json(res,400,{ok:false,mensagem:'Solicitação inválida.'}); }
+        const resultado=denuncias.registrarCliqueDenuncia(entrada.token);
+        return resultado.encontrado
+          ? json(res,200,{ok:true,registrada:true,bloqueado:true})
+          : json(res,404,{ok:false,mensagem:'Este link de denúncia não foi encontrado.'});
+      }
 
       if (pathname === '/api/cadastro' && method === 'POST') {
         if (!limitar(req, 'cadastro', 10)) {
@@ -718,6 +735,7 @@ export async function iniciarServidor({
   dataDir = process.env.DATA_DIR ?? join(sourceDir, '..', 'dados'),
   inviteUrl = process.env.CAPTACAO_GROUP_URL ?? GROUP_URL,
   metaAmbiente = process.env,
+  publicBaseUrl = process.env.CAPTACAO_PUBLIC_BASE_URL || '',
   whatsappWorkerTeste = false,
   agora,
 } = {}) {
@@ -725,7 +743,7 @@ export async function iniciarServidor({
     throw new Error('Porta inválida');
   }
   const { servidor, chave, contatos } = criarPiloto({
-    dataDir,inviteUrl,agora,metaAmbiente,whatsappWorkerTeste,
+    dataDir,inviteUrl,agora,metaAmbiente,whatsappWorkerTeste,publicBaseUrl,
   });
   await new Promise((resolve, reject) => {
     servidor.once('error', reject);

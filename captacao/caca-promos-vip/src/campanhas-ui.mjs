@@ -269,7 +269,7 @@ export function renderCampanhas() {
         <div class="field"><label for="singleText">Mensagem enviada a TODOS, sem alterações</label>
           <textarea id="singleText" maxlength="1024" rows="9" spellcheck="true"
             placeholder="Escreva um convite único para todos os destinatários..."></textarea>
-          <small class="muted"><span id="singleLength">0</span>/1.024 caracteres · Não usa nomes nem variáveis</small>
+          <small class="muted"><span id="singleLength">0</span>/1.024 caracteres · O link de denúncia por destinatário é acrescentado automaticamente quando disponível</small>
         </div>
         <div class="field"><label for="groupLink">Link do grupo de ofertas</label>
           <input id="groupLink" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/...">
@@ -297,7 +297,7 @@ export function renderCampanhas() {
             <span class="bubble-time">Prévia</span></div>
           <div class="phone-choice">↗ &nbsp; Entrar no grupo</div>
           <div class="phone-choice">⚑ &nbsp; Denunciar convite</div>
-          <p class="phone-note">Botões apenas na futura Cloud API. O WhatsApp Web usa links e resposta por texto.</p>
+          <p class="phone-note">No WhatsApp Web, o convite inclui um link clicável para uma página de denúncia interna quando o HTTPS público estiver configurado.</p>
         </div>
         <div class="hint" id="cloudPreviewNotice">Não haverá envio para números sem opt-in. Denúncias internas bloqueiam campanhas futuras.</div>
       </div>
@@ -347,12 +347,7 @@ export function renderCampanhas() {
     <div class="divider-thin"></div>
     <h3>Filas da API Meta preparadas</h3>
     <div id="cloudQueueList" class="cloud-queues"><div class="empty">Nenhuma fila criada.</div></div>
-    <details class="legacy surface" id="complaintsDetail" style="margin-top:17px">
-      <summary>Denúncias e bloqueios internos</summary>
-      <p style="margin-top:12px">Quem denunciar será bloqueado para campanhas futuras, mesmo se o número reaparecer em outra planilha.</p>
-      <div id="complaintsList" class="ledger surface"><div class="empty">Nenhuma denúncia registrada.</div></div>
-    </details>
-    </details>
+     </details>
   </section>
   <section class="card surface" id="manualStage" aria-labelledby="manualTitle" style="margin-bottom:18px">
     <div class="view-title">
@@ -388,7 +383,8 @@ export function renderCampanhas() {
       <span class="counter" id="manualConfirmed">0 envios confirmados</span>
       <span class="counter">1 por vez · sem disparo automático</span>
     </div>
-    <details class="minor-tools"><summary>Cuidados com os envios</summary><div class="hint">O WhatsApp Web não inclui botões personalizados: a mensagem terá o link do grupo e a instrução de responder SAIR ou DENUNCIAR. Registre bloqueios após uma solicitação real. O limite de 50 preparações diárias não garante que a conta não seja restringida.</div></details>
+    <p id="complaintLinkStatus" class="muted" aria-live="polite">Verificando a disponibilidade do link de denúncia...</p>
+    <details class="minor-tools"><summary>Cuidados com os envios</summary><div class="hint">O WhatsApp Web não oferece botões nativos sem a API Meta. Quando houver uma página HTTPS configurada, o convite terá um link para registrar a denúncia internamente. Também é possível responder SAIR ou DENUNCIAR. O limite diário de 50 preparações não garante evitar bloqueios.</div></details>
     <p>Quando a planilha e a mensagem estiverem prontas, crie uma fila para o WhatsApp Web.</p>
     <details id="sendOptions" class="minor-tools">
       <summary>Opções de envio</summary>
@@ -414,6 +410,11 @@ export function renderCampanhas() {
       </div>
       <p class="muted">Apaga somente filas sem envios ou tentativas registrados, com backup privado. Contatos e autorizações ficam preservados.</p>
     </details>
+    <details id="complaintsDetail" class="minor-tools">
+      <summary>Denúncias internas recebidas <span id="complaintsCount" class="muted">(0)</span></summary>
+      <p class="muted" style="padding:0 15px">Quando alguém confirmar uma reclamação no link, ela aparecerá aqui e novos convites para esse número serão bloqueados. Não é uma denúncia enviada ao WhatsApp.</p>
+      <div id="complaintsList" class="ledger surface"><div class="empty">Nenhuma denúncia registrada.</div></div>
+    </details>
   </section>
 
   <section id="manualQueueDetail" class="card surface" hidden aria-labelledby="manualQueueTitle" style="margin-bottom:18px">
@@ -433,7 +434,7 @@ export function renderCampanhas() {
     <div id="manualComposer" class="surface" hidden style="padding:18px;margin:15px 0">
       <strong id="manualRecipient">Contato</strong>
       <p class="muted">Confira o número e o texto. No modo automático supervisionado, clique em Enviar agora no painel; no modo manual, use o link da alternativa.</p>
-      <label for="manualMessageReady">Texto idêntico para todos (link e descadastro incluídos)</label>
+      <label for="manualMessageReady">Texto para este destinatário (link de denúncia individual quando disponível)</label>
       <textarea id="manualMessageReady" readonly rows="8"></textarea>
       <div class="hint" style="margin-top:14px">
         <strong>Mesma automação das promoções:</strong> o Chrome usa sua sessão atual,

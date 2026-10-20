@@ -5,7 +5,7 @@
     cloudMetaReady:false,cloudModeloAprovado:false,cloudQueue:null,cloudModel:null,
     manualQueue:null,manualConversa:null,chromeTimer:null,chromeFase:'inativo',
     conexaoTimer:null,conexaoAtiva:false,conexaoInicializada:false,importandoAutorizacoes:false,
-    manualVisible:12 };
+    manualVisible:12,denunciasAnteriores:null };
   const linhasMaximas = 1500;
   const tamanhoMaximo = 110000;
 
@@ -208,6 +208,15 @@
   async function carregarDenuncias() {
     try {
       const resp=await api('/api/local/campanhas/denuncias');
+      const quantidade=resp.ocorrencias.filter(
+        item=>item.motivo==='denuncia-convite').length;
+      $('complaintsCount').textContent='('+quantidade+')';
+      if(state.denunciasAnteriores!==null && quantidade>state.denunciasAnteriores){
+        $('complaintsDetail').open=true;
+        flash('Nova denúncia interna registrada. O contato está bloqueado para novos convites.');
+        await carregarFilasManual();
+      }
+      state.denunciasAnteriores=quantidade;
       const lista=$('complaintsList');
       lista.replaceChildren();
       if (!resp.ocorrencias.length) {
@@ -218,7 +227,9 @@
         const linha=elemento('div','list-row');
         const info=elemento('div');
         info.append(elemento('strong','',ocorrencia.telefoneMascarado),
-          elemento('small','',dataCurta(ocorrencia.recebidoEm)));
+          elemento('small','',dataCurta(ocorrencia.recebidoEm)+' · '+
+            (ocorrencia.origem==='clique-confirmado-pagina-publica'
+              ? 'Confirmada pelo link' : 'Registrada internamente')));
         linha.append(info,elemento('span','tag off',
           ocorrencia.motivo==='denuncia-convite'?'Denúncia · bloqueado':'SAIR · bloqueado'));
         lista.append(linha);
@@ -570,6 +581,9 @@
       ' conversas preparadas hoje';
     $('manualConfirmed').textContent=c.confirmadosHoje+
       ' envios confirmados hoje';
+    $('complaintLinkStatus').textContent=c.denunciaPorCliqueConfigurada
+      ? 'Endereço da denúncia configurado. Cada convite terá um link individual; confirme que a página responde publicamente por HTTPS.'
+      : 'Link de denúncia por clique: aguardando endereço HTTPS público. Por enquanto, continua a opção de responder SAIR ou DENUNCIAR.';
   }
 
   async function carregarFilasManual() {
@@ -1162,4 +1176,9 @@
   carregar().catch(erro=>{
     flash('Não foi possível carregar o painel local: '+erro.message,true);
   });
+  // Enquanto o painel estiver aberto, alerta sobre novas denúncias sem
+  // precisar atualizar a página e sem expor o painel na internet.
+  setInterval(()=>{
+    if(document.visibilityState==='visible')carregarDenuncias().catch(()=>{});
+  },30000);
 })();

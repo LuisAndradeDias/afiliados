@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const VERSAO = 1;
 const MAX_EVENTOS = 10000;
@@ -98,6 +98,36 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
     return { duplicada:false, bloqueado:true };
   }
 
+  // Link de reclamacao gerado somente no servidor. O codigo nao contem
+  // telefone, nome nem identificador em texto aberto.
+  function tokenDenuncia(contato) {
+    if (!contato?.id || !contato?.telefone) throw new Error('Contato indisponivel.');
+    return createHmac('sha256', segredo)
+      .update('denuncia-link-v1:' + contato.id + ':' + contato.telefone)
+      .digest('hex');
+  }
+
+  function registrarCliqueDenuncia(token) {
+    const recebido=String(token??'');
+    if (!/^[a-f0-9]{64}$/i.test(recebido)) {
+      return {encontrado:false,bloqueado:false};
+    }
+    const buffer=Buffer.from(recebido,'hex');
+    const contato=contatos.listar().find(c=>{
+      const esperado=Buffer.from(tokenDenuncia(c),'hex');
+      return timingSafeEqual(buffer,esperado);
+    });
+    if (!contato) return {encontrado:false,bloqueado:false};
+    const resultado=registrar({
+      telefone:contato.telefone,
+      mensagemId:'link-denuncia-v1-'+tokenDenuncia(contato),
+      motivo:'denuncia-convite',
+      origem:'clique-confirmado-pagina-publica',
+    });
+    return {encontrado:true,bloqueado:resultado.bloqueado,
+      duplicada:resultado.duplicada};
+  }
+
   function listar() {
     const base = ler();
     const contatosPorId = new Map(contatos.listar().map(c => [c.id,c]));
@@ -123,5 +153,5 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
     };
   }
 
-  return { registrar, estaBloqueado, listar, resumo };
+  return { registrar, estaBloqueado, listar, resumo, tokenDenuncia, registrarCliqueDenuncia };
 }

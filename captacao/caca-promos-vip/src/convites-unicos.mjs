@@ -53,7 +53,20 @@ function nomeSeguro(valor) {
 export function iniciarConvitesUnicos({
   dataDir, contatos, bloqueios, configMeta,
   grupoInicial='', agora=()=>new Date(), fetchImpl=globalThis.fetch,
+  publicBaseUrl='',
 }) {
+  let origemPublica='';
+  if (publicBaseUrl) {
+    let destino;
+    try{destino=new URL(String(publicBaseUrl));}
+    catch{throw new Error('Configure um endereço público HTTPS válido para denúncias.');}
+    if(destino.protocol!=='https:' || destino.username || destino.password ||
+        destino.search || destino.hash || destino.pathname!=='/' ||
+        destino.hostname==='localhost' || destino.hostname==='127.0.0.1') {
+      throw new Error('O endereço de denúncias precisa ser uma origem HTTPS pública.');
+    }
+    origemPublica=destino.origin;
+  }
   mkdirSync(dataDir,{recursive:true});
   const arquivoConfig=join(dataDir,'modelo-convite-unico.json');
   const arquivoFilas=join(dataDir,'filas-convites-meta.json');
@@ -287,13 +300,18 @@ export function iniciarConvitesUnicos({
   // Modo GRATUITO: usa somente o recurso oficial de abrir uma conversa
   // com texto pre-preenchido. O operador envia manualmente no WhatsApp Web.
   // Nenhum script acessa a sessao do WhatsApp e nao existe disparo automatico.
-  function textoManual(fila) {
+  function textoManual(fila,contato) {
+    const alternativa=origemPublica?'use o link Denunciar mensagem':'responda DENUNCIAR';
     const corpo=String(fila.mensagem||'')
-      .replace(/toque em Denunciar convite/gi,'responda DENUNCIAR')
-      .replace(/clique em Denunciar convite/gi,'responda DENUNCIAR')
+      .replace(/toque em Denunciar convite/gi,alternativa)
+      .replace(/clique em Denunciar convite/gi,alternativa)
       .trim();
+    const instrucoes=origemPublica
+      ? '\n\n🚩 Denunciar mensagem (registro interno, não é denúncia ao WhatsApp):\n'+
+        origemPublica+'/denunciar?token='+bloqueios.tokenDenuncia(contato)
+      : '';
     return corpo+'\n\n🔗 Entrar no grupo de ofertas:\n'+fila.grupoUrl+
-      '\n\n🚫 Para recusar, denunciar o convite ou parar de receber mensagens, '+
+      instrucoes+'\n\n🚫 Para parar de receber ou denunciar, '+
       'responda SAIR ou DENUNCIAR nesta conversa.';
   }
 
@@ -336,7 +354,7 @@ export function iniciarConvitesUnicos({
     return {limiteDiario:LIMITE_MANUAL_DIARIO,confirmadosHoje,iniciadosHoje,
       restantesHoje:Math.max(0,LIMITE_MANUAL_DIARIO-
         Math.max(confirmadosHoje,iniciadosHoje)),simultaneos:1,
-      automatico:false};
+      automatico:false,denunciaPorCliqueConfigurada:Boolean(origemPublica)};
   }
 
   function prepararManual({campanhaId,contatoId}) {
@@ -360,7 +378,7 @@ export function iniciarConvitesUnicos({
       item.abertoEm=agora().toISOString();
       salvarArquivo(arquivoFilas,dados);
     }
-    const mensagem=textoManual(fila);
+    const mensagem=textoManual(fila,contato);
     return {nome:contato.nome||'',numeroMascarado:'+'+
       contato.telefone.slice(0,4)+' •••• '+contato.telefone.slice(-4),
       mensagem, url:'https://wa.me/'+contato.telefone+
