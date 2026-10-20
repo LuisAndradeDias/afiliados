@@ -291,6 +291,79 @@ export function iniciarConvitesUnicos({
       aviso:'A conversa será aberta com o texto pronto. Você precisa conferir e enviar manualmente.'};
   }
 
+  function validarEnvioManual({campanhaId,contatoId}) {
+    const {dados,item}=localizarManual(campanhaId,contatoId);
+    if(item.status!=='aberto')throw new Error('A conversa não está em preparação.');
+    if(convidadosManual(dados).has(contatoId)) {
+      throw new Error('O contato já recebeu convite confirmado.');
+    }
+    if(estatisticasManual(dados).confirmadosHoje>=LIMITE_MANUAL_DIARIO) {
+      throw new Error('Limite diário de 50 envios confirmados atingido.');
+    }
+    return true;
+  }
+
+  function marcarTentativaIncerta({campanhaId,contatoId}) {
+    if(!UUID.test(String(campanhaId||'')) ||
+        !UUID.test(String(contatoId||'')))throw new Error('Identificadores inválidos.');
+    const dados=lerFilas();
+    const fila=dados.filas.find(f=>f.id===campanhaId && f.modo==='web');
+    const item=fila?.itens.find(i=>i.contatoId===contatoId);
+    if(!item)throw new Error('Contato não encontrado na fila supervisionada.');
+    if(item.status==='aberto') {
+      item.status='incerto';
+      item.solicitadoEm=agora().toISOString();
+      salvarArquivo(arquivoFilas,dados);
+    }
+    return {status:item.status};
+  }
+
+  // O controlador reserva a tentativa ANTES de solicitar o clique ao Chrome.
+  // Depois de uma falha, incerto impede a abertura de outra conversa ou retry.
+  function confirmarTentativaWorker({campanhaId,contatoId}) {
+    const {dados,item}=localizarManual(campanhaId,contatoId);
+    if (item.status!=='incerto') throw new Error('Tentativa não está aguardando verificação.');
+    if (convidadosManual(dados).has(contatoId)) {
+      throw new Error('Convite já confirmado em outra fila.');
+    }
+    item.status='enviado-manualmente';
+    item.confirmadoEm=agora().toISOString();
+    item.tratadoEm=item.confirmadoEm;
+    salvarArquivo(arquivoFilas,dados);
+    return {status:item.status,confirmadoEm:item.confirmadoEm};
+  }
+
+  // Só corrige uma tentativa incerta depois de uma conferência humana real.
+  function conciliarTentativa({campanhaId,contatoId,resultado,confirmado=false}) {
+    if (confirmado!==true ||
+        !['enviado','nao-enviado'].includes(resultado)) {
+      throw new Error('Confira a conversa e confirme o resultado manualmente.');
+    }
+    if (!UUID.test(String(campanhaId||'')) ||
+        !UUID.test(String(contatoId||''))) throw new Error('Identificadores inválidos.');
+    const dados=lerFilas();
+    const fila=dados.filas.find(f=>f.id===campanhaId && f.modo==='web');
+    const item=fila?.itens.find(i=>i.contatoId===contatoId);
+    if (!item || item.status!=='incerto') {
+      throw new Error('Não há tentativa incerta para conciliar.');
+    }
+    if (resultado==='enviado') {
+      if (convidadosManual(dados).has(contatoId)) {
+        throw new Error('Convite já confirmado anteriormente.');
+      }
+      item.status='enviado-manualmente';
+      item.confirmadoEm=agora().toISOString();
+    } else {
+      // Não libera diretamente o próximo disparo: apenas retorna à fila.
+      // O contato ainda precisa de opt-in válido e deve passar pelo limite diário.
+      item.status='pendente';
+    }
+    item.conciliadoEm=agora().toISOString();
+    item.tratadoEm=item.conciliadoEm;
+    salvarArquivo(arquivoFilas,dados);
+    return {status:item.status,conciliadoEm:item.conciliadoEm};
+  }
+
   function marcarManual({campanhaId,contatoId,acao,confirmado=false}) {
     if (!['enviado','ignorado','denunciado','cancelado'].includes(acao)) {
       throw new Error('Ação manual inválida.');
@@ -489,6 +562,7 @@ export function iniciarConvitesUnicos({
     configuracao,salvarConfiguracao,templateParaMeta,pessoasElegiveis,
     listarFilas,detalhesFila,criarFila,simular,conferirModelo,
     processarLote,registrarStatus,processarCliqueEntrar,
-    estatisticasManual,prepararManual,marcarManual,
+    estatisticasManual,prepararManual,marcarManual,validarEnvioManual,
+    marcarTentativaIncerta,confirmarTentativaWorker,conciliarTentativa,
   };
 }

@@ -1,93 +1,101 @@
-# Caça Promos VIP 👑 — Convites pelo WhatsApp Web
+# Caça Promos VIP 👑 — Convites pelo seu WhatsApp Web
 
-Painel local para preparar convites ao grupo de promoções **sem API paga**,
-com uso supervisionado do WhatsApp Web. O projeto antigo de captação já foi
-aposentado; o cadastro/opt-in e os bloqueios seguem preservados como
-dependências necessárias do Painel de Campanhas.
+Painel local de campanhas que reutiliza o **Chrome, Playwright, perfil persistente
+e observador de envio** do robô de promoções. Não depende da API paga da Meta,
+de um segundo WhatsApp nem de SDKs não oficiais. A automação é **supervisionada,
+uma conversa de cada vez**, somente para contatos que consentiram em receber
+convites comerciais.
 
-## Como abrir
+**Acesso no ACER:** http://127.0.0.1:3045/campanhas
 
-No ACER: **http://127.0.0.1:3045/campanhas**.
+Também existe o atalho `Abrir Campanhas.cmd` na pasta oficial
+`C:\projeto01\captacao\caca-promos-vip`.
+O painel é local (127.0.0.1) e não pede chave de acesso.
+As instâncias existentes 3040 e 3045 têm bases de dados privadas distintas.
 
-Atalho da pasta oficial: `Abrir Campanhas.cmd`.
-Código na pasta única `C:\projeto01\captacao\caca-promos-vip`.
-Não criar diretórios paralelos no disco C:.
+## Fluxo de envio pelo WhatsApp Web
 
-## Fluxo gratuito recomendado
+1. Escreva **uma mensagem única para todos**, salve o link
+   `https://chat.whatsapp.com/...` e importe a planilha CSV
+   `nome;telefone` da extensão do Chrome.
+2. O servidor seleciona apenas **contatos que confirmaram opt-in específico
+   para mensagens comerciais**, verifica a lista de bloqueios e elimina
+   duplicações. Estar em um grupo de terceiros não equivale a esse consentimento.
+3. Clique em **Criar fila para WhatsApp Web**, depois em
+   **Preparar conversa**. O painel confere a elegibilidade no servidor e
+   abre o Chrome usando o mesmo perfil `data/whatsapp-profile` das promoções.
+4. O WhatsApp Web abre a conversa com o número e o texto preenchidos.
+   **Confira visualmente nome, telefone e texto**. O programa aguarda sua
+   confirmação, não executa envios ao abrir a página.
+5. Clique em **Enviar agora pelo WhatsApp** no painel, e confirme o diálogo.
+   Isso solicita **um clique único** usando a ferramenta de ponteiro já
+   existente no robô de promoções.
+6. O observador da conversa verifica se apareceu a mensagem enviada.
+   Somente depois dessa detecção o sistema registra o status
+   **Enviado** no histórico. Não há repetição automática de clique.
+7. Se o WhatsApp fechar, mudar de conversa ou o resultado da tentativa
+   não puder ser confirmado, o status fica **Incerto**. Não pressione
+   Enviar novamente. Confira a conversa e use no painel:
+   **Conferi: foi enviado** ou **Conferi: não foi enviado**.
+   A segunda opção exige uma confirmação textual explícita.
+8. Se a pessoa responder **SAIR** ou **DENUNCIAR**, registre a reclamação
+   na fila. O contato é descadastrado e entra na supressão persistente,
+   inclusive após reimportações futuras.
+9. Se o WhatsApp estiver ocupado pelo robô de promoções ou o Chrome não
+   abrir, desmarque **Usar a automação de Chrome** e utilize a
+   alternativa **Abrir conversa no WhatsApp** para enviar manualmente.
 
-1. Escreva **uma mensagem única para todos** no editor de convite. Configure
-   o link `https://chat.whatsapp.com/...` do seu grupo.
-2. Importe a planilha `nome;telefone` exportada pela extensão do Chrome.
-   A planilha fica no navegador, não é publicada no GitHub nem enviada a
-   serviços externos. Números duplicados são eliminados.
-3. O painel cruza os telefones importados **apenas com os contatos que já
-   confirmaram opt-in para mensagens comerciais**. Telefones capturados de
-   grupos de terceiros sem essa autorização **não entram na fila**.
-4. Clique em **Criar fila para WhatsApp Web**. A campanha e o texto ficam
-   salvos localmente, sem disparos.
-5. Escolha **Preparar conversa**. O painel adiciona ao texto original o
-   link do grupo e instrução para responder **SAIR** ou **DENUNCIAR**.
-6. Clique em **Abrir conversa no WhatsApp**. O recurso oficial `wa.me`
-   abre o WhatsApp Web com a conversa/texto preenchidos. Você deve
-   conferir a conta e pressionar **Enviar manualmente**. Não há automação
-   do WhatsApp, rolagem, sessão extra ou script de envio.
-7. Volte ao painel e marque **Confirmo que enviei manualmente** para
-   registrar o envio. A campanha impede nova confirmação para o mesmo
-   contato e outra conversa simultaneamente preparada.
-8. Se o contato responder **SAIR** ou **DENUNCIAR**, clique em
-   **Recebi denúncia / SAIR** e confirme o bloqueio. Não existe leitura
-   automática dessas respostas no modo gratuito. Contatos bloqueados não
-   entram em novas filas, mesmo que reapareçam em outra planilha.
-9. Use **Ignorar** se não quiser contatar um número, ou **Cancelar
-   preparação** somente quando não houve envio.
+A mensagem no WhatsApp Web inclui o link do grupo e a opção de responder
+`SAIR` / `DENUNCIAR`. **Botões interativos nativos não estão disponíveis
+neste modo gratuito**. O botão de denúncia gera ocorrência interna, não
+denúncia oficial ao WhatsApp.
 
-### Limites internos
+## Limites, duplicações e proteção
 
-- **1 conversa por vez**, aberta somente depois de clicar.
-- **Até 50 conversas preparadas por dia** no horário de Brasília.
-- **Sem envio automático**, sem varrer a planilha, sem clicar na conversa,
-  sem resposta automática. Não há disparos em segundo plano.
-- Histórico por campanha persistente, com deduplicação de convites
-  confirmados e exclusão de contatos que tenham revogado consentimento.
+- **1 conversa preparada por vez** por controlador local.
+- **50 conversas preparadas por dia**, contando no fuso de Brasília,
+  inclusive preparações canceladas. O limite é interno, não uma garantia
+  contra bloqueio da conta.
+- **Zero envios automáticos em lote**: cada destinatário depende de um
+  clique explícito do usuário em Enviar agora.
+- Verificação de opt-in antes de preparar e novamente imediatamente antes
+  de solicitar o clique de envio.
+- Persistência do estado `incerto` **antes** de solicitar o clique,
+  para evitar duplicações se o programa/Chrome cair.
+- Impedimento de segundo convite depois de confirmação, mesmo quando
+  o contato aparece novamente em outro CSV.
+- O resultado nunca é classificado como enviado apenas pelo retorno
+  do botão: exige detecção da mensagem na conversa ou confirmação
+  manual específica depois de conferência.
+- O controlador não precisa ler senhas, códigos do WhatsApp ou copiar cookies.
+  **Evite executar dois automatizadores sobre o mesmo perfil do Chrome**;
+  use o modo manual se o robô de promoções já estiver ocupando a sessão.
 
-**ATENÇÃO:** nenhum temporizador ou limite de velocidade torna seguros os
-envios indesejados nem garante evitar banimento. O WhatsApp proíbe mensagens
-automáticas ou em massa não autorizadas. O modo gratuito usa apenas o
-fluxo nativo de conversa manual: https://faq.whatsapp.com/5913398998672934.
+**Aviso:** controle de velocidade, pausas e uso do WhatsApp Web não garantem
+evitar bloqueio. O WhatsApp pode restringir contas por mensagens indesejadas.
+O sistema não habilita contatos extraídos de grupos sem opt-in comprovado.
 
-### Como ficam os dois botões desejados
+## Dados e código preservados
 
-Sem a WhatsApp Business Platform não há botões nativos personalizados de
-resposta rápida. O painel utiliza duas ações **no conteúdo da mensagem**:
+- `dados/`: cadastro, confirmação de consentimento, denúncias,
+  bloqueios, filas, rascunhos e histórico. **Nunca apagar nem publicar.**
+- `/c/<origem>`: cadastro voluntário para quem quiser receber ofertas.
+- `/sair`: descadastro independente.
+- `extensao-lateral/`: leitura supervisionada e exportação CSV.
+- A integração preparada para a Cloud API da Meta permanece opcional
+  e desativada. Veja [INTEGRACAO_META.md](INTEGRACAO_META.md).
 
-- **Entrar no grupo:** link clicável `https://chat.whatsapp.com/...`.
-- **Denunciar convite:** instrução explícita para responder `DENUNCIAR`
-  ou `SAIR`. O operador registra a reclamação no painel depois de
-  recebê-la. Isso gera **denúncia interna**, não denúncia oficial à Meta.
+Projeto único: `C:\projeto01`. Não criar worktrees ou pastas de cópia
+em `C:\`.
 
-O painel mostra uma prévia de botões apenas para a eventual integração
-com a API paga. Essa prévia **não corresponde a botões no WhatsApp Web**.
-
-## Recursos preservados
-
-- Cadastro de contatos e evidências de consentimento, separados da planilha.
-- Descadastro `/sair`, base de supressão e denúncia interna.
-- Fluxo de inscrição voluntária `/c/<origem>`.
-- Rascunhos, filas e histórico do projeto; pasta privada `dados/`
-  nunca deve ser apagada nem publicada.
-- Extensão supervisionada do WhatsApp Web para leitura e exportação de CSV.
-- Preparação para a Cloud API da Meta em [INTEGRACAO_META.md](INTEGRACAO_META.md),
-  atualmente desativada por falta de número/credenciais.
-
-## Testes e execução
+## Testes
 
 ```powershell
 cd C:\projeto01\captacao\caca-promos-vip
 node --test
 ```
 
-A página funciona em `127.0.0.1`, no próprio computador e sem chave
-administrativa. Requisições locais de escrita exigem origem correspondente.
-Dados e credenciais não são enviados ao navegador de terceiros.
-Os testes automatizados usam apenas números de exemplo e nunca enviam
-mensagens de WhatsApp reais.
+Os testes automatizados usam números fictícios e um Chrome **simulado**.
+Nenhuma mensagem real é enviada durante a suíte. A validação visual da
+interface do WhatsApp Web real depende de sua autorização para um teste
+com destinatário próprio e da disponibilidade da sessão de promoções.

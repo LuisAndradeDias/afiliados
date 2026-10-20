@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const state = { autorizados:[], importados:[], aptos:[], bloqueados:[],
     cloudMetaReady:false,cloudModeloAprovado:false,cloudQueue:null,cloudModel:null,
-    manualQueue:null,manualConversa:null };
+    manualQueue:null,manualConversa:null,chromeTimer:null,chromeFase:'inativo' };
   const linhasMaximas = 1500;
   const tamanhoMaximo = 110000;
 
@@ -476,7 +476,8 @@
       $('manualQueueSummary').textContent=dados.fila.total+' contatos · '+
         dados.fila.pendentes+' pendentes · '+dados.fila.abertos+
         ' em revisão · '+dados.fila.manuais+' confirmados · '+
-        dados.fila.bloqueados+' bloqueados';
+        dados.fila.bloqueados+' bloqueados · '+
+        dados.fila.incertos+' resultados incertos';
       const lista=$('manualQueuePeople');
       lista.replaceChildren();
       for (const item of dados.fila.itens) {
@@ -495,6 +496,13 @@
         } else if (item.status==='enviado-manualmente') {
           actions.append(botao('Registrar denúncia recebida',
             ()=>denunciarAposEnvioManual(item.contatoId),'quiet'));
+        } else if (item.status==='incerto') {
+          actions.append(
+            botao('Conferi: foi enviado',
+              ()=>conciliarWhatsApp(item.contatoId,'enviado'),'secondary'),
+            botao('Conferi: não foi enviado',
+              ()=>conciliarWhatsApp(item.contatoId,'nao-enviado'),'quiet')
+          );
         }
         linha.append(perfil,actions);
         lista.append(linha);
@@ -523,14 +531,140 @@
       $('manualComposer').hidden=false;
       await abrirFilaManual(state.manualQueue.id);
       $('manualComposer').scrollIntoView({behavior:'smooth',block:'center'});
-      flash('Conversa preparada. Clique em Abrir conversa, confira e envie manualmente.');
+      if(!$('useChrome').checked) {
+        state.chromeFase='inativo';
+        $('chromeStatus').textContent='Automação desmarcada. Use o link manual abaixo.';
+        $('chromeSend').disabled=true;
+        $('chromeCancel').disabled=true;
+        $('chromePrepare').disabled=false;
+        return;
+      }
+      try {
+        const atual=await api('/api/local/campanhas/convite/whatsapp/estado');
+        const s=atual.estado;
+        if(s.ocupado && s.campanhaId===state.manualConversa.campanhaId &&
+            s.contatoId===state.manualConversa.contatoId) {
+          apresentarEstadoChrome(s);
+          iniciarAcompanhamentoChrome();
+        } else {
+          await prepararWhatsappChrome();
+        }
+      }catch(e) {
+        $('chromeStatus').textContent='Chrome indisponível: '+e.message+
+          '. Use a alternativa manual abaixo.';
+        flash('Não foi possível automatizar a preparação. A opção manual permanece disponível.',true);
+      }
     } catch(e) { flash(e.message,true); }
+  }
+
+  function apresentarEstadoChrome(s) {
+    state.chromeFase=s.fase;
+    const status={
+      inativo:'Ainda não existe uma janela controlada.',
+      iniciando:'Iniciando o Chrome com sua sessão do WhatsApp...',
+      abrindo:'Aguardando o WhatsApp Web e o destinatário aparecerem...',
+      pronto:'Conversa preenchida. CONFIRA número, nome e texto no Chrome antes de enviar.',
+      enviando:'Clique efetuado. Aguardando confirmação na conversa...',
+      confirmado:'Mensagem enviada e confirmada pela conversa no WhatsApp.',
+      cancelando:'Fechando o Chrome sem solicitar o envio...',
+      cancelado:'Preparação cancelada, sem envio.',
+      erro:'Falha ao preparar o WhatsApp. Use o modo manual se necessário.',
+      incerto:'Envio não confirmado. Confira a conversa; não repita automaticamente.',
+    };
+    $('chromeStatus').textContent=status[s.fase]||s.mensagem||'Aguardando WhatsApp.';
+    const atual=state.manualConversa;
+    const mesmo=atual && atual.campanhaId===s.campanhaId &&
+      atual.contatoId===s.contatoId;
+    $('chromeSend').disabled=!(mesmo && s.fase==='pronto');
+    $('chromeCancel').disabled=!(mesmo && ['iniciando','abrindo','pronto'].includes(s.fase));
+    $('chromePrepare').disabled=Boolean(s.ocupado);
+    $('manualMarkSent').disabled=Boolean(s.ocupado) || !$('manualSentConfirm').checked;
+    for(const id of ['manualIgnore','manualComplaint','manualCancel']){
+      $(id).disabled=Boolean(s.ocupado);
+    }
+  }
+
+  function pararAcompanhamentoChrome() {
+    if(state.chromeTimer)clearInterval(state.chromeTimer);
+    state.chromeTimer=null;
+  }
+
+  async function acompanharWhatsappChrome() {
+    try {
+      const res=await api('/api/local/campanhas/convite/whatsapp/estado');
+      apresentarEstadoChrome(res.estado);
+      const fase=res.estado.fase;
+      if(['confirmado','cancelado','erro','incerto'].includes(fase)) {
+        pararAcompanhamentoChrome();
+        if(fase==='confirmado'||fase==='cancelado') {
+          const id=res.estado.campanhaId;
+          state.manualConversa=null;
+          $('manualComposer').hidden=true;
+          if(id)await Promise.all([abrirFilaManual(id),
+            carregarFilasManual(),carregarControleManual()]);
+          if(fase==='confirmado')flash('WhatsApp confirmou o envio e o histórico foi atualizado.');
+        } else {
+          if(fase==='incerto') {
+            const id=res.estado.campanhaId;
+            state.manualConversa=null;
+            $('manualComposer').hidden=true;
+            if(id)await Promise.all([abrirFilaManual(id),
+              carregarFilasManual(),carregarControleManual()]);
+          }
+          flash(fase==='incerto'
+            ? 'Resultado incerto: confira a conversa e use os botões de conciliação da fila. Não houve segunda tentativa.'
+            : 'A preparação do WhatsApp falhou. Nenhum novo envio foi iniciado automaticamente.',true);
+        }
+      }
+    }catch(error) {
+      pararAcompanhamentoChrome();
+      $('chromeStatus').textContent='Falha de comunicação com o painel. Verifique o WhatsApp.';
+    }
+  }
+  function iniciarAcompanhamentoChrome() {
+    pararAcompanhamentoChrome();
+    state.chromeTimer=setInterval(acompanharWhatsappChrome,1400);
+  }
+  async function prepararWhatsappChrome() {
+    const atual=state.manualConversa;
+    if(!atual)return;
+    $('chromeStatus').textContent='Abrindo o Chrome com a sessão das promoções...';
+    $('chromeSend').disabled=true;
+    const r=await api('/api/local/campanhas/convite/whatsapp/preparar','POST',atual);
+    apresentarEstadoChrome(r.estado);
+    iniciarAcompanhamentoChrome();
+  }
+  async function enviarWhatsappChrome() {
+    const atual=state.manualConversa;
+    if(!atual || state.chromeFase!=='pronto')return;
+    if(!confirm('Revise no Chrome o NÚMERO, o DESTINATÁRIO e a MENSAGEM. Enviar agora esta única mensagem?'))return;
+    try{
+      const r=await api('/api/local/campanhas/convite/whatsapp/enviar','POST',
+        {...atual,confirmar:true});
+      apresentarEstadoChrome(r.estado);
+      iniciarAcompanhamentoChrome();
+    }catch(e){flash(e.message,true);}
+  }
+  async function cancelarWhatsappChrome() {
+    const atual=state.manualConversa;
+    if(!atual || !confirm('Confirma que NÃO enviou a mensagem? Cancelar a janela e voltar à fila?'))return;
+    try{
+      const r=await api('/api/local/campanhas/convite/whatsapp/cancelar','POST',
+        {...atual,confirmarNaoEnviado:true});
+      apresentarEstadoChrome(r.estado);
+      iniciarAcompanhamentoChrome();
+    }catch(e){flash(e.message,true);}
   }
 
   async function registrarManual(acao) {
     const atual=state.manualConversa;
     if(!atual)return;
     if(acao==='enviado'&&!$('manualSentConfirm').checked)return;
+    if(['abrindo','iniciando','pronto','enviando','cancelando'].includes(state.chromeFase) &&
+        acao!=='denunciado') {
+      flash('Finalize ou cancele a janela automática antes de registrar o contato manualmente.',true);
+      return;
+    }
     if(acao==='denunciado'&&!confirm(
       'Você recebeu de fato SAIR ou DENUNCIAR deste contato? Isso bloqueará novos convites.'))return;
     if(acao==='cancelado'&&!confirm(
@@ -558,6 +692,31 @@
           ? 'Denúncia registrada: número bloqueado para novos convites.'
           : 'Contato atualizado na fila.');
     } catch(e) { flash(e.message,true); }
+  }
+
+  async function conciliarWhatsApp(contatoId,resultado) {
+    const fila=state.manualQueue;
+    if(!fila)return;
+    try{
+      const status=await api('/api/local/campanhas/convite/whatsapp/estado');
+      if(status.estado.ocupado){
+        flash('Aguarde a janela do Chrome terminar antes de conciliar.',true);
+        return;
+      }
+      if(resultado==='nao-enviado'){
+        const frase=prompt('Confira a conversa no WhatsApp. Digite NÃO ENVIEI apenas se tiver certeza de que NÃO houve envio:');
+        if(frase?.trim().toLocaleUpperCase('pt-BR')!=='NÃO ENVIEI')return;
+      } else if(!confirm(
+        'Você viu a mensagem realmente ENVIADA na conversa do destinatário? Registrar como enviada sem clicar novamente?'))return;
+      await api('/api/local/campanhas/convite/whatsapp/conciliar','POST',{
+        campanhaId:fila.id,contatoId,resultado,confirmado:true,
+      });
+      await Promise.all([abrirFilaManual(fila.id),carregarFilasManual(),
+        carregarControleManual()]);
+      flash(resultado==='enviado'
+        ? 'Envio confirmado manualmente no histórico, sem novo clique.'
+        : 'Confirmação de NÃO envio registrada. O contato voltou à fila; confirme antes de abrir novamente.');
+    }catch(e){flash(e.message,true);}
   }
 
   async function denunciarAposEnvioManual(contatoId) {
@@ -624,13 +783,18 @@
   $('closeManualQueue').addEventListener('click',()=>{
     $('manualQueueDetail').hidden=true;
     $('manualComposer').hidden=true;
+    pararAcompanhamentoChrome();
     state.manualQueue=null;
     state.manualConversa=null;
     $('manualOpenWa').href='#';
   });
   $('manualSentConfirm').addEventListener('change',()=>{
-    $('manualMarkSent').disabled=!$('manualSentConfirm').checked;
+    $('manualMarkSent').disabled=!$('manualSentConfirm').checked ||
+      ['abrindo','iniciando','pronto','enviando','cancelando'].includes(state.chromeFase);
   });
+  $('chromePrepare').addEventListener('click',()=>prepararWhatsappChrome().catch(e=>flash(e.message,true)));
+  $('chromeSend').addEventListener('click',enviarWhatsappChrome);
+  $('chromeCancel').addEventListener('click',cancelarWhatsappChrome);
   $('manualMarkSent').addEventListener('click',()=>registrarManual('enviado'));
   $('manualIgnore').addEventListener('click',()=>registrarManual('ignorado'));
   $('manualComplaint').addEventListener('click',()=>registrarManual('denunciado'));

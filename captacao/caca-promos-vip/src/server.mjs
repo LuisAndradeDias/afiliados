@@ -9,6 +9,7 @@ import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
 import { iniciarImportacaoAutorizada } from './importacao-autorizada.mjs';
 import { iniciarCampanhas } from './campanhas.mjs';
 import { iniciarConvitesUnicos } from './convites-unicos.mjs';
+import { iniciarControleWhatsapp } from './whatsapp-convite-controller.mjs';
 import { iniciarDenuncias } from './denuncias.mjs';
 import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta, lerStatusMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
@@ -113,6 +114,7 @@ export function criarPiloto({
   inviteUrl = GROUP_URL,
   agora = () => new Date(),
   metaAmbiente = process.env,
+  whatsappWorkerTeste = false,
 } = {}) {
   let urlGrupo;
   try { urlGrupo = new URL(inviteUrl); }
@@ -130,6 +132,9 @@ export function criarPiloto({
   const configMeta = obterConfigMeta(metaAmbiente);
   const convitesUnicos = iniciarConvitesUnicos({
     dataDir,contatos,bloqueios:denuncias,configMeta,grupoInicial:urlGrupo.toString(),agora,
+  });
+  const controleWhatsapp = iniciarControleWhatsapp({
+    convites:convitesUnicos,sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
   });
   const sessoes = new Map();
   const limites = new Map();
@@ -341,6 +346,9 @@ export function criarPiloto({
         if (pathname === '/api/local/campanhas/convite/manual/estatisticas' && leitura) {
           return json(res, 200, {ok:true,controle:convitesUnicos.estatisticasManual()});
         }
+        if (pathname === '/api/local/campanhas/convite/whatsapp/estado' && leitura) {
+          return json(res, 200, {ok:true,estado:controleWhatsapp.estado()});
+        }
         if (pathname === '/api/local/campanhas/convite/fila' && leitura) {
           try {return json(res, 200, {ok:true,
             fila:convitesUnicos.detalhesFila(endereco.searchParams.get('id'))});}
@@ -403,6 +411,25 @@ export function criarPiloto({
           }
           if (pathname === '/api/local/campanhas/convite/manual/preparar') {
             return json(res, 200, {ok:true,conversa:convitesUnicos.prepararManual(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/preparar') {
+            if (!limitar(req,'whatsapp-preparar',60))return json(res,429,
+              {ok:false,mensagem:'Limite de preparacoes atingido.'});
+            return json(res, 202, {ok:true,estado:controleWhatsapp.iniciar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/enviar') {
+            return json(res, 202, {ok:true,estado:controleWhatsapp.enviar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/cancelar') {
+            return json(res, 202, {ok:true,estado:controleWhatsapp.cancelar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/conciliar') {
+            if (controleWhatsapp.estado().ocupado) {
+              return json(res, 409, {ok:false,
+                mensagem:'Aguarde o Chrome terminar antes de conciliar uma tentativa.'});
+            }
+            return json(res, 200, {ok:true,
+              resultado:convitesUnicos.conciliarTentativa(dados)});
           }
           if (pathname === '/api/local/campanhas/convite/manual/registrar') {
             return json(res, 200, {ok:true,resultado:convitesUnicos.marcarManual(dados)});
@@ -626,12 +653,15 @@ export async function iniciarServidor({
   dataDir = process.env.DATA_DIR ?? join(sourceDir, '..', 'dados'),
   inviteUrl = process.env.CAPTACAO_GROUP_URL ?? GROUP_URL,
   metaAmbiente = process.env,
+  whatsappWorkerTeste = false,
   agora,
 } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new Error('Porta inválida');
   }
-  const { servidor, chave, contatos } = criarPiloto({ dataDir, inviteUrl, agora, metaAmbiente });
+  const { servidor, chave, contatos } = criarPiloto({
+    dataDir,inviteUrl,agora,metaAmbiente,whatsappWorkerTeste,
+  });
   await new Promise((resolve, reject) => {
     servidor.once('error', reject);
     servidor.listen(port, host, resolve);

@@ -124,7 +124,7 @@ export function renderCampanhas() {
       <div>
         <span class="eyebrow">Modo gratuito recomendado · 1 conversa por vez</span>
         <h2 id="manualTitle">Convites pelo seu WhatsApp Web</h2>
-        <p>Sem automação de envio, QR Code no sistema ou bibliotecas não oficiais. O WhatsApp Web abre no navegador com a mensagem pronta. Você decide se envia.</p>
+        <p>Reutiliza o Chrome e o Playwright das promoções: abre a conversa, preenche a mensagem e aguarda sua confirmação para clicar em Enviar uma única vez. Não dispara listas automaticamente.</p>
       </div>
       <span class="tag">Supervisionado</span>
     </div>
@@ -135,6 +135,11 @@ export function renderCampanhas() {
     </div>
     <div class="hint"><strong>Importante:</strong> no WhatsApp Web não existem botões interativos personalizados. A mensagem terá o <strong>link do grupo</strong> e a instrução de responder <strong>SAIR</strong> ou <strong>DENUNCIAR</strong>. Ao receber essa resposta, registre o bloqueio no painel. O envio para telefones apenas extraídos de grupos continua bloqueado. O limite interno de 50 por dia não garante evitar bloqueios do WhatsApp.</div>
     <p>Primeiro <a href="#singleText">escreva ou edite sua mensagem única abaixo</a> e <a href="#importStage">importe a planilha de contatos autorizados</a>. Depois volte aqui.</p>
+    <label class="consent-line" style="margin:10px 0 15px">
+      <input id="useChrome" type="checkbox" checked>
+      <span>Usar a automação de Chrome das promoções para preparar e enviar,
+      sempre após confirmação minha no painel.</span>
+    </label>
     <div class="row-actions">
       <button id="createManualQueue" type="button" class="primary" disabled>Criar fila para WhatsApp Web</button>
       <button id="refreshManualQueues" type="button" class="quiet">Atualizar filas</button>
@@ -153,15 +158,31 @@ export function renderCampanhas() {
     </div>
     <div id="manualComposer" class="surface" hidden style="padding:18px;margin:15px 0">
       <strong id="manualRecipient">Contato</strong>
-      <p class="muted">Confira o texto. Depois clique em Abrir conversa e envie pessoalmente no WhatsApp.</p>
+      <p class="muted">Confira o número e o texto. No modo automático supervisionado, clique em Enviar agora no painel; no modo manual, use o link da alternativa.</p>
       <label for="manualMessageReady">Texto idêntico para todos (link e descadastro incluídos)</label>
       <textarea id="manualMessageReady" readonly rows="8"></textarea>
-      <div class="row-actions">
-        <a id="manualOpenWa" class="primary" href="#" target="_blank" rel="noopener noreferrer">Abrir conversa no WhatsApp ↗</a>
+      <div class="hint" style="margin-top:14px">
+        <strong>Mesma automação das promoções:</strong> o Chrome usa sua sessão atual,
+        preenche a conversa e aguarda seu clique em <strong>Enviar agora</strong>.
+        Confira o nome/número na tela do WhatsApp antes de confirmar.
       </div>
+      <p id="chromeStatus" class="muted" role="status" aria-live="polite">
+        Aguardando o Chrome abrir e preencher a conversa...
+      </p>
+      <div class="row-actions">
+        <button id="chromePrepare" type="button" class="secondary">Preparar novamente no Chrome</button>
+        <button id="chromeSend" type="button" class="primary" disabled>Enviar agora pelo WhatsApp</button>
+        <button id="chromeCancel" type="button" class="quiet" disabled>Cancelar janela</button>
+      </div>
+      <details class="legacy">
+        <summary>Alternativa manual, sem automação</summary>
+        <p>Se o WhatsApp estiver ocupado com o robô de promoções,
+          utilize este link e envie você mesmo.</p>
+        <a id="manualOpenWa" class="secondary" href="#" target="_blank" rel="noopener noreferrer">Abrir conversa no WhatsApp ↗</a>
+      </details>
       <label class="consent-line">
         <input id="manualSentConfirm" type="checkbox">
-        <span>Confirmo que <strong>enviei manualmente</strong> a mensagem nesta conversa.</span>
+        <span><strong>Apenas no modo manual:</strong> confirmo que enviei a mensagem nesta conversa.</span>
       </label>
       <div class="row-actions">
         <button id="manualMarkSent" type="button" class="secondary" disabled>Registrar envio confirmado</button>
@@ -169,7 +190,7 @@ export function renderCampanhas() {
         <button id="manualComplaint" type="button" class="quiet">Recebi denúncia / SAIR</button>
         <button id="manualCancel" type="button" class="quiet">Cancelar preparação</button>
       </div>
-      <p class="muted">Abrir uma conversa não comprova entrega. Denúncia é registrada somente após você receber a reclamação.</p>
+      <p class="muted">O botão Enviar agora clica uma única vez no WhatsApp e tenta conferir a mensagem enviada na própria conversa. Em caso de dúvida, pare e verifique manualmente. Denúncias devem ser registradas somente após uma reclamação real.</p>
     </div>
     <div id="manualQueuePeople" class="ledger surface"></div>
   </section>

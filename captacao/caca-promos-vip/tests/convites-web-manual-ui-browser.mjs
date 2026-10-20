@@ -46,6 +46,8 @@ test('Chrome: fila grátis abre wa.me sem enviar, confirma um e bloqueia outro',
   });
   await page.waitForFunction(()=>document.querySelector('#cloudEligible').textContent.startsWith('2'));
   assert.match(await page.locator('#cloudBlocked').innerText(),/1 fora/);
+  // Legado manual continua disponivel como alternativa a Playwright.
+  await page.locator('#useChrome').uncheck();
   await page.locator('#createManualQueue').click();
   await page.locator('#manualQueueDetail').waitFor({state:'visible',timeout:10000});
   assert.match(await page.locator('#manualQueueSummary').innerText(),/2 pendentes/);
