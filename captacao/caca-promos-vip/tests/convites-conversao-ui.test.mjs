@@ -55,6 +55,7 @@ test('painel converte fila Meta para WhatsApp Web com clique e sem enviar',async
   await botao.click();
   await page.locator('#manualQueueDetail').waitFor({state:'visible',timeout:12000});
   assert.match(await page.locator('#manualQueueSummary').innerText(),/1 pendentes/);
+  await page.locator('#manualPeopleDisclosure > summary').click();
   assert.match(await page.locator('#manualQueuePeople').innerText(),/Contato sem nome/);
   assert.equal(await page.locator('#chromeSend').isDisabled(),true);
   const atualizado=(await (await fetch(app.base+

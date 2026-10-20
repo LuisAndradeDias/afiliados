@@ -206,27 +206,46 @@ export function iniciarConvitesUnicos({
     return resumir(fila,mapa);
   }
 
-  // A limpeza apenas retira filas nao enviadas; backup privado preserva o histórico.
-  // Impede apagar tentativas ou envios confirmados, para nao zerar limites diarios.
+  // Remover filas nunca apaga um envio ou tentativa; o backup integral
+  // permite reconstruir o estado anterior sem publicar dados privados.
+  function conferirFilaLimpavel(fila) {
+    const permitidos=new Set(['pendente','aberto','cancelado','ignorado','bloqueado']);
+    if (fila.itens.some(i=>
+      !permitidos.has(i.status) || i.solicitadoEm || i.mensagemId ||
+      i.confirmadoEm || i.tentativaEm)) {
+      throw new Error('A fila tem tentativas ou envios registrados. Confira o histórico antes de limpar.');
+    }
+  }
+  function arquivarFilasAntesDeLimpar(dados) {
+    const historico=join(dataDir,'backups-privados');
+    mkdirSync(historico,{recursive:true});
+    const carimbo=agora().toISOString().replace(/[^0-9A-Za-z]/g,'-');
+    const backup=join(historico,'filas-arquivadas-'+carimbo+'-'+
+      randomBytes(4).toString('hex')+'.json');
+    salvarArquivo(backup,dados);
+  }
   function limparFilasPendentes({confirmado=false}={}) {
     if (confirmado!==true) throw new Error('Confirme a limpeza de filas.');
     if (loteEmExecucao) throw new Error('Aguarde o envio em andamento terminar.');
     const dados=lerFilas();
     if (!dados.filas.length) return {limpas:0,backupCriado:false};
-    const permitidos=new Set(['pendente','aberto','cancelado','ignorado','bloqueado']);
-    if (dados.filas.some(f=>f.itens.some(i=>
-      !permitidos.has(i.status) || i.solicitadoEm || i.mensagemId ||
-      i.confirmadoEm || i.tentativaEm))) {
-      throw new Error('Há tentativas ou envios registrados. Confira o histórico antes de limpar.');
-    }
-    const historico=join(dataDir,'backups-privados');
-    mkdirSync(historico,{recursive:true});
-    const carimbo=agora().toISOString().replace(/[^0-9A-Za-z]/g,'-');
-    const backup=join(historico,'filas-arquivadas-'+carimbo+'-'+randomBytes(4).toString('hex')+'.json');
-    // Grava a copia completa antes de substituir a fila.
-    salvarArquivo(backup,dados);
+    dados.filas.forEach(conferirFilaLimpavel);
+    arquivarFilasAntesDeLimpar(dados);
     salvarArquivo(arquivoFilas,{versao:1,filas:[]});
     return {limpas:dados.filas.length,backupCriado:true};
+  }
+  function limparFilaSelecionada({campanhaId,confirmado=false}={}) {
+    if (confirmado!==true) throw new Error('Confirme a limpeza desta fila.');
+    if (!UUID.test(String(campanhaId||''))) throw new Error('Fila inválida.');
+    if (loteEmExecucao) throw new Error('Aguarde o envio em andamento terminar.');
+    const dados=lerFilas();
+    const fila=dados.filas.find(item=>item.id===campanhaId);
+    if (!fila) throw new Error('Esta fila não existe mais. Atualize a lista.');
+    conferirFilaLimpavel(fila);
+    arquivarFilasAntesDeLimpar(dados);
+    dados.filas=dados.filas.filter(item=>item.id!==campanhaId);
+    salvarArquivo(arquivoFilas,dados);
+    return {limpas:1,backupCriado:true};
   }
 
   // Converte uma fila Meta ainda intocada para o WhatsApp Web, sem criar
@@ -619,7 +638,7 @@ export function iniciarConvitesUnicos({
   return {
     configuracao,salvarConfiguracao,templateParaMeta,pessoasElegiveis,
     listarFilas,detalhesFila,criarFila,converterFilaParaWeb,
-    limparFilasPendentes,simular,conferirModelo,
+    limparFilasPendentes,limparFilaSelecionada,simular,conferirModelo,
     processarLote,registrarStatus,processarCliqueEntrar,
     estatisticasManual,prepararManual,marcarManual,validarEnvioManual,
     marcarTentativaIncerta,confirmarTentativaWorker,conciliarTentativa,

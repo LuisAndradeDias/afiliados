@@ -153,7 +153,17 @@ header{padding:17px 0}
 #importStage>.hint{background:none;border-color:var(--stroke);color:var(--soft);font-size:11px}
 #metaStage .advanced-disclosure .row-actions{margin-top:10px}
 #queueTools>p{padding:0 15px 12px;margin-bottom:0;font-size:11px}
+.queue-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.queue-head-actions button{font-size:12px;min-height:39px}
+.danger-action{color:#f5b7b2;border-color:#7b5556}
+.danger-action:hover{color:#ffe0dc;background:#40272b;text-decoration:none}
+.queue-contact-disclosure{margin:20px 0 0}
+.queue-contact-disclosure .queue-search{margin:5px 14px 14px}
+.queue-contact-disclosure .ledger{border:0;border-top:1px solid var(--stroke);border-radius:0 0 11px 11px}
+.queue-contact-disclosure summary .muted{font-size:12px;font-weight:500;margin-left:7px}
 @media(max-width:700px){
+ .queue-head-actions{width:100%}
+ .queue-head-actions button{flex:1}
  .wrap{padding:0 14px 36px}
  .hero{padding:23px 0 18px;display:block}
  .hero .sticker{display:none}
@@ -411,7 +421,10 @@ export function renderCampanhas() {
       <div><span class="eyebrow">Fila supervisionada</span>
         <h2 id="manualQueueTitle">Sua fila de convites</h2>
         <p id="manualQueueSummary">Escolha um contato autorizado para preparar uma conversa.</p></div>
-      <button id="closeManualQueue" type="button" class="quiet">Fechar fila</button>
+      <div class="queue-head-actions">
+        <button id="clearCurrentQueue" type="button" class="quiet danger-action">Limpar esta fila</button>
+        <button id="closeManualQueue" type="button" class="quiet">Fechar</button>
+      </div>
     </div>
     <div class="row-actions queue-controls">
       <button id="prepareNextContact" type="button" class="primary" disabled>Preparar próximo contato</button>
@@ -453,11 +466,14 @@ export function renderCampanhas() {
       </details>
       <p class="muted">O botão Enviar agora clica uma única vez no WhatsApp e tenta conferir a mensagem enviada na própria conversa. Em caso de dúvida, pare e verifique manualmente. Denúncias devem ser registradas somente após uma reclamação real.</p>
     </div>
-    <div class="queue-search">
-      <label for="manualSearch">Buscar nesta fila</label>
-      <input id="manualSearch" type="search" placeholder="Nome ou os últimos dígitos do número" autocomplete="off">
-    </div>
-    <div id="manualQueuePeople" class="ledger surface"></div>
+    <details id="manualPeopleDisclosure" class="minor-tools queue-contact-disclosure">
+      <summary>Ver lista de contatos <span id="manualPeopleCount" class="muted"></span></summary>
+      <div class="queue-search">
+        <label for="manualSearch">Buscar nesta fila</label>
+        <input id="manualSearch" type="search" placeholder="Nome ou últimos dígitos do telefone" autocomplete="off">
+      </div>
+      <div id="manualQueuePeople" class="ledger surface"></div>
+    </details>
   </section>
 
   <section id="cloudQueueDetail" class="card surface" hidden aria-labelledby="cloudQueueTitle" style="margin-bottom:18px">

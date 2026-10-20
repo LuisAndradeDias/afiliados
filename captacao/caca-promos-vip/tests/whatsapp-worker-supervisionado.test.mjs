@@ -95,6 +95,10 @@ test('cancelar Chrome de teste antes do clique não registra envio',async t=>{
   assert.equal(worker.processoAtivo,true);
   const antes=await a.post('/api/local/campanhas/convite/filas/limpar',{confirmado:true});
   assert.equal(antes.status,409,'Limpeza bloqueada com Chrome ainda em preparação');
+  const individual=await a.post('/api/local/campanhas/convite/fila/limpar',{
+    campanhaId:a.fila.id,confirmado:true,
+  });
+  assert.equal(individual.status,409,'Limpeza individual também bloqueada com Chrome ativo');
   assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/cancelar',{
     ...dados,confirmarNaoEnviado:true,
   })).status,202);

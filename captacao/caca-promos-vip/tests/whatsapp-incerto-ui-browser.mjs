@@ -45,7 +45,8 @@ test('Chrome fictício: resultado incerto exige conciliação e nunca reenviará
   await page.waitForFunction(()=>document.querySelector('#cloudEligible').textContent.startsWith('1'));
   await page.locator('#createManualQueue').click();
   await page.locator('#manualQueueDetail').waitFor({state:'visible'});
-  await page.getByRole('button',{name:'Preparar conversa'}).click();
+  await page.locator('#prepareNextContact').click();
+  await page.locator('#manualPeopleDisclosure > summary').click();
   await page.waitForFunction(()=>!document.querySelector('#chromeSend').disabled,
     {timeout:25000});
   await page.locator('#chromeSend').click();

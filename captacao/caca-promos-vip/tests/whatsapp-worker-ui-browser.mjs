@@ -45,7 +45,7 @@ test('painel abre WhatsApp mock com sessão de promoções e envia após confirm
   await page.waitForFunction(()=>document.querySelector('#cloudEligible').textContent.startsWith('1'));
   await page.locator('#createManualQueue').click();
   await page.locator('#manualQueueDetail').waitFor({state:'visible'});
-  await page.getByRole('button',{name:'Preparar conversa'}).click();
+  await page.locator('#prepareNextContact').click();
   await page.locator('#manualComposer').waitFor({state:'visible'});
   await page.locator('#chromeSend').waitFor({state:'visible'});
   await page.waitForFunction(()=>!document.querySelector('#chromeSend').disabled,

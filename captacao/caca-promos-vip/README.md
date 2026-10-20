@@ -98,8 +98,12 @@ A integração paga da Meta fica em **Recursos avançados**. O botão
 
 ### Limpeza segura de filas
 
-Em **Gerenciar filas**, clique em **Limpar filas antigas**, digite
-`LIMPAR` e confirme. Somente filas sem tentativas ou envios registrados
+Para apagar somente a fila aberta, clique em **Limpar esta fila**, no topo
+dos detalhes. A lista de contatos fica recolhida em **Ver lista de
+contatos**; use **Preparar próximo contato** para continuar sem expandi-la.
+Se preferir limpar todas as filas pendentes, abra **Gerenciar filas** e
+clique em **Limpar filas antigas**. Em ambos os casos, digite `LIMPAR`
+para confirmar que nenhum envio ficou sem registro. Somente filas sem tentativas ou envios registrados
 podem ser limpas. O servidor recusa a limpeza quando uma janela do
 WhatsApp está ativa, inclusive durante o encerramento do Chrome.
 

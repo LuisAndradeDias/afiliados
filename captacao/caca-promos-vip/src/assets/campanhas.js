@@ -620,6 +620,35 @@
     finally{btn.disabled=false;}
   }
 
+  async function limparFilaAtual() {
+    const fila=state.manualQueue;
+    if(!fila)return;
+    const palavra=prompt('Remover apenas a fila "'+fila.nome+'"? Confirme que não houve envio fora do painel. Os contatos autorizados serão mantidos e uma cópia da fila será arquivada. Digite LIMPAR para confirmar.');
+    if(palavra?.trim()!=='LIMPAR')return;
+    const botaoLimpar=$('clearCurrentQueue');
+    botaoLimpar.disabled=true;
+    try {
+      const res=await api('/api/local/campanhas/convite/fila/limpar','POST',{
+        campanhaId:fila.id,confirmado:true,
+      });
+      if(state.manualQueue?.id===fila.id){
+        state.manualQueue=null;
+        state.manualConversa=null;
+        state.manualVisible=12;
+        $('manualSearch').value='';
+        $('manualQueueDetail').hidden=true;
+        $('manualComposer').hidden=true;
+        $('manualPeopleDisclosure').open=false;
+        pararAcompanhamentoChrome();
+      }
+      await Promise.all([carregarFilasManual(),carregarFilasCloud(),
+        carregarControleManual()]);
+      flash('Fila "'+fila.nome+'" limpa. As outras filas, os contatos e as autorizações foram preservados. '+
+        (res.resultado.backupCriado?'Backup privado criado.':''));
+    }catch(e){flash(e.message,true);}
+    finally{botaoLimpar.disabled=false;}
+  }
+
   async function criarFilaManual() {
     const btn=$('createManualQueue');
     btn.disabled=true;
@@ -647,7 +676,9 @@
       if(mudouFila){
         state.manualVisible=12;
         $('manualSearch').value='';
+        $('manualPeopleDisclosure').open=false;
       }
+      $('manualPeopleCount').textContent='('+dados.fila.itens.length+')';
       $('manualQueueDetail').hidden=false;
       $('manualQueueTitle').textContent=dados.fila.nome;
       $('manualQueueSummary').textContent=dados.fila.total+' contatos · '+
@@ -1069,6 +1100,7 @@
   $('whatsappConnectRefresh').addEventListener('click',carregarConexaoWhatsapp);
   $('createManualQueue').addEventListener('click',criarFilaManual);
   $('clearAllQueues').addEventListener('click',limparFilasLocais);
+  $('clearCurrentQueue').addEventListener('click',limparFilaAtual);
   $('manualSearch').addEventListener('input',()=>{
     state.manualVisible=12;
     if(state.manualQueue)abrirFilaManual(state.manualQueue.id,{rolar:false});
