@@ -95,7 +95,7 @@ export function renderCampanhas() {
 <header>
   <div class="brand"><span class="brand-mark">CP</span><div><div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div><small>CENTRAL DE CAMPANHAS</small></div></div>
   <nav class="top-actions" aria-label="Navegação">
-    <a href="#metaStage">Convites</a>
+    <a href="#manualStage">WhatsApp Web grátis</a>
     <a href="#importStage">Planilha</a>
     <a href="#complaintsDetail">Denúncias</a>
     <a href="/campanhas" aria-current="page">Campanhas</a>
@@ -106,10 +106,10 @@ export function renderCampanhas() {
 
 <main id="appView">
   <section class="hero">
-    <div><div class="eyebrow">Campanhas supervisionadas · Nova fase</div>
+    <div><div class="eyebrow">Convites supervisionados · Sem API paga</div>
       <h1>Mensagens com <em>controle.</em></h1>
-      <p>Crie uma única mensagem para todos, visualize os dois botões e prepare sua fila com contatos autorizados. Não é necessário ter o número da Meta agora.</p></div>
-    <span class="sticker">Modo de preparação · sem número</span>
+      <p>Use seu WhatsApp Web para convidar pessoas que autorizaram receber mensagens. A conversa abre com o texto pronto; você confirma cada envio manualmente.</p></div>
+    <span class="sticker">WhatsApp Web · Sem custo de API</span>
   </section>
 
   <section class="metrics" aria-label="Resumo">
@@ -119,10 +119,65 @@ export function renderCampanhas() {
     <div class="metric"><small>Filas de convites</small><b id="metricQueues">0</b></div>
   </section>
 
+  <section class="card surface" id="manualStage" aria-labelledby="manualTitle" style="margin-bottom:18px">
+    <div class="view-title">
+      <div>
+        <span class="eyebrow">Modo gratuito recomendado · 1 conversa por vez</span>
+        <h2 id="manualTitle">Convites pelo seu WhatsApp Web</h2>
+        <p>Sem automação de envio, QR Code no sistema ou bibliotecas não oficiais. O WhatsApp Web abre no navegador com a mensagem pronta. Você decide se envia.</p>
+      </div>
+      <span class="tag">Supervisionado</span>
+    </div>
+    <div class="counts" style="margin-bottom:12px">
+      <span class="counter" id="manualDaily">0 / 50 conversas hoje</span>
+      <span class="counter" id="manualConfirmed">0 envios confirmados</span>
+      <span class="counter">1 por vez · sem disparo automático</span>
+    </div>
+    <div class="hint"><strong>Importante:</strong> no WhatsApp Web não existem botões interativos personalizados. A mensagem terá o <strong>link do grupo</strong> e a instrução de responder <strong>SAIR</strong> ou <strong>DENUNCIAR</strong>. Ao receber essa resposta, registre o bloqueio no painel. O envio para telefones apenas extraídos de grupos continua bloqueado. O limite interno de 50 por dia não garante evitar bloqueios do WhatsApp.</div>
+    <p>Primeiro <a href="#singleText">escreva ou edite sua mensagem única abaixo</a> e <a href="#importStage">importe a planilha de contatos autorizados</a>. Depois volte aqui.</p>
+    <div class="row-actions">
+      <button id="createManualQueue" type="button" class="primary" disabled>Criar fila para WhatsApp Web</button>
+      <button id="refreshManualQueues" type="button" class="quiet">Atualizar filas</button>
+    </div>
+    <div id="manualQueueList" class="cloud-queues" style="margin-top:16px">
+      <div class="empty">Nenhuma fila manual preparada.</div>
+    </div>
+  </section>
+
+  <section id="manualQueueDetail" class="card surface" hidden aria-labelledby="manualQueueTitle" style="margin-bottom:18px">
+    <div class="view-title">
+      <div><span class="eyebrow">Fila supervisionada</span>
+        <h2 id="manualQueueTitle">Convites pelo WhatsApp Web</h2>
+        <p id="manualQueueSummary">Escolha um contato autorizado para preparar uma conversa.</p></div>
+      <button id="closeManualQueue" type="button" class="quiet">Fechar fila</button>
+    </div>
+    <div id="manualComposer" class="surface" hidden style="padding:18px;margin:15px 0">
+      <strong id="manualRecipient">Contato</strong>
+      <p class="muted">Confira o texto. Depois clique em Abrir conversa e envie pessoalmente no WhatsApp.</p>
+      <label for="manualMessageReady">Texto idêntico para todos (link e descadastro incluídos)</label>
+      <textarea id="manualMessageReady" readonly rows="8"></textarea>
+      <div class="row-actions">
+        <a id="manualOpenWa" class="primary" href="#" target="_blank" rel="noopener noreferrer">Abrir conversa no WhatsApp ↗</a>
+      </div>
+      <label class="consent-line">
+        <input id="manualSentConfirm" type="checkbox">
+        <span>Confirmo que <strong>enviei manualmente</strong> a mensagem nesta conversa.</span>
+      </label>
+      <div class="row-actions">
+        <button id="manualMarkSent" type="button" class="secondary" disabled>Registrar envio confirmado</button>
+        <button id="manualIgnore" type="button" class="quiet">Ignorar contato</button>
+        <button id="manualComplaint" type="button" class="quiet">Recebi denúncia / SAIR</button>
+        <button id="manualCancel" type="button" class="quiet">Cancelar preparação</button>
+      </div>
+      <p class="muted">Abrir uma conversa não comprova entrega. Denúncia é registrada somente após você receber a reclamação.</p>
+    </div>
+    <div id="manualQueuePeople" class="ledger surface"></div>
+  </section>
+
   <section class="card surface" id="metaStage" aria-labelledby="metaTitle" style="margin-bottom:18px">
     <div class="view-title">
-      <div><span class="eyebrow">Convite único · WhatsApp Business Platform</span>
-        <h2 id="metaTitle">Uma mensagem. Dois botões.</h2>
+      <div><span class="eyebrow">Editor de mensagem única · WhatsApp Web e Meta opcional</span>
+        <h2 id="metaTitle">Sua mensagem de convite</h2>
         <p id="metaStatus">Preparando a conexão com a Meta. Ainda não é necessário ter número.</p></div>
       <span id="metaConnectionBadge" class="tag warn">Aguardando número</span>
     </div>
@@ -141,7 +196,7 @@ export function renderCampanhas() {
         </div>
         <div class="field"><label for="groupLink">Link do grupo de ofertas</label>
           <input id="groupLink" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/...">
-          <small class="muted">O link será enviado somente após o destinatário clicar em Entrar no grupo.</small>
+          <small class="muted">No modo gratuito, o link entra no texto da mensagem. Na Cloud API, seria enviado após a resposta.</small>
         </div>
         <div class="cloud-mini-grid">
           <div class="field"><label for="cloudCampaignName">Nome da campanha</label>
@@ -164,7 +219,7 @@ export function renderCampanhas() {
             <span class="bubble-time">Prévia</span></div>
           <div class="phone-choice">↗ &nbsp; Entrar no grupo</div>
           <div class="phone-choice">⚑ &nbsp; Denunciar convite</div>
-          <p class="phone-note">Botões ilustrativos. Não enviam mensagens nesta tela.</p>
+          <p class="phone-note">Botões apenas na futura Cloud API. O WhatsApp Web usa links e resposta por texto.</p>
         </div>
         <div class="hint" id="cloudPreviewNotice">Não haverá envio para números sem opt-in. Denúncias internas bloqueiam campanhas futuras.</div>
       </div>

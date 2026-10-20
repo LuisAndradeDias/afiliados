@@ -2,7 +2,8 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const state = { autorizados:[], importados:[], aptos:[], bloqueados:[],
-    cloudMetaReady:false,cloudModeloAprovado:false,cloudQueue:null,cloudModel:null };
+    cloudMetaReady:false,cloudModeloAprovado:false,cloudQueue:null,cloudModel:null,
+    manualQueue:null,manualConversa:null };
   const linhasMaximas = 1500;
   const tamanhoMaximo = 110000;
 
@@ -211,6 +212,7 @@
     $('cloudEligible').textContent=state.aptos.length+' autorizados na planilha';
     $('cloudBlocked').textContent=state.bloqueados.length+' fora da fila';
     $('createCloudQueue').disabled=!state.aptos.length;
+    $('createManualQueue').disabled=!state.aptos.length;
   }
 
   function atualizarPreviewUnico() {
@@ -303,12 +305,13 @@
     $('metricQueues').textContent=String(resp.filas.length);
     const el=$('cloudQueueList');
     el.replaceChildren();
-    if (!resp.filas.length) {
+    const filas=resp.filas.filter(f=>f.modo!=='web');
+    if (!filas.length) {
       el.append(elemento('div','empty',
         'Nenhuma fila criada. Você já pode salvar a mensagem e simular sem número.'));
       return;
     }
-    for(const fila of resp.filas){
+    for(const fila of filas){
       const item=elemento('div','cloud-queue-item');
       const info=elemento('div');
       info.append(
@@ -414,12 +417,176 @@
     finally{atualizarDetalhesCloud();}
   }
 
+  async function carregarControleManual() {
+    const dados=await api('/api/local/campanhas/convite/manual/estatisticas');
+    const c=dados.controle;
+    $('manualDaily').textContent=c.iniciadosHoje+' / '+c.limiteDiario+
+      ' conversas preparadas hoje';
+    $('manualConfirmed').textContent=c.confirmadosHoje+
+      ' envios confirmados hoje';
+  }
+
+  async function carregarFilasManual() {
+    const dados=await api('/api/local/campanhas/convite/filas');
+    const filas=dados.filas.filter(f=>f.modo==='web');
+    const el=$('manualQueueList');
+    el.replaceChildren();
+    if (!filas.length) {
+      el.append(elemento('div','empty',
+        'Nenhuma fila do WhatsApp Web. Salve a mensagem, importe o CSV e crie a primeira.'));
+      return;
+    }
+    for(const fila of filas){
+      const linha=elemento('div','cloud-queue-item');
+      const info=elemento('div');
+      info.append(elemento('strong','',fila.nome),
+        elemento('small','',fila.total+' contatos · '+fila.pendentes+
+          ' pendentes · '+fila.abertos+' em revisão · '+
+          fila.manuais+' envios confirmados · '+fila.bloqueados+' bloqueados'));
+      linha.append(info,botao('Abrir fila',()=>abrirFilaManual(fila.id),'secondary'));
+      el.append(linha);
+    }
+  }
+
+  async function criarFilaManual() {
+    const btn=$('createManualQueue');
+    btn.disabled=true;
+    try {
+      await salvarUnico(true);
+      const res=await api('/api/local/campanhas/convite/fila','POST',{
+        nome:$('cloudCampaignName').value.trim(),
+        contatoIds:state.aptos.map(c=>c.id),
+        modo:'web',
+      });
+      await carregarFilasManual();
+      await abrirFilaManual(res.fila.id);
+      flash('Fila manual preparada com '+res.fila.total+
+        ' contatos autorizados. Nenhum envio foi realizado.');
+    } catch(e) { flash(e.message,true); }
+    finally { atualizarAptosCloud(); }
+  }
+
+  async function abrirFilaManual(id) {
+    try {
+      const dados=await api('/api/local/campanhas/convite/fila?id='+encodeURIComponent(id));
+      if(dados.fila.modo!=='web')throw new Error('Esta fila não é do WhatsApp Web.');
+      state.manualQueue=dados.fila;
+      $('manualQueueDetail').hidden=false;
+      $('manualQueueTitle').textContent=dados.fila.nome;
+      $('manualQueueSummary').textContent=dados.fila.total+' contatos · '+
+        dados.fila.pendentes+' pendentes · '+dados.fila.abertos+
+        ' em revisão · '+dados.fila.manuais+' confirmados · '+
+        dados.fila.bloqueados+' bloqueados';
+      const lista=$('manualQueuePeople');
+      lista.replaceChildren();
+      for (const item of dados.fila.itens) {
+        const linha=elemento('div','list-row');
+        const perfil=elemento('div');
+        perfil.append(elemento('strong','',item.nome),
+          elemento('small','',item.telefoneMascarado));
+        const actions=elemento('div','actions');
+        actions.append(elemento('span','tag'+
+          (item.status==='bloqueado'||item.status==='denunciado'?' off':
+          item.status==='pendente'||item.status==='aberto'?' warn':''),
+          item.status==='enviado-manualmente'?'Enviado (confirmado por você)':item.status));
+        if(['pendente','aberto'].includes(item.status)){
+          actions.append(botao(item.status==='aberto'?'Retomar conversa':
+            'Preparar conversa',()=>prepararConversaManual(item.contatoId),'secondary'));
+        } else if (item.status==='enviado-manualmente') {
+          actions.append(botao('Registrar denúncia recebida',
+            ()=>denunciarAposEnvioManual(item.contatoId),'quiet'));
+        }
+        linha.append(perfil,actions);
+        lista.append(linha);
+      }
+      $('manualQueueDetail').scrollIntoView({behavior:'smooth',block:'start'});
+    } catch(e) { flash(e.message,true); }
+  }
+
+  async function prepararConversaManual(contatoId) {
+    if(!state.manualQueue)return;
+    try {
+      const res=await api('/api/local/campanhas/convite/manual/preparar','POST',{
+        campanhaId:state.manualQueue.id,contatoId,
+      });
+      const conversa=res.conversa;
+      if (!conversa.url.startsWith('https://wa.me/')) {
+        throw new Error('O link retornado não é uma conversa do WhatsApp.');
+      }
+      state.manualConversa={contatoId,campanhaId:state.manualQueue.id};
+      $('manualRecipient').textContent=(conversa.nome||'Contato')+
+        ' · '+conversa.numeroMascarado;
+      $('manualMessageReady').value=conversa.mensagem;
+      $('manualOpenWa').href=conversa.url;
+      $('manualSentConfirm').checked=false;
+      $('manualMarkSent').disabled=true;
+      $('manualComposer').hidden=false;
+      await abrirFilaManual(state.manualQueue.id);
+      $('manualComposer').scrollIntoView({behavior:'smooth',block:'center'});
+      flash('Conversa preparada. Clique em Abrir conversa, confira e envie manualmente.');
+    } catch(e) { flash(e.message,true); }
+  }
+
+  async function registrarManual(acao) {
+    const atual=state.manualConversa;
+    if(!atual)return;
+    if(acao==='enviado'&&!$('manualSentConfirm').checked)return;
+    if(acao==='denunciado'&&!confirm(
+      'Você recebeu de fato SAIR ou DENUNCIAR deste contato? Isso bloqueará novos convites.'))return;
+    if(acao==='cancelado'&&!confirm(
+      'Cancele somente se a mensagem NÃO foi enviada. Deseja voltar à fila?'))return;
+    if(acao==='ignorado'&&!confirm('Ignorar este contato nesta fila?'))return;
+    try {
+      await api('/api/local/campanhas/convite/manual/registrar','POST',{
+        ...atual,acao,confirmado:acao==='enviado'&&$('manualSentConfirm').checked,
+      });
+      $('manualComposer').hidden=true;
+      $('manualOpenWa').href='#';
+      $('manualMessageReady').value='';
+      state.manualConversa=null;
+      await Promise.all([abrirFilaManual(atual.campanhaId),
+        carregarFilasManual(),carregarControleManual()]);
+      if(acao==='denunciado') {
+        await Promise.all([carregarDenuncias(),carregarMeta()]);
+        const elegiveis=await api('/api/local/campanhas/destinatarios');
+        state.autorizados=elegiveis.destinatarios;
+        renderResumo();
+      }
+      flash(acao==='enviado'
+        ? 'Envio manual registrado após sua confirmação. Nenhum disparo automático ocorreu.'
+        : acao==='denunciado'
+          ? 'Denúncia registrada: número bloqueado para novos convites.'
+          : 'Contato atualizado na fila.');
+    } catch(e) { flash(e.message,true); }
+  }
+
+  async function denunciarAposEnvioManual(contatoId) {
+    const fila=state.manualQueue;
+    if (!fila || !confirm('Você recebeu realmente SAIR ou DENUNCIAR? O contato ficará bloqueado para convites futuros.')) {
+      return;
+    }
+    try {
+      await api('/api/local/campanhas/convite/manual/registrar','POST',{
+        campanhaId:fila.id,contatoId,acao:'denunciado',
+      });
+      await Promise.all([
+        abrirFilaManual(fila.id),carregarFilasManual(),carregarControleManual(),
+        carregarDenuncias(),carregarMeta(),
+      ]);
+      const elegiveis=await api('/api/local/campanhas/destinatarios');
+      state.autorizados=elegiveis.destinatarios;
+      renderResumo();
+      flash('Denúncia após envio registrada. Contato bloqueado para novos convites.');
+    }catch(e){flash(e.message,true);}
+  }
+
   async function carregar() {
     const result=await api('/api/local/campanhas/destinatarios');
     state.autorizados=result.destinatarios;
     renderResumo();
     await Promise.all([carregarMeta(),carregarModeloUnico(),
-      carregarFilasCloud(),carregarDenuncias()]);
+      carregarFilasCloud(),carregarFilasManual(),carregarControleManual(),
+      carregarDenuncias()]);
   }
 
   function limparImportacao() {
@@ -450,6 +617,24 @@
     return '"'+texto.replace(/"/g,'""')+'"';
   }
 
+  $('createManualQueue').addEventListener('click',criarFilaManual);
+  $('refreshManualQueues').addEventListener('click',()=>Promise.all([
+    carregarFilasManual(),carregarControleManual(),
+  ]).catch(e=>flash(e.message,true)));
+  $('closeManualQueue').addEventListener('click',()=>{
+    $('manualQueueDetail').hidden=true;
+    $('manualComposer').hidden=true;
+    state.manualQueue=null;
+    state.manualConversa=null;
+    $('manualOpenWa').href='#';
+  });
+  $('manualSentConfirm').addEventListener('change',()=>{
+    $('manualMarkSent').disabled=!$('manualSentConfirm').checked;
+  });
+  $('manualMarkSent').addEventListener('click',()=>registrarManual('enviado'));
+  $('manualIgnore').addEventListener('click',()=>registrarManual('ignorado'));
+  $('manualComplaint').addEventListener('click',()=>registrarManual('denunciado'));
+  $('manualCancel').addEventListener('click',()=>registrarManual('cancelado'));
   $('singleText').addEventListener('input',atualizarPreviewUnico);
   $('templateName').addEventListener('input',()=>{
     state.cloudModeloAprovado=false;atualizarDetalhesCloud();

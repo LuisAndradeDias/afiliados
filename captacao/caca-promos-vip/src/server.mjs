@@ -338,6 +338,9 @@ export function criarPiloto({
         if (pathname === '/api/local/campanhas/convite/filas' && leitura) {
           return json(res, 200, { ok:true, filas:convitesUnicos.listarFilas() });
         }
+        if (pathname === '/api/local/campanhas/convite/manual/estatisticas' && leitura) {
+          return json(res, 200, {ok:true,controle:convitesUnicos.estatisticasManual()});
+        }
         if (pathname === '/api/local/campanhas/convite/fila' && leitura) {
           try {return json(res, 200, {ok:true,
             fila:convitesUnicos.detalhesFila(endereco.searchParams.get('id'))});}
@@ -397,6 +400,12 @@ export function criarPiloto({
             if (!limitar(req,'convite-enviar',100))return json(res,429,
               {ok:false,mensagem:'Limite de requisicoes de envio atingido.'});
             return json(res, 200, {ok:true,resultado:await convitesUnicos.processarLote(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/manual/preparar') {
+            return json(res, 200, {ok:true,conversa:convitesUnicos.prepararManual(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/manual/registrar') {
+            return json(res, 200, {ok:true,resultado:convitesUnicos.marcarManual(dados)});
           }
           if (pathname === '/api/local/campanhas/remetente') {
             return json(res, 200, { ok: true,

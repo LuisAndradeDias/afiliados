@@ -9,6 +9,7 @@ import {
 const MAX_CAMPANHAS = 100;
 const MAX_CONTATOS = 1500;
 const MAX_POR_LOTE = 20;
+const LIMITE_MANUAL_DIARIO = 50;
 const ESTADOS_FINAIS = new Set(['aceito','enviado','entregue','lido','falhou','incerto']);
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 export const MENSAGEM_PADRAO = [
@@ -120,15 +121,22 @@ export function iniciarConvitesUnicos({
     return filas;
   }
   function statusItem(item,c) {
-    if (item.status !== 'pendente') return item.status;
-    return elegivel(c) ? 'pendente' : 'bloqueado';
+    if (item.status !== 'pendente' && item.status !== 'aberto') return item.status;
+    return elegivel(c) ? item.status : 'bloqueado';
   }
   function resumir(fila,mapa=contatoMap()) {
     const totais={pendentes:0,aceitos:0,enviados:0,entregues:0,lidos:0,
-      bloqueados:0,falhas:0,incertos:0};
+      bloqueados:0,falhas:0,incertos:0,abertos:0,manuais:0,ignorados:0};
     for (const item of fila.itens) {
       const st=statusItem(item,mapa.get(item.contatoId));
       if (st==='pendente') totais.pendentes++;
+      else if (st==='aberto') totais.abertos++;
+      else if (st==='enviado-manualmente') totais.manuais++;
+      else if (st==='ignorado') totais.ignorados++;
+      else if (st==='denunciado') {
+        totais.bloqueados++;
+        if (item.confirmadoEm) totais.manuais++;
+      }
       else if (st==='bloqueado') totais.bloqueados++;
       else if (st==='aceito') totais.aceitos++;
       else if (st==='enviado') totais.enviados++;
@@ -137,7 +145,7 @@ export function iniciarConvitesUnicos({
       else if (st==='falhou') totais.falhas++;
       else if (st==='incerto' || st==='processando') totais.incertos++;
     }
-    return {id:fila.id,nome:fila.nome,total:fila.itens.length,
+    return {id:fila.id,nome:fila.nome,modo:fila.modo||'meta',total:fila.itens.length,
       criadaEm:fila.criadaEm,modelo:fila.nomeModelo,...totais};
   }
   function listarFilas() {
@@ -156,12 +164,14 @@ export function iniciarConvitesUnicos({
         telefoneMascarado:numero ? '+'+numero.slice(0,4)+' •••• '+numero.slice(-4) : '',
         status:statusItem(item,c),
         solicitadoEm:item.solicitadoEm||null,
+        abertoEm:item.abertoEm||null,confirmadoEm:item.confirmadoEm||null,
       };
     });
     return {...resumir(fila,mapa),mensagem:fila.mensagem,itens};
   }
 
-  function criarFila({nome,contatoIds}) {
+  function criarFila({nome,contatoIds,modo='meta'}) {
+    if (!['meta','web'].includes(modo))throw new Error('Modo de convite inválido.');
     const titulo=nomeSeguro(nome);
     if (!Array.isArray(contatoIds) || contatoIds.length<1 ||
         contatoIds.length>MAX_CONTATOS || new Set(contatoIds).size!==contatoIds.length) {
@@ -177,11 +187,17 @@ export function iniciarConvitesUnicos({
     const cfg=configuracao();
     if (!cfg.grupoUrl) throw new Error('Salve o link do grupo antes de criar a fila.');
     const dados=lerFilas();
+    if (modo==='web') {
+      const jaConvidados=convidadosManual(dados);
+      if (contatoIds.some(id=>jaConvidados.has(id))) {
+        throw new Error('O contato já possui convite manual confirmado em outra campanha.');
+      }
+    }
     if (dados.filas.length>=MAX_CAMPANHAS) {
       throw new Error('Limite de campanhas atingido.');
     }
     const fila={
-      id:randomUUID(),nome:titulo,criadaEm:agora().toISOString(),
+      id:randomUUID(),nome:titulo,modo,criadaEm:agora().toISOString(),
       nomeModelo:cfg.nomeModelo,mensagem:cfg.mensagem,grupoUrl:cfg.grupoUrl,
       itens:contatoIds.map(id=>({contatoId:id,status:'pendente',
         solicitadoEm:null,mensagemId:null})),
@@ -189,6 +205,127 @@ export function iniciarConvitesUnicos({
     dados.filas.unshift(fila);
     salvarArquivo(arquivoFilas,dados);
     return resumir(fila,mapa);
+  }
+
+  // Modo GRATUITO: usa somente o recurso oficial de abrir uma conversa
+  // com texto pre-preenchido. O operador envia manualmente no WhatsApp Web.
+  // Nenhum script acessa a sessao do WhatsApp e nao existe disparo automatico.
+  function textoManual(fila) {
+    const corpo=String(fila.mensagem||'')
+      .replace(/toque em Denunciar convite/gi,'responda DENUNCIAR')
+      .replace(/clique em Denunciar convite/gi,'responda DENUNCIAR')
+      .trim();
+    return corpo+'\n\n🔗 Entrar no grupo de ofertas:\n'+fila.grupoUrl+
+      '\n\n🚫 Para recusar, denunciar o convite ou parar de receber mensagens, '+
+      'responda SAIR ou DENUNCIAR nesta conversa.';
+  }
+
+  function localizarManual(campanhaId,contatoId) {
+    if (!UUID.test(String(campanhaId||'')) ||
+        !UUID.test(String(contatoId||''))) throw new Error('Identificador inválido.');
+    const dados=lerFilas();
+    const fila=dados.filas.find(f=>f.id===campanhaId);
+    if (!fila || fila.modo!=='web') throw new Error('Fila do WhatsApp Web não encontrada.');
+    const item=fila.itens.find(i=>i.contatoId===contatoId);
+    if (!item) throw new Error('Contato não pertence à fila.');
+    const contato=contatoMap().get(contatoId);
+    if (!elegivel(contato))throw new Error('Contato bloqueado ou sem opt-in atual.');
+    return {dados,fila,item,contato};
+  }
+
+  function convidadosManual(dados) {
+    return new Set(dados.filas.flatMap(f=>
+      f.itens.filter(i=>f.modo==='web'
+        ? i.status==='enviado-manualmente'
+        : ['aceito','enviado','entregue','lido'].includes(i.status))
+        .map(i=>i.contatoId)));
+  }
+
+  function diaOperacional(valor) {
+    const partes=new Intl.DateTimeFormat('en-US',{
+      timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',
+    }).formatToParts(new Date(valor));
+    const dict=Object.fromEntries(partes.map(p=>[p.type,p.value]));
+    return dict.year+'-'+dict.month+'-'+dict.day;
+  }
+
+  function estatisticasManual(dados=lerFilas()) {
+    const hoje=diaOperacional(agora());
+    const itens=dados.filas.filter(f=>f.modo==='web').flatMap(f=>f.itens);
+    const confirmadosHoje=itens.filter(i=>i.confirmadoEm &&
+      diaOperacional(i.confirmadoEm)===hoje).length;
+    const iniciadosHoje=itens.filter(i=>i.abertoEm &&
+      diaOperacional(i.abertoEm)===hoje).length;
+    return {limiteDiario:LIMITE_MANUAL_DIARIO,confirmadosHoje,iniciadosHoje,
+      restantesHoje:Math.max(0,LIMITE_MANUAL_DIARIO-
+        Math.max(confirmadosHoje,iniciadosHoje)),simultaneos:1,
+      automatico:false};
+  }
+
+  function prepararManual({campanhaId,contatoId}) {
+    const {dados,fila,item,contato}=localizarManual(campanhaId,contatoId);
+    if (convidadosManual(dados).has(contatoId)) {
+      throw new Error('Este contato já tem convite manual confirmado.');
+    }
+    if (!['pendente','aberto'].includes(item.status)) {
+      throw new Error('Contato já foi tratado nesta campanha.');
+    }
+    const outroAberto=dados.filas.filter(f=>f.modo==='web').flatMap(f=>f.itens)
+      .some(i=>i.status==='aberto' && i!==item);
+    if (outroAberto) {
+      throw new Error('Finalize ou ignore o contato com a conversa já preparada.');
+    }
+    if (item.status==='pendente') {
+      if (estatisticasManual(dados).restantesHoje<=0) {
+        throw new Error('Limite interno de 50 conversas preparadas hoje atingido.');
+      }
+      item.status='aberto';
+      item.abertoEm=agora().toISOString();
+      salvarArquivo(arquivoFilas,dados);
+    }
+    const mensagem=textoManual(fila);
+    return {nome:contato.nome||'',numeroMascarado:'+'+
+      contato.telefone.slice(0,4)+' •••• '+contato.telefone.slice(-4),
+      mensagem, url:'https://wa.me/'+contato.telefone+
+        '?text='+encodeURIComponent(mensagem),
+      aviso:'A conversa será aberta com o texto pronto. Você precisa conferir e enviar manualmente.'};
+  }
+
+  function marcarManual({campanhaId,contatoId,acao,confirmado=false}) {
+    if (!['enviado','ignorado','denunciado','cancelado'].includes(acao)) {
+      throw new Error('Ação manual inválida.');
+    }
+    const {dados,item,contato}=localizarManual(campanhaId,contatoId);
+    if (item.status!=='aberto' &&
+        !(acao==='denunciado' && item.status==='enviado-manualmente')) {
+      throw new Error('Prepare primeiro a conversa deste contato.');
+    }
+    if (acao==='enviado' && confirmado!==true) {
+      throw new Error('Confirme que enviou manualmente a mensagem no WhatsApp.');
+    }
+    if (acao==='enviado' && convidadosManual(dados).has(contatoId)) {
+      throw new Error('Este número já recebeu convite manual confirmado.');
+    }
+    const quando=agora().toISOString();
+    if (acao==='denunciado') {
+      bloqueios.registrar({telefone:contato.telefone,
+        mensagemId:'operador-'+randomUUID(),motivo:'denuncia-convite',
+        origem:'registro-manual-apos-resposta'});
+      item.status='denunciado';
+    } else if (acao==='enviado') {
+      if (estatisticasManual(dados).confirmadosHoje>=LIMITE_MANUAL_DIARIO) {
+        throw new Error('Limite interno de 50 confirmações hoje atingido.');
+      }
+      item.status='enviado-manualmente';
+      item.confirmadoEm=quando;
+    } else if (acao==='ignorado') {
+      item.status='ignorado';
+    } else {
+      item.status='pendente';
+    }
+    item.tratadoEm=quando;
+    salvarArquivo(arquivoFilas,dados);
+    return {status:item.status,quando};
   }
 
   function simular({contatoIds=[]}={}) {
@@ -241,6 +378,7 @@ export function iniciarConvitesUnicos({
       const dados=lerFilas();
       const fila=dados.filas.find(f=>f.id===campanhaId);
       if (!fila) throw new Error('Campanha de convites nao encontrada.');
+      if (fila.modo==='web') throw new Error('Esta campanha exige envio manual no WhatsApp Web.');
       const statusModelo=await conferirModelo(fila);
       if (!statusModelo.aprovado) {
         throw new Error('Modelo nao aprovado ou texto/botoes divergentes na Meta.');
@@ -351,5 +489,6 @@ export function iniciarConvitesUnicos({
     configuracao,salvarConfiguracao,templateParaMeta,pessoasElegiveis,
     listarFilas,detalhesFila,criarFila,simular,conferirModelo,
     processarLote,registrarStatus,processarCliqueEntrar,
+    estatisticasManual,prepararManual,marcarManual,
   };
 }
