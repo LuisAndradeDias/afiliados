@@ -166,6 +166,9 @@ export function renderCampanhas() {
       <button id="createManualQueue" type="button" class="primary" disabled>Criar fila para WhatsApp Web</button>
       <button id="refreshManualQueues" type="button" class="quiet">Atualizar filas</button>
     </div>
+    <p id="manualQueueRequirement" class="hint" role="status" aria-live="polite">
+      Verificando os contatos autorizados e a planilha...
+    </p>
     <div id="manualQueueList" class="cloud-queues" style="margin-top:16px">
       <div class="empty">Nenhuma fila manual preparada.</div>
     </div>

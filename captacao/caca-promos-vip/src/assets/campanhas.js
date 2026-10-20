@@ -214,6 +214,29 @@
     $('cloudBlocked').textContent=state.bloqueados.length+' fora da fila';
     $('createCloudQueue').disabled=!state.aptos.length;
     $('createManualQueue').disabled=!state.aptos.length;
+    let motivo;
+    if(state.aptos.length){
+      motivo=state.aptos.length+' contato(s) da planilha com autorização confirmada. '+
+        'A fila pode ser criada para esses contatos; cada envio ainda exigirá sua confirmação.';
+    }else if(!state.importados.length && !state.autorizados.length){
+      motivo='Não é um problema no WhatsApp: faltam contatos com opt-in confirmado '+
+        'no cadastro e uma planilha CSV carregada. Cadastre pessoas voluntariamente, '+
+        'confirme a autorização delas e importe a planilha na seção abaixo.';
+    }else if(!state.importados.length){
+      motivo='Há '+state.autorizados.length+' contato(s) autorizado(s), mas '+
+        'nenhuma planilha foi importada nesta aba. Selecione seu CSV em Importar planilha.';
+    }else if(!state.autorizados.length){
+      motivo='A planilha tem '+state.importados.length+' número(s), mas nenhum '+
+        'contato com autorização confirmada no cadastro. Números de grupos ou '+
+        'planilhas, por si só, não habilitam o envio.';
+    }else{
+      motivo='Nenhum telefone importado corresponde aos '+state.autorizados.length+
+        ' contato(s) autorizados no cadastro. Confira o DDD, o número e '+
+        'a confirmação voluntária antes de criar a fila.';
+    }
+    $('manualQueueRequirement').textContent=motivo;
+    $('createManualQueue').title=state.aptos.length
+      ? 'Criar fila somente para contatos autorizados' : motivo;
   }
 
   function atualizarPreviewUnico() {

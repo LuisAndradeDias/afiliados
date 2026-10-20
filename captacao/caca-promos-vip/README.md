@@ -34,6 +34,24 @@ Se a sessão já estiver ocupada pelo robô de promoções ou por outra
 instância do painel, finalize a utilização anterior primeiro.
 O modo de conexão e o modo de envio compartilham uma trava de sessão local.
 
+## Por que a fila pode ficar desabilitada?
+
+Conectar o WhatsApp Web **não ativa a fila de envio**. O botão
+**Criar fila para WhatsApp Web** só é habilitado quando um arquivo CSV
+foi importado **nesta aba do navegador** e pelo menos um telefone nele
+corresponde a um contato com consentimento comercial **confirmado**
+no cadastro do painel. A planilha é processada apenas no navegador;
+ao atualizar a página, importe-a novamente.
+
+Se não houver nenhum cadastro confirmado, o painel mostra uma explicação
+junto ao botão. A pessoa deve se inscrever voluntariamente pelo fluxo
+`/c/<origem>` e confirmar a solicitação enviando a mensagem de código
+`QUERO VIP` pelo seu próprio WhatsApp. Sem essa confirmação o contato
+permanece `pendente` e o envio não é liberado. Os dados ficam na
+pasta privada `dados/` da instalação escolhida — as portas 3040 e
+3045 possuem bases independentes. **Não copie a lista de participantes
+de grupos para a base de opt-in sem consentimento expresso.**
+
 ## Fluxo de envio pelo WhatsApp Web
 
 1. Escreva **uma mensagem única para todos**, salve o link

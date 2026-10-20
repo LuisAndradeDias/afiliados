@@ -40,6 +40,18 @@ test('painel abre conexão, reconhece QR/conversas e fecha sem mensagens reais',
   await page.goto(base+'/campanhas',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#whatsappConnectionBadge')
     ?.textContent.includes('Aguardando conexão'),{timeout:12000});
+  assert.equal(await page.locator('#createManualQueue').isDisabled(),true);
+  assert.match(await page.locator('#manualQueueRequirement').innerText(),
+    /faltam contatos com opt-in confirmado/);
+  await page.locator('#importFile').setInputFiles({
+    name:'participantes-nao-autorizados.csv',mimeType:'text/csv',
+    buffer:Buffer.from('nome;telefone\\nContato Fictício;11988887777'.replace('\\n','\n')),
+  });
+  await page.waitForFunction(()=>document.querySelector('#metricImported')
+    ?.textContent==='1');
+  assert.equal(await page.locator('#createManualQueue').isDisabled(),true);
+  assert.match(await page.locator('#manualQueueRequirement').innerText(),
+    /nenhum contato com autorização confirmada/);
   assert.equal(await page.locator('#whatsappConnectClose').isDisabled(),true);
   assert.equal(await page.locator('#whatsappConnectOpen').isEnabled(),true);
   await page.locator('#whatsappConnectOpen').click();
