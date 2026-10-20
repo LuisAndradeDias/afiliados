@@ -156,8 +156,11 @@ test('fluxo com duas etapas, painel privado, csv seguro, descadastro e nenhum di
     assert.equal(JSON.parse(readFileSync(join(dir, 'contatos-autorizados.json'), 'utf8')).contatos.length, 0);
     assert.equal((await fetch(base + '/api/admin/convite?id=' + id, { headers: { cookie } })).status, 409);
 
-    assert.equal((await fetch(base + '/painel')).status, 200);
-    assert.match(await (await fetch(base + '/assets/painel.js')).text(), /Preparar convite/);
+    const antigo = await fetch(base + '/painel', { redirect:'manual' });
+    assert.equal(antigo.status, 302);
+    assert.equal(antigo.headers.get('location'), '/campanhas');
+    assert.equal((await fetch(base + '/assets/painel.js')).status, 404,
+      'Script obsoleto não pode permanecer publicado');
     assert.equal((await fetch(base + '/sair?token=' + token)).status, 200);
     const oldReport = await fetch(base + '/relatorio?chave=' + chave);
     assert.equal(oldReport.status, 200, 'relatório anterior continua disponível');

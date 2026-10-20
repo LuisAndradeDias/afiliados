@@ -13,15 +13,13 @@ import { iniciarDenuncias } from './denuncias.mjs';
 import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta, lerStatusMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
-import { renderPainelCrm, renderDescadastro } from './crm-ui.mjs';
+import { renderDescadastro } from './descadastro-ui.mjs';
 
 const GROUP_URL = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
 const sourceDir = dirname(fileURLToPath(import.meta.url));
 const planilhaModelo = readFileSync(join(sourceDir, '..', 'modelos', 'Modelo_Contatos_Autorizados.xlsx'));
 const scripts = new Map([
   ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
-  ['/assets/painel.js', readFileSync(join(sourceDir, 'assets', 'painel.js'), 'utf8')],
-  ['/assets/importacao.js', readFileSync(join(sourceDir, 'assets', 'importacao.js'), 'utf8')],
   ['/assets/campanhas.js', readFileSync(join(sourceDir, 'assets', 'campanhas.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
 ]);
@@ -273,7 +271,15 @@ export function criarPiloto({
         return;
       }
 
-      if (pathname === '/painel' && leitura) return codigoHtml(res, 200, renderPainelCrm());
+      // O painel de captacao v0.5 foi aposentado. Mantemos apenas os dados e
+      // endpoints necessarios ao consentimento. O endereco antigo agora abre
+      // o painel de campanhas atual, sem expor acesso externo.
+      if (pathname === '/painel' && leitura) {
+        if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
+          'Painel disponivel somente no computador local.');
+        res.writeHead(302, {...headersBase,location:'/campanhas'});
+        return res.end();
+      }
       if (pathname === '/campanhas' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
           'Painel de campanhas disponível somente no computador local, via 127.0.0.1.');
@@ -579,6 +585,11 @@ export function criarPiloto({
         return json(res, 404, { ok: false, mensagem: 'Ação administrativa desconhecida.' });
       }
 
+      if (pathname === '/' && leitura && acessoCampanhasLocais(req)) {
+        // Links publicos de opt-in /c/<origem> permanecem operacionais.
+        res.writeHead(302, {...headersBase,location:'/campanhas'});
+        return res.end();
+      }
       if ((pathname === '/' || pathname.startsWith('/c/')) && leitura) {
         if (method === 'HEAD') {
           res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -626,7 +637,7 @@ if (arquivoPrincipal) {
   iniciarServidor().then(({ base }) => {
     console.log('\n=== CAÇA PROMOS VIP — CAPTAÇÃO VOLUNTÁRIA 0.5 ===');
     console.log('Página de convite: ' + base + '/c/instagram');
-    console.log('Painel de contatos: ' + base + '/painel');
+    console.log('Painel de campanhas: ' + base + '/campanhas');
     console.log('Relatório existente continua disponível pelo atalho privado.');
     console.log('A chave administrativa está em dados/chave-admin.txt (não divulgue).');
     console.log('Nenhuma mensagem é enviada automaticamente.');

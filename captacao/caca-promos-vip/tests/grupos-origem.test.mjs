@@ -105,13 +105,13 @@ test('painel de grupos exige login, guarda permissão e só exporta inscrições
     assert.equal((await fetch(base + '/api/admin/contatos.csv?origem=tec%3B%3D42', leitura)).status, 400);
     assert.equal((await fetch(base + '/api/admin/contatos.csv?origem=tecnologia-01')).status, 401);
 
-    const ui = await (await fetch(base + '/painel')).text();
-    assert.match(ui, /id="groupCard"/);
-    assert.match(ui, /id="groupContactsFilter"/);
-    assert.match(ui, /Grupos de origem|Seus grupos e convites/);
-    const js = await (await fetch(base + '/assets/painel.js')).text();
-    assert.match(js, /Abrir no WhatsApp/);
-    assert.match(js, /permissaoDivulgacao/);
+    const aposentado = await fetch(base + '/painel', { redirect: 'manual' });
+    assert.equal(aposentado.status, 302);
+    assert.equal(aposentado.headers.get('location'), '/campanhas');
+    const novo = await (await fetch(base + '/campanhas')).text();
+    assert.match(novo, /id="singleText"/);
+    assert.doesNotMatch(novo, /id="groupCard"/);
+    assert.equal((await fetch(base + '/assets/painel.js')).status, 404);
 
     const removed = await jsonPost(base, '/api/admin/grupos/excluir', { id }, admin);
     assert.equal(removed.status, 200);

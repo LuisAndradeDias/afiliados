@@ -88,13 +88,13 @@ test('prévia HTTP exige sessão, proteção administrativa e grupo cadastrado',
       (await post(base, '/api/admin/importados', { grupoId: grupo.id, lista: LISTA, ...consentimento }, admin)).status,
       200,
     );
-    const ui = await (await fetch(base + '/painel')).text();
-    assert.match(ui, /id="startGuide"/);
-    assert.match(ui, /id="importPreview"/);
-    assert.match(ui, /id="importOpenGroup"/);
-    assert.match(ui, /Versão 0\.5/);
-    const js = await (await fetch(base + '/assets/importacao.js')).text();
-    assert.match(js, /api\/admin\/importados\/previa/);
+    const antiga = await fetch(base + '/painel', { redirect:'manual' });
+    assert.equal(antiga.status, 302);
+    assert.equal(antiga.headers.get('location'), '/campanhas');
+    const novo = await (await fetch(base + '/campanhas')).text();
+    assert.match(novo, /id="importFile"/);
+    assert.doesNotMatch(novo, /id="startGuide"|Versão 0\.5/);
+    assert.equal((await fetch(base + '/assets/importacao.js')).status, 404);
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
     rmSync(dir, { recursive: true, force: true });

@@ -39,8 +39,11 @@ test('página, CTA independente do cadastro e relatório agregado', async () => 
     assert.doesNotMatch(html, /id="leadConsent"[^>]*checked/);
     assert.doesNotMatch(html, /disparos automáticos a participantes/i);
 
-    const landingParceria = await fetch(base + '/?origem=parceria-01');
+    const landingParceria = await fetch(base + '/c/parceria-01');
     assert.equal(landingParceria.status, 200);
+    const raiz = await fetch(base + '/', { redirect:'manual' });
+    assert.equal(raiz.status, 302);
+    assert.equal(raiz.headers.get('location'), '/campanhas');
 
     const saida = await fetch(base + '/entrar?origem=instagram', { redirect: 'manual' });
     assert.equal(saida.status, 303);
