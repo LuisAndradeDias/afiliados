@@ -94,7 +94,7 @@ test('link oficial do WhatsApp Web pré-preenche texto e não envia mensagens',t
 
 test('fila Meta intocada vira fila WhatsApp Web sem enviar e sem perder o contato',t=>{
   const a=fixture(t);
-  const contato=a.novo('','22996168142');
+  const contato=a.novo('','21900000000');
   const original=a.convites.criarFila({
     nome:'Convite oficial criado por engano',contatoIds:[contato.id],
   });
@@ -119,7 +119,7 @@ test('fila Meta intocada vira fila WhatsApp Web sem enviar e sem perder o contat
   const preparado=a.convites.prepararManual({
     campanhaId:original.id,contatoId:contato.id,
   });
-  assert.match(preparado.url,/wa\.me\/5522996168142/);
+  assert.match(preparado.url,/wa\.me\/5521900000000/);
   assert.equal(a.convites.detalhesFila(original.id).manuais,0,
     'Nenhum envio pode ocorrer por converter ou preparar a conversa');
 });

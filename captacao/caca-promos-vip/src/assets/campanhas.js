@@ -99,23 +99,38 @@
     const titulos=linhas[0].map(normalizarCabecalho);
     const colTel=titulos.findIndex(k=>['telefone','numero','whatsapp','celular','phone'].includes(k));
     const colNome=titulos.findIndex(k=>['nome','name','contato'].includes(k));
+    const colAutorizado=titulos.findIndex(k=>[
+      'autorizadoparaenvio','autorizado','autorizacao',
+      'consentimento','optin','permissaoparaenvio',
+    ].includes(k));
     const temCabecalho=colTel!==-1;
+    const temColunaAutorizacao=temCabecalho && colAutorizado!==-1;
     const inicio=temCabecalho?1:0;
     const index=new Map();
-    let duplicados=0,invalidos=0;
+    let duplicados=0,invalidos=0,semSim=0;
     for(const colunas of linhas.slice(inicio)){
       let pos=colTel;
       if(pos===-1) pos=colunas.findIndex(v=>telefone(v)!==null);
       const tel=telefone(colunas[pos]);
       if(!tel){invalidos++;continue;}
+      // Com coluna de autorização, somente SIM pode entrar no lote.
+      // O SIM não substitui a declaração documentada no servidor.
+      if(temColunaAutorizacao && !/^sim(?:$|[ :;.,–—-])/i.test(
+        String(colunas[colAutorizado]||'').trim())) {
+        semSim++;
+        continue;
+      }
       const nome=textoSimples(colunas[temCabecalho ? colNome : colunas.findIndex((_,i)=>i!==pos)]||'');
       if(index.has(tel)){
         duplicados++;
         if(!index.get(tel).nome && nome)index.get(tel).nome=nome;
       } else index.set(tel,{nome,telefone:tel});
     }
-    if(!index.size)throw new Error('Nenhum telefone válido encontrado no CSV.');
-    return {contatos:[...index.values()],duplicados,invalidos};
+    if(!index.size)throw new Error(temColunaAutorizacao && semSim
+      ? 'Nenhum telefone está marcado SIM para envio neste CSV.'
+      : 'Nenhum telefone válido encontrado no CSV.');
+    return {contatos:[...index.values()],duplicados,invalidos,
+      semSim,temColunaAutorizacao};
   }
 
   function dataCurta(valor) {
@@ -946,10 +961,25 @@
       const dados=lerLista(await file.text());
       state.importados=dados.contatos;
       $('consentDeclaration').checked=false;
-      $('consentImportResult').textContent='Planilha selecionada. Informe a origem e a data das autorizações, marque a declaração e clique em Registrar autorizações da planilha.';
       renderResumo();
-      flash('Planilha carregada: '+dados.contatos.length+' telefones distintos. '+
-        dados.duplicados+' duplicados e '+dados.invalidos+' linhas inválidas.');
+      if(state.aptos.length===state.importados.length) {
+        $('consentImportResult').textContent='Todos os '+state.aptos.length+
+          ' números deste CSV já estão autorizados no cadastro local. '+
+          'Use Criar fila para WhatsApp Web ou abra uma fila existente. Nenhuma mensagem foi enviada.';
+      }else if(dados.temColunaAutorizacao) {
+        $('consentImportResult').textContent='O arquivo declara SIM para '+
+          state.importados.length+' contato(s). Para liberar quem ainda não está cadastrado, '+
+          'informe origem, data real e referência do consentimento, confirme a declaração '+
+          'e clique em Registrar autorizações da planilha. Nenhuma mensagem é enviada.';
+      }else{
+        $('consentImportResult').textContent='Planilha selecionada. Informe a origem '+
+          'e a data reais das autorizações, marque a declaração e clique em Registrar '+
+          'autorizações da planilha. Nenhuma mensagem é enviada.';
+      }
+      flash('Planilha carregada: '+dados.contatos.length+' telefone(s) distinto(s)'+
+        (dados.temColunaAutorizacao?' marcados SIM':'')+'. '+
+        dados.semSim+' sem SIM excluídos, '+dados.duplicados+
+        ' duplicados e '+dados.invalidos+' linhas inválidas.');
     } catch(erro){limparImportacao();flash(erro.message,true);}
   }
 

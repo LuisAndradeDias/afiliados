@@ -47,7 +47,7 @@ Para listas de pessoas que **já autorizaram expressamente convites
 comerciais**, não é necessário solicitar novo cadastro por QR Code nem
 exigir que cada pessoa envie `QUERO VIP`.
 
-1. Selecione o arquivo `nome;telefone`, que será lido no navegador.
+1. Selecione o CSV `nome;telefone` ou um CSV com colunas `Telefone;Grupo;Coletado em;Autorizado para envio`. Se houver a coluna de autorização, apenas linhas marcadas `SIM` são selecionadas; `NÃO` ou campo vazio ficam fora. O arquivo é lido no navegador, e marcar `SIM` não substitui a documentação do consentimento.
 2. Em **Registrar autorização da sua planilha**, informe **onde** a
    autorização foi obtida, **a data verdadeira** e uma **referência
    onde o aceite pode ser comprovado**.

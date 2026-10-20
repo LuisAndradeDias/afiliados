@@ -335,7 +335,7 @@ export function renderCampanhas() {
   <section class="import-only">
     <article class="card surface" id="importStage">
       <h2><span class="step">1</span>Importar a planilha</h2>
-      <p>Selecione o CSV de contatos que já autorizaram receber convites do Caça Promos VIP. Primeiro ele é lido no navegador. Ao confirmar as autorizações, os contatos serão salvos somente no servidor local.</p>
+      <p>Selecione o CSV com contatos que já autorizaram receber convites. Se existir a coluna <strong>Autorizado para envio</strong>, o sistema incluirá somente as linhas marcadas <strong>SIM</strong>. O registro exige a declaração do responsável e fica salvo apenas no servidor local.</p>
       <label class="upload"><strong>Selecionar arquivo CSV ou TXT</strong><small>Até 110 KB / 1.500 linhas • nome;telefone</small>
         <input id="importFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" aria-label="Selecionar CSV">
       </label>
