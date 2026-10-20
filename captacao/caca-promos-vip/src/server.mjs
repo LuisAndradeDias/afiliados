@@ -433,6 +433,16 @@ export function criarPiloto({
             return json(res,200,{ok:true,
               fila:convitesUnicos.converterFilaParaWeb(dados)});
           }
+          if (pathname === '/api/local/campanhas/convite/filas/limpar') {
+            if (!limitar(req,'convite-limpar',5))return json(res,429,
+              {ok:false,mensagem:'Limite de limpezas de fila atingido.'});
+            if (controleWhatsapp.estado().processoAtivo || conexaoWhatsapp.estado().ocupado) {
+              return json(res,409,{ok:false,
+                mensagem:'Há uma janela do WhatsApp ativa. Finalize ou cancele a conversa antes de limpar as filas.'});
+            }
+            return json(res,200,{ok:true,
+              resultado:convitesUnicos.limparFilasPendentes(dados)});
+          }
           if (pathname === '/api/local/campanhas/convite/enviar') {
             if (!limitar(req,'convite-enviar',100))return json(res,429,
               {ok:false,mensagem:'Limite de requisicoes de envio atingido.'});

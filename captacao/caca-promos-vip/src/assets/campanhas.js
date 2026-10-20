@@ -4,7 +4,8 @@
   const state = { autorizados:[], importados:[], aptos:[], bloqueados:[],
     cloudMetaReady:false,cloudModeloAprovado:false,cloudQueue:null,cloudModel:null,
     manualQueue:null,manualConversa:null,chromeTimer:null,chromeFase:'inativo',
-    conexaoTimer:null,conexaoAtiva:false,importandoAutorizacoes:false };
+    conexaoTimer:null,conexaoAtiva:false,conexaoInicializada:false,importandoAutorizacoes:false,
+    manualVisible:12 };
   const linhasMaximas = 1500;
   const tamanhoMaximo = 110000;
 
@@ -164,6 +165,9 @@
     }
     atualizarAptosCloud();
     atualizarFormularioConsentimento();
+    if(state.importados.length && $('consentDisclosure')) {
+      $('consentDisclosure').open=state.aptos.length<state.importados.length;
+    }
   }
 
   function elemento(tag,classe,texto) {
@@ -482,6 +486,16 @@
 
   function apresentarConexaoWhatsapp(s) {
     state.conexaoAtiva=Boolean(s.ocupado);
+    if(!state.conexaoInicializada){
+      state.conexaoInicializada=true;
+      $('connectionDisclosure').open=!['fechado','conectado'].includes(s.fase);
+    }
+    $('connectionBrief').textContent={
+      inativo:'Não verificada',iniciando:'Iniciando',abrindo:'Abrindo',
+      aguardando:'Carregando',qr:'QR Code',conectado:'Conectado',
+      fechando:'Finalizando',encerrando:'Finalizando',
+      fechado:'Sessão salva',erro:'Precisa de atenção',
+    }[s.fase]||'Verificar estado';
     const textos={
       inativo:'Clique em Abrir WhatsApp Web para conectar ou conferir sua sessão.',
       iniciando:'Iniciando a janela do Chrome das promoções...',
@@ -580,6 +594,32 @@
     }
   }
 
+  async function limparFilasLocais() {
+    const pedido=prompt('Para limpar as filas sem envios registrados, digite LIMPAR. Contatos, autorizações e bloqueios serão mantidos. A operação cria um backup privado.');
+    if(pedido?.trim()!=='LIMPAR')return;
+    const btn=$('clearAllQueues');
+    btn.disabled=true;
+    try{
+      const r=await api('/api/local/campanhas/convite/filas/limpar','POST',{
+        confirmado:true,
+      });
+      state.manualQueue=null;
+      state.cloudQueue=null;
+      state.manualConversa=null;
+      state.manualVisible=12;
+      $('manualSearch').value='';
+      $('manualQueueDetail').hidden=true;
+      $('cloudQueueDetail').hidden=true;
+      $('manualComposer').hidden=true;
+      pararAcompanhamentoChrome();
+      await Promise.all([carregarFilasManual(),carregarFilasCloud(),
+        carregarControleManual()]);
+      flash(r.resultado.limpas+' fila(s) limpa(s). Seu cadastro, consentimentos e bloqueios foram mantidos. '+
+        (r.resultado.backupCriado?'Um backup privado foi criado.':'Nenhuma fila precisava ser limpa.'));
+    }catch(e){flash(e.message,true);}
+    finally{btn.disabled=false;}
+  }
+
   async function criarFilaManual() {
     const btn=$('createManualQueue');
     btn.disabled=true;
@@ -598,11 +638,16 @@
     finally { atualizarAptosCloud(); }
   }
 
-  async function abrirFilaManual(id) {
+  async function abrirFilaManual(id,{rolar=true}={}) {
     try {
       const dados=await api('/api/local/campanhas/convite/fila?id='+encodeURIComponent(id));
       if(dados.fila.modo!=='web')throw new Error('Esta fila não é do WhatsApp Web.');
+      const mudouFila=state.manualQueue?.id!==dados.fila.id;
       state.manualQueue=dados.fila;
+      if(mudouFila){
+        state.manualVisible=12;
+        $('manualSearch').value='';
+      }
       $('manualQueueDetail').hidden=false;
       $('manualQueueTitle').textContent=dados.fila.nome;
       $('manualQueueSummary').textContent=dados.fila.total+' contatos · '+
@@ -610,9 +655,27 @@
         ' em revisão · '+dados.fila.manuais+' confirmados · '+
         dados.fila.bloqueados+' bloqueados · '+
         dados.fila.incertos+' resultados incertos';
+      const ordem={aberto:0,incerto:1,pendente:2,'enviado-manualmente':3,
+        bloqueado:4,denunciado:5,ignorado:6,cancelado:7};
+      const todos=[...dados.fila.itens].sort((a,b)=>
+        (ordem[a.status]??8)-(ordem[b.status]??8));
+      const proximo=todos.find(item=>item.status==='aberto'||item.status==='pendente');
+      $('prepareNextContact').disabled=!proximo;
+      $('prepareNextContact').textContent=proximo
+        ? 'Preparar próximo contato' : 'Nenhum contato pendente';
+      $('prepareNextContact').onclick=proximo
+        ? ()=>prepararConversaManual(proximo.contatoId) : null;
+      const busca=$('manualSearch').value.trim().toLocaleLowerCase('pt-BR');
+      const somenteNumero=/^\+?[0-9\s().-]+$/.test(busca);
+      const digitosBusca=busca.replace(/\D/g,'');
+      const filtrados=busca ? todos.filter(item=>
+        item.nome.toLocaleLowerCase('pt-BR').includes(busca) ||
+        (somenteNumero && digitosBusca.length>=3 &&
+          item.telefoneMascarado.replace(/\D/g,'').includes(digitosBusca)))
+        : todos;
       const lista=$('manualQueuePeople');
       lista.replaceChildren();
-      for (const item of dados.fila.itens) {
+      for (const item of filtrados.slice(0,state.manualVisible)) {
         const linha=elemento('div','list-row');
         const perfil=elemento('div');
         perfil.append(elemento('strong','',item.nome),
@@ -639,7 +702,19 @@
         linha.append(perfil,actions);
         lista.append(linha);
       }
-      $('manualQueueDetail').scrollIntoView({behavior:'smooth',block:'start'});
+      if(!filtrados.length){
+        lista.append(elemento('div','empty','Nenhum contato encontrado nesta fila.'));
+      }else if(filtrados.length>state.manualVisible){
+        const rodape=elemento('div','list-more');
+        rodape.append(elemento('span','muted',
+          'Exibindo '+state.manualVisible+' de '+filtrados.length+' · '));
+        rodape.append(botao('Mostrar mais contatos',()=>{
+          state.manualVisible+=12;
+          abrirFilaManual(id,{rolar:false});
+        },'quiet'));
+        lista.append(rodape);
+      }
+      if(rolar)$('manualQueueDetail').scrollIntoView({behavior:'smooth',block:'start'});
     } catch(e) { flash(e.message,true); }
   }
 
@@ -993,6 +1068,14 @@
   $('whatsappConnectClose').addEventListener('click',fecharConexaoWhatsapp);
   $('whatsappConnectRefresh').addEventListener('click',carregarConexaoWhatsapp);
   $('createManualQueue').addEventListener('click',criarFilaManual);
+  $('clearAllQueues').addEventListener('click',limparFilasLocais);
+  $('manualSearch').addEventListener('input',()=>{
+    state.manualVisible=12;
+    if(state.manualQueue)abrirFilaManual(state.manualQueue.id,{rolar:false});
+  });
+  $('useChrome').addEventListener('change',()=>{
+    if(!$('useChrome').checked)$('manualAlternative').open=true;
+  });
   $('refreshManualQueues').addEventListener('click',()=>Promise.all([
     carregarFilasManual(),carregarControleManual(),
   ]).catch(e=>flash(e.message,true)));

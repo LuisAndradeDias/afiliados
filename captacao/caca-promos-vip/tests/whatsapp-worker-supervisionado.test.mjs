@@ -91,7 +91,10 @@ test('cancelar Chrome de teste antes do clique não registra envio',async t=>{
   const dados={campanhaId:a.fila.id,contatoId:a.contato.id};
   const resultado=await a.post('/api/local/campanhas/convite/whatsapp/preparar',dados);
   assert.equal(resultado.status,202,JSON.stringify(await resultado.clone().json()));
-  await a.aguardar('pronto');
+  const worker=await a.aguardar('pronto');
+  assert.equal(worker.processoAtivo,true);
+  const antes=await a.post('/api/local/campanhas/convite/filas/limpar',{confirmado:true});
+  assert.equal(antes.status,409,'Limpeza bloqueada com Chrome ainda em preparação');
   assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/cancelar',{
     ...dados,confirmarNaoEnviado:true,
   })).status,202);
@@ -100,4 +103,13 @@ test('cancelar Chrome de teste antes do clique não registra envio',async t=>{
     '/api/local/campanhas/convite/fila?id='+a.fila.id)).json();
   assert.equal(detalhes.fila.manuais,0);
   assert.equal(detalhes.fila.pendentes,1);
+  const inicio=Date.now();
+  while((await a.status()).processoAtivo && Date.now()-inicio<12000) {
+    await new Promise(ok=>setTimeout(ok,100));
+  }
+  assert.equal((await a.status()).processoAtivo,false);
+  const depois=await a.post('/api/local/campanhas/convite/filas/limpar',{confirmado:true});
+  assert.equal(depois.status,200,'Somente depois do fechamento real');
+  assert.equal((await (await fetch(a.app.base+
+    '/api/local/campanhas/convite/filas')).json()).filas.length,0);
 });

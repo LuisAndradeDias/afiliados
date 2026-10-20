@@ -206,6 +206,29 @@ export function iniciarConvitesUnicos({
     return resumir(fila,mapa);
   }
 
+  // A limpeza apenas retira filas nao enviadas; backup privado preserva o histórico.
+  // Impede apagar tentativas ou envios confirmados, para nao zerar limites diarios.
+  function limparFilasPendentes({confirmado=false}={}) {
+    if (confirmado!==true) throw new Error('Confirme a limpeza de filas.');
+    if (loteEmExecucao) throw new Error('Aguarde o envio em andamento terminar.');
+    const dados=lerFilas();
+    if (!dados.filas.length) return {limpas:0,backupCriado:false};
+    const permitidos=new Set(['pendente','aberto','cancelado','ignorado','bloqueado']);
+    if (dados.filas.some(f=>f.itens.some(i=>
+      !permitidos.has(i.status) || i.solicitadoEm || i.mensagemId ||
+      i.confirmadoEm || i.tentativaEm))) {
+      throw new Error('Há tentativas ou envios registrados. Confira o histórico antes de limpar.');
+    }
+    const historico=join(dataDir,'backups-privados');
+    mkdirSync(historico,{recursive:true});
+    const carimbo=agora().toISOString().replace(/[^0-9A-Za-z]/g,'-');
+    const backup=join(historico,'filas-arquivadas-'+carimbo+'-'+randomBytes(4).toString('hex')+'.json');
+    // Grava a copia completa antes de substituir a fila.
+    salvarArquivo(backup,dados);
+    salvarArquivo(arquivoFilas,{versao:1,filas:[]});
+    return {limpas:dados.filas.length,backupCriado:true};
+  }
+
   // Converte uma fila Meta ainda intocada para o WhatsApp Web, sem criar
   // novos contatos, perder seu ID/historico nem disparar mensagens.
   function converterFilaParaWeb({campanhaId,confirmado=false}={}) {
@@ -595,7 +618,8 @@ export function iniciarConvitesUnicos({
 
   return {
     configuracao,salvarConfiguracao,templateParaMeta,pessoasElegiveis,
-    listarFilas,detalhesFila,criarFila,converterFilaParaWeb,simular,conferirModelo,
+    listarFilas,detalhesFila,criarFila,converterFilaParaWeb,
+    limparFilasPendentes,simular,conferirModelo,
     processarLote,registrarStatus,processarCliqueEntrar,
     estatisticasManual,prepararManual,marcarManual,validarEnvioManual,
     marcarTentativaIncerta,confirmarTentativaWorker,conciliarTentativa,

@@ -45,6 +45,7 @@ test('painel converte fila Meta para WhatsApp Web com clique e sem enviar',async
     if(!r.url().startsWith(app.base))external.push(r.url());
   });
   await page.goto(app.base+'/campanhas',{waitUntil:'domcontentloaded'});
+  await page.locator('#advancedMeta > summary').click();
   await page.locator('#cloudQueueList button').waitFor({state:'visible'});
   await page.locator('#cloudQueueList button').click();
   const botao=page.locator('#convertCloudToWeb');

@@ -45,8 +45,9 @@ test('Chrome: fila grátis abre wa.me sem enviar, confirma um e bloqueia outro',
     buffer:Buffer.from('\ufeffnome;telefone\nPessoa Fictícia A;11988887777\nPessoa Fictícia B;21999997777\nSem Autorização;31988887777'),
   });
   await page.waitForFunction(()=>document.querySelector('#cloudEligible').textContent.startsWith('2'));
-  assert.match(await page.locator('#cloudBlocked').innerText(),/1 fora/);
-  // Legado manual continua disponivel como alternativa a Playwright.
+  assert.match(await page.locator('#cloudBlocked').textContent(),/1 fora/);
+  // Modo manual está nas opções recolhidas da interface simplificada.
+  await page.locator('#sendOptions > summary').click();
   await page.locator('#useChrome').uncheck();
   await page.locator('#createManualQueue').click();
   await page.locator('#manualQueueDetail').waitFor({state:'visible',timeout:10000});
@@ -78,12 +79,12 @@ test('Chrome: fila grátis abre wa.me sem enviar, confirma um e bloqueia outro',
     .includes('1 bloqueados'));
   assert.equal(app.contatos.listar().find(c=>c.id===pessoaB.id).status,'descadastrado');
   assert.equal(app.contatos.listar().find(c=>c.id===pessoaA.id).status,'ativo');
-  assert.match(await page.locator('#metaBloqueios').innerText(),/1 bloqueados/);
+  assert.match(await page.locator('#metaBloqueios').textContent(),/1 bloqueados/);
   await page.getByRole('button',{name:'Registrar denúncia recebida'}).click();
   await page.waitForFunction(()=>document.querySelector('#manualQueueSummary')
     .textContent.includes('2 bloqueados'));
   assert.equal(app.contatos.listar().find(c=>c.id===pessoaA.id).status,'descadastrado');
-  assert.match(await page.locator('#metaBloqueios').innerText(),/2 bloqueados/);
+  assert.match(await page.locator('#metaBloqueios').textContent(),/2 bloqueados/);
 
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#manualQueueList')

@@ -76,6 +76,40 @@ separadas. O CSV permanece no navegador até a confirmação. Nenhum
 arquivo de contatos é publicado no GitHub. Reimporte o CSV após
 recarregar a página para fazer outra campanha.
 
+## Interface simplificada (WhatsApp Web como padrão)
+
+A página /campanhas apresenta três etapas, nesta ordem:
+
+1. **Seus contatos:** selecione o CSV. Se o telefone já está autorizado no
+   cadastro local, será reconhecido. Para novos consentimentos, abra
+   **Registrar autorizações de novos contatos** e preencha origem, data e
+   referência verdadeiras. Não existe autorização presumida para quem apenas
+   consta de um grupo.
+2. **Sua mensagem:** escreva o texto e link do grupo e clique em
+   **Salvar convite**. Visualização, nome da campanha e recursos da Meta
+   ficam recolhidos.
+3. **Enviar pelo WhatsApp Web:** abra ou crie a fila e use
+   **Preparar próximo contato**. A lista mostra até 12 contatos por vez,
+   com busca e **Mostrar mais contatos**. O envio continua exigindo
+   confirmação individual.
+
+A integração paga da Meta fica em **Recursos avançados**. O botão
+**Gerenciar filas** disponibiliza a atualização e a limpeza das filas.
+
+### Limpeza segura de filas
+
+Em **Gerenciar filas**, clique em **Limpar filas antigas**, digite
+`LIMPAR` e confirme. Somente filas sem tentativas ou envios registrados
+podem ser limpas. O servidor recusa a limpeza quando uma janela do
+WhatsApp está ativa, inclusive durante o encerramento do Chrome.
+
+Antes de limpar, o servidor arquiva a fila completa de forma privada em
+`dados/backups-privados/`. Contatos, consentimentos, bloqueios e a
+mensagem salva permanecem intactos. Quando houver envio registrado ou
+resultado incerto, confira o histórico em vez de zerar os registros,
+pois apagá-los permitiria novos convites indevidos ou resetaria os
+limites operacionais.
+
 ## Fluxo de envio pelo WhatsApp Web
 
 1. Escreva **uma mensagem única para todos**, salve o link

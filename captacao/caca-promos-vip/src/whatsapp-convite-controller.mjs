@@ -31,7 +31,8 @@ export function iniciarControleWhatsapp({
 
   function estado() {
     return {...ultimo,ocupado:Boolean(ativo &&
-      !['confirmado','cancelado','erro','incerto'].includes(ultimo.fase))};
+      !['confirmado','cancelado','erro','incerto'].includes(ultimo.fase)),
+      processoAtivo:Boolean(ativo)};
   }
 
   function corresponde(campanhaId,contatoId){
