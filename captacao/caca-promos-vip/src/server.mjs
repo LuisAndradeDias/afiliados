@@ -388,9 +388,11 @@ export function criarPiloto({
         }
         let dados;
         try {
-          dados = await corpoJson(req, pathname === '/api/local/campanhas'
-            ? 90_000 : pathname === '/api/local/campanhas/importar-autorizados'
-              ? 24_000 : 4096);
+          dados = await corpoJson(req,
+            pathname === '/api/local/campanhas' ||
+            pathname === '/api/local/campanhas/convite/fila'
+              ? 90_000 : pathname === '/api/local/campanhas/importar-autorizados'
+                ? 24_000 : 4096);
         } catch {
           return json(res, 400, { ok: false, mensagem: 'Dados inválidos para campanhas.' });
         }

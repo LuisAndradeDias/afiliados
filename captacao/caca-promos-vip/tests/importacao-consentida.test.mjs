@@ -126,6 +126,35 @@ test('exige declaração, origem, referencia, data real e protege chamada local'
   assert.equal((await get('/api/local/campanhas/destinatarios')).destinatarios.length,0);
 });
 
+test('fila WhatsApp Web aceita centenas de destinatarios sem rejeitar o JSON',async t=>{
+  const {app,post,get}=await fixture(t);
+  // Regressao: 897 IDs UUID ultrapassam os 4096 bytes da rota antiga.
+  const pessoasFicticias=Array.from({length:897},(_,indice)=>({
+    nome:'Contato ficticio '+(indice+1),
+    telefone:'119'+String(10000000+indice),
+  }));
+  for(let indice=0;indice<pessoasFicticias.length;indice+=75){
+    app.contatos.importarConsentimentosExternos({
+      ...contrato,pessoas:pessoasFicticias.slice(indice,indice+75),
+    });
+  }
+  const destinatarios=(await get('/api/local/campanhas/destinatarios')).destinatarios;
+  assert.equal(destinatarios.length,897);
+  const payload={
+    nome:'Convites autorizados',
+    modo:'web',
+    contatoIds:destinatarios.map(c=>c.id),
+  };
+  assert.ok(Buffer.byteLength(JSON.stringify(payload))>4096);
+  const resposta=await post('/api/local/campanhas/convite/fila',payload);
+  assert.equal(resposta.status,200,JSON.stringify(await resposta.clone().json()));
+  const dados=await resposta.json();
+  assert.equal(dados.fila.total,897);
+  assert.equal(dados.fila.pendentes,897);
+  assert.equal(dados.fila.manuais,0);
+  assert.equal((await get('/api/local/campanhas/convite/filas')).filas.length,1);
+});
+
 test('cadastro pendente pode ser documentado sem falsificar QUERO VIP',async t=>{
   const {app,post,get}=await fixture(t);
   const previamente=app.contatos.cadastrar({
