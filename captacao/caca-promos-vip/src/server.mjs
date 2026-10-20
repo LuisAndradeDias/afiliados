@@ -427,6 +427,12 @@ export function criarPiloto({
               {ok:false,mensagem:'Limite de criacao de filas atingido.'});
             return json(res, 200, {ok:true,fila:convitesUnicos.criarFila(dados)});
           }
+          if (pathname === '/api/local/campanhas/convite/fila/usar-web') {
+            if (!limitar(req,'convite-converter-web',20))return json(res,429,
+              {ok:false,mensagem:'Limite de conversoes de filas atingido.'});
+            return json(res,200,{ok:true,
+              fila:convitesUnicos.converterFilaParaWeb(dados)});
+          }
           if (pathname === '/api/local/campanhas/convite/enviar') {
             if (!limitar(req,'convite-enviar',100))return json(res,429,
               {ok:false,mensagem:'Limite de requisicoes de envio atingido.'});

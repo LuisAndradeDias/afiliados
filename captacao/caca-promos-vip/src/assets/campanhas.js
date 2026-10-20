@@ -361,6 +361,28 @@
       fila.bloqueados+' bloqueados · '+fila.incertos+' incertos';
     $('sendCloudBatch').disabled=!state.cloudMetaReady ||
       !state.cloudModeloAprovado || fila.pendentes===0;
+    $('convertCloudToWeb').hidden=!(fila.total>0 &&
+      fila.modo!=='web' && fila.pendentes===fila.total);
+  }
+
+  async function converterFilaCloudParaWeb() {
+    const fila=state.cloudQueue;
+    if(!fila)return;
+    if(!confirm('Converter esta fila com '+fila.total+
+      ' contato(s) para WhatsApp Web gratuito? Nenhuma mensagem sera enviada.'))return;
+    const btn=$('convertCloudToWeb');
+    btn.disabled=true;
+    try {
+      const resp=await api('/api/local/campanhas/convite/fila/usar-web','POST',{
+        campanhaId:fila.id,confirmado:true,
+      });
+      state.cloudQueue=null;
+      $('cloudQueueDetail').hidden=true;
+      await Promise.all([carregarFilasCloud(),carregarFilasManual()]);
+      await abrirFilaManual(resp.fila.id);
+      flash('Fila convertida para WhatsApp Web gratuito. Nenhuma mensagem foi enviada.');
+    }catch(e){flash(e.message,true);}
+    finally{btn.disabled=false;}
   }
 
   async function abrirFilaCloud(id) {
@@ -975,6 +997,7 @@
   $('exportCloudReport').addEventListener('click',relatorioFilaCloud);
   $('checkMetaModel').addEventListener('click',verificarModeloCloud);
   $('sendCloudBatch').addEventListener('click',enviarLoteCloud);
+  $('convertCloudToWeb').addEventListener('click',converterFilaCloudParaWeb);
   $('refreshCloudDetail').addEventListener('click',()=>{
     if(state.cloudQueue)abrirFilaCloud(state.cloudQueue.id);
   });

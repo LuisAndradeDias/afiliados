@@ -273,8 +273,8 @@ export function renderCampanhas() {
     <div class="divider-thin"></div>
     <div class="cloud-lower">
       <div>
-        <h3>Fila de envio oficial</h3>
-        <p>Depois de importar a planilha, crie a fila apenas com contatos que consentiram receber convites. Você pode prepará-la agora, mesmo sem o número Meta.</p>
+        <h3>Fila da API Meta (opcional e paga)</h3>
+        <p>Esta fila usa a integração oficial de marketing da Meta. Para enviar com seu WhatsApp Web sem API paga, use a fila da seção gratuita acima.</p>
         <div class="counts" aria-live="polite">
           <span class="counter" id="cloudEligible">0 autorizados na planilha</span>
           <span class="counter" id="cloudBlocked">0 fora da fila</span>
@@ -282,7 +282,7 @@ export function renderCampanhas() {
           <span class="counter" id="metaBloqueios">0 bloqueados</span>
         </div>
         <div class="row-actions">
-          <button id="createCloudQueue" type="button" class="primary" disabled>Preparar fila de convites</button>
+          <button id="createCloudQueue" type="button" class="secondary" disabled>Criar fila da API Meta</button>
           <button id="refreshCloudQueues" type="button" class="quiet">Atualizar filas</button>
         </div>
       </div>
@@ -308,7 +308,7 @@ export function renderCampanhas() {
       </div>
     </div>
     <div class="divider-thin"></div>
-    <h3>Campanhas de convite preparadas</h3>
+    <h3>Filas da API Meta preparadas</h3>
     <div id="cloudQueueList" class="cloud-queues"><div class="empty">Nenhuma fila criada.</div></div>
     <details class="legacy surface" id="complaintsDetail" style="margin-top:17px">
       <summary>Denúncias e bloqueios internos</summary>
@@ -318,12 +318,13 @@ export function renderCampanhas() {
   </section>
   <section id="cloudQueueDetail" class="card surface" hidden aria-labelledby="cloudQueueTitle" style="margin-bottom:18px">
     <div class="view-title">
-      <div><span class="eyebrow">Fila oficial de convites</span><h2 id="cloudQueueTitle">Campanha</h2>
+      <div><span class="eyebrow">Fila da API Meta, não é WhatsApp Web</span><h2 id="cloudQueueTitle">Campanha</h2>
         <p id="cloudQueueSummary">Envios ainda não iniciados.</p></div>
       <button id="closeCloudQueue" class="quiet" type="button">Fechar detalhes</button>
     </div>
-    <div class="hint">O envio real exige número configurado, modelo MARKETING aprovado, consentimento e sua confirmação. Sem esses requisitos só existe a simulação.</div>
+    <div class="hint">Esta é uma fila da API oficial da Meta (serviço pago). Para usar a sua conta no WhatsApp Web gratuito, converta esta fila antes de enviar. A conversão mantém os contatos e não envia mensagens.</div>
     <div class="row-actions">
+      <button id="convertCloudToWeb" class="secondary" type="button" hidden>Usar esta fila no WhatsApp Web gratuito</button>
       <button id="sendCloudBatch" class="primary" type="button" disabled>Enviar próximo lote (até 10)</button>
       <button id="refreshCloudDetail" class="secondary" type="button">Atualizar status</button>
       <button id="exportCloudReport" class="quiet" type="button">Baixar relatório CSV</button>

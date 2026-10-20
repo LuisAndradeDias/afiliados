@@ -159,7 +159,7 @@ export function iniciarConvitesUnicos({
       const c=mapa.get(item.contatoId);
       const numero=String(c?.telefone||'');
       return {
-        contatoId:item.contatoId,nome:c?.nome||'Contato indisponivel',
+        contatoId:item.contatoId,nome:c ? (c.nome||'Contato sem nome') : 'Contato removido',
         telefoneMascarado:numero ? '+'+numero.slice(0,4)+' •••• '+numero.slice(-4) : '',
         status:statusItem(item,c),
         solicitadoEm:item.solicitadoEm||null,
@@ -202,6 +202,42 @@ export function iniciarConvitesUnicos({
         solicitadoEm:null,mensagemId:null})),
     };
     dados.filas.unshift(fila);
+    salvarArquivo(arquivoFilas,dados);
+    return resumir(fila,mapa);
+  }
+
+  // Converte uma fila Meta ainda intocada para o WhatsApp Web, sem criar
+  // novos contatos, perder seu ID/historico nem disparar mensagens.
+  function converterFilaParaWeb({campanhaId,confirmado=false}={}) {
+    if (confirmado!==true) {
+      throw new Error('Confirme a conversao para WhatsApp Web no painel.');
+    }
+    if (!UUID.test(String(campanhaId||''))) throw new Error('Fila invalida.');
+    if (loteEmExecucao) throw new Error('Aguarde a operacao atual finalizar.');
+    const dados=lerFilas();
+    const fila=dados.filas.find(f=>f.id===campanhaId);
+    if (!fila || (fila.modo||'meta')!=='meta') {
+      throw new Error('A fila oficial indicada nao esta disponivel para conversao.');
+    }
+    if (!fila.itens.length || fila.itens.some(i=>i.status!=='pendente' ||
+        i.solicitadoEm || i.mensagemId || i.abertoEm)) {
+      throw new Error('Somente filas oficiais sem qualquer tentativa de envio podem ser convertidas.');
+    }
+    const mapa=contatoMap();
+    if (fila.itens.some(i=>!elegivel(mapa.get(i.contatoId)))) {
+      throw new Error('A fila contem contatos bloqueados ou sem autorizacao atual.');
+    }
+    const outrasWeb=dados.filas.filter(f=>f.id!==fila.id && f.modo==='web');
+    const jaNaFila=new Set(outrasWeb.flatMap(f=>f.itens
+      .filter(i=>!['ignorado','bloqueado','cancelado'].includes(i.status))
+      .map(i=>i.contatoId)));
+    if (fila.itens.some(i=>jaNaFila.has(i.contatoId)) ||
+        fila.itens.some(i=>convidadosManual(dados).has(i.contatoId))) {
+      throw new Error('Um dos contatos ja possui outro convite ou fila Web ativa.');
+    }
+    fila.modo='web';
+    fila.conversao={origem:'meta',convertidaEm:agora().toISOString(),
+      autorizadaPeloOperador:true};
     salvarArquivo(arquivoFilas,dados);
     return resumir(fila,mapa);
   }
@@ -559,7 +595,7 @@ export function iniciarConvitesUnicos({
 
   return {
     configuracao,salvarConfiguracao,templateParaMeta,pessoasElegiveis,
-    listarFilas,detalhesFila,criarFila,simular,conferirModelo,
+    listarFilas,detalhesFila,criarFila,converterFilaParaWeb,simular,conferirModelo,
     processarLote,registrarStatus,processarCliqueEntrar,
     estatisticasManual,prepararManual,marcarManual,validarEnvioManual,
     marcarTentativaIncerta,confirmarTentativaWorker,conciliarTentativa,

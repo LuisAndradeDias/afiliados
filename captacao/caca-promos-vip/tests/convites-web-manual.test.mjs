@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync,rmSync } from 'node:fs';
+import { mkdtempSync,rmSync,readFileSync,writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -92,6 +92,74 @@ test('link oficial do WhatsApp Web pré-preenche texto e não envia mensagens',t
   assert.equal(a.convites.detalhesFila(fila.id).itens[0].telefoneMascarado.includes('7777'),true);
 });
 
+test('fila Meta intocada vira fila WhatsApp Web sem enviar e sem perder o contato',t=>{
+  const a=fixture(t);
+  const contato=a.novo('','22996168142');
+  const original=a.convites.criarFila({
+    nome:'Convite oficial criado por engano',contatoIds:[contato.id],
+  });
+  assert.equal(original.modo,'meta');
+  assert.equal(a.convites.detalhesFila(original.id).itens[0].nome,'Contato sem nome');
+  assert.throws(()=>a.convites.converterFilaParaWeb({
+    campanhaId:original.id,
+  }),/Confirme/);
+  assert.equal(a.convites.detalhesFila(original.id).modo,'meta');
+  const convertido=a.convites.converterFilaParaWeb({
+    campanhaId:original.id,confirmado:true,
+  });
+  assert.equal(convertido.id,original.id);
+  assert.equal(convertido.modo,'web');
+  assert.equal(convertido.pendentes,1);
+  assert.equal(convertido.manuais,0);
+  assert.equal(a.cria().detalhesFila(original.id).modo,'web',
+    'A conversao deve persistir apos reiniciar');
+  assert.throws(()=>a.convites.converterFilaParaWeb({
+    campanhaId:original.id,confirmado:true,
+  }),/nao esta disponivel/);
+  const preparado=a.convites.prepararManual({
+    campanhaId:original.id,contatoId:contato.id,
+  });
+  assert.match(preparado.url,/wa\.me\/5522996168142/);
+  assert.equal(a.convites.detalhesFila(original.id).manuais,0,
+    'Nenhum envio pode ocorrer por converter ou preparar a conversa');
+});
+
+test('conversao Meta recusa contatos ja em fila Web, bloqueados ou com tentativas',t=>{
+  const a=fixture(t);
+  const ana=a.novo('Ana','11988887777');
+  const web=a.convites.criarFila({
+    nome:'Fila Web ativa',modo:'web',contatoIds:[ana.id],
+  });
+  const duplicada=a.convites.criarFila({
+    nome:'Fila duplicada Meta',contatoIds:[ana.id],
+  });
+  assert.throws(()=>a.convites.converterFilaParaWeb({
+    campanhaId:duplicada.id,confirmado:true,
+  }),/fila Web ativa/);
+  assert.equal(a.convites.detalhesFila(duplicada.id).modo,'meta');
+  const bia=a.novo('Bia','21999997777');
+  const semPermissao=a.convites.criarFila({
+    nome:'Fila Meta com optout',contatoIds:[bia.id],
+  });
+  a.contatos.descadastrarPorId(bia.id);
+  assert.throws(()=>a.convites.converterFilaParaWeb({
+    campanhaId:semPermissao.id,confirmado:true,
+  }),/bloqueados ou sem autorizacao/);
+  const caio=a.novo('Caio','31999997777');
+  const jaTentada=a.convites.criarFila({
+    nome:'Fila Meta tentada',contatoIds:[caio.id],
+  });
+  const file=join(a.dir,'filas-convites-meta.json');
+  const armazenado=JSON.parse(readFileSync(file,'utf8'));
+  armazenado.filas.find(f=>f.id===jaTentada.id).itens[0].solicitadoEm=
+    new Date().toISOString();
+  writeFileSync(file,JSON.stringify(armazenado));
+  assert.throws(()=>a.convites.converterFilaParaWeb({
+    campanhaId:jaTentada.id,confirmado:true,
+  }),/sem qualquer tentativa/);
+  assert.equal(a.convites.detalhesFila(jaTentada.id).modo,'meta');
+});
+
 test('denúncia informada pelo operador bloqueia novas filas e registro duplicado',t=>{
   const a=fixture(t);
   const contato=a.novo('Cliente Autorizado','11988887777');
@@ -167,6 +235,50 @@ test('limite diário 50 preparações e bloqueio da automação Meta na fila web
   await assert.rejects(convites.processarLote({
     campanhaId:fila.id,limite:1,confirmar:true,
   }),/Envio real indisponivel/);
+});
+
+test('HTTP converte somente fila oficial pendente apos confirmacao local',async t=>{
+  const dir=mkdtempSync(join(tmpdir(),'cpv-converter-fila-'));
+  t.after(()=>rmSync(dir,{recursive:true,force:true}));
+  const app=await iniciarServidor({dataDir:dir,port:0,metaAmbiente:{}});
+  t.after(()=>new Promise(ok=>app.servidor.close(ok)));
+  app.contatos.importarConsentimentosExternos({
+    pessoas:[{telefone:'22988887777',nome:''}],
+    origemAutorizacao:'Conversa individual documentada',
+    referenciaAutorizacao:'Mensagem arquivada com consentimento do titular',
+    dataAutorizacao:'2026-10-10',declaracao:true,
+  });
+  const base=app.base;
+  const post=(rota,dados,headers={})=>fetch(base+rota,{
+    method:'POST',headers:{origin:base,'content-type':'application/json',
+      'x-cpv-local':'1',...headers},body:JSON.stringify(dados),
+  });
+  const destinatarios=(await (await fetch(base+
+    '/api/local/campanhas/destinatarios')).json()).destinatarios;
+  const criada=await post('/api/local/campanhas/convite/fila',{
+    nome:'Convite oficial',contatoIds:destinatarios.map(c=>c.id),
+  });
+  assert.equal(criada.status,200);
+  const fila=(await criada.json()).fila;
+  assert.equal(fila.modo,'meta');
+  const endpoint='/api/local/campanhas/convite/fila/usar-web';
+  const semConfirmacao=await post(endpoint,{campanhaId:fila.id});
+  assert.equal(semConfirmacao.status,409);
+  const cruzada=await post(endpoint,{campanhaId:fila.id,confirmado:true},
+    {origin:'https://exemplo.invalid'});
+  assert.equal(cruzada.status,403);
+  const convertida=await post(endpoint,{campanhaId:fila.id,confirmado:true});
+  assert.equal(convertida.status,200,JSON.stringify(await convertida.clone().json()));
+  assert.equal((await convertida.json()).fila.modo,'web');
+  const detalhe=(await (await fetch(base+'/api/local/campanhas/convite/fila?id='+
+    fila.id)).json()).fila;
+  assert.equal(detalhe.itens[0].nome,'Contato sem nome');
+  assert.equal(detalhe.manuais,0);
+  assert.equal(detalhe.pendentes,1);
+  const filas=(await (await fetch(base+
+    '/api/local/campanhas/convite/filas')).json()).filas;
+  assert.equal(filas.length,1);
+  assert.equal(filas[0].modo,'web');
 });
 
 test('rotas HTTP locais só preparam link, sem chamar WhatsApp ou serviço pago',async t=>{
