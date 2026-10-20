@@ -70,6 +70,11 @@ footer{margin-top:40px;text-align:center;color:var(--soft);font-size:11px}
 .bubble-time{position:absolute;right:11px;bottom:5px;font-size:9px;color:#acccbf}
 .phone-choice{background:#103941;border:1px solid #3b6a73;border-radius:7px;color:#87eecb;padding:11px;text-align:center;font-size:12px;font-weight:800;margin-top:6px}
 .phone-note{color:var(--soft);font-size:10px;text-align:center;margin:11px 0 0!important}
+.connection-box{padding:18px;margin:16px 0 21px;border:1px solid #356e63;background:linear-gradient(135deg,#0c3238,#0c2b37);border-radius:13px}
+.connection-box h3{margin:4px 0 8px;font-size:18px}
+.connection-box .view-title{margin-bottom:12px}
+.connection-box .muted{font-size:12px;line-height:1.6}
+.connection-box .row-actions{margin:12px 0}
 .import-only{display:block;margin-top:18px}
 .import-only .card{width:100%}
 .cloud-queues{display:grid;gap:9px}
@@ -127,6 +132,23 @@ export function renderCampanhas() {
         <p>Reutiliza o Chrome e o Playwright das promoções: abre a conversa, preenche a mensagem e aguarda sua confirmação para clicar em Enviar uma única vez. Não dispara listas automaticamente.</p>
       </div>
       <span class="tag">Supervisionado</span>
+    </div>
+    <div class="connection-box" id="whatsappConnectionStage" aria-labelledby="whatsappConnectionTitle">
+      <div class="view-title">
+        <div>
+          <span class="eyebrow">Etapa 1 · Conexão do aparelho</span>
+          <h3 id="whatsappConnectionTitle">Conectar seu WhatsApp Web</h3>
+          <p>Abre o Chrome das promoções sem escolher contatos e sem enviar mensagens. Use esta etapa antes de preparar a campanha.</p>
+        </div>
+        <span id="whatsappConnectionBadge" class="tag warn">Não verificado</span>
+      </div>
+      <p id="whatsappConnectionStatus" class="muted" role="status" aria-live="polite">Verificando a sessão local...</p>
+      <div class="row-actions">
+        <button id="whatsappConnectOpen" type="button" class="primary">Abrir WhatsApp Web</button>
+        <button id="whatsappConnectClose" type="button" class="secondary" disabled>Salvar sessão e fechar</button>
+        <button id="whatsappConnectRefresh" type="button" class="quiet">Verificar estado</button>
+      </div>
+      <p class="muted" style="margin-bottom:0">Se aparecer o QR Code, no celular vá em <strong>WhatsApp → Aparelhos conectados → Conectar aparelho</strong> e escaneie. Quando suas conversas aparecerem, clique em <strong>Salvar sessão e fechar</strong> para liberar o Chrome aos convites. Se o robô de promoções estiver usando esse perfil, encerre-o antes de conectar.</p>
     </div>
     <div class="counts" style="margin-bottom:12px">
       <span class="counter" id="manualDaily">0 / 50 conversas hoje</span>

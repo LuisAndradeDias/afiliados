@@ -3,7 +3,8 @@
   const $ = id => document.getElementById(id);
   const state = { autorizados:[], importados:[], aptos:[], bloqueados:[],
     cloudMetaReady:false,cloudModeloAprovado:false,cloudQueue:null,cloudModel:null,
-    manualQueue:null,manualConversa:null,chromeTimer:null,chromeFase:'inativo' };
+    manualQueue:null,manualConversa:null,chromeTimer:null,chromeFase:'inativo',
+    conexaoTimer:null,conexaoAtiva:false };
   const linhasMaximas = 1500;
   const tamanhoMaximo = 110000;
 
@@ -417,6 +418,75 @@
     finally{atualizarDetalhesCloud();}
   }
 
+  function apresentarConexaoWhatsapp(s) {
+    state.conexaoAtiva=Boolean(s.ocupado);
+    const textos={
+      inativo:'Clique em Abrir WhatsApp Web para conectar ou conferir sua sessão.',
+      iniciando:'Iniciando a janela do Chrome das promoções...',
+      abrindo:'O Chrome está abrindo o WhatsApp Web...',
+      aguardando:'WhatsApp Web aberto. Aguarde a tela carregar.',
+      qr:'QR Code disponível no Chrome. Use Aparelhos conectados no celular.',
+      conectado:'WhatsApp conectado! As conversas estão visíveis no Chrome. Clique em Salvar sessão e fechar.',
+      fechando:'Salvando a sessão e encerrando a janela do Chrome...',
+      encerrando:'Finalizando a janela do WhatsApp Web...',
+      fechado:'Janela fechada. A sessão foi preservada para o envio supervisionado.',
+      erro:'O Chrome não pôde abrir a sessão. Verifique se o WhatsApp das promoções já está em uso.',
+    };
+    $('whatsappConnectionStatus').textContent=s.mensagem || textos[s.fase] ||
+      'Aguardando atualização do estado.';
+    $('whatsappConnectionBadge').textContent={
+      inativo:'Aguardando conexão',iniciando:'Iniciando',abrindo:'Abrindo',
+      aguardando:'Carregando',qr:'Escaneie o QR',conectado:'Conectado',
+      fechando:'Encerrando',encerrando:'Encerrando',
+      fechado:'Sessão preservada',erro:'Verificar Chrome',
+    }[s.fase]||'Não verificado';
+    $('whatsappConnectionBadge').className='tag'+(
+      ['conectado','fechado'].includes(s.fase)?'':' warn');
+    $('whatsappConnectOpen').disabled=Boolean(s.ocupado);
+    $('whatsappConnectClose').disabled=!s.ocupado ||
+      ['fechando','encerrando'].includes(s.fase);
+    if(s.ocupado && !state.conexaoTimer) {
+      state.conexaoTimer=setInterval(carregarConexaoWhatsapp,1600);
+    }else if(!s.ocupado && state.conexaoTimer) {
+      clearInterval(state.conexaoTimer);
+      state.conexaoTimer=null;
+    }
+  }
+
+  async function carregarConexaoWhatsapp() {
+    try {
+      const r=await api('/api/local/campanhas/convite/whatsapp/conexao/estado');
+      apresentarConexaoWhatsapp(r.estado);
+    }catch(e) {
+      $('whatsappConnectionStatus').textContent='Não foi possível verificar o WhatsApp: '+e.message;
+    }
+  }
+
+  async function abrirConexaoWhatsapp() {
+    $('whatsappConnectOpen').disabled=true;
+    try{
+      const r=await api('/api/local/campanhas/convite/whatsapp/conexao/abrir','POST',{});
+      apresentarConexaoWhatsapp(r.estado);
+      flash('Abrindo WhatsApp Web. Confira a janela do Chrome e escaneie o QR se necessário.');
+    }catch(e) {
+      $('whatsappConnectOpen').disabled=false;
+      $('whatsappConnectionStatus').textContent=e.message;
+      flash(e.message,true);
+    }
+  }
+
+  async function fecharConexaoWhatsapp() {
+    if(!confirm('Encerrar a janela de conexão? O login permanece salvo no perfil do Chrome.'))return;
+    $('whatsappConnectClose').disabled=true;
+    try {
+      const r=await api('/api/local/campanhas/convite/whatsapp/conexao/fechar','POST',{});
+      apresentarConexaoWhatsapp(r.estado);
+    }catch(e) {
+      $('whatsappConnectClose').disabled=false;
+      flash(e.message,true);
+    }
+  }
+
   async function carregarControleManual() {
     const dados=await api('/api/local/campanhas/convite/manual/estatisticas');
     const c=dados.controle;
@@ -513,6 +583,10 @@
 
   async function prepararConversaManual(contatoId) {
     if(!state.manualQueue)return;
+    if(state.conexaoAtiva && $('useChrome').checked) {
+      flash('Primeiro clique em Salvar sessão e fechar para liberar o Chrome dos convites.',true);
+      return;
+    }
     try {
       const res=await api('/api/local/campanhas/convite/manual/preparar','POST',{
         campanhaId:state.manualQueue.id,contatoId,
@@ -745,7 +819,7 @@
     renderResumo();
     await Promise.all([carregarMeta(),carregarModeloUnico(),
       carregarFilasCloud(),carregarFilasManual(),carregarControleManual(),
-      carregarDenuncias()]);
+      carregarConexaoWhatsapp(),carregarDenuncias()]);
   }
 
   function limparImportacao() {
@@ -776,6 +850,9 @@
     return '"'+texto.replace(/"/g,'""')+'"';
   }
 
+  $('whatsappConnectOpen').addEventListener('click',abrirConexaoWhatsapp);
+  $('whatsappConnectClose').addEventListener('click',fecharConexaoWhatsapp);
+  $('whatsappConnectRefresh').addEventListener('click',carregarConexaoWhatsapp);
   $('createManualQueue').addEventListener('click',criarFilaManual);
   $('refreshManualQueues').addEventListener('click',()=>Promise.all([
     carregarFilasManual(),carregarControleManual(),

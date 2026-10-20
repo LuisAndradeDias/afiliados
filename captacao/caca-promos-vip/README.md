@@ -13,6 +13,27 @@ Também existe o atalho `Abrir Campanhas.cmd` na pasta oficial
 O painel é local (127.0.0.1) e não pede chave de acesso.
 As instâncias existentes 3040 e 3045 têm bases de dados privadas distintas.
 
+## Primeiro passo: abrir e conectar o WhatsApp Web
+
+1. Abra no ACER `http://127.0.0.1:3045/campanhas`.
+2. Na seção **Conectar seu WhatsApp Web**, clique em **Abrir WhatsApp Web**.
+   O sistema abre uma janela visível do Chrome no endereço oficial
+   `https://web.whatsapp.com/`, usando o perfil persistente das promoções.
+3. Se aparecer um QR Code, no celular abra **WhatsApp → Aparelhos conectados
+   → Conectar aparelho** e escaneie o código da janela do Chrome.
+   Se o WhatsApp já estiver conectado, aguarde a lista de conversas aparecer.
+4. O painel mostra **Escaneie o QR** ou **Conectado**, conforme o estado.
+   Não copia QR Codes, tokens ou cookies para o painel.
+5. Quando suas conversas aparecerem, clique em **Salvar sessão e fechar**.
+   O login permanece no perfil do Chrome. A janela deve ser fechada
+   **antes de preparar convites**, para liberar a mesma sessão do navegador.
+
+Essa etapa não usa a planilha, não acessa contatos de campanhas e
+**não envia nenhuma mensagem**. O botão não exige número novo da Meta.
+Se a sessão já estiver ocupada pelo robô de promoções ou por outra
+instância do painel, finalize a utilização anterior primeiro.
+O modo de conexão e o modo de envio compartilham uma trava de sessão local.
+
 ## Fluxo de envio pelo WhatsApp Web
 
 1. Escreva **uma mensagem única para todos**, salve o link
@@ -42,8 +63,10 @@ As instâncias existentes 3040 e 3045 têm bases de dados privadas distintas.
    na fila. O contato é descadastrado e entra na supressão persistente,
    inclusive após reimportações futuras.
 9. Se o WhatsApp estiver ocupado pelo robô de promoções ou o Chrome não
-   abrir, desmarque **Usar a automação de Chrome** e utilize a
-   alternativa **Abrir conversa no WhatsApp** para enviar manualmente.
+   abrir, finalize primeiro a sessão de conexão. Se a automação
+   continuar indisponível, desmarque **Usar a automação de Chrome** e
+   utilize a alternativa **Abrir conversa no WhatsApp** para enviar
+   manualmente.
 
 A mensagem no WhatsApp Web inclui o link do grupo e a opção de responder
 `SAIR` / `DENUNCIAR`. **Botões interativos nativos não estão disponíveis

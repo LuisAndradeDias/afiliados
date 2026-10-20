@@ -10,6 +10,7 @@ import { iniciarImportacaoAutorizada } from './importacao-autorizada.mjs';
 import { iniciarCampanhas } from './campanhas.mjs';
 import { iniciarConvitesUnicos } from './convites-unicos.mjs';
 import { iniciarControleWhatsapp } from './whatsapp-convite-controller.mjs';
+import { iniciarConexaoWhatsapp } from './whatsapp-conexao-controller.mjs';
 import { iniciarDenuncias } from './denuncias.mjs';
 import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta, lerStatusMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
@@ -135,6 +136,9 @@ export function criarPiloto({
   });
   const controleWhatsapp = iniciarControleWhatsapp({
     convites:convitesUnicos,sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
+  });
+  const conexaoWhatsapp = iniciarConexaoWhatsapp({
+    sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
   });
   const sessoes = new Map();
   const limites = new Map();
@@ -349,6 +353,9 @@ export function criarPiloto({
         if (pathname === '/api/local/campanhas/convite/whatsapp/estado' && leitura) {
           return json(res, 200, {ok:true,estado:controleWhatsapp.estado()});
         }
+        if (pathname === '/api/local/campanhas/convite/whatsapp/conexao/estado' && leitura) {
+          return json(res, 200, {ok:true,estado:conexaoWhatsapp.estado()});
+        }
         if (pathname === '/api/local/campanhas/convite/fila' && leitura) {
           try {return json(res, 200, {ok:true,
             fila:convitesUnicos.detalhesFila(endereco.searchParams.get('id'))});}
@@ -412,9 +419,25 @@ export function criarPiloto({
           if (pathname === '/api/local/campanhas/convite/manual/preparar') {
             return json(res, 200, {ok:true,conversa:convitesUnicos.prepararManual(dados)});
           }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/conexao/abrir') {
+            if (!limitar(req,'whatsapp-conexao-abrir',12))return json(res,429,
+              {ok:false,mensagem:'Muitas tentativas de abrir a sessão do WhatsApp.'});
+            if (controleWhatsapp.estado().ocupado) {
+              return json(res,409,{ok:false,
+                mensagem:'Finalize a conversa atual antes de abrir a conexão.'});
+            }
+            return json(res,202,{ok:true,estado:conexaoWhatsapp.abrir()});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/conexao/fechar') {
+            return json(res,202,{ok:true,estado:conexaoWhatsapp.fechar()});
+          }
           if (pathname === '/api/local/campanhas/convite/whatsapp/preparar') {
             if (!limitar(req,'whatsapp-preparar',60))return json(res,429,
               {ok:false,mensagem:'Limite de preparacoes atingido.'});
+            if (conexaoWhatsapp.estado().ocupado) {
+              return json(res,409,{ok:false,
+                mensagem:'Finalize a conexão do WhatsApp Web antes de preparar um convite.'});
+            }
             return json(res, 202, {ok:true,estado:controleWhatsapp.iniciar(dados)});
           }
           if (pathname === '/api/local/campanhas/convite/whatsapp/enviar') {
