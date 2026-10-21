@@ -33,8 +33,24 @@ O painel está dividido em **quatro áreas com navegação fixa**:
 - **Bloquear novos convites** na ficha exige confirmação e deixa uma marca
   administrativa — **não fabrica denúncia** do destinatário. O bloqueio
   persiste mesmo após importar novamente o número.
-- Não há botão de desbloqueio automático. Um consentimento novo deve ser
-  verificado em procedimento separado antes de qualquer reativação.
+- **Desbloquear contato**: em `/contatos?filtro=bloqueado`, abra
+  **Ver ficha → Desbloquear contato**. É necessário documentar uma
+  **nova autorização do titular** (origem, data posterior ao bloqueio e
+  referência verificável), marcar a confirmação e confirmar a ação.
+  Apenas o cadastro escolhido é reativado. O histórico original da
+  reclamação não é apagado; uma nova ocorrência de **Reativação com
+  nova autorização** é acrescentada à auditoria.
+- A operação verifica primeiro pedidos pendentes no Netlify e recusa a
+  liberação se não conseguir sincronizar. Filas antigas sem tentativa
+  são encerradas, e tentativas incertas não podem ser retomadas como
+  pendentes. Nenhuma mensagem é enviada ao desbloquear; o operador deve
+  iniciar **uma fila nova**, e o envio segue supervisionado.
+- Se a pessoa voltar a clicar em **Não tenho interesse**, inclusive no
+  mesmo link antigo após a reativação, um novo pedido de saída será
+  respeitado. O bloqueio voltará a valer normalmente.
+- Não existe desbloqueio em massa ou automático. Não utilize esse
+  botão sem nova permissão expressa (ou, para um teste seu,
+  confirmação de que você é o titular e autoriza novos convites).
 - Os endpoints da Central ficam em `127.0.0.1`; não são publicados pelo
   Netlify. Números completos e segredos não aparecem na tabela/API nova.
 - O visual usa fundo grafite-azulado neutro, superfície clara sobre fundo

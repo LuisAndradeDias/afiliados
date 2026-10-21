@@ -6,7 +6,8 @@
     'sem-autorizacao':'Sem autorização'};
   const motivos={'denuncia-convite':'Denúncia interna',
     'saida-solicitada':'Não tenho interesse / SAIR',
-    'bloqueio-administrativo':'Bloqueio administrativo'};
+    'bloqueio-administrativo':'Bloqueio administrativo',
+    'reativacao-autorizada':'Reativação com nova autorização'};
   const state={filtro:new URLSearchParams(location.search).get('filtro')||'todos',
     busca:'',pagina:1,totalPaginas:1,ultimoContato:null,pedido:0,
     filtroOcorrencias:'todos',ocorrencias:[]};
@@ -49,7 +50,8 @@
   function itemOcorrencia(oc,compact=false){
     const row=element('div',compact?'feed-item':'report-row');
     const mark=element('div',compact?'feed-mark':'report-icon',
-      oc.motivo==='denuncia-convite'?'!':oc.motivo==='saida-solicitada'?'↘':'■');
+      oc.motivo==='denuncia-convite'?'!':oc.motivo==='saida-solicitada'?'↘'
+      :oc.motivo==='reativacao-autorizada'?'✓':'■');
     mark.setAttribute('aria-hidden','true');
     const col=element('div',compact?'':'report-copy');
     col.append(element('strong','',oc.telefoneMascarado||'Contato indisponível'));
@@ -161,6 +163,9 @@
       atribuir('detailPhone',c.telefoneMascarado);
       const chip=$('detailStatus');chip.replaceChildren(statusPill(c.status));
       const fields=$('detailFields');
+      $('unlockForm').hidden=true;
+      $('unlockForm').reset();
+      $('contactActions').hidden=false;
       fields.replaceChildren(
         campo('Situação',filtros[c.status]||c.status),
         campo('Origem',c.origem),
@@ -169,6 +174,7 @@
         campo('Último envio manual',data(c.ultimoEnvioManualEm)),
         campo('Descadastrado em',data(c.descadastroEm)),
       );
+      if(c.reativadoEm)fields.append(campo('Reativado em',data(c.reativadoEm)));
       if(c.motivoBloqueio)fields.append(campo('Motivo do bloqueio',c.motivoBloqueio),
         campo('Bloqueado em',data(c.bloqueioEm)));
       if(c.registroAutorizacao){
@@ -187,6 +193,7 @@
         }
       }
       $('blockContact').hidden=!['autorizado','pendente','sem-autorizacao'].includes(c.status);
+      $('unlockContact').hidden=c.status!=='bloqueado';
       $('contactDialog').showModal();
     }catch(e){notificar(e.message,true);}
   }
@@ -203,6 +210,51 @@
       $('contactDialog').close();notificar('Contato bloqueado para novos convites.');
       await carregarContatos();
     }catch(e){notificar(e.message,true);}
+    finally{btn.disabled=false;}
+  }
+  function mostrarDesbloqueio(){
+    if(state.ultimoContato?.status!=='bloqueado')return;
+    const form=$('unlockForm');
+    form.reset();
+    const hoje=new Date();
+    const dataLocal=new Date(hoje.valueOf()-hoje.getTimezoneOffset()*60000)
+      .toISOString().slice(0,10);
+    $('unlockDate').value=dataLocal;
+    $('unlockDate').max=dataLocal;
+    form.hidden=false;
+    $('contactActions').hidden=true;
+    $('unlockOrigin').focus();
+  }
+  function cancelarDesbloqueio(){
+    $('unlockForm').hidden=true;
+    $('unlockForm').reset();
+    $('contactActions').hidden=false;
+  }
+  async function enviarDesbloqueio(e){
+    e.preventDefault();
+    const c=state.ultimoContato;
+    if(!c||c.status!=='bloqueado')return;
+    const origemAutorizacao=$('unlockOrigin').value.trim();
+    const referenciaAutorizacao=$('unlockReference').value.trim();
+    const dataAutorizacao=$('unlockDate').value;
+    if(!$('unlockConsent').checked)return notificar('Confirme a nova autorização.',true);
+    const mensagem='Desbloquear '+c.nome+' ('+c.telefoneMascarado+')?\n\n'+
+      'Você confirma que o titular autorizou novamente os convites, APÓS o bloqueio. '+
+      'O histórico será preservado e convites antigos não serão retomados.';
+    if(!confirm(mensagem))return;
+    const btn=$('confirmUnlock');
+    btn.disabled=true;
+    try{
+      const r=await api('/api/local/gestao/contato/desbloquear',{
+        id:c.id,confirmado:true,novaAutorizacao:true,
+        origemAutorizacao,referenciaAutorizacao,dataAutorizacao,
+      });
+      $('contactDialog').close();
+      notificar('Contato desbloqueado com nova autorização. '+
+        (r.resultado.filasAnterioresEncerradas||0)+
+        ' pendência(s) antiga(s) encerrada(s). Crie uma nova fila antes de convidar.');
+      await carregarContatos();
+    }catch(err){notificar(err.message,true);}
     finally{btn.disabled=false;}
   }
   function iniciarContatos(){
@@ -234,6 +286,9 @@
     $('detailClose').addEventListener('click',()=>$('contactDialog').close());
     $('detailDone').addEventListener('click',()=>$('contactDialog').close());
     $('blockContact').addEventListener('click',bloquearContato);
+    $('unlockContact').addEventListener('click',mostrarDesbloqueio);
+    $('cancelUnlock').addEventListener('click',cancelarDesbloqueio);
+    $('unlockForm').addEventListener('submit',enviarDesbloqueio);
     $('contactDialog').addEventListener('click',e=>{
       if(e.target===$('contactDialog'))$('contactDialog').close();
     });
@@ -258,6 +313,7 @@
     atribuir('repComplaints',r.resumo.denuncias);
     atribuir('repBlocked',r.resumo.bloqueados);
     atribuir('repExits',r.resumo.saidas);
+    atribuir('repReactivated',r.resumo.reativacoes||0);
     atribuir('repSync',r.sincronizacao?.configurada?'Ativa':'Pendente');
     $('syncNow').disabled=!r.sincronizacao?.configurada;
     atribuir('lastSync',r.sincronizacao?.ultimaSincronizacao

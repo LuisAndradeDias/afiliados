@@ -283,6 +283,36 @@ export function iniciarConvitesUnicos({
     return {limpas:1,backupCriado:true};
   }
 
+  // Uma reativação não revive convites antigos que pareciam bloqueados.
+  // Fechamos somente itens sem qualquer tentativa; o histórico de envios
+  // e estados incertos permanece íntegro.
+  function encerrarPendenciasContato(contatoId){
+    if(!UUID.test(String(contatoId||'')))throw new Error('Contato inválido.');
+    if(loteEmExecucao)throw new Error('Aguarde terminar o lote em andamento.');
+    const dados=lerFilas();
+    let encerrados=0;
+    const momento=agora().toISOString();
+    for(const fila of dados.filas){
+      for(const item of fila.itens){
+        if(item.contatoId!==contatoId)continue;
+        if(item.status==='incerto'&&!item.invalidadoPorReativacaoEm){
+          // Não apagar tentativas incertas: uma conciliação posterior pode
+          // confirmar o envio antigo, mas não poderá reabrir a fila.
+          item.invalidadoPorReativacaoEm=momento;
+          encerrados++;
+        } else if(['pendente','aberto'].includes(item.status)&&
+          !item.solicitadoEm&&!item.tentativaEm&&!item.mensagemId&&!item.confirmadoEm){
+          item.status='ignorado';
+          item.tratadoEm=momento;
+          item.motivoIgnorado='nova-autorizacao-exige-nova-fila';
+          encerrados++;
+        }
+      }
+    }
+    if(encerrados)salvarArquivo(arquivoFilas,dados);
+    return {encerrados};
+  }
+
   // Converte uma fila Meta ainda intocada para o WhatsApp Web, sem criar
   // novos contatos, perder seu ID/historico nem disparar mensagens.
   function converterFilaParaWeb({campanhaId,confirmado=false}={}) {
@@ -381,6 +411,9 @@ export function iniciarConvitesUnicos({
 
   function prepararManual({campanhaId,contatoId}) {
     const {dados,fila,item,contato}=localizarManual(campanhaId,contatoId);
+    if(item.invalidadoPorReativacaoEm){
+      throw new Error('Esta fila antiga foi encerrada. Crie uma nova fila para este contato.');
+    }
     if (convidadosManual(dados).has(contatoId)) {
       throw new Error('Este contato já tem convite manual confirmado.');
     }
@@ -410,6 +443,9 @@ export function iniciarConvitesUnicos({
 
   function validarEnvioManual({campanhaId,contatoId}) {
     const {dados,item}=localizarManual(campanhaId,contatoId);
+    if(item.invalidadoPorReativacaoEm){
+      throw new Error('Tentativa anterior encerrada após nova autorização.');
+    }
     if(item.status!=='aberto')throw new Error('A conversa não está em preparação.');
     if(convidadosManual(dados).has(contatoId)) {
       throw new Error('O contato já recebeu convite confirmado.');
@@ -473,7 +509,7 @@ export function iniciarConvitesUnicos({
     } else {
       // Não libera diretamente o próximo disparo: apenas retorna à fila.
       // O contato ainda precisa de opt-in válido e deve passar pelo limite diário.
-      item.status='pendente';
+      item.status=item.invalidadoPorReativacaoEm?'ignorado':'pendente';
     }
     item.conciliadoEm=agora().toISOString();
     item.tratadoEm=item.conciliadoEm;
@@ -582,7 +618,8 @@ export function iniciarConvitesUnicos({
       if (enviadosHoje>=orcamento) throw new Error('Limite diario de envios atingido.');
       const mapa=contatoMap();
       const disponiveis=fila.itens.filter(item=>
-        item.status==='pendente' && elegivel(mapa.get(item.contatoId)))
+        item.status==='pendente' && !item.invalidadoPorReativacaoEm &&
+        elegivel(mapa.get(item.contatoId)))
         .slice(0,Math.min(limite,MAX_POR_LOTE,orcamento-enviadosHoje));
       const resultado={aceitos:0,incertos:0,bloqueados:0,tentados:0};
       for (const item of disponiveis) {
@@ -680,7 +717,8 @@ export function iniciarConvitesUnicos({
   return {
     configuracao,salvarConfiguracao,templateParaMeta,pessoasElegiveis,
     listarFilas,detalhesFila,criarFila,converterFilaParaWeb,
-    limparFilasPendentes,limparFilaSelecionada,simular,conferirModelo,
+    limparFilasPendentes,limparFilaSelecionada,encerrarPendenciasContato,
+    simular,conferirModelo,
     processarLote,registrarStatus,processarCliqueEntrar,
     estatisticasManual,prepararManual,marcarManual,validarEnvioManual,
     marcarTentativaIncerta,confirmarTentativaWorker,conciliarTentativa,

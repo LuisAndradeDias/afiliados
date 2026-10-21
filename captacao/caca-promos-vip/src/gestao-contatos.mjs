@@ -1,4 +1,5 @@
-import {contatoComConsentimento,EVIDENCIA_IMPORTADA} from './contatos.mjs';
+import {contatoComConsentimento,EVIDENCIA_IMPORTADA,
+  validarNovaAutorizacao} from './contatos.mjs';
 
 const FILTROS=new Set(['todos','autorizado','bloqueado','descadastrado','pendente','sem-autorizacao']);
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -36,6 +37,7 @@ function apresentar(c,b) {
     origem:String(c.origem||'').slice(0,90)||'Não informada',
     consentimentoEm:c.consentimentoConfirmadoEm||null,
     descadastroEm:c.descadastroEm||null,
+    reativadoEm:c.reativadoEm||null,
     ultimoEnvioManualEm:c.ultimoEnvioManualEm||null,
     bloqueioEm:b?.primeiroBloqueioEm||null,
     motivoBloqueio:b?motivoBloqueio(b.motivo):null,
@@ -52,7 +54,10 @@ function apresentar(c,b) {
   };
 }
 
-export function iniciarGestaoContatos({contatos,denuncias}){
+export function iniciarGestaoContatos({
+  contatos,denuncias,convitesUnicos,campanhas,sincronizacaoNetlify,
+  controleWhatsapp,conexaoWhatsapp,agora=()=>new Date(),
+}){
   function dados(){
     const todos=contatos.listar();
     const bloqueados=denuncias.bloqueiosPorContato(todos);
@@ -112,5 +117,55 @@ export function iniciarGestaoContatos({contatos,denuncias}){
     });
     return {bloqueado:true,jaBloqueado:false};
   }
-  return {listar,detalhe,bloquear,resumo:()=>dados().resumo};
+  async function desbloquear({
+    id,confirmado=false,novaAutorizacao=false,origemAutorizacao,
+    referenciaAutorizacao,dataAutorizacao,
+  }={}){
+    if(confirmado!==true||novaAutorizacao!==true)
+      throw new Error('É necessário confirmar a nova autorização do titular.');
+    if(!UUID.test(String(id||'')))throw new Error('Contato inválido.');
+    let c=contatos.listar().find(item=>item.id===id);
+    if(!c)throw new Error('Contato não encontrado.');
+    let bloqueio=denuncias.bloqueiosPorContato([c]).get(id);
+    if(!bloqueio)throw new Error('Este contato não está bloqueado.');
+    if(c.status!=='descadastrado'||!c.descadastroEm)
+      throw new Error('O cadastro não está descadastrado. Revise antes de liberar.');
+    let prova=validarNovaAutorizacao({origemAutorizacao,
+      referenciaAutorizacao,dataAutorizacao,
+      bloqueadoEm:bloqueio.primeiroBloqueioEm,agora});
+    // Pendências de opt-out/denúncia no Netlify nunca podem ser apagadas
+    // por uma liberação local sem primeiro serem importadas.
+    if(sincronizacaoNetlify?.estado().configurada){
+      const res=await sincronizacaoNetlify.sincronizar();
+      if(!res.ok||res.novas>=50){
+        throw new Error('Não foi possível conferir todos os pedidos do Netlify. Sincronize novamente antes de desbloquear.');
+      }
+    }
+    const worker=controleWhatsapp?.estado();
+    if(worker?.ocupado||worker?.processoAtivo||conexaoWhatsapp?.estado().ocupado)
+      throw new Error('Aguarde a conclusão da sessão do WhatsApp antes de desbloquear.');
+    c=contatos.listar().find(item=>item.id===id);
+    bloqueio=denuncias.bloqueiosPorContato([c]).get(id);
+    if(!bloqueio||c.status!=='descadastrado')
+      throw new Error('Situação do contato mudou. Atualize e tente novamente.');
+    prova=validarNovaAutorizacao({origemAutorizacao,
+      referenciaAutorizacao,dataAutorizacao,
+      bloqueadoEm:bloqueio.primeiroBloqueioEm,agora});
+    // Fecha somente pendências SEM tentativas, para nunca ressuscitar
+    // convites antigos com a nova permissão.
+    const antigasWeb=convitesUnicos?.encerrarPendenciasContato(id).encerrados||0;
+    const antigasCrm=campanhas?.encerrarPendenciasContato(id).encerrados||0;
+    const ativado=contatos.reativarComNovaAutorizacao({id,
+      origemAutorizacao:prova.origem,
+      referenciaAutorizacao:prova.referencia,
+      dataAutorizacao:prova.dataAutorizacao,
+      bloqueadoEm:bloqueio.primeiroBloqueioEm});
+    const liberacao=denuncias.liberarComNovaAutorizacao({
+      telefone:c.telefone,contatoId:id,
+    });
+    return {desbloqueado:true,reativadoEm:ativado.reativadoEm,
+      filasAnterioresEncerradas:antigasWeb+antigasCrm,
+      liberadoEm:liberacao.liberadoEm};
+  }
+  return {listar,detalhe,bloquear,desbloquear,resumo:()=>dados().resumo};
 }

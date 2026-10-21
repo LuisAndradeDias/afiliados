@@ -203,5 +203,23 @@ export function iniciarCampanhas(dataDir, contatos, agora = () => new Date(), bl
     return { ignoradoEm:item.ignoradoEm };
   }
 
-  return { destinatarios, criar, listar, obter, prepararMensagem, registrar, ignorar };
+  function encerrarPendenciasContato(contatoId){
+    const dados=ler();
+    let encerrados=0;
+    for(const campanha of dados.campanhas){
+      for(const item of campanha.itens){
+        if(item.contatoId===contatoId&&item.status==='pendente'){
+          item.status='ignorado';
+          item.ignoradoEm=agora().toISOString();
+          item.motivoIgnorado='nova-autorizacao-exige-nova-campanha';
+          encerrados++;
+        }
+      }
+    }
+    if(encerrados)salvar(dados);
+    return {encerrados};
+  }
+
+  return { destinatarios, criar, listar, obter, prepararMensagem, registrar,
+    ignorar,encerrarPendenciasContato };
 }

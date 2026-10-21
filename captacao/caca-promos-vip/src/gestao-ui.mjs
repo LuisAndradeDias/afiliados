@@ -114,8 +114,9 @@ const contacts=`
       <button type="button" class="btn btn-quiet" id="nextPage" disabled>Próxima →</button></div>
   </div>
 </section>
-<p class="context-note"><strong>Importante:</strong> a categoria “Bloqueados” inclui denúncias internas e bloqueios administrativos.
-  Um descadastro comum aparece separadamente. Nenhum contato é reativado automaticamente.</p>
+<p class="context-note"><strong>Importante:</strong> contatos bloqueados não recebem novos convites.
+  Para reativar um número (inclusive um teste seu), abra sua ficha, confirme a nova autorização do titular
+  e use <strong>Desbloquear contato</strong>. Filas antigas permanecem encerradas.</p>
 <dialog class="contact-dialog" id="contactDialog" aria-labelledby="contactDialogTitle">
   <div class="dialog-header"><div><span class="overline">FICHA DO CONTATO</span><h2 id="contactDialogTitle">Contato</h2>
     <p id="detailPhone">Número mascarado</p></div>
@@ -123,21 +124,45 @@ const contacts=`
   <div id="detailStatus" class="dialog-status"></div>
   <dl id="detailFields" class="detail-fields"></dl>
   <div id="detailHistory" class="history-block"></div>
-  <div class="dialog-actions">
+  <form id="unlockForm" class="unlock-form" hidden>
+    <h3>Confirmar nova autorização</h3>
+    <p>Desbloqueie somente se o titular voltou a autorizar convites. O registro antigo permanece no histórico.</p>
+    <label for="unlockOrigin">Onde ocorreu a nova autorização?</label>
+    <input id="unlockOrigin" name="origemAutorizacao" required minlength="6" maxlength="140"
+      placeholder="Ex.: conversa no WhatsApp com o titular" autocomplete="off">
+    <label for="unlockDate">Data da nova autorização</label>
+    <input id="unlockDate" name="dataAutorizacao" type="date" required>
+    <label for="unlockReference">Referência para comprovar a autorização</label>
+    <textarea id="unlockReference" name="referenciaAutorizacao" rows="2"
+      required minlength="8" maxlength="240"
+      placeholder="Ex.: autorização recebida do titular; anote onde conferir"></textarea>
+    <label class="unlock-checkbox">
+      <input id="unlockConsent" type="checkbox" required>
+      <span>Confirmo que este número autorizou novamente os convites após o bloqueio.</span>
+    </label>
+    <p class="unlock-warning">Isso não envia mensagens nem reativa filas antigas. Para convidar novamente, crie uma nova fila.</p>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-quiet" id="cancelUnlock">Cancelar</button>
+      <button type="submit" class="btn btn-primary" id="confirmUnlock">Confirmar desbloqueio</button>
+    </div>
+  </form>
+  <div class="dialog-actions" id="contactActions">
     <button class="btn btn-danger" id="blockContact" type="button" hidden>Bloquear novos convites</button>
+    <button class="btn btn-quiet" id="unlockContact" type="button" hidden>Desbloquear contato</button>
     <button class="btn btn-quiet" id="detailDone" type="button">Fechar</button>
   </div>
-  <p class="dialog-foot">Bloqueio administrativo não é uma denúncia do destinatário. Não existe desbloqueio automático.</p>
+  <p class="dialog-foot">Bloquear não inventa uma denúncia. Desbloquear exige nova autorização documentada e mantém o histórico.</p>
 </dialog>`;
 const reports=`
 <section class="page-heading"><div><span class="overline">SEGURANÇA E PREFERÊNCIAS</span>
   <h1>Denúncias e bloqueios</h1><p>Solicitações reais recebidas por link ou registradas no painel, com histórico local.</p></div>
   <button class="btn btn-primary" type="button" id="syncNow">Buscar denúncias no Netlify</button>
 </section>
-<section class="stats-grid" aria-label="Resumo de denúncias">
+<section class="stats-grid stats-grid-5" aria-label="Resumo de denúncias">
   ${estatistica('Denúncias registradas','repComplaints','Reclamações internas','stat-attention')}
   ${estatistica('Bloqueios persistentes','repBlocked','Mesmo após reimportação','stat-danger')}
   ${estatistica('Pedidos de saída','repExits','Descadastros registrados')}
+  ${estatistica('Reativações','repReactivated','Novas autorizações','stat-ok')}
   ${estatistica('Sincronização','repSync','Estado da conexão com Netlify')}
 </section>
 <section class="panel">
@@ -150,6 +175,7 @@ const reports=`
     <button type="button" data-filter="denuncia-convite" class="filter-tab" aria-pressed="false">Denúncias</button>
     <button type="button" data-filter="saida-solicitada" class="filter-tab" aria-pressed="false">Pedidos de saída</button>
     <button type="button" data-filter="bloqueio-administrativo" class="filter-tab" aria-pressed="false">Administrativos</button>
+    <button type="button" data-filter="reativacao-autorizada" class="filter-tab" aria-pressed="false">Reativações</button>
   </div>
   <div id="reportList" class="report-list"><div class="state-empty">Consultando ocorrências…</div></div>
   <div class="panel-bottom"><a class="text-link" href="/contatos?filtro=bloqueado">Ver contatos bloqueados →</a></div>

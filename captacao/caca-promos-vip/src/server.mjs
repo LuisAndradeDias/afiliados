@@ -141,7 +141,6 @@ export function criarPiloto({
   const grupos = iniciarGrupos(dataDir, agora);
   const importacoes = iniciarImportacaoAutorizada(dataDir, agora);
   const denuncias = iniciarDenuncias(dataDir, contatos, agora);
-  const gestaoContatos=iniciarGestaoContatos({contatos,denuncias});
   const campanhas = iniciarCampanhas(dataDir, contatos, agora, denuncias);
   const configMeta = obterConfigMeta(metaAmbiente);
   const convitesUnicos = iniciarConvitesUnicos({
@@ -157,6 +156,10 @@ export function criarPiloto({
   const sincronizacaoNetlify=iniciarSincronizacaoNetlify({
     config:netlifySecret?{publicBaseUrl,segredo:netlifySecret}:null,
     denuncias,agora,
+  });
+  const gestaoContatos=iniciarGestaoContatos({
+    contatos,denuncias,convitesUnicos,campanhas,sincronizacaoNetlify,
+    controleWhatsapp,conexaoWhatsapp,agora,
   });
   const sessoes = new Map();
   const limites = new Map();
@@ -392,6 +395,13 @@ export function criarPiloto({
               return json(res,429,{ok:false,mensagem:'Limite de bloqueios atingido.'});
             const entrada=await corpoJson(req,1500);
             return json(res,200,{ok:true,resultado:gestaoContatos.bloquear(entrada)});
+          }
+          if (pathname === '/api/local/gestao/contato/desbloquear' && method==='POST'){
+            if(!limitar(req,'gestao-desbloquear',12))
+              return json(res,429,{ok:false,mensagem:'Limite de reativações atingido.'});
+            const entrada=await corpoJson(req,1500);
+            return json(res,200,{ok:true,
+              resultado:await gestaoContatos.desbloquear(entrada)});
           }
           return json(res,method==='GET'?404:405,
             {ok:false,mensagem:'Recurso de gestão não encontrado.'});

@@ -68,10 +68,13 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
         /[\x00-\x1f]/.test(eventId)) throw new Error('Identificador de evento inválido.');
     const eventHash = createHmac('sha256', segredo).update(eventId).digest('hex');
     const dados = ler();
-    if (dados.eventos.some(e => e.idHash === eventHash)) {
-      return { duplicada:true, bloqueado:true };
-    }
     const numeroHash = resumoNumero(numero);
+    const jaBloqueado=dados.bloqueados.some(b=>b.numeroHash===numeroHash);
+    const repeticao=dados.eventos.some(e=>e.idHash===eventHash);
+    // Se o titular optou por sair novamente APÓS uma reativação, o mesmo
+    // link assinado precisa bloquear outra vez. Antes da reativação,
+    // repetições continuam idempotentes.
+    if(repeticao&&jaBloqueado)return {duplicada:true,bloqueado:true};
     const contato = contatos.listar().find(c => c.telefone === numero);
     // O bloqueio persistente por hash impede campanhas futuras mesmo se o
     // cadastro original for removido e o numero reaparecer em novo CSV.
@@ -88,7 +91,10 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
       contatos.descadastrarPorId(contato.id);
     }
     dados.eventos.push({
-      idHash:eventHash, numeroHash, contatoId:contato?.id || null,
+      idHash:repeticao
+        ?createHmac('sha256',segredo).update(eventId+':nova-recusa:'+randomBytes(12).toString('hex')).digest('hex')
+        :eventHash,
+      numeroHash, contatoId:contato?.id || null,
       motivo, origem, recebidoEm:agora().toISOString(),
     });
     if (dados.eventos.length > MAX_EVENTOS) {
@@ -172,6 +178,33 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
     return {valido:true,registrado:true,duplicada:resposta.duplicada};
   }
 
+  function liberarComNovaAutorizacao({telefone,contatoId}={}) {
+    const numeroHash=resumoNumero(telefone);
+    const dados=ler();
+    const idx=dados.bloqueados.findIndex(item=>item.numeroHash===numeroHash);
+    if(idx<0)throw new Error('Este número não está bloqueado.');
+    if(dados.bloqueados[idx].contatoId &&
+      dados.bloqueados[idx].contatoId!==contatoId){
+      throw new Error('O bloqueio não pertence a este cadastro.');
+    }
+    // O evento permanece no histórico para auditoria; apenas a supressão
+    // ativa sai da lista de bloqueados.
+    dados.bloqueados.splice(idx,1);
+    const liberadoEm=agora().toISOString();
+    dados.eventos.push({
+      idHash:createHmac('sha256',segredo)
+        .update('liberacao:'+contatoId+':'+randomBytes(16).toString('hex')).digest('hex'),
+      numeroHash,contatoId,
+      motivo:'reativacao-autorizada',origem:'painel-local-nova-autorizacao',
+      recebidoEm:liberadoEm,
+    });
+    if(dados.eventos.length>MAX_EVENTOS){
+      dados.eventos.splice(0,dados.eventos.length-MAX_EVENTOS);
+    }
+    salvar(dados);
+    return {liberado:true,liberadoEm};
+  }
+
   function bloqueiosPorContato(contatosAtuais){
     const porHash=new Map(ler().bloqueados.map(b=>[b.numeroHash,b]));
     const encontrados=new Map();
@@ -206,10 +239,11 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
       bloqueados: dados.bloqueados.length,
       denuncias: dados.eventos.filter(x => x.motivo === 'denuncia-convite').length,
       saidas: dados.eventos.filter(x => x.motivo === 'saida-solicitada').length,
+      reativacoes: dados.eventos.filter(x=>x.motivo==='reativacao-autorizada').length,
     };
   }
 
   return { registrar, estaBloqueado, listar, resumo,
     tokenDenuncia, registrarCliqueDenuncia, tokenNetlify, registrarTokenNetlify,
-    bloqueiosPorContato };
+    bloqueiosPorContato,liberarComNovaAutorizacao };
 }

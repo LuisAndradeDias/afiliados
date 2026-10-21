@@ -18,6 +18,29 @@ export function contatoComConsentimento(contato) {
 }
 const LINK_GRUPO = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
 
+// Uma liberação exige opt-in NOVO, documentado e posterior ao bloqueio.
+export function validarNovaAutorizacao({origemAutorizacao,referenciaAutorizacao,
+  dataAutorizacao, bloqueadoEm,agora=()=>new Date()}={}) {
+  const origem=String(origemAutorizacao??'').trim();
+  const referencia=String(referenciaAutorizacao??'').trim();
+  const data=String(dataAutorizacao??'').trim();
+  if(origem.length<6||origem.length>140||referencia.length<8||
+    referencia.length>240||/[\x00-\x1f<>]/.test(origem+referencia)){
+    throw new Error('Informe a origem e a referência verificável da nova autorização.');
+  }
+  if(!/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(data)||
+    !Number.isFinite(Date.parse(data+'T00:00:00.000Z'))||
+    new Date(data+'T00:00:00.000Z').toISOString().slice(0,10)!==data||
+    data>agora().toISOString().slice(0,10)){
+    throw new Error('Informe a data real da nova autorização (não futura).');
+  }
+  if(!bloqueadoEm||!Number.isFinite(Date.parse(bloqueadoEm))||
+    data<String(bloqueadoEm).slice(0,10)){
+    throw new Error('A nova autorização deve ser posterior ao bloqueio.');
+  }
+  return {origem,referencia,dataAutorizacao:data};
+}
+
 function agoraIso(agora) {
   return agora().toISOString();
 }
@@ -236,6 +259,33 @@ export function iniciarContatos(dataDir, agora = () => new Date()) {
     return contato.id;
   }
 
+  function reativarComNovaAutorizacao({id,origemAutorizacao,
+    referenciaAutorizacao,dataAutorizacao,bloqueadoEm}={}) {
+    const comprovacao=validarNovaAutorizacao({
+      origemAutorizacao,referenciaAutorizacao,dataAutorizacao,bloqueadoEm,agora,
+    });
+    const dados=ler();
+    const contato=dados.contatos.find(c=>c.id===id);
+    if(!contato||contato.status!=='descadastrado'||!contato.descadastroEm){
+      throw new Error('Somente um contato descadastrado pode ser reativado.');
+    }
+    const instante=agoraIso(agora);
+    contato.status='ativo';
+    contato.descadastroEm=null;
+    contato.consentimentoDeclaradoEm=instante;
+    contato.consentimentoConfirmadoEm=instante;
+    contato.evidencia=EVIDENCIA_IMPORTADA;
+    contato.registroAutorizacao={
+      origem:comprovacao.origem,referencia:comprovacao.referencia,
+      dataAutorizacao:comprovacao.dataAutorizacao,declaradoEm:instante,
+      tipo:'nova-autorizacao-apos-bloqueio',
+    };
+    contato.versaoTermo='reativacao-documentada-v1';
+    contato.reativadoEm=instante;
+    salvar(dados);
+    return {id:contato.id,reativadoEm:instante};
+  }
+
   function descadastrarPorId(id) {
     const dados = ler();
     const contato = dados.contatos.find((c) => c.id === id);
@@ -331,6 +381,6 @@ export function iniciarContatos(dataDir, agora = () => new Date()) {
     ler, cadastrar, resumo, listar, configurarRemetente, confirmar,
     descadastrarPorId, descadastrarPorToken, prepararMensagem,
     marcarEnvioManual, excluirPorId, exportarCsv,
-    importarConsentimentosExternos,
+    importarConsentimentosExternos,reativarComNovaAutorizacao,
   };
 }
