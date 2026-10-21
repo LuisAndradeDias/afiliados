@@ -1,5 +1,15 @@
 // Tela principal do convite individual. As filas antigas seguem disponíveis em /campanhas.
-export function renderEnvioRapido(){
+// Preenche o modelo salvo no HTML para funcionar antes mesmo do JS carregar.
+// Dados configurados sao escapados para impedir qualquer injecao de HTML.
+function escaparHtml(valor=''){
+  return String(valor??'').replace(/[&<>"']/g,caractere=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
+  })[caractere]);
+}
+export function renderEnvioRapido({mensagem='',grupoUrl=''}={}){
+  const texto=escaparHtml(mensagem);
+  const grupo=escaparHtml(grupoUrl);
+  const tamanho=String(mensagem??'').length;
   return `<!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -110,13 +120,19 @@ export function renderEnvioRapido(){
         </div></div>
         <div class="quick-destination-strip"><span>Vai para</span><strong id="quickMessageTarget">—</strong>
           <button id="quickChangeTarget" class="quick-text-link" type="button">Trocar</button></div>
-        <label class="quick-field-label" for="quickText">Mensagem do convite</label>
+        <div class="quick-template-head">
+          <label class="quick-field-label" for="quickText">Mensagem do convite</label>
+          <button id="quickRestoreModel" class="quick-text-link" type="button"
+            title="Restaurar a mensagem e o grupo salvos">Restaurar padrão</button>
+        </div>
         <textarea id="quickText" rows="8" maxlength="1024" spellcheck="true" required
-          placeholder="Digite sua mensagem..."></textarea>
-        <div class="quick-field-meta"><span>Essa mensagem será salva como seu modelo de convite.</span>
-          <strong id="quickTextCount">0 / 1.024</strong></div>
+          placeholder="Digite sua mensagem...">${texto}</textarea>
+        <div class="quick-field-meta">
+          <span>Seu modelo salvo aparece automaticamente e continua disponível para próximos convites.</span>
+          <strong id="quickTextCount">${tamanho} / 1.024</strong></div>
         <label class="quick-field-label" for="quickGroup">Link do grupo de ofertas</label>
-        <input id="quickGroup" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/..." required>
+        <input id="quickGroup" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/..."
+          value="${grupo}" required>
         <p class="quick-help">O painel adicionará automaticamente o link do grupo, a opção
           <strong>Não tenho interesse</strong> e a instrução SAIR, quando disponíveis.</p>
         <div class="quick-bottom">

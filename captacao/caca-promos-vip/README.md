@@ -42,7 +42,14 @@ convites comerciais.
    incluído por essa tela. Abra **Contatos → Bloqueados → Ver ficha →
    Desbloquear contato**, com uma nova autorização documentada. Volte a
    **Enviar convite** depois.
-3. Clique em **Continuar**, confira/edite a mensagem e o link do grupo,
+3. Clique em **Continuar**. A etapa **Confira antes de preparar** já abre
+   com a mensagem e o link do grupo previamente salvos, mesmo se a consulta
+   pelo navegador falhar ou se a página for atualizada. Você pode editar
+   o texto; **Restaurar padrão** recupera os dois campos da última versão
+   salva e solicita confirmação antes de substituir edições não salvas.
+   Ao clicar em **Salvar e preparar 1 convite**, a mensagem editada passa
+   a ser o novo modelo salvo para próximos convites.
+   Confira/edite a mensagem e o link do grupo,
    depois **Salvar e preparar 1 convite**. O sistema registra um convite
    para esse único destinatário; **ainda não envia**.
 4. Clique em **1. Abrir conversa no Chrome**. Se precisar conectar o WhatsApp,

@@ -106,7 +106,14 @@ body[data-page="enviar"]{font-size:14px;background:radial-gradient(circle at 74%
 .quick-destination-strip>span:first-child{font-size:11px;color:#9fbbc4}
 .quick-destination-strip strong{font-size:13px;color:#fff}
 .quick-destination-strip .quick-check{margin-left:auto}
-.quick-text-link{border:none;background:none;color:#91e9ca;text-decoration:underline;font-size:11px;margin-left:auto}
+.quick-text-link{border:none;background:none;color:#91e9ca;text-decoration:underline;font-size:11px;margin-left:auto;cursor:pointer}
+.quick-template-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-bottom:9px}
+.quick-template-head .quick-field-label{margin:0}
+.quick-template-head .quick-text-link{min-height:34px;padding:5px 8px;border-radius:6px;font-weight:750;
+  text-decoration:none;border:1px solid #557f70;background:#1b3738}
+.quick-template-head .quick-text-link:hover,.quick-template-head .quick-text-link:focus-visible{
+  background:#295047;border-color:#8adfc2;outline-offset:2px}
 .quick-field-meta{display:flex;justify-content:space-between;gap:12px;
   font-size:10px;color:#adc3c8;margin:7px 0 20px}
 .quick-field-meta strong{color:#d2e9e3;white-space:nowrap}

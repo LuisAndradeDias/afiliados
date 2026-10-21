@@ -141,11 +141,35 @@
     finally{$('quickSearchButton').disabled=false;}
   }
   async function loadModel(){
+    // O servidor ja entregou o modelo salvo no HTML. A atualizacao
+    // assincrona nao pode limpar o campo nem descartar o que foi digitado.
+    const mensagemAntes=$('quickText').value;
+    const grupoAntes=$('quickGroup').value;
     const r=await api('/api/local/campanhas/convite/modelo');
-    state.modelo=r.configuracao;
-    $('quickText').value=state.modelo.mensagem||'';
-    $('quickGroup').value=state.modelo.grupoUrl||'';
+    const cfg=r.configuracao;
+    if(typeof cfg?.mensagem!=='string'||!cfg.mensagem.trim()||
+      typeof cfg.grupoUrl!=='string'){
+      throw new Error('A resposta do modelo salvo esta incompleta.');
+    }
+    state.modelo=cfg;
+    if($('quickText').value===mensagemAntes)$('quickText').value=cfg.mensagem;
+    if($('quickGroup').value===grupoAntes)$('quickGroup').value=cfg.grupoUrl;
     updateLength();
+  }
+  function restaurarModelo(){
+    const modelo=state.modelo;
+    if(typeof modelo?.mensagem!=='string'||!modelo.mensagem.trim()){
+      return toast('O modelo padrão não está disponível. Confira as configurações.',true);
+    }
+    if(($('quickText').value!==modelo.mensagem||
+        $('quickGroup').value!==modelo.grupoUrl)&&
+      !confirm('Restaurar a mensagem e o link do grupo salvos? As alterações ainda não salvas serão substituídas.')){
+      return;
+    }
+    $('quickText').value=modelo.mensagem;
+    $('quickGroup').value=modelo.grupoUrl||'';
+    updateLength();
+    toast('Mensagem e link do grupo restaurados a partir do modelo salvo.');
   }
   function updateLength(){
     $('quickTextCount').textContent=$('quickText').value.length+' / 1.024';
@@ -277,6 +301,29 @@
       show('quickManualDisclosure',false);
       $('quickChromeStatus').textContent='Não foi possível consultar a sessão. Confira o WhatsApp antes de repetir.';
       setResult('O estado da janela não pôde ser confirmado. Confira em Listas e filas antes de tentar outra vez.','is-warning');
+    }
+  }
+  async function copiarMensagem(){
+    const mensagem=state.conversa?.mensagem||$('quickFinalText').textContent||'';
+    if(!mensagem.trim())return toast('Não há mensagem preparada para copiar.',true);
+    try{
+      if(navigator.clipboard?.writeText){
+        await navigator.clipboard.writeText(mensagem);
+      }else{
+        const campo=document.createElement('textarea');
+        campo.value=mensagem;
+        campo.style.position='fixed';
+        campo.style.opacity='0';
+        document.body.append(campo);
+        campo.focus();
+        campo.select();
+        const copiado=document.execCommand('copy');
+        campo.remove();
+        if(!copiado)throw new Error('Cópia indisponível.');
+      }
+      toast('Mensagem copiada. Confira o histórico do WhatsApp antes de qualquer nova tentativa.');
+    }catch{
+      toast('Não foi possível copiar. Selecione o texto da prévia e use Ctrl+C.',true);
     }
   }
   function stopWorker(){if(state.workerTimer)clearInterval(state.workerTimer);state.workerTimer=null;}
@@ -426,6 +473,7 @@
     $('quickBack1').addEventListener('click',()=>setStage(1));
     $('quickChangeTarget').addEventListener('click',()=>setStage(1));
     $('quickText').addEventListener('input',updateLength);
+    $('quickRestoreModel').addEventListener('click',restaurarModelo);
     $('quickCreate').addEventListener('click',createInvite);
     $('quickPrepareChrome').addEventListener('click',prepareChrome);
     $('quickConfirmChrome').addEventListener('click',confirmChrome);
@@ -452,8 +500,16 @@
     $('quickStartOver').addEventListener('click',startOver);
   }
   async function init(){
+    // Modelo inicial vem seguro do HTML; persiste visivel mesmo com erro
+    // temporario no fetch, para nunca abrir a etapa 2 em branco.
+    state.modelo={mensagem:$('quickText').value,
+      grupoUrl:$('quickGroup').value,nomeModelo:'convite_ofertas_v1'};
+    updateLength();
     wire();
-    await Promise.all([loadModel(),loadCounters(),loadConnection()]);
+    const requests=await Promise.allSettled([loadModel(),loadCounters(),loadConnection()]);
+    if(requests[0].status==='rejected'){
+      toast('Não foi possível atualizar o modelo, mas o texto salvo permanece disponível.',true);
+    }
     const saved=(()=>{try{return JSON.parse(sessionStorage.getItem(lastKey)||'null');}catch{return null;}})();
     if(saved?.campanhaId&&saved?.contatoId){
       try{await resume(saved.campanhaId,saved.contatoId);}

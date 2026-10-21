@@ -326,7 +326,7 @@ export function criarPiloto({
       if (pathname === '/enviar' && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
           'Envio guiado disponível somente no ACER, via 127.0.0.1.');
-        return codigoHtml(res,200,renderEnvioRapido());
+        return codigoHtml(res,200,renderEnvioRapido(convitesUnicos.configuracao()));
       }
       if (pathname === '/campanhas' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,

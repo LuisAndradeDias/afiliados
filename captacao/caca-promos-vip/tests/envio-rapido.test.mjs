@@ -190,7 +190,19 @@ test('Chrome desktop/mobile: processo para seu número é compreensível e não 
     const errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     await page.goto(f.base+'/enviar');
-    await page.waitForFunction(()=>document.querySelector('#quickAllowed')?.textContent==='2');
+    const resumoInicial=await get(f.base,'/api/local/gestao/resumo');
+    assert.equal(resumoInicial.contatos.autorizado,2);
+    await page.waitForFunction(()=>document.querySelector('#quickAllowed')?.textContent==='2',
+      null,{timeout:12000}).catch(async erro=>{
+      const estado=await page.evaluate(()=>({
+        contador:document.querySelector('#quickAllowed')?.textContent,
+        info:document.querySelector('#quickOverallStatus')?.textContent,
+        aviso:document.querySelector('#quickToast')?.textContent,
+        modelo:document.querySelector('#quickText')?.value?.length,
+      }));
+      throw new Error('Resumo não carregou no browser: '+JSON.stringify(estado)+
+        ' (causa: '+erro.message+')');
+    });
     if(process.env.CPV_VISUAL_PROOF==='1'){
       const dir='C:\\projeto01\\captacao\\caca-promos-vip\\Publicacoes\\2026-10-21-Envio-Guiado-QA';
       mkdirSync(dir,{recursive:true});
@@ -374,4 +386,79 @@ test('WhatsApp ficticio apaga o texto: painel mantém cópia e proíbe novo envi
   assert.equal(filas[0].manuais,0);
   assert.equal(await page.evaluate(()=>
     document.documentElement.scrollWidth<=document.documentElement.clientWidth+2),true);
+});
+
+test('modelo salvo aparece no HTML sem depender de JavaScript e evita injeção',async t=>{
+  const f=await setup(t);
+  const original=(await get(f.base,'/api/local/campanhas/convite/modelo')).configuracao;
+  assert.ok(original.mensagem.length>40);
+  assert.ok(original.grupoUrl.startsWith('https://chat.whatsapp.com/'));
+  const html=await (await fetch(f.base+'/enviar')).text();
+  assert.ok(html.includes(original.mensagem),'Modelo padrão carregado no HTML');
+  assert.ok(html.includes('value="'+original.grupoUrl+'"'),'Grupo salvo carregado no HTML');
+  assert.match(html,/id="quickRestoreModel"/);
+  const {renderEnvioRapido}=await import('../src/envio-rapido-ui.mjs');
+  const injected=renderEnvioRapido({
+    mensagem:'Olá! & <script>alert("teste")</script> SAIR',
+    grupoUrl:'https://chat.whatsapp.com/abc" autofocus="autofocus',
+  });
+  assert.ok(injected.includes('&lt;script&gt;'),'Escapou as tags no texto');
+  assert.ok(injected.includes('&amp;'),'Escapou caractere &');
+  assert.ok(injected.includes('&quot; autofocus=&quot;autofocus'),'Escapou aspas no valor do grupo');
+  assert.ok(!injected.includes('<script>alert('),'Não criou script a partir do modelo');
+  assert.ok(!injected.includes('value="https://chat.whatsapp.com/abc" autofocus="autofocus"'),
+    'Não criou atributos HTML a partir do grupo');
+});
+
+test('padrão continua preenchido após voltar, restaurar e recarregar a página',async t=>{
+  const f=await setup(t);
+  const original=(await get(f.base,'/api/local/campanhas/convite/modelo')).configuracao;
+  const browser=await chromium.launch({headless:true,
+    executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'});
+  t.after(()=>browser.close());
+  const page=await browser.newPage({viewport:{width:1080,height:850}});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(f.base+'/enviar');
+  await page.waitForFunction(()=>document.querySelector('#quickText')?.value.length>40);
+  assert.equal(await page.locator('#quickText').inputValue(),original.mensagem);
+  assert.equal(await page.locator('#quickGroup').inputValue(),original.grupoUrl);
+  await page.locator('#quickPhone').fill('31988887777');
+  await page.locator('#quickLookup').click();
+  await page.locator('#quickGoMessage').click();
+  assert.equal(await page.locator('#quickStage2').isVisible(),true);
+  assert.equal(await page.locator('#quickText').inputValue(),original.mensagem);
+  await page.locator('#quickText').fill('Minha edição personalizada que não deve desaparecer. Responda SAIR.');
+  await page.locator('#quickGroup').fill(group);
+  await page.locator('#quickBack1').click();
+  await page.locator('#quickGoMessage').click();
+  assert.match(await page.locator('#quickText').inputValue(),/Minha edição personalizada/);
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#quickRestoreModel').click();
+  assert.equal(await page.locator('#quickText').inputValue(),original.mensagem);
+  assert.equal(await page.locator('#quickGroup').inputValue(),original.grupoUrl);
+  await page.reload();
+  await page.waitForFunction(()=>document.querySelector('#quickText')?.value.length>40);
+  assert.equal(await page.locator('#quickText').inputValue(),original.mensagem);
+  assert.equal(await page.locator('#quickGroup').inputValue(),original.grupoUrl);
+  assert.deepEqual(errors,[]);
+});
+
+test('em falha do GET do modelo, a etapa conserva a mensagem do HTML',async t=>{
+  const f=await setup(t);
+  const original=(await get(f.base,'/api/local/campanhas/convite/modelo')).configuracao;
+  const browser=await chromium.launch({headless:true,
+    executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'});
+  t.after(()=>browser.close());
+  const page=await browser.newPage({viewport:{width:390,height:844}});
+  await page.route('**/api/local/campanhas/convite/modelo',route=>route.abort());
+  await page.goto(f.base+'/enviar');
+  assert.equal(await page.locator('#quickText').inputValue(),original.mensagem);
+  assert.equal(await page.locator('#quickGroup').inputValue(),original.grupoUrl);
+  await page.locator('#quickPhone').fill('31988887777');
+  await page.locator('#quickLookup').click();
+  await page.locator('#quickGoMessage').click();
+  assert.equal(await page.locator('#quickStage2').isVisible(),true);
+  assert.equal(await page.locator('#quickText').inputValue(),original.mensagem);
+  await page.locator('#quickRestoreModel').click();
+  assert.equal(await page.locator('#quickText').inputValue(),original.mensagem);
 });
