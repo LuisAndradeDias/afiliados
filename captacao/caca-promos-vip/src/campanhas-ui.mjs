@@ -282,7 +282,7 @@ export function renderCampanhas() {
         <div class="field"><label for="singleText">Mensagem enviada a TODOS, sem alterações</label>
           <textarea id="singleText" maxlength="1024" rows="9" spellcheck="true"
             placeholder="Escreva um convite único para todos os destinatários..."></textarea>
-          <small class="muted"><span id="singleLength">0</span>/1.024 caracteres · O link de denúncia por destinatário é acrescentado automaticamente quando disponível</small>
+          <small class="muted"><span id="singleLength">0</span>/1.024 caracteres · A opção "Não tenho interesse" é acrescentada quando o site estiver atualizado</small>
         </div>
         <div class="field"><label for="groupLink">Link do grupo de ofertas</label>
           <input id="groupLink" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/...">
@@ -309,10 +309,10 @@ export function renderCampanhas() {
           <div class="bubble"><div id="singlePreview" class="bubble-body">Carregando convite...</div>
             <span class="bubble-time">Prévia</span></div>
           <div class="phone-choice">↗ &nbsp; Entrar no grupo</div>
-          <div class="phone-choice">⚑ &nbsp; Denunciar convite</div>
-          <p class="phone-note">No WhatsApp Web, o convite inclui um link clicável para uma página de denúncia interna quando o HTTPS público estiver configurado.</p>
+          <div class="phone-choice">↩ &nbsp; Não tenho interesse</div>
+          <p class="phone-note">Prévia ilustrativa. No WhatsApp Web gratuito as opções são links, não botões nativos. "Não tenho interesse" registra um pedido de saída, não uma denúncia.</p>
         </div>
-        <div class="hint" id="cloudPreviewNotice">Não haverá envio para números sem opt-in. Denúncias internas bloqueiam campanhas futuras.</div>
+        <div class="hint" id="cloudPreviewNotice">Não haverá envio para números sem autorização. Pedidos de saída bloqueiam convites futuros.</div>
       </div>
       </details>
     </div>
@@ -396,8 +396,8 @@ export function renderCampanhas() {
       <span class="counter" id="manualConfirmed">0 envios confirmados</span>
       <span class="counter">1 por vez · sem disparo automático</span>
     </div>
-    <p id="complaintLinkStatus" class="muted" aria-live="polite">Verificando a disponibilidade do link de denúncia...</p>
-    <details class="minor-tools"><summary>Cuidados com os envios</summary><div class="hint">O WhatsApp Web não oferece botões nativos sem a API Meta. Quando houver uma página HTTPS configurada, o convite terá um link para registrar a denúncia internamente. Também é possível responder SAIR ou DENUNCIAR. O limite diário de 50 preparações não garante evitar bloqueios.</div></details>
+    <p id="complaintLinkStatus" class="muted" aria-live="polite">Verificando a opção Não tenho interesse...</p>
+    <details class="minor-tools"><summary>Cuidados com os envios</summary><div class="hint">O WhatsApp Web não oferece botões nativos sem a API Meta. Quando o site HTTPS estiver atualizado, o convite terá um link "Não tenho interesse" para solicitar a interrupção dos convites. Também é possível responder SAIR. O clique não gera denúncia. O limite diário de 50 preparações não garante evitar bloqueios.</div></details>
     <p>Quando a planilha e a mensagem estiverem prontas, crie uma fila para o WhatsApp Web.</p>
     <details id="sendOptions" class="minor-tools">
       <summary>Opções de envio</summary>
@@ -424,13 +424,13 @@ export function renderCampanhas() {
       <p class="muted">Apaga somente filas sem envios ou tentativas registrados, com backup privado. Contatos e autorizações ficam preservados.</p>
     </details>
     <details id="complaintsDetail" class="minor-tools">
-      <summary>Denúncias internas recebidas <span id="complaintsCount" class="muted">(0)</span></summary>
-      <p class="muted" style="padding:0 15px">Quando alguém confirmar uma reclamação no link, ela aparecerá aqui e novos convites para esse número serão bloqueados. Não é uma denúncia enviada ao WhatsApp.</p>
+      <summary>Pedidos de saída e denúncias <span id="complaintsCount" class="muted">(0)</span></summary>
+      <p class="muted" style="padding:0 15px">Quando alguém escolher "Não tenho interesse", será registrado um pedido de saída e o número será bloqueado para novos convites. As denúncias anteriores continuam no histórico.</p>
       <p id="netlifySyncStatus" class="muted" style="padding:0 15px">Verificando conexão Netlify...</p>
       <div class="row-actions" style="padding:0 15px 8px">
-        <button id="syncNetlifyNow" type="button" class="quiet" disabled>Buscar denúncias no Netlify agora</button>
+        <button id="syncNetlifyNow" type="button" class="quiet" disabled>Buscar pedidos no Netlify agora</button>
       </div>
-      <div id="complaintsList" class="ledger surface"><div class="empty">Nenhuma denúncia registrada.</div></div>
+      <div id="complaintsList" class="ledger surface"><div class="empty">Nenhum pedido registrado.</div></div>
     </details>
   </section>
 
@@ -451,7 +451,7 @@ export function renderCampanhas() {
     <div id="manualComposer" class="surface" hidden style="padding:18px;margin:15px 0">
       <strong id="manualRecipient">Contato</strong>
       <p class="muted">Confira o número e o texto. No modo automático supervisionado, clique em Enviar agora no painel; no modo manual, use o link da alternativa.</p>
-      <label for="manualMessageReady">Texto para este destinatário (link de denúncia individual quando disponível)</label>
+      <label for="manualMessageReady">Texto para este destinatário (opção Não tenho interesse quando disponível)</label>
       <textarea id="manualMessageReady" readonly rows="8"></textarea>
       <div class="hint" style="margin-top:14px">
         <strong>Mesma automação das promoções:</strong> o Chrome usa sua sessão atual,
@@ -478,11 +478,11 @@ export function renderCampanhas() {
       <div class="row-actions">
         <button id="manualMarkSent" type="button" class="secondary" disabled>Registrar envio confirmado</button>
         <button id="manualIgnore" type="button" class="quiet">Ignorar contato</button>
-        <button id="manualComplaint" type="button" class="quiet">Recebi denúncia / SAIR</button>
+        <button id="manualComplaint" type="button" class="quiet">Recebi "Não tenho interesse" / SAIR</button>
         <button id="manualCancel" type="button" class="quiet">Cancelar preparação</button>
       </div>
       </details>
-      <p class="muted">O botão Enviar agora clica uma única vez no WhatsApp e tenta conferir a mensagem enviada na própria conversa. Em caso de dúvida, pare e verifique manualmente. Denúncias devem ser registradas somente após uma reclamação real.</p>
+      <p class="muted">O botão Enviar agora clica uma única vez no WhatsApp e tenta conferir a mensagem enviada na própria conversa. Em caso de dúvida, pare e verifique manualmente. Registre "Não tenho interesse" somente quando o contato realmente solicitar a saída.</p>
     </div>
     <details id="manualPeopleDisclosure" class="minor-tools queue-contact-disclosure">
       <summary>Ver lista de contatos <span id="manualPeopleCount" class="muted"></span></summary>

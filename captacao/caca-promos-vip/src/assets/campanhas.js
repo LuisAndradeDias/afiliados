@@ -216,18 +216,18 @@
           (st.ultimoErro?' · '+st.ultimoErro:'')
         : 'Página Netlify ainda não conectada. Não será enviado link inoperante.';
       const quantidade=resp.ocorrencias.filter(
-        item=>item.motivo==='denuncia-convite').length;
+        item=>['denuncia-convite','saida-solicitada'].includes(item.motivo)).length;
       $('complaintsCount').textContent='('+quantidade+')';
       if(state.denunciasAnteriores!==null && quantidade>state.denunciasAnteriores){
         $('complaintsDetail').open=true;
-        flash('Nova denúncia interna registrada. O contato está bloqueado para novos convites.');
+        flash('Novo pedido de saída ou denúncia recebido. O contato está bloqueado para novos convites.');
         await carregarFilasManual();
       }
       state.denunciasAnteriores=quantidade;
       const lista=$('complaintsList');
       lista.replaceChildren();
       if (!resp.ocorrencias.length) {
-        lista.append(elemento('div','empty','Nenhuma denúncia registrada até agora.'));
+        lista.append(elemento('div','empty','Nenhum pedido de saída ou denúncia registrado.'));
         return;
       }
       for(const ocorrencia of resp.ocorrencias.slice(0,100)){
@@ -236,10 +236,13 @@
         info.append(elemento('strong','',ocorrencia.telefoneMascarado),
           elemento('small','',dataCurta(ocorrencia.recebidoEm)+' · '+
             (ocorrencia.origem==='clique-confirmado-pagina-publica'||
-             ocorrencia.origem==='clique-confirmado-netlify'
-              ? 'Confirmada pelo link' : 'Registrada internamente')));
+             ocorrencia.origem==='clique-confirmado-netlify'||
+             ocorrencia.origem==='clique-nao-tenho-interesse-netlify'
+              ? 'Confirmado pelo link' : 'Registrado internamente')));
         linha.append(info,elemento('span','tag off',
-          ocorrencia.motivo==='denuncia-convite'?'Denúncia · bloqueado':'SAIR · bloqueado'));
+          ocorrencia.motivo==='denuncia-convite'?'Denúncia anterior · bloqueado'
+          :ocorrencia.motivo==='saida-solicitada'?'Não tenho interesse · bloqueado'
+          :'Bloqueio administrativo'));
         lista.append(linha);
       }
     } catch(erro) {
@@ -603,9 +606,9 @@
       ' conversas preparadas hoje';
     $('manualConfirmed').textContent=c.confirmadosHoje+
       ' envios confirmados hoje';
-    $('complaintLinkStatus').textContent=c.denunciaPorCliqueConfigurada
-      ? 'Endereço da denúncia configurado. Cada convite terá um link individual; confirme que a página responde publicamente por HTTPS.'
-      : 'Link de denúncia por clique: aguardando endereço HTTPS público. Por enquanto, continua a opção de responder SAIR ou DENUNCIAR.';
+    $('complaintLinkStatus').textContent=c.recusaPorCliqueConfigurada
+      ? 'Site configurado para "Não tenho interesse". Confirme que a nova página está publicada antes de enviar convites.'
+      : 'Opção "Não tenho interesse": sem link público configurado. O contato pode responder SAIR.';
   }
 
   async function carregarFilasManual() {
@@ -756,8 +759,8 @@
           actions.append(botao(item.status==='aberto'?'Retomar conversa':
             'Preparar conversa',()=>prepararConversaManual(item.contatoId),'secondary'));
         } else if (item.status==='enviado-manualmente') {
-          actions.append(botao('Registrar denúncia recebida',
-            ()=>denunciarAposEnvioManual(item.contatoId),'quiet'));
+          actions.append(botao('Registrar "Não tenho interesse"',
+            ()=>registrarRecusaAposEnvioManual(item.contatoId),'quiet'));
         } else if (item.status==='incerto') {
           actions.append(
             botao('Conferi: foi enviado',
@@ -939,12 +942,12 @@
     if(!atual)return;
     if(acao==='enviado'&&!$('manualSentConfirm').checked)return;
     if(['abrindo','iniciando','pronto','enviando','cancelando'].includes(state.chromeFase) &&
-        acao!=='denunciado') {
+        !['denunciado','nao-interessado'].includes(acao)) {
       flash('Finalize ou cancele a janela automática antes de registrar o contato manualmente.',true);
       return;
     }
-    if(acao==='denunciado'&&!confirm(
-      'Você recebeu de fato SAIR ou DENUNCIAR deste contato? Isso bloqueará novos convites.'))return;
+    if(acao==='nao-interessado'&&!confirm(
+      'O contato realmente respondeu SAIR ou NÃO TENHO INTERESSE? Ele será bloqueado para novos convites, sem registrar denúncia.'))return;
     if(acao==='cancelado'&&!confirm(
       'Cancele somente se a mensagem NÃO foi enviada. Deseja voltar à fila?'))return;
     if(acao==='ignorado'&&!confirm('Ignorar este contato nesta fila?'))return;
@@ -958,7 +961,7 @@
       state.manualConversa=null;
       await Promise.all([abrirFilaManual(atual.campanhaId),
         carregarFilasManual(),carregarControleManual()]);
-      if(acao==='denunciado') {
+      if(['denunciado','nao-interessado'].includes(acao)) {
         await Promise.all([carregarDenuncias(),carregarMeta()]);
         const elegiveis=await api('/api/local/campanhas/destinatarios');
         state.autorizados=elegiveis.destinatarios;
@@ -966,8 +969,10 @@
       }
       flash(acao==='enviado'
         ? 'Envio manual registrado após sua confirmação. Nenhum disparo automático ocorreu.'
-        : acao==='denunciado'
-          ? 'Denúncia registrada: número bloqueado para novos convites.'
+        : acao==='nao-interessado'
+          ? 'Pedido de saída registrado: número bloqueado para novos convites.'
+          : acao==='denunciado'
+            ? 'Denúncia antiga registrada: número bloqueado.'
           : 'Contato atualizado na fila.');
     } catch(e) { flash(e.message,true); }
   }
@@ -997,14 +1002,14 @@
     }catch(e){flash(e.message,true);}
   }
 
-  async function denunciarAposEnvioManual(contatoId) {
+  async function registrarRecusaAposEnvioManual(contatoId) {
     const fila=state.manualQueue;
-    if (!fila || !confirm('Você recebeu realmente SAIR ou DENUNCIAR? O contato ficará bloqueado para convites futuros.')) {
+    if (!fila || !confirm('O contato respondeu SAIR ou NÃO TENHO INTERESSE? Confirme somente uma solicitação real.')) {
       return;
     }
     try {
       await api('/api/local/campanhas/convite/manual/registrar','POST',{
-        campanhaId:fila.id,contatoId,acao:'denunciado',
+        campanhaId:fila.id,contatoId,acao:'nao-interessado',
       });
       await Promise.all([
         abrirFilaManual(fila.id),carregarFilasManual(),carregarControleManual(),
@@ -1013,7 +1018,7 @@
       const elegiveis=await api('/api/local/campanhas/destinatarios');
       state.autorizados=elegiveis.destinatarios;
       renderResumo();
-      flash('Denúncia após envio registrada. Contato bloqueado para novos convites.');
+      flash('Pedido de saída registrado. Contato bloqueado para novos convites.');
     }catch(e){flash(e.message,true);}
   }
 
@@ -1164,7 +1169,7 @@
   $('chromeCancel').addEventListener('click',cancelarWhatsappChrome);
   $('manualMarkSent').addEventListener('click',()=>registrarManual('enviado'));
   $('manualIgnore').addEventListener('click',()=>registrarManual('ignorado'));
-  $('manualComplaint').addEventListener('click',()=>registrarManual('denunciado'));
+  $('manualComplaint').addEventListener('click',()=>registrarManual('nao-interessado'));
   $('manualCancel').addEventListener('click',()=>registrarManual('cancelado'));
   $('singleText').addEventListener('input',atualizarPreviewUnico);
   $('templateName').addEventListener('input',()=>{

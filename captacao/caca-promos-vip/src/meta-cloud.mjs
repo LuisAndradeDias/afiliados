@@ -6,7 +6,7 @@ const MODELO = /^[a-z][a-z0-9_]{2,127}$/;
 const TELEFONE = /^[1-9]\d{7,14}$/;
 const LOCALE = 'pt_BR';
 export const BOTAO_ENTRAR = 'Entrar no grupo';
-export const BOTAO_DENUNCIAR = 'Denunciar convite';
+export const BOTAO_NAO_INTERESSE = 'Não tenho interesse';
 
 function compararSegredos(a,b) {
   const primeiro = Buffer.from(String(a ?? ''),'utf8');
@@ -93,10 +93,12 @@ export function lerEventosMeta(payload, telefoneIdEsperado) {
         const texto = msg.type === 'text' ? String(msg.text?.body || '').trim() : '';
         let tipo = null;
         if (payloadBotao === 'CPV_DENUNCIAR' ||
-            payloadBotao.startsWith('CPV_DENUNCIAR:')) tipo='denuncia';
+            payloadBotao.startsWith('CPV_DENUNCIAR:')) tipo='denuncia'; // Legado
+        else if (payloadBotao === 'CPV_NAO_INTERESSE' ||
+            payloadBotao.startsWith('CPV_NAO_INTERESSE:')) tipo='sair';
         else if (payloadBotao === 'CPV_ENTRAR' ||
             payloadBotao.startsWith('CPV_ENTRAR:')) tipo='entrar';
-        else if (/^SAIR[.!\s]*$/i.test(texto)) tipo='sair';
+        else if (/^(SAIR|NÃO TENHO INTERESSE|NAO TENHO INTERESSE)[.!\s]*$/i.test(texto)) tipo='sair';
         if (tipo) eventos.push({ tipo, from, id });
       }
     }
@@ -145,7 +147,7 @@ export function montarModeloMeta({texto,nomeModelo='convite_ofertas_v1'}) {
       {type:'BODY',text:mensagem},
       {type:'BUTTONS',buttons:[
         {type:'QUICK_REPLY',text:BOTAO_ENTRAR},
-        {type:'QUICK_REPLY',text:BOTAO_DENUNCIAR},
+        {type:'QUICK_REPLY',text:BOTAO_NAO_INTERESSE},
       ]},
     ],
   };
@@ -165,7 +167,7 @@ export function montarConviteMeta({para,template='convite_ofertas_v1'}) {
       {type:'button',sub_type:'quick_reply',index:'0',
         parameters:[{type:'payload',payload:'CPV_ENTRAR'}]},
       {type:'button',sub_type:'quick_reply',index:'1',
-        parameters:[{type:'payload',payload:'CPV_DENUNCIAR'}]},
+        parameters:[{type:'payload',payload:'CPV_NAO_INTERESSE'}]},
     ]},
   };
 }
@@ -205,7 +207,7 @@ export async function consultarModeloMeta(config,{nomeModelo,texto},fetchImpl=fe
   const btn=(modelo?.components||[]).find(c=>c.type==='BUTTONS')?.buttons||[];
   const corresponde = Boolean(modelo && body === validarTextoModelo(texto) &&
     btn.length===2 && btn.every((b,i)=>b.type==='QUICK_REPLY' &&
-      b.text===[BOTAO_ENTRAR,BOTAO_DENUNCIAR][i]));
+      b.text===[BOTAO_ENTRAR,BOTAO_NAO_INTERESSE][i]));
   return {
     encontrado:Boolean(modelo),status:modelo?.status||'NAO_CRIADO',
     textoIdentico:corresponde,

@@ -22,7 +22,9 @@ export function lerConfigNetlify(dataDir,ambiente=process.env){
     // Enquanto falta configurar o site, o painel segue sem inserir links inoperantes.
     return null;
   }
-  return {publicBaseUrl:validarUrlPublica(url),segredo:String(secret).toLowerCase()};
+  return {publicBaseUrl:validarUrlPublica(url),
+    segredo:String(secret).toLowerCase(),
+    recusaAtiva:config.recusaAtiva===true};
 }
 export function iniciarSincronizacaoNetlify({
   config,denuncias,fetchImpl=globalThis.fetch,
@@ -49,14 +51,18 @@ export function iniciarSincronizacaoNetlify({
         throw new Error('Resposta inválida da fila de denúncias.');
       }
       for(const evento of dados.eventos){
-        const registro=denuncias.registrarTokenNetlify(evento.token,config.segredo);
+        // Eventos antigos sem tipo continuam como denúncias; opt-outs novos
+        // são registrados como pedidos de saída, jamais denúncias inventadas.
+        const motivo=evento.motivo||'denuncia-convite';
+        if(!['denuncia-convite','saida-solicitada'].includes(motivo))continue;
+        const registro=denuncias.registrarTokenNetlify(evento.token,config.segredo,motivo);
         if(!registro.valido||!registro.registrado){
           // Nunca confirme o evento remoto antes de persistir o bloqueio local.
           continue;
         }
         const ack=await fetchImpl(url,{
           method:'POST',headers:{...headers,'content-type':'application/json'},
-          body:JSON.stringify({token:evento.token}),
+          body:JSON.stringify({token:evento.token,motivo}),
           signal:AbortSignal.timeout(9000),
         });
         if(!ack.ok)throw new Error('Netlify não confirmou o recebimento da sincronização.');

@@ -10,6 +10,11 @@ from = "/denunciar"
 to = "/denunciar/"
 status = 301
 
+[[redirects]]
+from = "/nao-tenho-interesse"
+to = "/nao-tenho-interesse/"
+status = 301
+
 [[headers]]
 for = "/*"
 [headers.values]

@@ -20,8 +20,24 @@ export const MENSAGEM_PADRAO = [
   'Temos um grupo gratuito com promoções, descontos e oportunidades selecionadas.',
   'Deseja conhecer nosso grupo de ofertas?',
   '',
-  'A entrada é opcional. Para não receber novos convites, toque em Denunciar convite ou responda SAIR.',
+  'A entrada é opcional. Se não tiver interesse, responda SAIR para não receber novos convites.',
 ].join('\n');
+
+// Converte apenas textos legados de convites, sem alterar o histórico
+// salvo das campanhas já preparadas.
+function ajustarTextoAntigo(texto,temLink=false) {
+  const alternativa=temLink?'escolha "Não tenho interesse"':'responda SAIR';
+  return String(texto||'')
+    .replace(/toque em Denunciar convite ou responda SAIR/gi,
+      temLink?'escolha "Não tenho interesse" ou responda SAIR':'responda SAIR')
+    .replace(/clique em Denunciar convite ou responda SAIR/gi,
+      temLink?'escolha "Não tenho interesse" ou responda SAIR':'responda SAIR')
+    .replace(/toque em Denunciar convite/gi,alternativa)
+    .replace(/clique em Denunciar convite/gi,alternativa)
+    .replace(/use o link Denunciar mensagem/gi,alternativa)
+    .replace(/responda SAIR ou DENUNCIAR/gi,'responda SAIR')
+    .replace(/responda DENUNCIAR/gi,'responda SAIR');
+}
 
 function validarUrlGrupo(valor) {
   if (valor === '' || valor === null || valor === undefined) return '';
@@ -53,7 +69,7 @@ function nomeSeguro(valor) {
 export function iniciarConvitesUnicos({
   dataDir, contatos, bloqueios, configMeta,
   grupoInicial='', agora=()=>new Date(), fetchImpl=globalThis.fetch,
-  publicBaseUrl='',netlifySecret='',
+  publicBaseUrl='',netlifySecret='',recusaAtiva=true,
 }) {
   let origemPublica='';
   if (publicBaseUrl) {
@@ -100,10 +116,12 @@ export function iniciarConvitesUnicos({
     // Falhar com configuracoes corrompidas em vez de enviar modelo errado.
     montarModeloMeta({texto:atual.mensagem,nomeModelo:atual.nomeModelo});
     validarUrlGrupo(atual.grupoUrl);
-    return atual;
+    return {...atual,mensagem:ajustarTextoAntigo(atual.mensagem,
+      Boolean(origemPublica&&netlifySecret&&recusaAtiva))};
   }
   function salvarConfiguracao({mensagem,grupoUrl,nomeModelo}) {
-    const texto=validarTextoModelo(mensagem);
+    const texto=validarTextoModelo(ajustarTextoAntigo(mensagem,
+      Boolean(origemPublica&&netlifySecret&&recusaAtiva)));
     const url=validarUrlGrupo(grupoUrl);
     const modelo=modeloSeguro(nomeModelo);
     montarModeloMeta({texto,nomeModelo:modelo});
@@ -149,7 +167,10 @@ export function iniciarConvitesUnicos({
         totais.bloqueados++;
         if (item.confirmadoEm) totais.manuais++;
       }
-      else if (st==='bloqueado') totais.bloqueados++;
+      else if (st==='bloqueado') {
+        totais.bloqueados++;
+        if(item.confirmadoEm)totais.manuais++; // Envio anterior à recusa não desaparece.
+      }
       else if (st==='aceito') totais.aceitos++;
       else if (st==='enviado') totais.enviados++;
       else if (st==='entregue') totais.entregues++;
@@ -179,7 +200,8 @@ export function iniciarConvitesUnicos({
         abertoEm:item.abertoEm||null,confirmadoEm:item.confirmadoEm||null,
       };
     });
-    return {...resumir(fila,mapa),mensagem:fila.mensagem,itens};
+    return {...resumir(fila,mapa),mensagem:ajustarTextoAntigo(fila.mensagem,
+      Boolean(origemPublica&&netlifySecret&&recusaAtiva)),itens};
   }
 
   function criarFila({nome,contatoIds,modo='meta'}) {
@@ -297,25 +319,20 @@ export function iniciarConvitesUnicos({
     return resumir(fila,mapa);
   }
 
-  // Modo GRATUITO: usa somente o recurso oficial de abrir uma conversa
-  // com texto pre-preenchido. O operador envia manualmente no WhatsApp Web.
-  // Nenhum script acessa a sessao do WhatsApp e nao existe disparo automatico.
+  // O WhatsApp Web gratuito abre a conversa com texto pronto. Não cria
+  // botões interativos nativos: apenas links e a opção de responder SAIR.
+  // O opt-out via Netlify só é adicionado quando URL+segredo estão prontos.
   function textoManual(fila,contato) {
-    const alternativa=origemPublica?'use o link Denunciar mensagem':'responda DENUNCIAR';
-    const corpo=String(fila.mensagem||'')
-      .replace(/toque em Denunciar convite/gi,alternativa)
-      .replace(/clique em Denunciar convite/gi,alternativa)
-      .trim();
-    const token=origemPublica
-      ? (netlifySecret?bloqueios.tokenNetlify(contato,netlifySecret)
-        :bloqueios.tokenDenuncia(contato)) : null;
-    const instrucoes=origemPublica
-      ? '\n\n🚩 Denunciar mensagem (registro interno, não é denúncia ao WhatsApp):\n'+
-        origemPublica+'/denunciar?token='+token
+    const urlDeRecusa=Boolean(origemPublica&&netlifySecret&&recusaAtiva);
+    const corpo=ajustarTextoAntigo(fila.mensagem,urlDeRecusa).trim();
+    const token=urlDeRecusa
+      ? bloqueios.tokenNetlify(contato,netlifySecret,'saida-solicitada') : null;
+    const instrucao=token
+      ? '\n\n🙅 Não tenho interesse (parar convites):\n'+
+        origemPublica+'/nao-tenho-interesse/?token='+token
       : '';
     return corpo+'\n\n🔗 Entrar no grupo de ofertas:\n'+fila.grupoUrl+
-      instrucoes+'\n\n🚫 Para parar de receber ou denunciar, '+
-      'responda SAIR ou DENUNCIAR nesta conversa.';
+      instrucao+'\n\n🚫 Para não receber novos convites, responda SAIR.';
   }
 
   function localizarManual(campanhaId,contatoId) {
@@ -357,7 +374,9 @@ export function iniciarConvitesUnicos({
     return {limiteDiario:LIMITE_MANUAL_DIARIO,confirmadosHoje,iniciadosHoje,
       restantesHoje:Math.max(0,LIMITE_MANUAL_DIARIO-
         Math.max(confirmadosHoje,iniciadosHoje)),simultaneos:1,
-      automatico:false,denunciaPorCliqueConfigurada:Boolean(origemPublica)};
+      automatico:false,
+      denunciaPorCliqueConfigurada:Boolean(origemPublica&&netlifySecret&&recusaAtiva),
+      recusaPorCliqueConfigurada:Boolean(origemPublica&&netlifySecret&&recusaAtiva)};
   }
 
   function prepararManual({campanhaId,contatoId}) {
@@ -463,12 +482,13 @@ export function iniciarConvitesUnicos({
   }
 
   function marcarManual({campanhaId,contatoId,acao,confirmado=false}) {
-    if (!['enviado','ignorado','denunciado','cancelado'].includes(acao)) {
+    if (!['enviado','ignorado','denunciado','nao-interessado','cancelado'].includes(acao)) {
       throw new Error('Ação manual inválida.');
     }
     const {dados,item,contato}=localizarManual(campanhaId,contatoId);
     if (item.status!=='aberto' &&
-        !(acao==='denunciado' && item.status==='enviado-manualmente')) {
+        !(['denunciado','nao-interessado'].includes(acao) &&
+          item.status==='enviado-manualmente')) {
       throw new Error('Prepare primeiro a conversa deste contato.');
     }
     if (acao==='enviado' && confirmado!==true) {
@@ -478,11 +498,12 @@ export function iniciarConvitesUnicos({
       throw new Error('Este número já recebeu convite manual confirmado.');
     }
     const quando=agora().toISOString();
-    if (acao==='denunciado') {
+    if (acao==='denunciado'||acao==='nao-interessado') {
       bloqueios.registrar({telefone:contato.telefone,
-        mensagemId:'operador-'+randomUUID(),motivo:'denuncia-convite',
+        mensagemId:'operador-'+randomUUID(),
+        motivo:acao==='nao-interessado'?'saida-solicitada':'denuncia-convite',
         origem:'registro-manual-apos-resposta'});
-      item.status='denunciado';
+      item.status=acao==='nao-interessado'?'bloqueado':'denunciado';
     } else if (acao==='enviado') {
       if (estatisticasManual(dados).confirmadosHoje>=LIMITE_MANUAL_DIARIO) {
         throw new Error('Limite interno de 50 confirmações hoje atingido.');
@@ -511,7 +532,7 @@ export function iniciarConvitesUnicos({
     return {
       modo:'SIMULACAO',enviadas:0,preparadas:aptas.length,
       bloqueadas,mensagem:cfg.mensagem,
-      botoes:['Entrar no grupo','Denunciar convite'],
+      botoes:['Entrar no grupo','Não tenho interesse'],
       grupoConfigurado:Boolean(cfg.grupoUrl),
       amostra:aptas.slice(0,5).map(id=>{
         const c=mapa.get(id);

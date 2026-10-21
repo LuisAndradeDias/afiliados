@@ -126,6 +126,7 @@ export function criarPiloto({
   metaAmbiente = process.env,
   publicBaseUrl = process.env.CAPTACAO_PUBLIC_BASE_URL || '',
   netlifySecret = '',
+  recusaAtiva = true,
   whatsappWorkerTeste = false,
 } = {}) {
   let urlGrupo;
@@ -145,7 +146,7 @@ export function criarPiloto({
   const configMeta = obterConfigMeta(metaAmbiente);
   const convitesUnicos = iniciarConvitesUnicos({
     dataDir,contatos,bloqueios:denuncias,configMeta,grupoInicial:urlGrupo.toString(),agora,
-    publicBaseUrl,netlifySecret,
+    publicBaseUrl,netlifySecret,recusaAtiva,
   });
   const controleWhatsapp = iniciarControleWhatsapp({
     convites:convitesUnicos,sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
@@ -816,6 +817,7 @@ export async function iniciarServidor({
   const { servidor, chave, contatos, sincronizacaoNetlify } = criarPiloto({
     dataDir,inviteUrl,agora,metaAmbiente,whatsappWorkerTeste,
     publicBaseUrl:urlEfetiva,netlifySecret:confNetlify?.segredo||'',
+    recusaAtiva:confNetlify?.recusaAtiva===true,
   });
   await new Promise((resolve, reject) => {
     servidor.once('error', reject);

@@ -130,23 +130,31 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
 
   // Assinatura independente para o portal Netlify: expõe apenas UUID pseudônimo,
   // nunca nome/telefone; validação do mesmo segredo nas duas pontas.
-  function tokenNetlify(contato,secret){
+  function prefixoNetlify(motivo){
+    if(motivo==='denuncia-convite')return 'cpv-netlify-report-v1:';
+    if(motivo==='saida-solicitada')return 'cpv-netlify-optout-v1:';
+    throw new Error('Tipo de solicitação inválido.');
+  }
+  function tokenNetlify(contato,secret,motivo='denuncia-convite'){
     const id=String(contato?.id||'').toLowerCase();
     if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id)
       || !/^[a-f0-9]{64}$/i.test(String(secret||''))) {
-      throw new Error('Configuração do link de denúncia indisponível.');
+      throw new Error('Configuração do link de saída indisponível.');
     }
     return id+'.'+createHmac('sha256',Buffer.from(secret,'hex'))
-      .update('cpv-netlify-report-v1:'+id).digest('hex');
+      .update(prefixoNetlify(motivo)+id).digest('hex');
   }
-  function registrarTokenNetlify(token,secret){
+  function registrarTokenNetlify(token,secret,motivo='denuncia-convite'){
+    if(!['denuncia-convite','saida-solicitada'].includes(motivo)) {
+      return {valido:false,registrado:false};
+    }
     const partes=/^([a-f0-9-]{36})\.([a-f0-9]{64})$/i.exec(String(token||''));
     if(!partes||!/^[a-f0-9]{64}$/i.test(String(secret||''))) {
       return {valido:false,registrado:false};
     }
     const id=partes[1].toLowerCase();
     const esperado=createHmac('sha256',Buffer.from(secret,'hex'))
-      .update('cpv-netlify-report-v1:'+id).digest('hex');
+      .update(prefixoNetlify(motivo)+id).digest('hex');
     if(!timingSafeEqual(Buffer.from(esperado,'hex'),Buffer.from(partes[2],'hex'))) {
       return {valido:false,registrado:false};
     }
@@ -154,8 +162,12 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
     if(!contato)return {valido:true,registrado:false};
     const resposta=registrar({
       telefone:contato.telefone,
-      mensagemId:'netlify-link-v1-'+token.toLowerCase(),
-      motivo:'denuncia-convite',origem:'clique-confirmado-netlify',
+      mensagemId:motivo==='saida-solicitada'
+        ?'netlify-optout-v1-'+token.toLowerCase()
+        :'netlify-link-v1-'+token.toLowerCase(),
+      motivo,
+      origem:motivo==='saida-solicitada'
+        ?'clique-nao-tenho-interesse-netlify':'clique-confirmado-netlify',
     });
     return {valido:true,registrado:true,duplicada:resposta.duplicada};
   }

@@ -78,7 +78,7 @@ async function executar():Promise<void> {
   if(!/^55\d{10,11}$/.test(telefone) ||
       mensagem.length<40 || mensagem.length>3000 ||
       !mensagem.includes('chat.whatsapp.com/') ||
-      !mensagem.includes('SAIR') || !mensagem.includes('DENUNCIAR')) {
+      !mensagem.includes('SAIR')) {
     throw new Error('destino-ou-mensagem-invalido');
   }
   entradaRecebida=true;

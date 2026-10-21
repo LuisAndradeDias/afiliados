@@ -63,7 +63,8 @@ test('Chrome: fila grátis abre wa.me sem enviar, confirma um e bloqueia outro',
   assert.match(href,/^https:\/\/wa\.me\/5511988887777\?text=/);
   const msg=new URL(href).searchParams.get('text');
   assert.match(msg,/chat\.whatsapp\.com\/GrupoFicticio789/);
-  assert.match(msg,/responda SAIR ou DENUNCIAR/);
+  assert.match(msg,/responda SAIR/);
+  assert.doesNotMatch(msg,/DENUNCIAR|Denunciar mensagem/);
   assert.equal(msg,await page.locator('#manualMessageReady').inputValue());
   assert.equal(await page.locator('#manualMarkSent').isDisabled(),true);
   // Nao clica no link real do WhatsApp: nenhuma mensagem deve sair neste teste.
@@ -82,7 +83,7 @@ test('Chrome: fila grátis abre wa.me sem enviar, confirma um e bloqueia outro',
   assert.equal(app.contatos.listar().find(c=>c.id===pessoaB.id).status,'descadastrado');
   assert.equal(app.contatos.listar().find(c=>c.id===pessoaA.id).status,'ativo');
   assert.match(await page.locator('#metaBloqueios').textContent(),/1 bloqueados/);
-  await page.getByRole('button',{name:'Registrar denúncia recebida'}).click();
+  await page.getByRole('button',{name:'Registrar "Não tenho interesse"'}).click();
   await page.waitForFunction(()=>document.querySelector('#manualQueueSummary')
     .textContent.includes('2 bloqueados'));
   assert.equal(app.contatos.listar().find(c=>c.id===pessoaA.id).status,'descadastrado');

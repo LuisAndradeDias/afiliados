@@ -12,7 +12,7 @@ const msg=[
   '🎁 Convite especial de promoções!',
   'Olá! Você autorizou receber nossos convites no WhatsApp.',
   'Venha conhecer um grupo gratuito de ofertas com descontos e cupons.',
-  'Para não receber mais convites, toque em Denunciar convite ou responda SAIR.',
+  'Para não receber mais convites, responda SAIR.',
 ].join('\n');
 
 test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número',async t=>{
@@ -70,7 +70,7 @@ test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número
   assert.equal(content.category,'MARKETING');
   assert.equal(content.components[0].text,msg);
   assert.deepEqual(content.components[1].buttons.map(b=>b.text),[
-    'Entrar no grupo','Denunciar convite',
+    'Entrar no grupo','Não tenho interesse',
   ]);
   assert.equal(content.components[0].text.includes('{{'),false);
 
@@ -93,8 +93,8 @@ test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número
   assert.equal(queue.filas[0].total,1);
 
   await page.reload({waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>document.querySelector('#singleText').value===
-    '🎁 Convite especial de promoções!\nOlá! Você autorizou receber nossos convites no WhatsApp.\nVenha conhecer um grupo gratuito de ofertas com descontos e cupons.\nPara não receber mais convites, toque em Denunciar convite ou responda SAIR.');
+  await page.waitForFunction(expected=>document.querySelector('#singleText').value===expected,
+    msg);
   assert.equal(await page.locator('#singleText').inputValue(),msg);
   await page.locator('#advancedMeta > summary').click();
   assert.match(await page.locator('#cloudQueueList').innerText(),/1 pendentes/);

@@ -5,7 +5,8 @@
     descadastrado:'Descadastrado',pendente:'Pendente',
     'sem-autorizacao':'Sem autorização'};
   const motivos={'denuncia-convite':'Denúncia interna',
-    'saida-solicitada':'Pedido de saída','bloqueio-administrativo':'Bloqueio administrativo'};
+    'saida-solicitada':'Não tenho interesse / SAIR',
+    'bloqueio-administrativo':'Bloqueio administrativo'};
   const state={filtro:new URLSearchParams(location.search).get('filtro')||'todos',
     busca:'',pagina:1,totalPaginas:1,ultimoContato:null,pedido:0,
     filtroOcorrencias:'todos',ocorrencias:[]};
@@ -54,6 +55,7 @@
     col.append(element('strong','',oc.telefoneMascarado||'Contato indisponível'));
     const origem=oc.origem==='clique-confirmado-netlify'?'Confirmada no Netlify'
       :oc.origem==='clique-confirmado-pagina-publica'?'Confirmada pelo link'
+      :oc.origem==='clique-nao-tenho-interesse-netlify'?'Recusa confirmada pelo link'
       :oc.origem==='painel-local-gestao-contatos'?'Bloqueio administrativo'
       :oc.origem==='whatsapp-webhook'?'Registro via integração':'Registrada no painel';
     const desc=(motivos[oc.motivo]||'Ocorrência')+' · '+origem;

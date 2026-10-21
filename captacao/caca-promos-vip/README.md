@@ -176,51 +176,60 @@ limites operacionais.
    Enviar novamente. Confira a conversa e use no painel:
    **Conferi: foi enviado** ou **Conferi: não foi enviado**.
    A segunda opção exige uma confirmação textual explícita.
-8. Se a pessoa responder **SAIR** ou **DENUNCIAR**, registre a reclamação
-   na fila. O contato é descadastrado e entra na supressão persistente,
-   inclusive após reimportações futuras.
+8. Se a pessoa responder **SAIR** ou **NÃO TENHO INTERESSE**,
+   registre **Recebi “Não tenho interesse” / SAIR** na fila.
+   Isso registra um pedido de saída, sem inventar denúncia. O contato é
+   descadastrado e continua bloqueado após reimportações.
 9. Se o WhatsApp estiver ocupado pelo robô de promoções ou o Chrome não
    abrir, finalize primeiro a sessão de conexão. Se a automação
    continuar indisponível, desmarque **Usar a automação de Chrome** e
    utilize a alternativa **Abrir conversa no WhatsApp** para enviar
    manualmente.
 
-A mensagem no WhatsApp Web inclui o link do grupo, a opção de responder
-`SAIR` / `DENUNCIAR` e, **quando houver um endereço HTTPS público
-configurado**, um link exclusivo `Denunciar mensagem` para cada contato.
-**O WhatsApp Web gratuito não admite botões interativos nativos.**
+A mensagem no WhatsApp Web inclui o link do grupo e a opção de
+responder `SAIR`. **Depois de atualizar o Netlify**, também inclui
+um link exclusivo **Não tenho interesse** para cada contato. Esse
+link permite solicitar o bloqueio de novos convites, não denunciar.
 
-## Denúncia interna por clique no Netlify (sem API Meta)
+**O WhatsApp Web gratuito não admite botões de resposta rápida nativos.**
+A prévia dos botões no painel é ilustrativa. Criar botões reais na
+mensagem exige recurso compatível com a plataforma WhatsApp Business.
 
-O site público vive em `denuncias-netlify/`, com HTML estático, duas Netlify
-Functions e armazenamento Netlify Blobs. **Não expomos a porta 3045**:
-a única comunicação é o ACER consultando a fila do Netlify por HTTPS.
+## Não tenho interesse por clique no Netlify (sem API Meta)
 
-1. Para cada contato, a Central assina `UUID.HMAC` com um segredo compartilhado
-   **somente entre ACER e Netlify**. O link não inclui nome nem telefone.
-2. A pré-visualização da URL (`GET /denunciar/`) não registra denúncia.
-   Somente o clique explícito em **Confirmar denúncia** envia um
-   `POST /api/denunciar` ao Netlify, que salva um evento pendente.
-3. O ACER consulta `GET /api/denuncias-pendentes` por conexão **de saída** e
-   autenticação Bearer. O sistema confere a assinatura, registra o bloqueio
-   persistente (inclusive após reimportação), descadastra o contato e só então
-   confirma a remoção do evento remoto via POST autenticado.
-   Se a confirmação remota falhar, repetir é seguro e não duplica eventos.
-4. Enquanto o ACER estiver online, a sincronização automática ocorre
-   aproximadamente a cada **10 minutos**. O botão
-   **Denúncias internas recebidas → Buscar denúncias no Netlify agora**
-   antecipa a consulta. O painel atualiza os alertas visíveis a cada 30s.
+O site público vive em `denuncias-netlify/`, com HTML estático,
+três Netlify Functions (incluindo a nova `/api/recusar`) e armazenamento
+Netlify Blobs. **Não expomos a porta 3045**: o ACER consulta a fila
+do Netlify por HTTPS de saída.
 
-A confirmação ao destinatário informa claramente que é um registro
-**interno ao Caça Promos VIP**, **não** uma denúncia oficial ao WhatsApp
-ou à Meta. Se o ACER estiver desligado, a solicitação fica no Netlify
-até a próxima sincronização. Nada será falsamente marcado como bloqueado
-no ACER antes da sincronização.
+1. Para cada contato, a Central assina `UUID.HMAC` com o segredo
+   compartilhado apenas entre o ACER e o Netlify. O link não contém telefone
+   nem nome. O motivo `saida-solicitada` tem assinatura diferente de
+   `denuncia-convite`, impedindo que os dois sejam confundidos.
+2. Abrir `GET /nao-tenho-interesse/` não registra nada. Somente o
+   clique em **Não quero receber novos convites** envia um
+   `POST /api/recusar` ao Netlify.
+3. O ACER consulta `GET /api/denuncias-pendentes` por HTTPS e Bearer.
+   A resposta inclui o **motivo**. Só depois de registrar o pedido de saída
+   no ACER, bloquear o número e persistir o dado, o sistema confirma o
+   evento remoto. A confirmação pode ser repetida sem gerar duplicação.
+4. Links antigos `/denunciar/` continuam válidos e são registrados como
+   denúncias internas anteriores, não como recusa. O histórico é preservado.
+5. Enquanto o ACER está ligado, a sincronização ocorre aproximadamente
+   a cada **10 minutos**. O botão de busca manual no painel antecipa a consulta.
+
+A confirmação ao destinatário informa que sua preferência de
+**não receber novos convites** foi registrada. Ela não é uma denúncia
+ao WhatsApp. Se o ACER estiver desligado, a solicitação permanece no
+Netlify até a próxima sincronização. O bloqueio só é confirmado
+localmente quando a sincronização for concluída.
 
 ### Publicação na sua conta Netlify
 
-- Crie um site pelo GitHub, repositório `LuisAndradeDias/afiliados`.
-- Configure o **diretório-base** da compilação como
+- Atualize o site **cacapromosdenuncias** já existente no Netlify
+  (não crie outro). A publicação anterior foi manual: faça novo deploy
+  pelo painel de **Implantações (Deploys)** com o ZIP atualizado.
+- Também é possível configurar o site pelo GitHub, diretório-base:
   `captacao/caca-promos-vip/denuncias-netlify`.
 - Em `netlify.toml`, o publish é `public` e as Functions são `netlify/functions`.
 - Na configuração de ambiente do site (escopo **Functions**), crie
@@ -235,10 +244,15 @@ no ACER antes da sincronização.
   Teste com **contato fictício**, depois com um contato de teste voluntário,
   antes de divulgar a página.
 
-Sem HTTPS e segredo configurados, o convite mantém
-`SAIR`/`DENUNCIAR` por texto, sem link falso. A API local e as páginas de
-administração jamais são publicadas pelo Netlify. As funções de
-Netlify Blobs e Functions estão sujeitas aos limites de uso do plano.
+Sem HTTPS e segredo configurados, o convite mantém a instrução
+`responda SAIR`, sem link falso. O novo link **fica desativado por padrão**
+mesmo que alguém reinicie o ACER antes da publicação. Depois que
+`GET /nao-tenho-interesse/` e `POST /api/recusar` estiverem disponíveis,
+execute `scripts/ativar-recusa-netlify.ps1` no ACER: o script valida
+a página, a função pública, o segredo e cria backup, depois ativa
+`recusaAtiva:true` na configuração privada. Só então reinicie a porta 3045. A API local e o painel
+não são publicados pelo Netlify. Functions e Blobs têm limites no
+plano gratuito.
 
 ## Limites, duplicações e proteção
 

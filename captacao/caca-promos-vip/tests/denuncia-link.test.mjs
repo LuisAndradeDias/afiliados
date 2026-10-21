@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createRequire} from 'node:module';
 import {iniciarServidor} from '../src/server.mjs';
+import {iniciarDenuncias} from '../src/denuncias.mjs';
 
 const require=createRequire(new URL('../../../package.json',import.meta.url));
 const {chromium}=require('playwright');
@@ -58,11 +59,12 @@ async function fixture(t,basePublica=PUBLICA){
 
 test('link HTTPS individual nao registra denuncia por GET, bloqueia so depois do POST',async t=>{
   const f=await fixture(t);
-  assert.match(f.msg,/Denunciar mensagem \(registro interno/);
-  const link=f.msg.match(/https:\/\/convites\.example\.test\/denunciar\?token=[a-f0-9]{64}/)?.[0];
-  assert.ok(link,'convite precisa conter link HTTPS individual sem telefone no link');
-  assert.doesNotMatch(link,/2198888|3199999|Contato ficticio|wa\.me/);
-  const token=new URL(link).searchParams.get('token');
+  assert.match(f.msg,/responda SAIR/);
+  assert.doesNotMatch(f.msg,/Denunciar mensagem|\/denunciar\?token/);
+  // Endpoints antigos continuam funcionando para links já distribuídos,
+  // mas novas mensagens não geram denúncia por engano.
+  const c=f.contatos.listar().find(x=>x.id===f.ids[0]);
+  const token=iniciarDenuncias(f.dir,f.contatos).tokenDenuncia(c);
   const visit=await fetch(f.base+'/denunciar?token='+token,
     {headers:{'user-agent':'WhatsApp/2.0 preview'}});
   assert.equal(visit.status,200);
@@ -108,7 +110,8 @@ test('link HTTPS individual nao registra denuncia por GET, bloqueia so depois do
 
 test('sem HTTPS público convite mantém resposta SAIR/DENUNCIAR sem link inseguro',async t=>{
   const f=await fixture(t,'');
-  assert.match(f.msg,/responda SAIR ou DENUNCIAR/);
+  assert.match(f.msg,/responda SAIR/);
+  assert.doesNotMatch(f.msg,/DENUNCIAR|Denunciar mensagem/);
   assert.doesNotMatch(f.msg,/denunciar\?token/);
   const estat=(await (await fetch(f.base+
     '/api/local/campanhas/convite/manual/estatisticas')).json()).controle;
@@ -131,8 +134,8 @@ test('não aceita http, localhost ou URL com segredo, mesmo com porta de teste',
 
 test('no navegador o clique explícito registra uma única reclamação interna',async t=>{
   const f=await fixture(t);
-  const link=f.msg.match(/https:\/\/convites\.example\.test\/denunciar\?token=[a-f0-9]{64}/)?.[0];
-  const token=new URL(link).searchParams.get('token');
+  const contato=f.contatos.listar().find(c=>c.id===f.ids[0]);
+  const token=iniciarDenuncias(f.dir,f.contatos).tokenDenuncia(contato);
   const browser=await chromium.launch({headless:true,
     executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'});
   t.after(()=>browser.close());
@@ -150,7 +153,7 @@ test('no navegador o clique explícito registra uma única reclamação interna'
   await admin.goto(f.base+'/campanhas',{waitUntil:'domcontentloaded'});
   await admin.waitForFunction(()=>document.querySelector('#complaintsCount')?.textContent==='(1)');
   await admin.locator('#complaintsDetail > summary').click();
-  assert.match(await admin.locator('#complaintsList').innerText(),/Confirmada pelo link/);
+  assert.match(await admin.locator('#complaintsList').innerText(),/Confirmado pelo link/);
   const sizes=await page.evaluate(()=>({
     viewport:document.documentElement.clientWidth,
     scroll:document.documentElement.scrollWidth,

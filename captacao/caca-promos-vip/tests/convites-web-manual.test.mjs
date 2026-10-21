@@ -57,7 +57,8 @@ test('link oficial do WhatsApp Web pré-preenche texto e não envia mensagens',t
   const mensagem=new URL(preparado.url).searchParams.get('text');
   assert.equal(mensagem,preparado.mensagem);
   assert.match(mensagem,/chat\.whatsapp\.com/);
-  assert.match(mensagem,/responda SAIR ou DENUNCIAR/);
+  assert.match(mensagem,/responda SAIR/);
+  assert.doesNotMatch(mensagem,/DENUNCIAR|Denunciar mensagem/);
   assert.doesNotMatch(mensagem,/toque em Denunciar convite/);
   assert.equal(a.convites.detalhesFila(fila.id).abertos,1);
   assert.throws(()=>a.convites.prepararManual({
@@ -319,7 +320,8 @@ test('rotas HTTP locais só preparam link, sem chamar WhatsApp ou serviço pago'
   assert.equal(r.status,200);
   const preparado=(await r.json()).conversa;
   assert.match(preparado.url,/wa\.me\/5511988887777/);
-  assert.match(preparado.mensagem,/SAIR ou DENUNCIAR/);
+  assert.match(preparado.mensagem,/responda SAIR/);
+  assert.doesNotMatch(preparado.mensagem,/DENUNCIAR/);
   const marcado=await post('/api/local/campanhas/convite/manual/registrar',{
     campanhaId:id,contatoId:usuario.id,acao:'enviado',confirmado:true,
   });
