@@ -17,6 +17,7 @@ import { renderCampanhas } from './campanhas-ui.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderDescadastro } from './descadastro-ui.mjs';
 import { renderDenuncia } from './denuncia-ui.mjs';
+import {lerConfigNetlify,iniciarSincronizacaoNetlify} from './netlify-denuncia-sync.mjs';
 
 const GROUP_URL = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
 const sourceDir = dirname(fileURLToPath(import.meta.url));
@@ -118,6 +119,7 @@ export function criarPiloto({
   agora = () => new Date(),
   metaAmbiente = process.env,
   publicBaseUrl = process.env.CAPTACAO_PUBLIC_BASE_URL || '',
+  netlifySecret = '',
   whatsappWorkerTeste = false,
 } = {}) {
   let urlGrupo;
@@ -136,13 +138,17 @@ export function criarPiloto({
   const configMeta = obterConfigMeta(metaAmbiente);
   const convitesUnicos = iniciarConvitesUnicos({
     dataDir,contatos,bloqueios:denuncias,configMeta,grupoInicial:urlGrupo.toString(),agora,
-    publicBaseUrl,
+    publicBaseUrl,netlifySecret,
   });
   const controleWhatsapp = iniciarControleWhatsapp({
     convites:convitesUnicos,sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
   });
   const conexaoWhatsapp = iniciarConexaoWhatsapp({
     sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
+  });
+  const sincronizacaoNetlify=iniciarSincronizacaoNetlify({
+    config:netlifySecret?{publicBaseUrl,segredo:netlifySecret}:null,
+    denuncias,agora,
   });
   const sessoes = new Map();
   const limites = new Map();
@@ -355,7 +361,8 @@ export function criarPiloto({
             denuncias:denuncias.resumo() });
         }
         if (pathname === '/api/local/campanhas/denuncias' && leitura) {
-          return json(res, 200, { ok:true, ocorrencias:denuncias.listar() });
+          return json(res, 200, { ok:true, ocorrencias:denuncias.listar(),
+            sincronizacao:sincronizacaoNetlify.estado() });
         }
         if (pathname === '/api/local/campanhas/convite/modelo' && leitura) {
           return json(res, 200, { ok:true, configuracao:convitesUnicos.configuracao(),
@@ -431,6 +438,13 @@ export function criarPiloto({
               resultado:contatos.importarConsentimentosExternos({
                 ...dados,verificarBloqueio:telefone=>denuncias.estaBloqueado(telefone),
               })});
+          }
+          if (pathname === '/api/local/campanhas/denuncias/sincronizar') {
+            if (!limitar(req,'denuncia-netlify-sincronizacao',25))
+              return json(res,429,{ok:false,mensagem:'Muitas sincronizações solicitadas.'});
+            const resultado=await sincronizacaoNetlify.sincronizar();
+            return json(res,resultado.ok?200:503,
+              {ok:resultado.ok,resultado,mensagem:resultado.mensagem});
           }
           if (pathname === '/api/local/campanhas/convite/modelo') {
             return json(res, 200, {ok:true,
@@ -726,7 +740,8 @@ export function criarPiloto({
       return json(res, 500, { ok: false, mensagem: 'Erro interno. Consulte o administrador.' });
     }
   });
-  return { servidor, chave: metricas.chave, contatos, grupos };
+  servidor.on('close',()=>sincronizacaoNetlify.parar());
+  return {servidor,chave:metricas.chave,contatos,grupos,sincronizacaoNetlify};
 }
 
 export async function iniciarServidor({
@@ -742,13 +757,17 @@ export async function iniciarServidor({
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new Error('Porta inválida');
   }
-  const { servidor, chave, contatos } = criarPiloto({
-    dataDir,inviteUrl,agora,metaAmbiente,whatsappWorkerTeste,publicBaseUrl,
+  const confNetlify=lerConfigNetlify(dataDir,metaAmbiente);
+  const urlEfetiva=confNetlify?.publicBaseUrl||publicBaseUrl;
+  const { servidor, chave, contatos, sincronizacaoNetlify } = criarPiloto({
+    dataDir,inviteUrl,agora,metaAmbiente,whatsappWorkerTeste,
+    publicBaseUrl:urlEfetiva,netlifySecret:confNetlify?.segredo||'',
   });
   await new Promise((resolve, reject) => {
     servidor.once('error', reject);
     servidor.listen(port, host, resolve);
   });
+  sincronizacaoNetlify.iniciar();
   const endereco = servidor.address();
   const base = `http://${host}:${endereco.port}`;
   return { servidor, base, chave, contatos };

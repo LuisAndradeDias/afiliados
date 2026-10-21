@@ -208,6 +208,13 @@
   async function carregarDenuncias() {
     try {
       const resp=await api('/api/local/campanhas/denuncias');
+      $('syncNetlifyNow').disabled=!resp.sincronizacao?.configurada;
+      const st=resp.sincronizacao;
+      $('netlifySyncStatus').textContent=st?.configurada
+        ? 'Netlify conectado · última consulta: '+(st.ultimaSincronizacao
+          ? dataCurta(st.ultimaSincronizacao) : 'aguardando')+
+          (st.ultimoErro?' · '+st.ultimoErro:'')
+        : 'Página Netlify ainda não conectada. Não será enviado link inoperante.';
       const quantidade=resp.ocorrencias.filter(
         item=>item.motivo==='denuncia-convite').length;
       $('complaintsCount').textContent='('+quantidade+')';
@@ -228,7 +235,8 @@
         const info=elemento('div');
         info.append(elemento('strong','',ocorrencia.telefoneMascarado),
           elemento('small','',dataCurta(ocorrencia.recebidoEm)+' · '+
-            (ocorrencia.origem==='clique-confirmado-pagina-publica'
+            (ocorrencia.origem==='clique-confirmado-pagina-publica'||
+             ocorrencia.origem==='clique-confirmado-netlify'
               ? 'Confirmada pelo link' : 'Registrada internamente')));
         linha.append(info,elemento('span','tag off',
           ocorrencia.motivo==='denuncia-convite'?'Denúncia · bloqueado':'SAIR · bloqueado'));
@@ -238,6 +246,20 @@
       $('complaintsList').replaceChildren(elemento('div','empty',
         'Não foi possível carregar as denúncias: '+erro.message));
     }
+  }
+
+  async function sincronizarNetlifyAgora() {
+    const btn=$('syncNetlifyNow');
+    btn.disabled=true;
+    try{
+      const r=await api('/api/local/campanhas/denuncias/sincronizar','POST',{});
+      await Promise.all([carregarDenuncias(),carregarFilasManual(),carregarMeta()]);
+      const destino=await api('/api/local/campanhas/destinatarios');
+      state.autorizados=destino.destinatarios;
+      renderResumo();
+      flash('Netlify consultado. Reclamações sincronizadas: '+r.resultado.novas+'.');
+    }catch(e){flash(e.message,true);}
+    finally{await carregarDenuncias();}
   }
 
   function atualizarAptosCloud() {
@@ -1173,6 +1195,7 @@
   $('reloadMeta').addEventListener('click',()=>Promise.all([
     carregarMeta(),carregarDenuncias(),
   ]));
+  $('syncNetlifyNow').addEventListener('click',sincronizarNetlifyAgora);
   carregar().catch(erro=>{
     flash('Não foi possível carregar o painel local: '+erro.message,true);
   });

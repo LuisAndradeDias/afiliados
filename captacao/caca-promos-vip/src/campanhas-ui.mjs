@@ -153,6 +153,9 @@ header{padding:17px 0}
 #importStage>.hint{background:none;border-color:var(--stroke);color:var(--soft);font-size:11px}
 #metaStage .advanced-disclosure .row-actions{margin-top:10px}
 #queueTools>p{padding:0 15px 12px;margin-bottom:0;font-size:11px}
+#netlifySyncStatus{font-size:11px}
+#complaintsDetail .ledger{margin:8px 14px 14px}
+#complaintsDetail .row-actions{margin-bottom:8px}
 .queue-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .queue-head-actions button{font-size:12px;min-height:39px}
 .danger-action{color:#f5b7b2;border-color:#7b5556}
@@ -413,6 +416,10 @@ export function renderCampanhas() {
     <details id="complaintsDetail" class="minor-tools">
       <summary>Denúncias internas recebidas <span id="complaintsCount" class="muted">(0)</span></summary>
       <p class="muted" style="padding:0 15px">Quando alguém confirmar uma reclamação no link, ela aparecerá aqui e novos convites para esse número serão bloqueados. Não é uma denúncia enviada ao WhatsApp.</p>
+      <p id="netlifySyncStatus" class="muted" style="padding:0 15px">Verificando conexão Netlify...</p>
+      <div class="row-actions" style="padding:0 15px 8px">
+        <button id="syncNetlifyNow" type="button" class="quiet" disabled>Buscar denúncias no Netlify agora</button>
+      </div>
       <div id="complaintsList" class="ledger surface"><div class="empty">Nenhuma denúncia registrada.</div></div>
     </details>
   </section>

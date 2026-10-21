@@ -153,48 +153,55 @@ A mensagem no WhatsApp Web inclui o link do grupo, a opção de responder
 configurado**, um link exclusivo `Denunciar mensagem` para cada contato.
 **O WhatsApp Web gratuito não admite botões interativos nativos.**
 
-## Denúncia interna por clique (sem API Meta)
+## Denúncia interna por clique no Netlify (sem API Meta)
 
-- Cada link é gerado com HMAC-SHA256 e uma chave guardada só no servidor
-  (`dados/denuncias-chave-local.txt`). O link **não contém telefone ou nome**.
-- `GET /denunciar?token=...` **não registra nada**, inclusive quando
-  solicitado por um robô de prévia de links do WhatsApp.
-- Na página, a pessoa escolhe **Confirmar denúncia e bloquear convites**.
-  O `POST /api/denunciar` valida o token, registra a reclamação e descadastra
-  o número. O bloqueio persistente impede convites em filas atuais e
-  reimportações. A operação é idempotente: repetir não duplica a denúncia.
-- O painel local mostra **Denúncias internas recebidas** com telefone
-  mascarado, data e origem `Confirmada pelo link`. Verifica novidades a cada
-  30 segundos enquanto estiver aberto.
-- A mensagem ao destinatário é verdadeira: **a denúncia é apenas interna
-  ao Caça Promos VIP, não é enviada ao WhatsApp nem à Meta**.
+O site público vive em `denuncias-netlify/`, com HTML estático, duas Netlify
+Functions e armazenamento Netlify Blobs. **Não expomos a porta 3045**:
+a única comunicação é o ACER consultando a fila do Netlify por HTTPS.
 
-### Ativar um endereço HTTPS público
+1. Para cada contato, a Central assina `UUID.HMAC` com um segredo compartilhado
+   **somente entre ACER e Netlify**. O link não inclui nome nem telefone.
+2. A pré-visualização da URL (`GET /denunciar/`) não registra denúncia.
+   Somente o clique explícito em **Confirmar denúncia** envia um
+   `POST /api/denunciar` ao Netlify, que salva um evento pendente.
+3. O ACER consulta `GET /api/denuncias-pendentes` por conexão **de saída** e
+   autenticação Bearer. O sistema confere a assinatura, registra o bloqueio
+   persistente (inclusive após reimportação), descadastra o contato e só então
+   confirma a remoção do evento remoto via POST autenticado.
+   Se a confirmação remota falhar, repetir é seguro e não duplica eventos.
+4. Enquanto o ACER estiver online, a sincronização automática ocorre
+   aproximadamente a cada **10 minutos**. O botão
+   **Denúncias internas recebidas → Buscar denúncias no Netlify agora**
+   antecipa a consulta. O painel atualiza os alertas visíveis a cada 30s.
 
-Sem `CAPTACAO_PUBLIC_BASE_URL`, o envio **não insere** um link que não
-funcionaria fora do computador. Continua existindo a resposta `SAIR`
-ou `DENUNCIAR` para registro manual.
+A confirmação ao destinatário informa claramente que é um registro
+**interno ao Caça Promos VIP**, **não** uma denúncia oficial ao WhatsApp
+ou à Meta. Se o ACER estiver desligado, a solicitação fica no Netlify
+até a próxima sincronização. Nada será falsamente marcado como bloqueado
+no ACER antes da sincronização.
 
-Com domínio e HTTPS públicos estáveis, configure no ambiente do
-processo que executa o servidor:
+### Publicação na sua conta Netlify
 
-```powershell
-$env:CAPTACAO_PUBLIC_BASE_URL = "https://denuncias.seudominio.com"
-```
+- Crie um site pelo GitHub, repositório `LuisAndradeDias/afiliados`.
+- Configure o **diretório-base** da compilação como
+  `captacao/caca-promos-vip/denuncias-netlify`.
+- Em `netlify.toml`, o publish é `public` e as Functions são `netlify/functions`.
+- Na configuração de ambiente do site (escopo **Functions**), crie
+  `CPV_DENUNCIA_NETLIFY_SECRET` com 64 dígitos hexadecimais aleatórios.
+  **Nunca adicione o segredo ao GitHub nem à mensagem do WhatsApp.**
+- No computador ACER, salve somente em
+  `dados/previa-acer/denuncias-netlify-config.json`:
+  `{"publicBaseUrl":"https://seu-site.netlify.app","segredo":"MESMO_SEGREDO"}`.
+  Mantenha esse arquivo fora do controle de versão e preserve nos backups.
+- Reinicie a Central após configurar a URL e confira se
+  **Denúncias internas recebidas** indica conexão Netlify.
+  Teste com **contato fictício**, depois com um contato de teste voluntário,
+  antes de divulgar a página.
 
-O HTTPS público deve encaminhar **somente** estas rotas ao backend local,
-por meio de um proxy ou túnel com filtro de caminhos:
-
-- `GET /denunciar`
-- `GET /assets/denuncia.js`
-- `POST /api/denunciar`
-
-**Não publique diretamente a porta 3045 nem encaminhe `/campanhas`,
-`/api/local`, `/api/admin`, `/relatorio` ou o diretório `dados/`.**
-Use TLS válido, domínio estável e preserve `Host` e `Origin` conforme
-o domínio público. O envio do link só deve ser habilitado depois de
-validar externamente a página e o registro por HTTPS. Um túnel
-temporário com URL variável não é adequado para convites duradouros.
+Sem HTTPS e segredo configurados, o convite mantém
+`SAIR`/`DENUNCIAR` por texto, sem link falso. A API local e as páginas de
+administração jamais são publicadas pelo Netlify. As funções de
+Netlify Blobs e Functions estão sujeitas aos limites de uso do plano.
 
 ## Limites, duplicações e proteção
 

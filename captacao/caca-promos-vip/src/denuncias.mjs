@@ -128,6 +128,38 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
       duplicada:resultado.duplicada};
   }
 
+  // Assinatura independente para o portal Netlify: expõe apenas UUID pseudônimo,
+  // nunca nome/telefone; validação do mesmo segredo nas duas pontas.
+  function tokenNetlify(contato,secret){
+    const id=String(contato?.id||'').toLowerCase();
+    if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id)
+      || !/^[a-f0-9]{64}$/i.test(String(secret||''))) {
+      throw new Error('Configuração do link de denúncia indisponível.');
+    }
+    return id+'.'+createHmac('sha256',Buffer.from(secret,'hex'))
+      .update('cpv-netlify-report-v1:'+id).digest('hex');
+  }
+  function registrarTokenNetlify(token,secret){
+    const partes=/^([a-f0-9-]{36})\.([a-f0-9]{64})$/i.exec(String(token||''));
+    if(!partes||!/^[a-f0-9]{64}$/i.test(String(secret||''))) {
+      return {valido:false,registrado:false};
+    }
+    const id=partes[1].toLowerCase();
+    const esperado=createHmac('sha256',Buffer.from(secret,'hex'))
+      .update('cpv-netlify-report-v1:'+id).digest('hex');
+    if(!timingSafeEqual(Buffer.from(esperado,'hex'),Buffer.from(partes[2],'hex'))) {
+      return {valido:false,registrado:false};
+    }
+    const contato=contatos.listar().find(c=>c.id===id);
+    if(!contato)return {valido:true,registrado:false};
+    const resposta=registrar({
+      telefone:contato.telefone,
+      mensagemId:'netlify-link-v1-'+token.toLowerCase(),
+      motivo:'denuncia-convite',origem:'clique-confirmado-netlify',
+    });
+    return {valido:true,registrado:true,duplicada:resposta.duplicada};
+  }
+
   function listar() {
     const base = ler();
     const contatosPorId = new Map(contatos.listar().map(c => [c.id,c]));
@@ -153,5 +185,6 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
     };
   }
 
-  return { registrar, estaBloqueado, listar, resumo, tokenDenuncia, registrarCliqueDenuncia };
+  return { registrar, estaBloqueado, listar, resumo,
+    tokenDenuncia, registrarCliqueDenuncia, tokenNetlify, registrarTokenNetlify };
 }

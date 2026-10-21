@@ -53,7 +53,7 @@ function nomeSeguro(valor) {
 export function iniciarConvitesUnicos({
   dataDir, contatos, bloqueios, configMeta,
   grupoInicial='', agora=()=>new Date(), fetchImpl=globalThis.fetch,
-  publicBaseUrl='',
+  publicBaseUrl='',netlifySecret='',
 }) {
   let origemPublica='';
   if (publicBaseUrl) {
@@ -306,9 +306,12 @@ export function iniciarConvitesUnicos({
       .replace(/toque em Denunciar convite/gi,alternativa)
       .replace(/clique em Denunciar convite/gi,alternativa)
       .trim();
+    const token=origemPublica
+      ? (netlifySecret?bloqueios.tokenNetlify(contato,netlifySecret)
+        :bloqueios.tokenDenuncia(contato)) : null;
     const instrucoes=origemPublica
       ? '\n\n🚩 Denunciar mensagem (registro interno, não é denúncia ao WhatsApp):\n'+
-        origemPublica+'/denunciar?token='+bloqueios.tokenDenuncia(contato)
+        origemPublica+'/denunciar?token='+token
       : '';
     return corpo+'\n\n🔗 Entrar no grupo de ofertas:\n'+fila.grupoUrl+
       instrucoes+'\n\n🚫 Para parar de receber ou denunciar, '+
