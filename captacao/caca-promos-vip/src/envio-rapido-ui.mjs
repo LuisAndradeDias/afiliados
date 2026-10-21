@@ -133,8 +133,33 @@ export function renderEnvioRapido({mensagem='',grupoUrl=''}={}){
         <label class="quick-field-label" for="quickGroup">Link do grupo de ofertas</label>
         <input id="quickGroup" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/..."
           value="${grupo}" required>
-        <p class="quick-help">O painel adicionará automaticamente o link do grupo, a opção
-          <strong>Não tenho interesse</strong> e a instrução SAIR, quando disponíveis.</p>
+        <p class="quick-help">No modo gratuito atual, o envio pelo Chrome inclui o
+          link do grupo, a saída “Não tenho interesse” e a instrução SAIR.
+          Os botões abaixo são apenas uma prévia experimental.</p>
+        <section class="quick-experimental-buttons" aria-labelledby="quickButtonsHeading">
+          <header class="quick-experimental-heading">
+            <div><span class="overline">PRÉVIA EXPERIMENTAL</span>
+              <h3 id="quickButtonsHeading">Botões de resposta do WhatsApp</h3></div>
+            <span class="quick-experimental-tag">Ainda não conectados</span>
+          </header>
+          <p>Veja como queremos que o convite apareça para o destinatário:</p>
+          <div class="quick-native-bubble">
+            <div class="quick-native-heading">Caça Promos VIP</div>
+            <div class="quick-native-body">Você gostaria de participar do nosso grupo de ofertas?</div>
+            <button type="button" id="quickPreviewJoin"
+              class="quick-native-button">Entrar no grupo</button>
+            <button type="button" id="quickPreviewDecline"
+              class="quick-native-button">Não tenho interesse</button>
+          </div>
+          <p id="quickPreviewResponse" class="quick-experimental-note" role="status">
+            Estes são botões de demonstração. Eles não enviam nada nem alteram contatos.
+          </p>
+          <p class="quick-experimental-caution">O WhatsApp Business Web não oferece
+            esses botões personalizados diretamente. O envio real exigiria a API oficial
+            ou uma conexão experimental não oficial, que pode falhar ou restringir a conta.
+            <strong>O envio normal continuará sem botões até que a conexão seja testada e autorizada.</strong>
+          </p>
+        </section>
         <div class="quick-bottom">
           <button type="button" class="btn btn-quiet" id="quickBack1">← Voltar</button>
           <button type="button" class="btn btn-primary" id="quickCreate">Salvar e preparar 1 convite →</button>
