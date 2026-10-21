@@ -62,12 +62,17 @@ test('envio mock aceita no maximo um pedido; aceite NAO e entrega',async()=>{
   assert.equal(calls[0][0],tel+'@s.whatsapp.net');
   assert.equal(result.situacao,'TRANSPORTE_ACEITOU');
   assert.match(result.mensagem,/Confira no celular/);
+  await assert.rejects(()=>testarBotoesNoProprioNumero({
+    transporte,numeroDestino:tel,numeroDoTitular:tel,
+    titularConfirmou:true,aceitouRisco:true,cliqueConfirmado:true,texto,
+  }),/já teve um teste/,'Nunca permitir segunda chamada mesmo após aceite do transporte');
+  assert.equal(calls.length,1);
 });
 
 test('sem ID de envio fica incerto e sem repeticao automatica',async()=>{
   const result=await testarBotoesNoProprioNumero({
-    transporte:{sendMessage:async()=>({})},numeroDestino:tel,
-    numeroDoTitular:tel,titularConfirmou:true,aceitouRisco:true,
+    transporte:{sendMessage:async()=>({})},numeroDestino:'5531999996666',
+    numeroDoTitular:'5531999996666',titularConfirmou:true,aceitouRisco:true,
     cliqueConfirmado:true,texto,
   });
   assert.equal(result.situacao,'INCERTO');
