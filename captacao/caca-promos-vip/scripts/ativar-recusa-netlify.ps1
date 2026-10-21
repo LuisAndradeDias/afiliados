@@ -10,7 +10,7 @@ if($url -ne 'https://cacapromosdenuncias.netlify.app' -or
   throw 'Endereço ou chave local não correspondem à instalação conhecida.'
 }
 $pagina=Invoke-WebRequest -Uri ($url+'/nao-tenho-interesse/') -UseBasicParsing -TimeoutSec 14
-if($pagina.StatusCode -ne 200 -or $pagina.Content -notmatch 'Não tenho interesse' -or
+if($pagina.StatusCode -ne 200 -or $pagina.Content -notmatch '/assets/recusar.js' -or
    $pagina.Content -notmatch 'confirmarRecusa') {
   throw 'Página Não tenho interesse ainda não foi publicada no Netlify.'
 }
