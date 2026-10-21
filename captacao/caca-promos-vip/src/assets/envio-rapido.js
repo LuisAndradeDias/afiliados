@@ -474,6 +474,15 @@
     $('quickChangeTarget').addEventListener('click',()=>setStage(1));
     $('quickText').addEventListener('input',updateLength);
     $('quickRestoreModel').addEventListener('click',restaurarModelo);
+    // Somente DEMONSTRACAO. A escolha nao altera dados nem conversa WhatsApp.
+    $('quickPreviewJoin').addEventListener('click',()=>{
+      $('quickPreviewResponse').textContent=
+        'Prévia: o cliente pediu para entrar. Na versão real, a entrada no grupo ainda dependeria de aprovação/invite do administrador.';
+    });
+    $('quickPreviewDecline').addEventListener('click',()=>{
+      $('quickPreviewResponse').textContent=
+        'Prévia: o cliente não deseja convites. Em uma integração real, uma resposta autenticada bloquearia novos envios.';
+    });
     $('quickCreate').addEventListener('click',createInvite);
     $('quickPrepareChrome').addEventListener('click',prepareChrome);
     $('quickConfirmChrome').addEventListener('click',confirmChrome);
