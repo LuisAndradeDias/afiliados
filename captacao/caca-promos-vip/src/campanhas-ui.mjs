@@ -197,7 +197,8 @@ export function renderCampanhas() {
   <nav class="top-actions" aria-label="Navegação">
     <a href="/inicio">Visão geral</a>
     <a href="/contatos">Contatos</a>
-    <a href="/campanhas" aria-current="page">Enviar convites</a>
+    <a href="/enviar">Enviar convite</a>
+    <a href="/campanhas" aria-current="page">Listas e filas</a>
     <a href="/denuncias">Denúncias</a>
     <span class="sticker">Uso local · sem login</span>
   </nav>
@@ -206,11 +207,20 @@ export function renderCampanhas() {
 
 <main id="appView">
   <section class="hero">
-    <div><div class="eyebrow">Convites supervisionados · Sem API paga</div>
-      <h1>Enviar <em>convites.</em></h1>
-      <p>Três etapas para preparar cada conversa pelo WhatsApp Web. Você confirma cada envio e mantém o controle.</p></div>
-    <span class="sticker">WhatsApp Web · Sem custo de API</span>
+    <div><div class="eyebrow">ÁREA AVANÇADA · LISTAS E CAMPANHAS</div>
+      <h1>Listas <em>e filas.</em></h1>
+      <p>Importação de planilhas, campanhas com vários contatos, relatórios e ferramentas avançadas.
+      Para enviar apenas um convite, use a tela simplificada.</p></div>
+    <span class="sticker">WhatsApp Web · Sem API paga</span>
   </section>
+  <div class="hint" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;
+     margin:0 0 20px;padding:19px;border:1px solid #61998a;background:#1b3737;border-radius:13px">
+    <div><strong style="display:block;font-size:15px;color:#d7fff0">Quer testar no seu próprio WhatsApp?</strong>
+      <span style="display:block;font-size:12px;margin-top:4px">
+        Você não precisa importar uma planilha nem gerenciar filas para isso.</span></div>
+    <a href="/enviar" class="primary" style="padding:12px 17px;border-radius:10px;text-decoration:none;
+       background:#78dbb8;color:#092a24;font-weight:800">Abrir envio guiado →</a>
+  </div>
 
   <nav class="workflow-links" aria-label="Etapas dos convites">
     <span>ETAPAS</span>

@@ -90,7 +90,7 @@ test('prévia HTTP exige sessão, proteção administrativa e grupo cadastrado',
     );
     const antiga = await fetch(base + '/painel', { redirect:'manual' });
     assert.equal(antiga.status, 302);
-    assert.equal(antiga.headers.get('location'), '/campanhas');
+    assert.equal(antiga.headers.get('location'), '/enviar');
     const novo = await (await fetch(base + '/campanhas')).text();
     assert.match(novo, /id="importFile"/);
     assert.doesNotMatch(novo, /id="startGuide"|Versão 0\.5/);

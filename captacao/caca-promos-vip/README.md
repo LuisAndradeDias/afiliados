@@ -8,21 +8,53 @@ convites comerciais.
 
 **Acesso no ACER:** http://127.0.0.1:3045/inicio
 
+## Enviar um convite para o meu próprio número (novo)
+
+**Página simples:** http://127.0.0.1:3045/enviar
+
+1. Escolha **Enviar para mim**, digite seu WhatsApp brasileiro com DDD e
+   clique em **Verificar número**. O sistema procura a autorização existente.
+   Caso não esteja cadastrado, você poderá informar seu nome e declarar que
+   é o titular do número e autorizou o teste; **isso não envia mensagem**.
+2. Se o número aparecer como bloqueado ou descadastrado, ele não poderá ser
+   incluído por essa tela. Abra **Contatos → Bloqueados → Ver ficha →
+   Desbloquear contato**, com uma nova autorização documentada. Volte a
+   **Enviar convite** depois.
+3. Clique em **Continuar**, confira/edite a mensagem e o link do grupo,
+   depois **Salvar e preparar 1 convite**. O sistema registra um convite
+   para esse único destinatário; **ainda não envia**.
+4. Clique em **1. Abrir conversa no Chrome**. Se precisar conectar o WhatsApp,
+   use o painel expansível de conexão, escaneie o QR e **Salve sessão e feche**
+   antes de preparar.
+5. Confira número e mensagem no Chrome. Só então clique em
+   **2. Confirmar e enviar esta mensagem**. O registro de envio exige
+   confirmação efetiva no WhatsApp. Há uma alternativa manual disponível,
+   com declaração de envio somente após sua realização.
+
+**Para outra pessoa autorizada**, escolha **Outro contato**, pesquise o nome
+ou os últimos quatro dígitos, selecione a pessoa e siga os mesmos passos.
+A tela mostra apenas contatos autorizados. Não há envio em massa automático.
+
+**Onde estão as listas e filas?** Em `/campanhas`, agora chamado
+**Listas e filas** (área avançada). Uma fila é somente a sequência/histórico
+de convites: o envio individual cria e controla essa fila sem exigir que você
+importe CSV ou navegue pelos detalhes. Tentativas incertas não são reenviadas
+automaticamente e exigem conferência manual. Uma reautorização verdadeira
+permite um NOVO convite, sem reabrir campanhas antigas.
+
 ## Central de gestão — experiência reorganizada
 
-O painel está dividido em **quatro áreas com navegação fixa**:
+O painel está dividido em **cinco áreas com navegação fixa**:
 
-1. **Visão geral** (`/inicio`): mostra contatos, autorização, bloqueios,
-   denúncias recebidas e resumo das filas.
-2. **Contatos** (`/contatos`): cadastro separado, pesquisa por nome ou
-   telefone, filtros `Autorizados`, `Bloqueados`, `Descadastrados`,
-   `Pendentes` e `Sem autorização`. Exibe 15 por página e mascara números.
-   A ficha informa origem, evidência do consentimento e eventos vinculados.
-3. **Enviar convites** (`/campanhas`): mantém o fluxo supervisionado do
-   WhatsApp Web em 3 etapas (selecionar CSV → escrever mensagem → preparar
-   conversa), sem mudar a confirmação individual antes do envio.
-4. **Denúncias** (`/denuncias`): histórico de reclamações internas, pedidos
-   de saída e bloqueios administrativos. Inclui sincronização manual Netlify.
+1. **Visão geral** (`/inicio`): resumo de contatos, bloqueios e situações.
+2. **Enviar convite** (`/enviar`): caminho principal para testar no seu
+   número ou escolher uma pessoa, sem planilha, com confirmação de envio.
+3. **Contatos** (`/contatos`): cadastro, autorizações, descadastros e
+   desbloqueio documentado.
+4. **Listas e filas** (`/campanhas`): ferramentas avançadas para importação
+   de CSV, campanhas com vários destinatários, modelos e histórico.
+5. **Denúncias** (`/denuncias`): histórico de reclamações, pedidos de saída
+   e sincronização Netlify.
 
 ### Segurança e bloqueios
 
@@ -58,8 +90,9 @@ O painel está dividido em **quatro áreas com navegação fixa**:
   para bloqueio. As cores nunca são o único indicador: todos os estados
   têm texto explícito.
 
-O atalho **Abrir Campanhas.cmd** abre a Visão geral. O endereço anterior
-`/campanhas` continua válido e permite operar o WhatsApp como antes.
+O atalho **Abrir Campanhas.cmd** abre a Visão geral. O novo fluxo simples
+fica em `/enviar`. A rota antiga `/campanhas` continua válida para
+filas e importações, com todos os dados anteriores preservados.
 
 Também existe o atalho `Abrir Campanhas.cmd` na pasta oficial
 `C:\projeto01\captacao\caca-promos-vip`.

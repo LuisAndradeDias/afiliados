@@ -14,6 +14,8 @@ import { iniciarConexaoWhatsapp } from './whatsapp-conexao-controller.mjs';
 import { iniciarDenuncias } from './denuncias.mjs';
 import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta, lerStatusMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
+import { renderEnvioRapido } from './envio-rapido-ui.mjs';
+import { iniciarEnvioRapido } from './envio-rapido.mjs';
 import { renderGestao } from './gestao-ui.mjs';
 import { iniciarGestaoContatos } from './gestao-contatos.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
@@ -27,12 +29,14 @@ const planilhaModelo = readFileSync(join(sourceDir, '..', 'modelos', 'Modelo_Con
 const scripts = new Map([
   ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
   ['/assets/campanhas.js', readFileSync(join(sourceDir, 'assets', 'campanhas.js'), 'utf8')],
+  ['/assets/envio-rapido.js', readFileSync(join(sourceDir, 'assets', 'envio-rapido.js'), 'utf8')],
   ['/assets/gestao.js', readFileSync(join(sourceDir, 'assets', 'gestao.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
   ['/assets/denuncia.js', readFileSync(join(sourceDir, 'assets', 'denuncia.js'), 'utf8')],
 ]);
 const styles=new Map([
   ['/assets/painel-theme.css',readFileSync(join(sourceDir,'assets','painel-theme.css'),'utf8')],
+  ['/assets/envio-rapido.css',readFileSync(join(sourceDir,'assets','envio-rapido.css'),'utf8')],
 ]);
 const headersBase = {
   'cache-control': 'no-store',
@@ -160,6 +164,9 @@ export function criarPiloto({
   const gestaoContatos=iniciarGestaoContatos({
     contatos,denuncias,convitesUnicos,campanhas,sincronizacaoNetlify,
     controleWhatsapp,conexaoWhatsapp,agora,
+  });
+  const envioRapido=iniciarEnvioRapido({
+    contatos,denuncias,gestaoContatos,convites:convitesUnicos,agora,
   });
   const sessoes = new Map();
   const limites = new Map();
@@ -308,13 +315,18 @@ export function criarPiloto({
       if (pathname === '/painel' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
           'Painel disponivel somente no computador local.');
-        res.writeHead(302, {...headersBase,location:'/campanhas'});
+        res.writeHead(302, {...headersBase,location:'/enviar'});
         return res.end();
       }
       if (['/inicio','/contatos','/denuncias'].includes(pathname) && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
           'Área administrativa disponível somente no ACER, via 127.0.0.1.');
         return codigoHtml(res,200,renderGestao(pathname.slice(1)));
+      }
+      if (pathname === '/enviar' && leitura) {
+        if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
+          'Envio guiado disponível somente no ACER, via 127.0.0.1.');
+        return codigoHtml(res,200,renderEnvioRapido());
       }
       if (pathname === '/campanhas' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
@@ -429,6 +441,13 @@ export function criarPiloto({
           return json(res, 200, { ok:true, ocorrencias:denuncias.listar(),
             sincronizacao:sincronizacaoNetlify.estado() });
         }
+        if (pathname === '/api/local/campanhas/rapido/contatos' && leitura) {
+          if(!limitar(req,'rapido-busca',120))return json(res,429,
+            {ok:false,mensagem:'Muitas consultas de contatos. Aguarde.'});
+          return json(res,200,{ok:true,...envioRapido.buscar({
+            termo:endereco.searchParams.get('busca'),
+          })});
+        }
         if (pathname === '/api/local/campanhas/convite/modelo' && leitura) {
           return json(res, 200, { ok:true, configuracao:convitesUnicos.configuracao(),
             modeloMeta:convitesUnicos.templateParaMeta() });
@@ -486,6 +505,24 @@ export function criarPiloto({
           return json(res, 400, { ok: false, mensagem: 'Dados inválidos para campanhas.' });
         }
         try {
+          if (pathname === '/api/local/campanhas/rapido/consultar') {
+            if(!limitar(req,'rapido-consulta',100))return json(res,429,
+              {ok:false,mensagem:'Muitas verificações de números. Aguarde.'});
+            return json(res,200,{ok:true,contato:envioRapido.consultar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/rapido/cadastrar') {
+            if(!limitar(req,'rapido-cadastro',12))return json(res,429,
+              {ok:false,mensagem:'Limite de cadastros individuais atingido.'});
+            return json(res,200,{ok:true,...envioRapido.cadastrarProprio(dados)});
+          }
+          if (pathname === '/api/local/campanhas/rapido/criar') {
+            if(!limitar(req,'rapido-criar',25))return json(res,429,
+              {ok:false,mensagem:'Limite de convites individuais atingido.'});
+            if(conexaoWhatsapp.estado().ocupado||controleWhatsapp.estado().processoAtivo)
+              return json(res,409,{ok:false,
+                mensagem:'Finalize a janela atual do WhatsApp antes de começar outra.'});
+            return json(res,200,{ok:true,...envioRapido.criar(dados)});
+          }
           if (pathname === '/api/local/campanhas') {
             if (!limitar(req, 'campanhas-locais-criar', 30)) {
               return json(res, 429, { ok: false, mensagem: 'Limite de criação de campanhas atingido.' });
@@ -784,7 +821,7 @@ export function criarPiloto({
 
       if (pathname === '/' && leitura && acessoCampanhasLocais(req)) {
         // Links publicos de opt-in /c/<origem> permanecem operacionais.
-        res.writeHead(302, {...headersBase,location:'/campanhas'});
+        res.writeHead(302, {...headersBase,location:'/enviar'});
         return res.end();
       }
       if ((pathname === '/' || pathname.startsWith('/c/')) && leitura) {

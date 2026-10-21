@@ -1,7 +1,8 @@
 const ITENS=[
   {href:'/inicio',label:'Visão geral',chave:'inicio'},
   {href:'/contatos',label:'Contatos',chave:'contatos'},
-  {href:'/campanhas',label:'Enviar convites',chave:'campanhas'},
+  {href:'/enviar',label:'Enviar convite',chave:'enviar'},
+  {href:'/campanhas',label:'Listas e filas',chave:'campanhas'},
   {href:'/denuncias',label:'Denúncias',chave:'denuncias'},
 ];
 
@@ -41,7 +42,7 @@ const home=`
 <section class="page-heading">
   <div><span class="overline">CENTRAL DE CAMPANHAS</span><h1>Visão geral</h1>
   <p>O que precisa de atenção, sem misturar contatos, convites e denúncias.</p></div>
-  <a class="btn btn-primary" href="/campanhas#manualStage">Preparar convites <span aria-hidden="true">↗</span></a>
+  <a class="btn btn-primary" href="/enviar">Enviar para mim / testar <span aria-hidden="true">↗</span></a>
 </section>
 <section class="stats-grid" aria-label="Resumo da operação">
   ${estatistica('Contatos cadastrados','homeTotal','No seu cadastro local')}
@@ -60,7 +61,7 @@ const home=`
 </section>
 <div class="two-columns">
   <section class="panel"><div class="panel-head"><div><h2>Situação dos envios</h2><p>Dados atuais das filas existentes.</p></div>
-    <a class="text-link" href="/campanhas#manualStage">Abrir filas →</a></div>
+    <a class="text-link" href="/campanhas#manualStage">Gerenciar filas avançadas →</a></div>
     <div class="health-grid"><span>Filas cadastradas</span><strong id="homeQueues">—</strong>
       <span>Contatos aguardando nas filas</span><strong id="homePending">—</strong>
       <span>WhatsApp Web</span><strong id="homeWhatsapp">Verificando</strong></div>
@@ -74,7 +75,7 @@ const home=`
 const contacts=`
 <section class="page-heading"><div><span class="overline">CADASTRO E AUTORIZAÇÕES</span>
   <h1>Contatos</h1><p>Encontre rapidamente quem pode receber convites e quem está protegido contra novos envios.</p></div>
-  <a class="btn btn-primary" href="/campanhas#importStage">Importar planilha <span aria-hidden="true">↗</span></a>
+  <a class="btn btn-primary" href="/enviar">Enviar convite individual <span aria-hidden="true">↗</span></a>
 </section>
 <section class="stats-grid stats-grid-5" aria-label="Situação dos contatos">
   ${estatistica('Total cadastrado','ctTotal','Registros locais')}

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { iniciarServidor } from '../src/server.mjs';
 
-test('tela de captacao aposentada; a mesma URL abre campanhas sem chave', async t => {
+test('tela de captacao aposentada; a mesma URL abre o envio guiado local sem chave', async t => {
   const temp=mkdtempSync(join(tmpdir(),'cpv-limpeza-'));
   t.after(()=>rmSync(temp,{recursive:true,force:true}));
   const app=await iniciarServidor({dataDir:temp,port:0,metaAmbiente:{}});
@@ -14,14 +14,19 @@ test('tela de captacao aposentada; a mesma URL abre campanhas sem chave', async 
   for(const caminho of ['/','/painel']){
     const response=await fetch(base+caminho,{redirect:'manual'});
     assert.equal(response.status,302,caminho);
-    assert.equal(response.headers.get('location'),'/campanhas');
+    assert.equal(response.headers.get('location'),'/enviar');
   }
   const response=await fetch(base+'/painel');
-  assert.equal(response.url,base+'/campanhas');
+  assert.equal(response.url,base+'/enviar');
   const content=await response.text();
-  assert.match(content,/id="singleText"/);
-  assert.match(content,/id="simulateSingle"/);
-  assert.match(content,/id="importFile"/);
+  assert.match(content,/id="quickPhone"/);
+  assert.match(content,/id="quickLookup"/);
+  assert.match(content,/id="quickCreate"/);
+  assert.match(content,/href="\/campanhas"/);
+  const advanced=await (await fetch(base+'/campanhas')).text();
+  assert.match(advanced,/id="singleText"/);
+  assert.match(advanced,/id="simulateSingle"/);
+  assert.match(advanced,/id="importFile"/);
   assert.doesNotMatch(content,/id="startGuide"|id="groupCard"|id="manualLegacy"/);
   assert.doesNotMatch(content,/href="\/painel"/);
   assert.doesNotMatch(content,/id="adminKey"/);

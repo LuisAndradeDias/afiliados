@@ -216,7 +216,7 @@ test('interface no Chrome: cartões, filtro, ficha, denúncia e uso móvel',asyn
   assert.match(await page.locator('#reportList').innerText(),/Confirmada no Netlify/);
   await page.screenshot({path:'C:\\projeto01\\captacao\\caca-promos-vip\\dados\\previa-acer\\qa-gestao-denuncias-desktop.png',fullPage:true});
   await page.goto(app.base+'/campanhas',{waitUntil:'domcontentloaded'});
-  assert.equal(await page.locator('nav.top-actions [aria-current=page]').innerText(),'Enviar convites');
+  assert.equal(await page.locator('nav.top-actions [aria-current=page]').innerText(),'Listas e filas');
   assert.equal(await page.locator('.workflow-links a').count(),3);
   await page.screenshot({path:'C:\\projeto01\\captacao\\caca-promos-vip\\dados\\previa-acer\\qa-gestao-convites-desktop.png',fullPage:false});
   assert.deepEqual(errors,[]);

@@ -379,11 +379,22 @@ export function iniciarConvitesUnicos({
   }
 
   function convidadosManual(dados) {
+    const mapa=contatoMap();
     return new Set(dados.filas.flatMap(f=>
-      f.itens.filter(i=>f.modo==='web'
-        ? i.status==='enviado-manualmente'
-        : ['aceito','enviado','entregue','lido'].includes(i.status))
-        .map(i=>i.contatoId)));
+      f.itens.filter(i=>{
+        const enviado=f.modo==='web'
+          ? i.status==='enviado-manualmente'
+          : ['aceito','enviado','entregue','lido'].includes(i.status);
+        if(!enviado)return false;
+        const contato=mapa.get(i.contatoId);
+        const novaAutorizacao=Date.parse(contato?.reativadoEm||'');
+        const ultimaTentativa=Date.parse(
+          i.confirmadoEm||i.solicitadoEm||f.criadaEm||'');
+        // Nova autorização posterior ao envio libera somente NOVOS
+        // convites; jamais reenvia filas ou tentativas antigas.
+        return !(Number.isFinite(novaAutorizacao) &&
+          Number.isFinite(ultimaTentativa) && novaAutorizacao>ultimaTentativa);
+      }).map(i=>i.contatoId)));
   }
 
   function diaOperacional(valor) {

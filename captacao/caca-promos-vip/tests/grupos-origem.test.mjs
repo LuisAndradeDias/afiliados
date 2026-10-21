@@ -107,7 +107,7 @@ test('painel de grupos exige login, guarda permissão e só exporta inscrições
 
     const aposentado = await fetch(base + '/painel', { redirect: 'manual' });
     assert.equal(aposentado.status, 302);
-    assert.equal(aposentado.headers.get('location'), '/campanhas');
+    assert.equal(aposentado.headers.get('location'), '/enviar');
     const novo = await (await fetch(base + '/campanhas')).text();
     assert.match(novo, /id="singleText"/);
     assert.doesNotMatch(novo, /id="groupCard"/);
