@@ -6,7 +6,44 @@ de um segundo WhatsApp nem de SDKs não oficiais. A automação é **supervision
 uma conversa de cada vez**, somente para contatos que consentiram em receber
 convites comerciais.
 
-**Acesso no ACER:** http://127.0.0.1:3045/campanhas
+**Acesso no ACER:** http://127.0.0.1:3045/inicio
+
+## Central de gestão — experiência reorganizada
+
+O painel está dividido em **quatro áreas com navegação fixa**:
+
+1. **Visão geral** (`/inicio`): mostra contatos, autorização, bloqueios,
+   denúncias recebidas e resumo das filas.
+2. **Contatos** (`/contatos`): cadastro separado, pesquisa por nome ou
+   telefone, filtros `Autorizados`, `Bloqueados`, `Descadastrados`,
+   `Pendentes` e `Sem autorização`. Exibe 15 por página e mascara números.
+   A ficha informa origem, evidência do consentimento e eventos vinculados.
+3. **Enviar convites** (`/campanhas`): mantém o fluxo supervisionado do
+   WhatsApp Web em 3 etapas (selecionar CSV → escrever mensagem → preparar
+   conversa), sem mudar a confirmação individual antes do envio.
+4. **Denúncias** (`/denuncias`): histórico de reclamações internas, pedidos
+   de saída e bloqueios administrativos. Inclui sincronização manual Netlify.
+
+### Segurança e bloqueios
+
+- `Bloqueado` corresponde a uma denúncia interna recebida, um pedido de
+  saída persistente ou um **bloqueio administrativo**.
+- `Descadastrado` é um contato removido do envio sem um bloqueio por hash
+  persistente. As categorias da lista são mutuamente exclusivas.
+- **Bloquear novos convites** na ficha exige confirmação e deixa uma marca
+  administrativa — **não fabrica denúncia** do destinatário. O bloqueio
+  persiste mesmo após importar novamente o número.
+- Não há botão de desbloqueio automático. Um consentimento novo deve ser
+  verificado em procedimento separado antes de qualquer reativação.
+- Os endpoints da Central ficam em `127.0.0.1`; não são publicados pelo
+  Netlify. Números completos e segredos não aparecem na tabela/API nova.
+- O visual usa fundo grafite-azulado neutro, superfície clara sobre fundo
+  escuro, verde discreto para autorizado/ação principal e vermelho apenas
+  para bloqueio. As cores nunca são o único indicador: todos os estados
+  têm texto explícito.
+
+O atalho **Abrir Campanhas.cmd** abre a Visão geral. O endereço anterior
+`/campanhas` continua válido e permite operar o WhatsApp como antes.
 
 Também existe o atalho `Abrir Campanhas.cmd` na pasta oficial
 `C:\projeto01\captacao\caca-promos-vip`.

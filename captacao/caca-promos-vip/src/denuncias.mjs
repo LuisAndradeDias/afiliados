@@ -59,7 +59,7 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
   }
 
   function registrar({ telefone, mensagemId, motivo = 'denuncia-convite', origem = 'whatsapp-webhook' }) {
-    if (!['denuncia-convite','saida-solicitada'].includes(motivo)) {
+    if (!['denuncia-convite','saida-solicitada','bloqueio-administrativo'].includes(motivo)) {
       throw new Error('Motivo de bloqueio inválido.');
     }
     const numero = validarNumero(telefone);
@@ -160,6 +160,18 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
     return {valido:true,registrado:true,duplicada:resposta.duplicada};
   }
 
+  function bloqueiosPorContato(contatosAtuais){
+    const porHash=new Map(ler().bloqueados.map(b=>[b.numeroHash,b]));
+    const encontrados=new Map();
+    for(const contato of contatosAtuais){
+      const bloqueio=porHash.get(resumoNumero(contato.telefone));
+      if(bloqueio)encontrados.set(contato.id,{
+        motivo:bloqueio.motivo,primeiroBloqueioEm:bloqueio.primeiroBloqueioEm,
+      });
+    }
+    return encontrados;
+  }
+
   function listar() {
     const base = ler();
     const contatosPorId = new Map(contatos.listar().map(c => [c.id,c]));
@@ -186,5 +198,6 @@ export function iniciarDenuncias(dataDir, contatos, agora = () => new Date()) {
   }
 
   return { registrar, estaBloqueado, listar, resumo,
-    tokenDenuncia, registrarCliqueDenuncia, tokenNetlify, registrarTokenNetlify };
+    tokenDenuncia, registrarCliqueDenuncia, tokenNetlify, registrarTokenNetlify,
+    bloqueiosPorContato };
 }

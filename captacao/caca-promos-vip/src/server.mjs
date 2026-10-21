@@ -14,6 +14,8 @@ import { iniciarConexaoWhatsapp } from './whatsapp-conexao-controller.mjs';
 import { iniciarDenuncias } from './denuncias.mjs';
 import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta, lerStatusMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
+import { renderGestao } from './gestao-ui.mjs';
+import { iniciarGestaoContatos } from './gestao-contatos.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderDescadastro } from './descadastro-ui.mjs';
 import { renderDenuncia } from './denuncia-ui.mjs';
@@ -25,8 +27,12 @@ const planilhaModelo = readFileSync(join(sourceDir, '..', 'modelos', 'Modelo_Con
 const scripts = new Map([
   ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
   ['/assets/campanhas.js', readFileSync(join(sourceDir, 'assets', 'campanhas.js'), 'utf8')],
+  ['/assets/gestao.js', readFileSync(join(sourceDir, 'assets', 'gestao.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
   ['/assets/denuncia.js', readFileSync(join(sourceDir, 'assets', 'denuncia.js'), 'utf8')],
+]);
+const styles=new Map([
+  ['/assets/painel-theme.css',readFileSync(join(sourceDir,'assets','painel-theme.css'),'utf8')],
 ]);
 const headersBase = {
   'cache-control': 'no-store',
@@ -40,7 +46,7 @@ function codigoHtml(res, status, html) {
   res.writeHead(status, {
     ...headersBase,
     'content-type': 'text/html; charset=utf-8',
-    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    'content-security-policy': "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   });
   res.end(html);
 }
@@ -134,6 +140,7 @@ export function criarPiloto({
   const grupos = iniciarGrupos(dataDir, agora);
   const importacoes = iniciarImportacaoAutorizada(dataDir, agora);
   const denuncias = iniciarDenuncias(dataDir, contatos, agora);
+  const gestaoContatos=iniciarGestaoContatos({contatos,denuncias});
   const campanhas = iniciarCampanhas(dataDir, contatos, agora, denuncias);
   const configMeta = obterConfigMeta(metaAmbiente);
   const convitesUnicos = iniciarConvitesUnicos({
@@ -220,8 +227,9 @@ export function criarPiloto({
       if (pathname === '/saude' && leitura) return codigoTexto(res, 200, 'OK');
       if (pathname === '/favicon.svg' && leitura) return codigoTexto(res, 200, renderFavicon(), 'image/svg+xml; charset=utf-8');
       if (scripts.has(pathname) && leitura) return codigoTexto(res, 200, scripts.get(pathname), 'text/javascript; charset=utf-8');
+      if (styles.has(pathname) && leitura) return codigoTexto(res,200,styles.get(pathname),'text/css; charset=utf-8');
       if (pathname === '/robots.txt' && leitura) return codigoTexto(res, 200,
-        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /api/\nDisallow: /sair\nDisallow: /denunciar\n');
+        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /inicio\nDisallow: /contatos\nDisallow: /denuncias\nDisallow: /api/\nDisallow: /sair\nDisallow: /denunciar\n');
 
       // Endpoint preparado para o webhook HTTPS oficial da Meta.
       // Nunca libera dados ou contatos sem HMAC valido; sem segredos, fica desativado.
@@ -299,6 +307,11 @@ export function criarPiloto({
         res.writeHead(302, {...headersBase,location:'/campanhas'});
         return res.end();
       }
+      if (['/inicio','/contatos','/denuncias'].includes(pathname) && leitura) {
+        if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
+          'Área administrativa disponível somente no ACER, via 127.0.0.1.');
+        return codigoHtml(res,200,renderGestao(pathname.slice(1)));
+      }
       if (pathname === '/campanhas' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
           'Painel de campanhas disponível somente no computador local, via 127.0.0.1.');
@@ -343,6 +356,47 @@ export function criarPiloto({
         return contatos.descadastrarPorToken(entrada.token)
           ? json(res, 200, { ok: true })
           : json(res, 404, { ok: false, mensagem: 'Link de descadastro não encontrado.' });
+      }
+
+      // Visão gerencial restrita à instalação local, sem dados pessoais no Netlify.
+      if (pathname.startsWith('/api/local/gestao/')){
+        if (!acessoCampanhasLocais(req,method==='POST'))
+          return json(res,403,{ok:false,mensagem:'Acesso permitido apenas no painel local.'});
+        try{
+          if (pathname === '/api/local/gestao/contatos' && leitura)
+            return json(res,200,{ok:true,...gestaoContatos.listar({
+              filtro:endereco.searchParams.get('filtro')||'todos',
+              busca:endereco.searchParams.get('busca')||'',
+              pagina:Number(endereco.searchParams.get('pagina')||1),
+              limite:15,
+            })});
+          if (pathname === '/api/local/gestao/contato' && leitura)
+            return json(res,200,{ok:true,contato:gestaoContatos.detalhe(
+              endereco.searchParams.get('id'))});
+          if (pathname === '/api/local/gestao/resumo' && leitura){
+            const todas=convitesUnicos.listarFilas();
+            const eventos=denuncias.listar();
+            return json(res,200,{ok:true,contatos:gestaoContatos.resumo(),
+              filas:{total:todas.length,web:todas.filter(f=>f.modo==='web').length,
+                pendentes:todas.reduce((n,f)=>n+(f.pendentes||0),0)},
+              whatsapp:{fase:controleWhatsapp.estado().fase},
+              denuncias:eventos.filter(e=>e.motivo==='denuncia-convite').slice(0,5),
+              sincronizacao:sincronizacaoNetlify.estado()});
+          }
+          if (pathname === '/api/local/gestao/denuncias' && leitura)
+            return json(res,200,{ok:true,ocorrencias:denuncias.listar(),
+              resumo:denuncias.resumo(),sincronizacao:sincronizacaoNetlify.estado()});
+          if (pathname === '/api/local/gestao/contato/bloquear' && method==='POST'){
+            if(!limitar(req,'gestao-bloquear',25))
+              return json(res,429,{ok:false,mensagem:'Limite de bloqueios atingido.'});
+            const entrada=await corpoJson(req,1500);
+            return json(res,200,{ok:true,resultado:gestaoContatos.bloquear(entrada)});
+          }
+          return json(res,method==='GET'?404:405,
+            {ok:false,mensagem:'Recurso de gestão não encontrado.'});
+        }catch(erro){
+          return json(res,400,{ok:false,mensagem:erro.message});
+        }
       }
 
       // As campanhas têm um fluxo local sem senha; o CRM administrativo e

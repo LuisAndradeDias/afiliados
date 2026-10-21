@@ -188,15 +188,17 @@ export function renderCampanhas() {
 <meta name="theme-color" content="#051923"><meta name="referrer" content="no-referrer">
 <title>Campanhas | Caça Promos VIP</title>
 <link rel="icon" href="/favicon.svg">
-<style>${css}</style><script defer src="/assets/campanhas.js"></script>
+<style>${css}</style><link rel="stylesheet" href="/assets/painel-theme.css">
+<script defer src="/assets/campanhas.js"></script>
 </head><body>
 <div class="wrap">
 <header>
-  <div class="brand"><span class="brand-mark">CP</span><div><div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div><small>CENTRAL DE CAMPANHAS</small></div></div>
+  <div class="brand"><span class="brand-mark">CP</span><div><div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div><small>CENTRAL DE GESTÃO</small></div></div>
   <nav class="top-actions" aria-label="Navegação">
-    <a href="#importStage">Contatos</a>
-    <a href="#metaStage">Mensagem</a>
-    <a href="#manualStage">Enviar</a>
+    <a href="/inicio">Visão geral</a>
+    <a href="/contatos">Contatos</a>
+    <a href="/campanhas" aria-current="page">Enviar convites</a>
+    <a href="/denuncias">Denúncias</a>
     <span class="sticker">Uso local · sem login</span>
   </nav>
 </header>
@@ -205,21 +207,29 @@ export function renderCampanhas() {
 <main id="appView">
   <section class="hero">
     <div><div class="eyebrow">Convites supervisionados · Sem API paga</div>
-      <h1>Convites sem <em>complicação.</em></h1>
-      <p>Organize seus contatos, prepare o convite e confirme uma conversa por vez. Sem API paga e sem disparos em massa.</p></div>
+      <h1>Enviar <em>convites.</em></h1>
+      <p>Três etapas para preparar cada conversa pelo WhatsApp Web. Você confirma cada envio e mantém o controle.</p></div>
     <span class="sticker">WhatsApp Web · Sem custo de API</span>
   </section>
 
+  <nav class="workflow-links" aria-label="Etapas dos convites">
+    <span>ETAPAS</span>
+    <a href="#importStage">1. Selecionar contatos</a>
+    <a href="#metaStage">2. Preparar mensagem</a>
+    <a href="#manualStage">3. Enviar no WhatsApp</a>
+  </nav>
+
   <section class="metrics" aria-label="Resumo">
-    <div class="metric"><small>Números na planilha</small><b id="metricImported">0</b></div>
-    <div class="metric"><small>Aptos a receber</small><b id="metricEligible">0</b></div>
-    <div class="metric"><small>Fora da fila / bloqueados</small><b id="metricBlocked">0</b></div>
+    <div class="metric"><small>Importados nesta aba</small><b id="metricImported">0</b></div>
+    <div class="metric"><small>Selecionados autorizados</small><b id="metricEligible">0</b></div>
+    <div class="metric"><small>Excluídos da seleção</small><b id="metricBlocked">0</b></div>
     <div class="metric"><small>Filas de convites</small><b id="metricQueues">0</b></div>
   </section>
 
   <section class="import-only">
     <article class="card surface" id="importStage">
-      <h2><span class="step">1</span>Seus contatos</h2>
+      <h2><span class="step">1</span>Selecionar contatos</h2>
+      <p class="short-nav-note"><a href="/contatos">Ver cadastro completo, bloqueios e autorizações →</a></p>
       <p>Importe um CSV com as pessoas que autorizaram os convites. Se houver coluna de autorização, apenas linhas marcadas <strong>SIM</strong> serão consideradas.</p>
       <label class="upload"><strong>Selecionar arquivo CSV ou TXT</strong><small>Até 110 KB / 1.500 linhas • nome;telefone</small>
         <input id="importFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" aria-label="Selecionar CSV">
