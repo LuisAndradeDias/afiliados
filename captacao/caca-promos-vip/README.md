@@ -30,6 +30,37 @@ convites comerciais.
   O atalho **se recusa a reiniciar** se houver conversa ativa, cria backup
   privado com verificação SHA-256 e nunca clica em Enviar.
 
+## Botões interativos: prévia experimental, sem envio nativo habilitado
+
+Na tela de **Enviar convite → Conferir convite**, o painel mostra a prévia
+com as duas opções solicitadas: **Entrar no grupo** e
+**Não tenho interesse**. A simulação não envia nada e não altera contatos.
+
+O módulo `src/botoes-interativos-experimentais.mjs` também prepara o
+formato `interactiveButtons`/Native Flow, usado por algumas bibliotecas
+não oficiais baseadas no WhatsApp Web. Esse código está **desconectado**
+da sessão real e só inclui um teste unitário com transporte falso.
+
+**Limitação importante:** o WhatsApp Business comum e o WhatsApp Web com
+Chrome/Playwright não oferecem personalização de botões nativos na janela
+de composição. A biblioteca oficial Meta/Business Platform aceita botões
+Quick Reply, porém os modelos de marketing podem ter custo. Forks não
+oficiais podem gerar mensagens que o destinatário não recebe nem consegue
+renderizar; podem também resultar em restrições à conta Business. A prévia
+não deve ser confundida com um envio com botões.
+
+**Nenhum pacote não oficial foi instalado; nenhum número foi pareado;
+nenhuma mensagem foi enviada.** O envio atual continua com o texto e as
+opções antigas, até a conexão experimental ser aprovada, instalada e
+validada no próprio número. Não enviar em massa durante testes.
+
+Se um dia for ativada, a opção **Entrar no grupo** representa um pedido de
+participação: não adiciona alguém automaticamente ao grupo. A resposta
+**Não tenho interesse** só deve bloquear novos envios quando vier de uma
+mensagem autenticada e vinculada ao contato correspondente. O botão não
+deve esconder links, alterar consentimentos sem confirmação ou ignorar o
+histórico de bloqueios existente.
+
 ## Enviar um convite para o meu próprio número (novo)
 
 **Página simples:** http://127.0.0.1:3045/enviar
