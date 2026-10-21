@@ -239,10 +239,12 @@
              ocorrencia.origem==='clique-confirmado-netlify'||
              ocorrencia.origem==='clique-nao-tenho-interesse-netlify'
               ? 'Confirmado pelo link' : 'Registrado internamente')));
-        linha.append(info,elemento('span','tag off',
-          ocorrencia.motivo==='denuncia-convite'?'Denúncia anterior · bloqueado'
-          :ocorrencia.motivo==='saida-solicitada'?'Não tenho interesse · bloqueado'
-          :'Bloqueio administrativo'));
+        const rotulo=ocorrencia.motivo==='denuncia-convite'?'Denúncia registrada'
+          :ocorrencia.motivo==='saida-solicitada'?'Pedido de saída'
+          :ocorrencia.motivo==='reativacao-autorizada'?'Contato reativado'
+          :'Bloqueio administrativo';
+        linha.append(info,elemento('span',
+          ocorrencia.motivo==='reativacao-autorizada'?'tag':'tag off',rotulo));
         lista.append(linha);
       }
     } catch(erro) {
