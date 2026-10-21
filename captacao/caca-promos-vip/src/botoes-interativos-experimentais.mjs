@@ -4,7 +4,9 @@
 // esse recurso e instavel e NAO possui garantia de entrega/renderizacao.
 // Nenhum dispositivo, contato ou fila e alterado por este modulo.
 
-const NUMERO=/^[1-9]\d{7,14}$/;
+const NUMERO=/^55[1-9]\d{9,10}$/;
+// Um teste por numero em cada execucao; em caso de falha/incerteza, sem retry.
+const numerosTestados=new Set();
 const URL=/(?:https?:\/\/|www\.|chat\.whatsapp\.com\/)/i;
 
 export const BOTOES_CONVITE=Object.freeze([
@@ -68,8 +70,12 @@ export async function testarBotoesNoProprioNumero({
   if(!transporte||typeof transporte.sendMessage!=='function'){
     throw new Error('Nenhum transporte de WhatsApp experimental foi conectado.');
   }
+  if(numerosTestados.has(destino)){
+    throw new Error('Este número já teve um teste nesta execução. Não repita sem conferir o WhatsApp.');
+  }
   const payload=montarPayloadNativeFlow({texto});
   const jid=destino+'@s.whatsapp.net';
+  numerosTestados.add(destino); // Reserva ANTES da chamada para impedir duplo clique.
   const resultado=await transporte.sendMessage(jid,payload);
   if(!resultado?.key?.id){
     return {situacao:'INCERTO',mensagem:'A biblioteca não forneceu ID do envio. Não repita.'};
