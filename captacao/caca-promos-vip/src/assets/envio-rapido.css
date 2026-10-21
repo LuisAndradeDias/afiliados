@@ -222,3 +222,28 @@ body[data-page="enviar"]{font-size:14px;background:radial-gradient(circle at 74%
   .site-nav{order:3;overflow-x:auto;flex-basis:100%;padding-bottom:10px}
 }
 @media(prefers-reduced-motion:reduce){.quick-choice{transition:none;transform:none!important}}
+
+
+/* Previa de botoes nativos: DEMONSTRACAO sem acesso a conta nem envio */
+.quick-experimental-buttons{margin-top:23px;border:1px solid #557669;
+  border-radius:14px;background:#182e32;padding:19px}
+.quick-experimental-heading{display:flex;align-items:start;justify-content:space-between;
+  gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.quick-experimental-heading h3{font-size:16px;margin:3px 0 0;color:#ebfdf4}
+.quick-experimental-tag{border:1px solid #719987;border-radius:16px;padding:5px 9px;
+  color:#d4efdd;font-size:10px;font-weight:700}
+.quick-experimental-buttons>p{font-size:12px;line-height:1.55;color:#c0d6d2}
+.quick-native-bubble{border:1px solid #426d64;border-radius:12px;background:#1b3833;
+  max-width:340px;margin:15px auto;overflow:hidden;box-shadow:0 5px 22px #0003}
+.quick-native-heading{color:#f6fff9;font-size:13px;font-weight:850;
+  padding:13px 16px 2px}
+.quick-native-body{color:#e4f4ed;font-size:12px;line-height:1.55;
+  padding:5px 16px 17px}
+.quick-native-button{display:block;background:#193b38;color:#91f1d6;
+  width:100%;border:0;border-top:1px solid #486b63;padding:14px 10px;
+  font-weight:760;font-size:13px;cursor:pointer}
+.quick-native-button:hover,.quick-native-button:focus-visible{background:#275349;
+  outline-offset:-3px}
+.quick-experimental-note{color:#cee8dc;font-weight:650;text-align:center}
+.quick-experimental-buttons .quick-experimental-caution{color:#e6c99f;
+  font-size:11px;line-height:1.7;border-top:1px solid #49675b;padding-top:13px}
