@@ -136,7 +136,13 @@ export function renderEnvioRapido(){
           <div class="quick-preview-top"><span class="quick-avatar">CP</span>
             <div><strong>Mensagem preparada</strong><small>Prévia exata deste destinatário</small></div></div>
           <div id="quickFinalText" class="quick-preview-text"></div>
+          <div class="quick-preview-tools">
+            <span>Seu texto continua salvo aqui, mesmo se desaparecer do WhatsApp.</span>
+            <button class="btn btn-quiet" type="button" id="quickCopyText">Copiar mensagem</button>
+          </div>
         </div>
+        <p class="quick-draft-help">Se o campo do WhatsApp ficar vazio, confira se surgiu uma nova
+          mensagem na conversa. <strong>Campo vazio não significa que foi enviada.</strong></p>
         <details class="quick-connection" id="quickConnectionDisclosure">
           <summary><span>Precisa conectar seu WhatsApp?</span>
             <small id="quickConnectionBrief">Verificando...</small></summary>

@@ -120,6 +120,12 @@ body[data-page="enviar"]{font-size:14px;background:radial-gradient(circle at 74%
 .quick-preview-top small{font-size:10px;color:#b3cbd1;display:block}
 .quick-preview-text{white-space:pre-wrap;overflow-wrap:anywhere;padding:20px 22px;
   font-size:12px;line-height:1.75;color:#e7f6f2;max-height:280px;overflow-y:auto}
+.quick-preview-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  border-top:1px solid #334d5a;padding:12px 16px;flex-wrap:wrap}
+.quick-preview-tools span{font-size:11px;color:#bfd7d0;line-height:1.5;flex:1}
+.quick-preview-tools .btn{padding:7px 12px;min-height:36px}
+.quick-draft-help{color:#bfccd6;font-size:11px;line-height:1.6;margin:0 0 16px}
+.quick-draft-help strong{color:#e3f7ef}
 .quick-connection,.quick-manual{border:1px solid #394e5a;border-radius:11px;
   background:#142633;margin:15px 0;overflow:hidden}
 .quick-connection summary,.quick-manual summary{padding:14px 17px;cursor:pointer;font-size:12px;

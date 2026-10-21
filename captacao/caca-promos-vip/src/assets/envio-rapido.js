@@ -230,9 +230,10 @@
       cancelando:'Cancelando a conversa sem enviar...',
       cancelado:'Conversa cancelada. Nenhum envio confirmado.',
       erro:'Não foi possível preparar o Chrome. Você pode usar a alternativa manual.',
-      incerto:'Resultado incerto. Confira a conversa; não repita o envio.',
+      incerto:'Texto saiu do campo sem confirmação de envio. Confira a conversa; não repita agora.',
     };
-    $('quickChromeStatus').textContent=(matching?statuses[phase]:null)||
+    $('quickChromeStatus').textContent=(matching
+      ?(phase==='incerto'&&s.mensagem?s.mensagem:statuses[phase]):null)||
       (!s.ocupado?'Abra sua conversa no Chrome.':'Há outra conversa aberta no WhatsApp.');
     $('quickPrepareChrome').disabled=!!s.processoAtivo||state.finalizado||state.incerto;
     $('quickConfirmChrome').disabled=!(matching&&phase==='pronto')||state.finalizado;
@@ -260,7 +261,8 @@
           state.incerto=true;
           $('quickPrepareChrome').disabled=true;
           show('quickManualDisclosure',false);
-          setResult('O resultado não foi confirmado. Confira no WhatsApp se a mensagem chegou e use a conciliação em Listas e filas. Não envie de novo antes disso.','is-warning');
+          setResult((s.mensagem||'O envio não foi confirmado.')+
+            ' Se o texto desapareceu, ele continua na prévia acima. Antes de usar de novo, confira se há uma nova bolha enviada no WhatsApp e concilie em Listas e filas.','is-warning');
         }else if(s.fase==='cancelado'){
           setResult('Conversa cancelada sem envio. Você pode preparar novamente.','');
         }else{
@@ -434,6 +436,7 @@
         ['iniciando','abrindo','pronto','enviando','cancelando'].includes(state.fase);
     });
     $('quickManualDone').addEventListener('click',manualDone);
+    $('quickCopyText').addEventListener('click',copiarMensagem);
     $('quickManualLink').addEventListener('click',e=>{
       if(['iniciando','abrindo','pronto','enviando','cancelando'].includes(state.fase)){
         e.preventDefault();

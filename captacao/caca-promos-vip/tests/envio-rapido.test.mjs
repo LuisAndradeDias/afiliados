@@ -63,6 +63,8 @@ test('a tela é local, clara e isolada de filas avançadas',async t=>{
   assert.match(html,/Enviar para mim/);
   assert.match(html,/Verificar número/);
   assert.match(html,/Abrir conversa no Chrome/);
+  assert.match(html,/id="quickCopyText"/);
+  assert.match(html,/Campo vazio não significa que foi enviada/);
   assert.match(html,/Listas e filas/);
   assert.doesNotMatch(html,/CPV_DENUNCIA_NETLIFY_SECRET|contatos-autorizados\.json/);
   const redirect=await fetch(f.base+'/painel',{redirect:'manual'});
@@ -333,4 +335,43 @@ test('busca de outro contato seleciona apenas registros autorizados',async t=>{
   assert.doesNotMatch(await page.locator('#quickSelected').innerText(),/21977776666/);
   await page.locator('#quickGoMessage').click();
   assert.match(await page.locator('#quickMessageTarget').innerText(),/Outro autorizado/);
+});
+
+test('WhatsApp ficticio apaga o texto: painel mantém cópia e proíbe novo envio',async t=>{
+  process.env.CPV_WHATSAPP_MOCK_DROP_DRAFT='true';
+  process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER='true';
+  t.after(()=>{
+    delete process.env.CPV_WHATSAPP_MOCK_DROP_DRAFT;
+    delete process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER;
+  });
+  const f=await setup(t);
+  const browser=await chromium.launch({headless:true,
+    executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'});
+  t.after(()=>browser.close());
+  const page=await browser.newPage({viewport:{width:390,height:850}});
+  await page.goto(f.base+'/enviar');
+  await page.waitForFunction(()=>document.querySelector('#quickAllowed')?.textContent==='2');
+  await page.locator('#quickPhone').fill('31988887777');
+  await page.locator('#quickLookup').click();
+  await page.locator('#quickGoMessage').click();
+  await page.locator('#quickGroup').fill(group);
+  await page.locator('#quickCreate').click();
+  await page.locator('#quickStage3').waitFor({state:'visible'});
+  const copia=await page.locator('#quickFinalText').innerText();
+  assert.match(copia,/Entrar no grupo de ofertas/);
+  await page.locator('#quickCopyText').click();
+  assert.match(await page.locator('#quickToast').innerText(),/copiada|Selecione o texto/i);
+  await page.locator('#quickPrepareChrome').click();
+  await page.locator('#quickResult.is-warning').waitFor({state:'visible',timeout:45000});
+  assert.match(await page.locator('#quickResult').innerText(),/sem|confirm|concilie/i);
+  assert.equal(await page.locator('#quickConfirmChrome').isDisabled(),true);
+  assert.equal(await page.locator('#quickPrepareChrome').isDisabled(),true);
+  assert.equal(await page.locator('#quickFinalText').innerText(),copia,
+    'O painel preserva a mensagem integral para o usuário');
+  const filas=(await get(f.base,'/api/local/campanhas/convite/filas')).filas;
+  assert.equal(filas.length,1);
+  assert.equal(filas[0].incertos,1);
+  assert.equal(filas[0].manuais,0);
+  assert.equal(await page.evaluate(()=>
+    document.documentElement.scrollWidth<=document.documentElement.clientWidth+2),true);
 });

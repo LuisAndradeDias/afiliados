@@ -17,10 +17,26 @@ let entradaRecebida=false;
 function evento(tipo:string, detalhe?:string) {
   process.stdout.write(JSON.stringify({tipo,detalhe})+'\n');
 }
-function receber():Promise<Comando> {
+// A espera curta permite observar envios feitos DIRETAMENTE no WhatsApp,
+// sem precisar de outro clique no painel. Nunca devolve comandos fictícios.
+function receber(timeoutMs=0):Promise<Comando|null> {
   const proximo=comandos.shift();
   if(proximo)return Promise.resolve(proximo);
-  return new Promise(resolve=>esperando.push(resolve));
+  return new Promise(resolve=>{
+    let timeout:ReturnType<typeof setTimeout>|null=null;
+    const concluido=(cmd:Comando)=>{
+      if(timeout)clearTimeout(timeout);
+      resolve(cmd);
+    };
+    esperando.push(concluido);
+    if(timeoutMs>0){
+      timeout=setTimeout(()=>{
+        const index=esperando.indexOf(concluido);
+        if(index>=0)esperando.splice(index,1);
+        resolve(null);
+      },timeoutMs);
+    }
+  });
 }
 const linhas=createInterface({input:process.stdin,crlfDelay:Infinity});
 linhas.on('line',(linha)=>{
@@ -72,7 +88,7 @@ function numerosIguais(a:string,b:string):boolean{
 
 async function executar():Promise<void> {
   const comando=await receber();
-  if(comando.tipo!=='INICIAR')throw new Error('inicio-invalido');
+  if(!comando || comando.tipo!=='INICIAR')throw new Error('inicio-invalido');
   const telefone=String(comando.telefone||'');
   const mensagem=String(comando.mensagem||'').trim();
   if(!/^55\d{10,11}$/.test(telefone) ||
@@ -105,10 +121,22 @@ async function executar():Promise<void> {
           </footer>
         </div>
         <script>
+          document.querySelector('footer [contenteditable]').addEventListener('keydown',e=>{
+            if(e.key==='Enter'&&!e.shiftKey){
+              e.preventDefault();
+              document.querySelector('button').click();
+            }
+          });
           document.querySelector('button').addEventListener('click',()=>{
             const campo=document.querySelector('footer [contenteditable]');
             const texto=campo.innerText;
             if(!texto.trim())return;
+            // Diagnostico simulado: WhatsApp limpou o rascunho mas nao
+            // criou balão de saida. NUNCA executado em sessao verdadeira.
+            if(${process.env.CPV_WHATSAPP_MOCK_DROP_DRAFT==='true'}) {
+              campo.innerText='';
+              return;
+            }
             const balão=document.createElement('div');
             balão.className='message-out';
             balão.setAttribute('data-id','true_' + Math.random());
@@ -118,10 +146,12 @@ async function executar():Promise<void> {
           });
         </script></body></html>`);
     } else {
-      // A URL da conversa e fornecida pelo WhatsApp; usuario deve revisar
-      // o destinatario visualmente ANTES de confirmar Enviar no painel.
+      // A URL abre APENAS a conversa. O texto e colocado depois de o DOM
+      // estabilizar e de o observador registrar as mensagens anteriores.
+      // O parametro &text podia disputar com a re-renderizacao do WhatsApp,
+      // fazendo o rascunho desaparecer sem comprovacao de envio.
       const destino='https://web.whatsapp.com/send?phone='+telefone+
-        '&text='+encodeURIComponent(mensagem)+'&app_absent=0';
+        '&app_absent=0';
       await page.goto(destino,{waitUntil:'domcontentloaded',timeout:90_000});
       await page.locator('#main header').first().waitFor({
         state:'visible',timeout:150_000,
@@ -130,68 +160,108 @@ async function executar():Promise<void> {
       await trazerWhatsappParaTelaPrincipal().catch(()=>undefined);
     }
     const campo=await compositor(page);
-    const escrito=(await campo.innerText().catch(()=>'')).trim();
-    if(textoComparavel(escrito)!==textoComparavel(mensagem))await campo.fill(mensagem);
+    const titulo=await page.locator('#main header [title]').first()
+      .getAttribute('title').catch(()=>null);
+    if(!titulo)throw new Error('destinatario-nao-confirmavel');
+    // Capturar ANTES do primeiro caractere: um clique manual muito rapido
+    // nao pode acabar incorporado ao baseline e desaparecer do historico.
+    const baseline=await captureSendBaseline(page,mensagem);
+    await campo.fill(mensagem);
+    // Aguardar o estado controlado do WhatsApp estabilizar, sem enviar.
+    if(!testMode)await page.waitForTimeout(850);
     const confirmado=(await campo.innerText().catch(()=>'')).trim();
     if(textoComparavel(confirmado)!==textoComparavel(mensagem))
       throw new Error('texto-nao-conferiu');
     const botao=await botaoEnviar(page);
     if(await botao.isDisabled())throw new Error('botao-desabilitado');
-    const titulo=await page.locator('#main header [title]').first()
-      .getAttribute('title').catch(()=>null);
-    if(!titulo)throw new Error('destinatario-nao-confirmavel');
-    const baseline=await captureSendBaseline(page,mensagem);
     evento('PRONTO');
 
-    // Somente um comando ENVIAR por conversa. Nunca ha tentativa repetida.
+    // Apenas teste ficticio: permitir simular um clique manual no WhatsApp.
+    if(testMode && process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER==='true'){
+      setTimeout(()=>{
+        const action=process.env.CPV_WHATSAPP_MOCK_SEND_WITH_ENTER==='true'
+          ?campo.press('Enter'):botao.click();
+        void action.catch(()=>undefined);
+      },550);
+    }
+    // Mesmo sem ENVIAR pelo painel, observar a conversa a cada 400 ms.
+    // Campo vazio NAO e prova de envio; somente um novo balao de saida
+    // com referencia ao convite pode confirmar a operacao.
+    let campoVazioDesde:number|null=null;
     while(true){
-      const acao=await receber();
-      if(acao.tipo==='CANCELAR'){
-        if(await detectManualSend(page,baseline).catch(()=>false)){
-          evento('CONFIRMADO');return;
-        }
-        evento('CANCELADO');return;
-      }
-      if(acao.tipo!=='ENVIAR')continue;
+      const acao=await receber(400);
       if(page.isClosed())throw new Error('janela-fechada');
+      if(await detectManualSend(page,baseline).catch(()=>false)){
+        evento('CONFIRMADO');return;
+      }
       const tituloAtual=await page.locator('#main header [title]').first()
         .getAttribute('title').catch(()=>null);
       if(tituloAtual!==titulo)throw new Error('conversa-alterada');
-      // Se a pessoa clicou Enviar diretamente no Chrome enquanto o painel
-      // estava aberto, reconhecer primeiro o balão novo, sem um segundo clique.
-      if(await detectManualSend(page,baseline).catch(()=>false)){
-        evento('CONFIRMADO');
+      const textoAtual=await campo.innerText().catch(()=>null);
+      if(textoAtual===null)throw new Error('campo-indisponivel');
+      const textoNormal=textoComparavel(textoAtual);
+      const igual=textoNormal===textoComparavel(mensagem);
+      // Um clique no Chrome (botao OU Enter) pode limpar o texto sem produzir
+      // nova mensagem. Aguardar renderizacao e registrar INCERTO sem retry.
+      if(!textoNormal){
+        campoVazioDesde??=Date.now();
+      }else{
+        campoVazioDesde=null;
+      }
+      if(acao?.tipo==='CANCELAR'){
+        if(!igual){
+          evento('INCERTO','rascunho-alterado-antes-de-cancelar');
+          return;
+        }
+        evento('CANCELADO');return;
+      }
+      if(!acao){
+        if(campoVazioDesde && Date.now()-campoVazioDesde >=
+          (testMode?2100:6500)){
+          if(await detectManualSend(page,baseline).catch(()=>false)){
+            evento('CONFIRMADO');return;
+          }
+          evento('INCERTO','texto-sumiu-sem-envio-confirmado');
+          return;
+        }
+        continue;
+      }
+      if(acao.tipo!=='ENVIAR')continue;
+      if(!igual){
+        // Nao clicar novamente se o usuario pode ter enviado pelo Chrome.
+        // A observacao da mensagem pode estar atrasada.
+        const inicio=Date.now();
+        while(Date.now()-inicio<(testMode?1800:6500)){
+          if(await detectManualSend(page,baseline).catch(()=>false)){
+            evento('CONFIRMADO');return;
+          }
+          await new Promise(resolve=>setTimeout(resolve,300));
+        }
+        evento('INCERTO','rascunho-nao-confere-com-convite');
         return;
       }
-      const textoAtual=(await campo.innerText().catch(()=>'')).trim();
-      if(textoComparavel(textoAtual)!==textoComparavel(mensagem))
-        throw new Error('texto-alterado');
       evento('ENVIANDO');
-      let clicado=false;
       try {
         if(testMode)await botao.click();
         else await clicarComPonteiro(page,botao);
-        clicado=true;
       } catch {
-        // Nao tentar Enter como fallback: poderia enviar 2 vezes.
+        // Nunca usar Enter como fallback. O clique pode ter ocorrido.
         throw new Error('clique-nao-confirmado');
       }
-      if(!clicado)throw new Error('clique-nao-confirmado');
-      // Somente em Chrome FICTÍCIO: simula a queda após o clique para testar
-      // o estado incerto, sem repetir a mensagem no WhatsApp real.
+      // Somente Chrome FICTICIO: simula interrupcao depois do clique.
       if(testMode && process.env.CPV_WHATSAPP_MOCK_FAIL_AFTER_CLICK==='true'){
         throw new Error('resultado-incerto');
       }
       const inicio=Date.now();
-      while(Date.now()-inicio<18_000){
+      while(Date.now()-inicio<(testMode?3500:18_000)){
         if(await detectManualSend(page,baseline).catch(()=>false)){
-          evento('CONFIRMADO');
-          return;
+          evento('CONFIRMADO');return;
         }
         await new Promise(resolve=>setTimeout(resolve,300));
       }
-      // Podera ter sido enviado: manter pendente de conciliacao, sem retry.
-      throw new Error('resultado-incerto');
+      // Campo vazio sozinho nao valida envio. Jamais clicar pela 2a vez.
+      evento('INCERTO','sem-balao-confirmado-apos-clique');
+      return;
     }
   } finally {
     await ctx?.close().catch(()=>undefined);

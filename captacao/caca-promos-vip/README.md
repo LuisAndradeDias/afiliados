@@ -8,6 +8,28 @@ convites comerciais.
 
 **Acesso no ACER:** http://127.0.0.1:3045/inicio
 
+## Se a mensagem desaparecer ao clicar em Enviar ou Enter
+
+- O texto do convite fica preservado em **Enviar convite → Copiar mensagem**.
+- O Chrome abre **somente a conversa**, sem inserir o texto por parâmetro
+  de URL. A mensagem é preenchida depois de a conversa carregar, e o
+  observador de mensagens enviadas é armado ANTES disso.
+- O painel acompanha o WhatsApp mesmo quando você clica diretamente no
+  navegador ou usa Enter. Só registra envio confirmado ao detectar uma
+  nova mensagem de saída contendo referência ao convite.
+- Se o campo ficar vazio e não surgir uma mensagem de saída confirmada,
+  o painel mostra **Resultado incerto**. Essa tentativa não pode ser
+  repetida até você conferir o histórico no WhatsApp e conciliá-la em
+  **Listas e filas**. Campo vazio **não prova envio**.
+- Não clique repetidamente para tentar compensar desaparecimento de
+  texto. Verifique primeiro o WhatsApp e, se necessário, copie o convite
+  salvo no painel. Nenhuma rotina fará uma segunda tentativa sozinha.
+- Para instalar esta correção na porta 3045, depois de conferir o resultado
+  da tentativa atual e fechar a janela controlada do WhatsApp, execute
+  `Aplicar correcao WhatsApp.cmd` na pasta do projeto no **disco C:**.
+  O atalho **se recusa a reiniciar** se houver conversa ativa, cria backup
+  privado com verificação SHA-256 e nunca clica em Enviar.
+
 ## Enviar um convite para o meu próprio número (novo)
 
 **Página simples:** http://127.0.0.1:3045/enviar

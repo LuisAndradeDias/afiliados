@@ -117,3 +117,78 @@ test('cancelar Chrome de teste antes do clique não registra envio',async t=>{
   assert.equal((await (await fetch(a.app.base+
     '/api/local/campanhas/convite/filas')).json()).filas.length,0);
 });
+
+test('clique diretamente no Chrome simulado confirma o envio e atualiza a fila sem segundo clique no painel',async t=>{
+  process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER='true';
+  t.after(()=>delete process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER);
+  const a=await preparar(t);
+  const ids={campanhaId:a.fila.id,contatoId:a.contato.id};
+  assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/preparar',ids)).status,202);
+  await a.aguardar('confirmado');
+  const detalhes=await (await fetch(a.app.base+
+    '/api/local/campanhas/convite/fila?id='+a.fila.id)).json();
+  assert.equal(detalhes.fila.manuais,1,'Um clique manual no Chrome equivale a um envio confirmado');
+  assert.equal(detalhes.fila.incertos,0);
+  assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/enviar',{
+    ...ids,confirmar:true,
+  })).status,409,'Envio confirmado nunca pode gerar um segundo clique');
+});
+
+test('campo vazio sem balão enviado vira INCERTO, sem reenvio nem falso confirmado',async t=>{
+  process.env.CPV_WHATSAPP_MOCK_DROP_DRAFT='true';
+  process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER='true';
+  t.after(()=>{
+    delete process.env.CPV_WHATSAPP_MOCK_DROP_DRAFT;
+    delete process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER;
+  });
+  const a=await preparar(t);
+  const ids={campanhaId:a.fila.id,contatoId:a.contato.id};
+  assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/preparar',ids)).status,202);
+  const incerto=await a.aguardar('incerto');
+  assert.match(incerto.mensagem,/campo ficou vazio/);
+  const detalhes=await (await fetch(a.app.base+
+    '/api/local/campanhas/convite/fila?id='+a.fila.id)).json();
+  assert.equal(detalhes.fila.manuais,0,'Campo vazio nunca equivale a mensagem enviada');
+  assert.equal(detalhes.fila.incertos,1,'A tentativa deve ser conferida por uma pessoa');
+  assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/enviar',{
+    ...ids,confirmar:true,
+  })).status,409,'Tentativa incerta nunca aceita segundo envio');
+  const nova=await a.post('/api/local/campanhas/convite/whatsapp/preparar',ids);
+  assert.equal(nova.status,409,'Rascunho incerto não pode ser recriado sem conciliação');
+});
+
+test('Enter direto no Chrome ficticio detecta envio, sem solicitar clique ao painel',async t=>{
+  process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER='true';
+  process.env.CPV_WHATSAPP_MOCK_SEND_WITH_ENTER='true';
+  t.after(()=>{
+    delete process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER;
+    delete process.env.CPV_WHATSAPP_MOCK_SEND_WITH_ENTER;
+  });
+  const a=await preparar(t);
+  const ids={campanhaId:a.fila.id,contatoId:a.contato.id};
+  assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/preparar',ids)).status,202);
+  await a.aguardar('confirmado');
+  const r=await (await fetch(a.app.base+
+    '/api/local/campanhas/convite/fila?id='+a.fila.id)).json();
+  assert.equal(r.fila.manuais,1);
+  assert.equal(r.fila.incertos,0);
+});
+test('Enter que limpa apenas o rascunho, sem bolha, termina incerto',async t=>{
+  process.env.CPV_WHATSAPP_MOCK_DROP_DRAFT='true';
+  process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER='true';
+  process.env.CPV_WHATSAPP_MOCK_SEND_WITH_ENTER='true';
+  t.after(()=>{
+    delete process.env.CPV_WHATSAPP_MOCK_DROP_DRAFT;
+    delete process.env.CPV_WHATSAPP_MOCK_SEND_IN_BROWSER;
+    delete process.env.CPV_WHATSAPP_MOCK_SEND_WITH_ENTER;
+  });
+  const a=await preparar(t);
+  const ids={campanhaId:a.fila.id,contatoId:a.contato.id};
+  assert.equal((await a.post('/api/local/campanhas/convite/whatsapp/preparar',ids)).status,202);
+  const status=await a.aguardar('incerto');
+  assert.match(status.mensagem,/campo ficou vazio/);
+  const r=await (await fetch(a.app.base+
+    '/api/local/campanhas/convite/fila?id='+a.fila.id)).json();
+  assert.equal(r.fila.incertos,1);
+  assert.equal(r.fila.manuais,0);
+});

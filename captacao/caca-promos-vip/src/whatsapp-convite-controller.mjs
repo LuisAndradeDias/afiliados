@@ -97,6 +97,15 @@ export function iniciarControleWhatsapp({
             'Mensagem detectada no WhatsApp, mas houve erro no histórico. Verifique antes de repetir.');
         }
         break;
+      case 'INCERTO':{
+        const sumiu=msg.detalhe==='texto-sumiu-sem-envio-confirmado';
+        finalizarSessao(ref,'incerto',
+          (sumiu
+            ?'O campo ficou vazio, mas nao foi identificada nova mensagem enviada. '
+            :'Nao foi identificada nova mensagem enviada apos a tentativa. ')+
+          'Verifique a conversa e concilie em Listas e filas. Nao tente novamente sem confirmar.');
+        break;
+      }
       case 'CANCELADO':
         try{
           convites.marcarManual({campanhaId:ref.campanhaId,
