@@ -1,0 +1,27 @@
+diff --git a/pkg/whatsmeow/service/event_message.go b/pkg/whatsmeow/service/event_message.go
+index 3789dea..a2aa2fa 100644
+--- a/pkg/whatsmeow/service/event_message.go
++++ b/pkg/whatsmeow/service/event_message.go
+@@ -279,12 +279,16 @@ func (mycli *MyClient) handleMessage(evt *events.Message, postMap map[string]int
+ 				"buttonId":   buttonClickData["buttonId"],
+ 				"buttonText": buttonClickData["buttonText"],
+ 				"type":       buttonClickData["type"],
+-				"phone":      dataMap["Sender"],
+-				"jid":        dataMap["Sender"],
+-				"pushName":   dataMap["PushName"],
+-				"messageId":  dataMap["ID"],
+-				"chat":       dataMap["Chat"],
+-				"fromMe":     dataMap["FromMe"],
++				// events.Message stores ID and MessageSource inside Info, not at
++				// the root of dataMap. Reading dataMap["Sender"], etc. produces
++				// nulls and makes the receiver unable to identify or verify clicks.
++				// Use the normalized types.MessageInfo fields directly.
++				"phone":      evt.Info.Sender.ToNonAD().String(),
++				"jid":        evt.Info.Sender.ToNonAD().String(),
++				"pushName":   evt.Info.PushName,
++				"messageId":  evt.Info.ID,
++				"chat":       evt.Info.Chat.ToNonAD().String(),
++				"fromMe":     evt.Info.IsFromMe,
+ 				"timestamp":  evt.Info.Timestamp.Unix(),
+ 				"extraData":  buttonClickData,
+ 			},

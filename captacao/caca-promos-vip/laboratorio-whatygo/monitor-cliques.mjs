@@ -59,7 +59,10 @@ async function relay(payload) {
   });
   if (!response.ok) throw new Error('Central recusou evento HTTP ' + response.status);
   const result = await response.json();
-  return result?.ok === true ? (result.status || 'recebido') : 'ignorado-pela-central';
+  if (result?.ok === true) return result.status || 'recebido';
+  const knownReasons = new Set(['origem-invalida', 'sem-dados', 'botao-desconhecido', 'id-invalido', 'evento-fora-do-prazo']);
+  const reason = knownReasons.has(result?.reason) ? result.reason : 'motivo-nao-identificado';
+  return 'ignorado:' + reason;
 }
 function safeEventHash(payload) {
   if (payload?.event !== 'ButtonClick') return null;

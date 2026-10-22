@@ -274,3 +274,38 @@ Mudancas adicionais:
 Os cliques que falharam antes da correcao nao podem ser atribuidos
 retroativamente se a mensagem bruta nao tiver sido preservada pelo WhatyGo.
 A conta remetente e a sessao existente nao foram substituidas.
+
+## Correção definitiva do payload ButtonClick — 22/10/2026
+
+Verificamos que os cliques das 15:01:52 (aceitar_grupo) e 15:02:16
+(recusar_grupo), hora de Brasília, chegaram ao monitor 4011 e foram
+encaminhados à Central 3045. A Central rejeitou ambos, mantendo zero
+registros e zero bloqueios, pois o WhatyGo transmitia os campos de
+identidade e ID do evento como null.
+
+Causa: em Go, events.Message guarda ID, Sender, Chat e IsFromMe dentro de
+evt.Info; o gerador de eventos ButtonClick os procurava indevidamente em
+dataMap["ID"], dataMap["Sender"], dataMap["Chat"] e dataMap["FromMe"].
+O patch `patch-cliques-identidade-whatygo.patch` substitui essa leitura
+pelos campos de evt.Info, normalizando os JIDs com ToNonAD().
+Os cliques continuam exigindo assinatura de evento, identidade verificável,
+origem local autenticada e consentimento para ações do operador.
+
+Compilamos o WhatyGo nativo sem Docker/CGO, guardamos o executável
+anterior em `bin/whatygo-before-click-fix.exe` e ativamos a versão corrigida
+na porta 4000. O PostgreSQL de testes, a Central 3045 e o monitor 4011
+permaneceram preservados; nenhum novo convite foi enviado.
+A reinicialização do serviço deixou a instância desconectada, exigindo
+reconexão manual pelo próprio titular no painel WhatyGo, sem trocar o
+número. Não configurar CONNECT_ON_STARTUP=true automaticamente.
+
+O monitor agora mostra `ignorado:<motivo>` quando a Central não aceitar
+um clique, sem armazenar mensagens pessoais ou números completos.
+O teste de regressão `tests/whatygo-clique-payload-go.test.mjs` assegura
+que o patch mantém os campos obrigatórios.
+
+Após reconectar a instância, testar manualmente o botão Entrar no grupo
+e verificar http://127.0.0.1:3045/respostas-botoes. Os cliques antigos
+não são reaplicados porque o antigo webhook não guardava a identidade
+verificável dos autores. Clicar em Não tenho interesse quando o novo
+payload for validado causará bloqueio persistente daquele número.
