@@ -80,6 +80,25 @@ test('clean dashboard is light, side menu is usable, no desktop/mobile overflow'
   assert.equal(desktop.navCount,6);
   await page.locator('.clean-sidebar a[href="/enviar"]').click();
   await page.locator('#quickChooseSelf').waitFor();
+  const readable=await page.evaluate(()=>{
+    const font=selector=>parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
+    return {
+      choice:font('.quick-choice strong'),
+      choiceHelp:font('.quick-choice small'),
+      step:font('.quick-progress-item b'),
+      label:font('.quick-field-label'),
+      intro:font('.quick-intro p'),
+      breadcrumb:font('.clean-topbar-breadcrumb'),
+      input:font('#quickPhone'),
+      height:document.querySelector('#quickPhone').getBoundingClientRect().height,
+      chosenText:getComputedStyle(document.querySelector('.quick-choice.is-chosen strong')).color,
+    };
+  });
+  assert.ok(readable.choice>=16&&readable.choiceHelp>=13,JSON.stringify(readable));
+  assert.ok(readable.step>=13&&readable.label>=14&&readable.intro>=15,JSON.stringify(readable));
+  assert.ok(readable.input>=16&&readable.height>=50,JSON.stringify(readable));
+  assert.ok(readable.breadcrumb>=14,JSON.stringify(readable));
+  assert.notEqual(readable.chosenText,'rgb(241, 249, 252)',JSON.stringify(readable));
   assert.equal(await page.locator('.clean-sidebar .clean-nav-link[aria-current="page"]').innerText(),'Enviar convite');
   assert.equal(await page.locator('.quick-aside').isVisible(),false);
   assert.equal(await page.locator('.quick-panel').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 255, 255)');

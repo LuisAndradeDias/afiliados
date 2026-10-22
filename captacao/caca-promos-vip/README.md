@@ -611,3 +611,46 @@ contatos, envios, webhook, opt-in, bloqueios ou automacoes. O estado da
 automacao de respostas e preservado no reinicio seguro da porta 3045.
 Dados pessoais, snapshots de testes e backups ficam somente no disco
 C do ACER, jamais enviados ao GitHub ou ao Google Drive.
+
+## Correção de diagnóstico do clique e legibilidade (22/10/2026)
+
+O último clique em "Entrar no grupo" foi recebido pelo WhatyGo e pela
+Central, mas rejeitado como `impedido-bloqueado`. O titular informou um
+número com DDD diferente no formulário de reativação: ambos tinham os
+mesmos quatro dígitos finais, porém o bloqueio referia-se ao outro DDD.
+O sistema NÃO deve desbloquear, cadastrar ou enviar mensagens para o
+número errado.
+
+A rota `POST /api/local/gestao/numero/diagnostico` consulta SOMENTE o
+computador local autorizado. Recebe um número brasileiro, retorna
+máscara/DDD/final, registro de consentimento, bloqueio atual e o clique
+verificado relativo ao telefone via HMAC, destacando possível DDD
+diferente com o mesmo final. Nunca retorna números completos, chaves,
+links privados ou mensagens recebidas. Exige proteção de Origin/CSRF e
+tem limite de consultas. Nenhuma operação de consulta altera contatos,
+bloqueios, histórico, filas ou sessões.
+
+Em `Contatos > Reativar número`, agora é obrigatório conferir o DDD
+antes de abrir o formulário de autorização. Campos de reativação só
+aparecem quando houver bloqueio por saída voluntária de um número sem
+cadastro. Um número não bloqueado é explicado sem toast de erro.
+Para desbloquear um número realmente bloqueado continua sendo exigida
+nova autorização explícita, documentada e posterior à recusa. O clique
+antigo NUNCA gera envio automático retroativo.
+
+A tela `Respostas` mostra telefone mascarado, horário e status real
+do último clique, com acesso à consulta. A automação ativa por si só
+NÃO envia a quem está bloqueado ou sem consentimento.
+
+Ajustes visuais: barra superior e navegação legíveis, maior contraste,
+formulários e etapas de envio com texto normal (14-16 px), inputs e
+botões com pelo menos 48-53 px nas principais ações, mensagens e avisos
+maiores. `src/assets/layout-clean.css` mantém o layout responsivo e
+o menu lateral existente em desktop/mobile. Não altera HTML público
+nem os limites da automação.
+
+Testes isolados, sem qualquer envio real:
+`tests/diagnostico-numero-automacao.test.mjs` (DDD divergente, proteção,
+consulta sem alteração, Chrome);
+`tests/reativacao-numero-teste-sem-cadastro.test.mjs`;
+`tests/layout-clean.test.mjs`; e os testes de automação com transporte mock.

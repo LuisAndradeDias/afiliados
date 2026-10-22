@@ -117,6 +117,30 @@ export function iniciarGestaoContatos({
     });
     return {bloqueado:true,jaBloqueado:false};
   }
+  function consultarNumeroTeste({ telefone } = {}) {
+    const numero=telefoneBrasil(telefone);
+    if(!numero)throw new Error('Informe o número completo com DDD para consultar.');
+    const bloqueio=denuncias.bloqueiosPorContato([
+      { id:'diagnostico-numero', telefone:numero },
+    ]).get('diagnostico-numero');
+    const contato=contatos.listar().find(c=>c.telefone===numero);
+    const autorizado=!!contato && contatoComConsentimento(contato) && !bloqueio;
+    const situacao=bloqueio?'bloqueado':autorizado?'autorizado'
+      :contato?'cadastro-sem-autorizacao':'sem-cadastro';
+    return {
+      numeroMascarado:numeroMascarado(numero),
+      ddd:numero.slice(2,4),
+      final:numero.slice(-4),
+      bloqueado:!!bloqueio,
+      cadastrado:!!contato,
+      autorizado,
+      situacao,
+      motivoBloqueio:bloqueio?motivoBloqueio(bloqueio.motivo):null,
+      podeReativarSemCadastro:!!bloqueio && !contato &&
+        bloqueio.motivo==='saida-solicitada',
+    };
+  }
+
   let reativacaoAnonimaEmAndamento=false;
   async function reativarNumeroTesteSemCadastro({
     telefone,nome,confirmado=false,novaAutorizacao=false,souTitular=false,
@@ -236,5 +260,5 @@ export function iniciarGestaoContatos({
       filasAnterioresEncerradas:antigasWeb+antigasCrm,
       liberadoEm:liberacao.liberadoEm};
   }
-  return {listar,detalhe,bloquear,desbloquear,reativarNumeroTesteSemCadastro,resumo:()=>dados().resumo};
+  return {listar,detalhe,bloquear,desbloquear,consultarNumeroTeste,reativarNumeroTesteSemCadastro,resumo:()=>dados().resumo};
 }

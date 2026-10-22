@@ -456,6 +456,15 @@ export function criarPiloto({
             const entrada=await corpoJson(req,1500);
             return json(res,200,{ok:true,resultado:gestaoContatos.bloquear(entrada)});
           }
+          if (pathname === '/api/local/gestao/numero/diagnostico' && method==='POST'){
+            if(!limitar(req,'gestao-diagnostico-numero',30))
+              return json(res,429,{ok:false,mensagem:'Limite de consultas atingido. Aguarde.'});
+            const entrada=await corpoJson(req,512);
+            const numero=gestaoContatos.consultarNumeroTeste(entrada);
+            const cliques=respostasBotoes.diagnosticarNumero(entrada.telefone);
+            return json(res,200,{ok:true,numero,cliques,
+              automacao:respostasBotoes.configuracaoAutomacao()});
+          }
           if (pathname === '/api/local/gestao/numero/reativar-teste' && method==='POST'){
             if(!limitar(req,'gestao-reativar-teste-sem-cadastro',6))
               return json(res,429,{ok:false,mensagem:'Limite de tentativas de reativação atingido.'});

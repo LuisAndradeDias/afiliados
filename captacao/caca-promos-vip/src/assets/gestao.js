@@ -266,6 +266,86 @@
       .toISOString().slice(0,10);
     dateInput.value=hojeLocal;
     dateInput.max=hojeLocal;
+    const numeroInput=$('reactivateTestPhone');
+    const consultButton=$('reactivateCheckStatus');
+    const diagnosis=$('reactivateNumberDiagnosis');
+    const proofFields=$('reactivateProofFields');
+    let checkedPhone=null;
+    let canReactivate=false;
+
+    const diagnoseText=(message,kind='info')=>{
+      diagnosis.className='reactivate-diagnostic is-'+kind;
+      diagnosis.replaceChildren();
+      const text=document.createElement('p');
+      text.textContent=message;
+      diagnosis.append(text);
+      const link=document.createElement('a');
+      link.href='/respostas-botoes';
+      link.textContent='Conferir histórico dos cliques →';
+      diagnosis.append(link);
+    };
+    numeroInput.addEventListener('input',()=>{
+      checkedPhone=null;
+      canReactivate=false;
+      proofFields.hidden=true;
+      diagnoseText('Número alterado. Consulte novamente para confirmar o DDD e a situação.');
+    });
+    async function conferirNumero(){
+      const typed=numeroInput.value.trim();
+      if(!typed){
+        diagnoseText('Digite primeiro o WhatsApp completo, incluindo DDD.','attention');
+        return false;
+      }
+      checkedPhone=null;
+      canReactivate=false;
+      proofFields.hidden=true;
+      consultButton.disabled=true;
+      diagnoseText('Consultando bloqueios, autorização e cliques deste número...');
+      try{
+        const result=await api('/api/local/gestao/numero/diagnostico',{telefone:typed});
+        const n=result.numero;
+        const clicks=result.cliques||{};
+        let msg='';
+        if(n.bloqueado){
+          msg=n.numeroMascarado+' está bloqueado ('+n.motivoBloqueio+'). Nenhum link será enviado enquanto esse bloqueio estiver ativo.';
+        }else if(n.autorizado){
+          msg=n.numeroMascarado+' está liberado e possui autorização registrada. Consulte o último clique para verificar o envio automático.';
+        }else if(n.cadastrado){
+          msg=n.numeroMascarado+' não está bloqueado, mas o cadastro ainda não tem autorização válida. O link automático não será enviado.';
+        }else{
+          msg=n.numeroMascarado+' não está bloqueado, mas também não está cadastrado como autorizado. Sem cadastro válido, a automação não envia o link.';
+        }
+        if(clicks.cliqueDesteNumero){
+          const last=clicks.cliqueDesteNumero;
+          const status=last.status==='impedido-bloqueado'?'bloqueado':
+            last.status==='pendente-consentimento'?'sem consentimento cadastrado':
+            last.status==='auto-link-enviado-api'?'envio aceito pela API (não comprova entrega)':
+            last.status==='auto-incerto'?'envio incerto':
+            last.status;
+          msg+=' Clique encontrado para este número: '+status+'.';
+        }
+        if(clicks.numeroDiferenteNoClique&&clicks.cliqueComMesmoFinal){
+          const other=clicks.cliqueComMesmoFinal;
+          msg+=' Atenção: há um clique de '+other.telefoneMascarado+
+            ' terminando nos mesmos quatro dígitos, mas é OUTRO número.';
+          if(clicks.dddDiferenteNoClique)
+            msg+=' O DDD é diferente do digitado aqui. Confira o DDD no aparelho de teste.';
+        }
+        canReactivate=!!n.podeReativarSemCadastro;
+        checkedPhone=typed;
+        proofFields.hidden=!canReactivate;
+        if(canReactivate)msg+=' Para liberar este número, registre abaixo uma nova autorização do titular posterior à recusa.';
+        else if(n.bloqueado&&n.cadastrado)msg+=' Este número já tem cadastro; utilize a ficha do contato em Contatos → Bloqueados.';
+        diagnoseText(msg,n.bloqueado?'attention':n.autorizado?'success':'info');
+        return canReactivate;
+      }catch(error){
+        diagnoseText('Não foi possível consultar: '+(error.message||'revise o telefone e tente novamente.'),'attention');
+        return false;
+      }finally{
+        consultButton.disabled=false;
+      }
+    }
+    consultButton.addEventListener('click',conferirNumero);
     if(location.hash==='#reativar-teste') {
       setTimeout(()=>$('reactivateTestPhone')?.focus({preventScroll:true}),30);
     }
@@ -277,6 +357,10 @@
         return;
       }
       const telefone=field('reactivateTestPhone');
+      if(!canReactivate || checkedPhone!==telefone){
+        diagnoseText('Consulte a situação do número antes de solicitar a reativação. Confira o DDD.','attention');
+        return;
+      }
       const nome=field('reactivateTestName');
       const referenciaAutorizacao=field('reactivateTestReference');
       const origemAutorizacao=field('reactivateTestOrigin');
@@ -298,6 +382,10 @@
         if(r?.resultado?.desbloqueado!==true)throw new Error('Não foi possível confirmar a reativação.');
         form.reset();
         dateInput.value=hojeLocal;
+        checkedPhone=null;
+        canReactivate=false;
+        proofFields.hidden=true;
+        diagnoseText('Reativação concluída com autorização documentada. Histórico preservado. O clique antigo não será reenviado.','success');
         feedback.textContent='Número reativado e registrado com nova autorização. '
           +'A recusa antiga foi preservada. Para testar novamente, '
           +'envie você mesmo um novo convite; o sistema não enviou mensagens nesta operação.';

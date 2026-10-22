@@ -277,6 +277,27 @@ export function iniciarRespostasBotoes({
     if (status === 'auto-na-fila') agendarConvite(hash, phone);
     return { ok: true, duplicate: false, status };
   }
+  function diagnosticarNumero(telefone) {
+    const normalized=telefoneBrasil(telefone);
+    if(!normalized)throw new Error('Informe um telefone brasileiro com DDD válido.');
+    const telefoneHash=hmac(eventSecret,'phone:'+normalized);
+    // Comparação somente por HMAC: nenhum telefone completo precisa ser
+    // armazenado nos eventos de botões ou retornado para a interface.
+    const rows=load().eventos;
+    const own=rows.find(x=>x.hashContato===telefoneHash);
+    const sameSuffix=rows.find(x=>x.hashContato &&
+      typeof x.telefone==='string' && x.telefone.endsWith(normalized.slice(-4)));
+    const summarize=x=>x?{
+      instante:x.instante,acao:x.acao,status:x.status,telefoneMascarado:x.telefone,
+    }:null;
+    return {
+      cliqueDesteNumero:summarize(own),
+      cliqueComMesmoFinal:summarize(sameSuffix),
+      numeroDiferenteNoClique:!!sameSuffix && sameSuffix.hashContato!==telefoneHash,
+      dddDiferenteNoClique:!!sameSuffix &&
+        !sameSuffix.telefone.startsWith('+55'+normalized.slice(2,4)),
+    };
+  }
   function list() {
     const rows = load().eventos;
     let groupUrl = null;
@@ -321,5 +342,5 @@ export function iniciarRespostasBotoes({
       }),
     };
   }
-  return { receive, list, checkBridgeKey, configuracaoAutomacao, configurarAutomacao };
+  return { receive, list, diagnosticarNumero, checkBridgeKey, configuracaoAutomacao, configurarAutomacao };
 }

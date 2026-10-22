@@ -130,9 +130,19 @@ const contacts=`
     </div>
   </div>
   <p class="context-note">O bloqueio protege os contatos contra novos convites. Este formulário exige uma autorização NOVA, dada depois da recusa. Ele não envia mensagens, não restaura filas antigas e preserva o histórico.</p>
-  <form id="reactivateTestForm" class="unlock-form" style="display:grid;gap:12px;max-width:620px">
-    <label for="reactivateTestPhone">Meu número de testes (com DDD)</label>
+  <form id="reactivateTestForm" class="unlock-form reactivate-test-form">
+    <label for="reactivateTestPhone">Qual número recebeu o convite? (com DDD)</label>
     <input id="reactivateTestPhone" type="tel" required inputmode="tel" autocomplete="off" placeholder="Ex.: 22 99999-0000">
+    <div class="reactivate-lookup-row">
+      <button type="button" class="btn btn-quiet" id="reactivateCheckStatus">Conferir situação do número</button>
+      <span>Confira o DDD e os últimos 4 dígitos antes de reativar.</span>
+    </div>
+    <div id="reactivateNumberDiagnosis" class="reactivate-diagnostic" role="status" aria-live="polite">
+      Consulte primeiro: o número do último clique pode ser diferente do digitado aqui.
+    </div>
+    <div id="reactivateProofFields" class="reactivate-proof-fields" hidden>
+    <h3>Nova autorização do titular</h3>
+    <p>Preencha somente após confirmar que esse número está bloqueado e que houve uma nova autorização.</p>
     <label for="reactivateTestName">Nome do titular do número</label>
     <input id="reactivateTestName" type="text" required minlength="2" maxlength="80" autocomplete="name" placeholder="Identificação do titular">
     <label for="reactivateTestOrigin">Onde ocorreu a nova autorização?</label>
@@ -149,8 +159,9 @@ const contacts=`
       <input id="reactivateTestConfirmed" type="checkbox" required>
       <span>Estou ciente de que a recusa original ficará no histórico e nenhuma mensagem será enviada agora.</span>
     </label>
-    <div><button type="submit" class="btn btn-primary" id="reactivateTestSubmit">Reativar meu número de teste</button></div>
-    <p id="reactivateTestFeedback" class="context-note" role="status" aria-live="polite">Use esta opção somente para seu próprio número, após nova autorização. Para um contato já cadastrado, utilize o desbloqueio na ficha.</p>
+    <div><button type="submit" class="btn btn-primary" id="reactivateTestSubmit">Confirmar reativação autorizada</button></div>
+    </div>
+    <p id="reactivateTestFeedback" class="context-note" role="status" aria-live="polite">Consultar a situação não envia mensagens, não desbloqueia ninguém e não altera o cadastro.</p>
   </form>
 </section>
 <p class="context-note"><strong>Importante:</strong> contatos bloqueados não recebem novos convites.

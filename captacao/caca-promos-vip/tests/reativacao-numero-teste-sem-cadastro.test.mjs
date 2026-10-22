@@ -131,7 +131,7 @@ test('contacts UI exposes guided own-number reactivation with all mandatory fiel
   assert.match(js,/api\/local\/gestao\/numero\/reativar-teste/);
 });
 
-test('headless Chrome can submit the form and never triggers WhatsApp sends',async t=>{
+test('headless Chrome can submit the form and never triggers WhatsApp sends',{timeout:22000},async t=>{
   const { createRequire }=await import('node:module');
   const require=createRequire(import.meta.url);
   const { chromium }=require('../../../node_modules/playwright');
@@ -140,9 +140,13 @@ test('headless Chrome can submit the form and never triggers WhatsApp sends',asy
     executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'});
   t.after(()=>browser.close());
   const page=await browser.newPage({viewport:{width:390,height:844}});
+  page.setDefaultTimeout(8000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(app.base+'/contatos#reativar-teste');
   await page.locator('#reactivateTestPhone').fill(TELEFONE);
+  assert.equal(await page.locator('#reactivateProofFields').isVisible(),false);
+  await page.locator('#reactivateCheckStatus').click();
+  await page.locator('#reactivateProofFields').waitFor({state:'visible'});
   await page.locator('#reactivateTestName').fill(AUTORIZACAO.nome);
   await page.locator('#reactivateTestOrigin').fill(AUTORIZACAO.origemAutorizacao);
   await page.locator('#reactivateTestReference').fill(AUTORIZACAO.referenciaAutorizacao);
@@ -151,7 +155,7 @@ test('headless Chrome can submit the form and never triggers WhatsApp sends',asy
   await page.locator('#reactivateTestConfirmed').check();
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('#reactivateTestSubmit').click();
-  await page.waitForFunction(()=>document.querySelector('#reactivateTestFeedback')?.textContent?.includes('Número reativado'));
+  await page.waitForFunction(()=>document.querySelector('#reactivateTestFeedback')?.textContent?.includes('Número reativado'),{timeout:8000});
   assert.equal(denuncias.estaBloqueado(TELEFONE),false);
   assert.equal(app.contatos.listar().length,1);
   assert.deepEqual(errors,[]);

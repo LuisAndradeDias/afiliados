@@ -81,8 +81,14 @@
       } else {
         const link = document.createElement('a');
         link.className = 'text-link';
-        link.href = entry.status === 'recusa-bloqueada' ? '/denuncias' : '/contatos';
-        link.textContent = entry.status === 'recusa-bloqueada' ? 'Ver bloqueios →' : 'Conferir cadastro →';
+        if(entry.status === 'impedido-bloqueado' && !entry.contatoId) {
+          link.href='/contatos#reativar-teste';
+          link.textContent='Conferir número e bloqueio →';
+        } else if(entry.status === 'recusa-bloqueada') {
+          link.href='/denuncias';link.textContent='Ver bloqueios →';
+        } else {
+          link.href='/contatos';link.textContent='Conferir cadastro →';
+        }
         td.appendChild(link);
       }
       tr.appendChild(td);
@@ -101,12 +107,15 @@
     }
     indicator.hidden = false;
     const heading = document.createElement('strong');
-    heading.textContent = 'Último clique: ';
+    const quando=new Date(latest.instante);
+    const dataClique=Number.isNaN(quando.valueOf())?'horário não identificado':
+      quando.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+    heading.textContent='Último clique · '+dataClique+' · '+(latest.telefone||'Não identificado')+': ';
     indicator.appendChild(heading);
     const messages = {
-      'impedido-bloqueado': 'Nenhum convite enviado: o destinatário está bloqueado após um pedido de não receber mensagens.',
+      'impedido-bloqueado': 'LINK NÃO ENVIADO. Este número clicou em “Não tenho interesse” anteriormente e permanece bloqueado. A automação ativa não ultrapassa bloqueios.',
       'aceite-antigo-reativado': 'O número foi reativado depois deste clique, mas a solicitação antiga não é reprocessada. Faça um novo envio manual dos botões e toque novamente em Entrar no grupo.',
-      'pendente-consentimento': 'Nenhum convite enviado: falta registro prévio de consentimento desse destinatário.',
+      'pendente-consentimento': 'LINK NÃO ENVIADO. Este número não possui consentimento válido cadastrado. É preciso uma autorização documentada para testar a resposta automática.',
       'pendente-identidade': 'Nenhum convite enviado: a identidade do destinatário não pôde ser comprovada.',
       'aceite-pendente-operador': 'Aceite registrado. Automação desligada no momento do clique: envio somente manual.',
       'auto-na-fila': 'Aceite válido. O envio aguarda processamento.',
@@ -127,7 +136,7 @@
         ? ' A conta está liberada para um novo teste individual autorizado.'
         : latest.contatoId
         ? ' Uma nova autorização documentada é necessária para desbloquear o contato.'
-        : ' Esse número não possui cadastro associado na Central. Para testar agora, utilize outro contato previamente autorizado e não bloqueado; não reative esta recusa automaticamente.';
+        : ' Esse número ainda não tem cadastro associado. Confira o DDD na tela de reativação, registre nova autorização do titular e só depois faça um novo teste. Não reaproveite cliques antigos.';
       indicator.appendChild(explanation);
       const link = document.createElement('a');
       link.className = 'text-link';

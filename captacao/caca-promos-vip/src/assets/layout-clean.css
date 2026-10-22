@@ -283,3 +283,253 @@ body[data-layout="clean"]:not([data-page]) .setup-step.active{background:#e2f7ee
 @media(prefers-reduced-motion:reduce){
  body[data-layout="clean"] .clean-sidebar,body[data-layout="clean"] .clean-action{transition:none}
 }
+
+/* Legibilidade do desktop ACER: hierarquia clara em 100% e 125%, sem texto minúsculo. */
+body[data-layout="clean"]{
+  font-size:16px;
+  line-height:1.55;
+}
+body[data-layout="clean"] .clean-brand-copy strong{font-size:14px}
+body[data-layout="clean"] .clean-brand-copy small{font-size:12px;color:#b4c5d3}
+body[data-layout="clean"] .clean-nav-link{font-size:15px;min-height:47px;padding:11px 14px}
+body[data-layout="clean"] .clean-nav-section{font-size:11px;color:#9bb0c2}
+body[data-layout="clean"] .clean-subnav{font-size:13px;min-height:42px;color:#b9cad7!important}
+body[data-layout="clean"] .clean-sidebar-bottom strong{font-size:13px}
+body[data-layout="clean"] .clean-sidebar-bottom small{font-size:12px}
+body[data-layout="clean"] .clean-topbar{min-height:80px}
+body[data-layout="clean"] .clean-topbar-breadcrumb,
+body[data-layout="clean"] .clean-topbar-breadcrumb strong{font-size:14px}
+body[data-layout="clean"] .clean-local-badge{font-size:13px;padding:10px 15px}
+body[data-layout="clean"][data-page] .page-heading p{font-size:16px;line-height:1.65}
+body[data-layout="clean"] .overline{font-size:12px}
+body[data-layout="clean"] .panel-head h2{font-size:23px;line-height:1.3}
+body[data-layout="clean"] .panel-head p{font-size:15px;line-height:1.55}
+body[data-layout="clean"] .stat-label{font-size:14px}
+body[data-layout="clean"] .stat-card small{font-size:13px}
+body[data-layout="clean"] .context-note{font-size:14px;line-height:1.65}
+body[data-layout="clean"] .btn{min-height:48px;padding:11px 17px;font-size:15px;font-weight:730}
+body[data-layout="clean"] .filter-tab{font-size:14px;min-height:44px;padding:10px 14px}
+body[data-layout="clean"] .status-pill{font-size:13px;padding:7px 11px}
+body[data-layout="clean"] .soft-label{font-size:13px}
+body[data-layout="clean"] .text-link{font-size:14px}
+body[data-layout="clean"] .search-box input{height:50px;font-size:15px}
+body[data-layout="clean"] .contact-table{font-size:14px}
+body[data-layout="clean"] .contact-table thead th{font-size:12px}
+body[data-layout="clean"] .person-cell strong{font-size:15px}
+body[data-layout="clean"] .person-cell small{font-size:13px}
+body[data-layout="clean"] .row-view{font-size:13px;padding:9px 12px;min-height:40px}
+body[data-layout="clean"] .result-count,body[data-layout="clean"] .pagination p{font-size:14px}
+body[data-layout="clean"] .report-copy strong{font-size:15px}
+body[data-layout="clean"] .report-copy p,
+body[data-layout="clean"] .report-when{font-size:13px}
+body[data-layout="clean"] .site-footer{font-size:12px}
+
+/* Primeira consulta; só revela a prova de nova autorização após bloqueio verificado. */
+body[data-layout="clean"] #reativar-teste{max-width:1000px;scroll-margin-top:25px}
+body[data-layout="clean"] .reactivate-test-form{width:100%;max-width:720px;padding:22px;gap:13px}
+body[data-layout="clean"] .reactivate-test-form>label:not(.unlock-checkbox),
+body[data-layout="clean"] .reactivate-proof-fields>label:not(.unlock-checkbox){
+  font-size:15px;font-weight:720;color:#294258;margin:0;
+}
+body[data-layout="clean"] .reactivate-test-form>input,
+body[data-layout="clean"] .reactivate-proof-fields>input,
+body[data-layout="clean"] .reactivate-proof-fields>textarea{
+  width:100%;min-height:52px;background:#fff;color:#183046;border:1px solid #c8d7e3;
+  border-radius:10px;font:inherit;font-size:16px;padding:13px 15px;
+}
+body[data-layout="clean"] .reactivate-proof-fields>textarea{min-height:100px;resize:vertical}
+body[data-layout="clean"] .reactivate-proof-fields{
+  display:grid;gap:13px;padding-top:20px;margin-top:4px;border-top:1px solid #d2e5df;
+}
+body[data-layout="clean"] .reactivate-proof-fields[hidden]{display:none!important}
+body[data-layout="clean"] .reactivate-proof-fields h3{color:#19394c;font-size:20px;margin:0}
+body[data-layout="clean"] .reactivate-proof-fields>p{font-size:14px;color:#5b7280;line-height:1.6;margin:0 0 3px}
+body[data-layout="clean"] .reactivate-lookup-row{
+  display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:2px;
+}
+body[data-layout="clean"] .reactivate-lookup-row span{font-size:14px;color:#60798a}
+body[data-layout="clean"] .reactivate-diagnostic{
+  color:#29465d;background:#f1f6fa;border:1px solid #d8e5ed;
+  border-radius:11px;padding:15px 17px;font-size:15px;line-height:1.6;
+}
+body[data-layout="clean"] .reactivate-diagnostic.is-attention{
+  background:#fff8e7;border-color:#eed9aa;color:#794b17;
+}
+body[data-layout="clean"] .reactivate-diagnostic.is-success{
+  background:#e9f8f0;border-color:#b5dfc9;color:#18583d;
+}
+body[data-layout="clean"] .reactivate-diagnostic p{margin:0 0 8px}
+body[data-layout="clean"] .reactivate-diagnostic a{color:#176f65;text-decoration:underline;font-weight:760}
+body[data-layout="clean"] .unlock-checkbox{
+  padding:15px 16px;font-size:15px;line-height:1.55;gap:12px;
+}
+body[data-layout="clean"] .unlock-checkbox input{
+  min-width:21px;min-height:21px;width:21px;height:21px;margin-top:2px;
+}
+body[data-layout="clean"] .reactivate-proof-fields #reactivateTestSubmit{
+  font-size:16px;min-height:52px;font-weight:750;
+}
+body[data-layout="clean"] .unlock-form:not(.reactivate-test-form)>label:not(.unlock-checkbox){font-size:14px}
+body[data-layout="clean"] .unlock-form:not(.reactivate-test-form)>input,
+body[data-layout="clean"] .unlock-form:not(.reactivate-test-form)>textarea{font-size:15px;min-height:48px}
+body[data-layout="clean"] .notification{
+  font-size:15px;line-height:1.55;min-width:min(340px,calc(100vw - 30px));
+  max-width:min(540px,calc(100vw - 30px));padding:17px 21px;
+  border-radius:13px;box-shadow:0 16px 45px #20314135;
+}
+
+/* Envio supervisionado: controles de tamanho e contraste normais. */
+body[data-layout="clean"][data-page="enviar"] .quick-workspace{
+  max-width:990px;width:100%;margin:0;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-intro-copy{max-width:900px}
+body[data-layout="clean"][data-page="enviar"] .quick-intro p{
+  font-size:16px;line-height:1.65;color:#566e84;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-labels{
+  gap:13px 19px;margin-top:16px;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-labels>span{
+  font-size:14px;color:#287b64;font-weight:700;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-progress{
+  padding:17px 22px;min-height:77px;margin-bottom:18px;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-progress-item{
+  color:#5f7286;gap:10px;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-progress-item.is-active{color:#164a38}
+body[data-layout="clean"][data-page="enviar"] .quick-progress-item b{
+  font-size:14px;font-weight:760;white-space:normal;line-height:1.3;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-progress-item span{
+  width:34px;height:34px;font-size:14px;background:#e9f0f5;color:#315166;border-color:#c6d7e2;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-progress-item.is-active span{
+  color:#0c422f;background:#6ee0b9;border-color:#60cfa9;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-progress-item.is-done span{
+  color:#0e704e;background:#daf8ea;border-color:#9adaae;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-progress-line{
+  height:2px;background:#bccbd7;min-width:12px;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-panel{
+  padding:30px 32px;min-width:0;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-number{
+  width:47px;height:47px;font-size:15px;color:#e6fff3;background:#17634f;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-panel-head h2{font-size:27px}
+body[data-layout="clean"][data-page="enviar"] .quick-panel-head p{font-size:15px;color:#5d7488}
+body[data-layout="clean"][data-page="enviar"] .quick-choice{min-height:145px;padding:19px 20px}
+body[data-layout="clean"][data-page="enviar"] .quick-choice strong{
+  font-size:17px;color:#18354a;line-height:1.35;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-choice small{
+  font-size:14px;color:#547084;line-height:1.5;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-choice-symbol{
+  width:37px;height:37px;margin-bottom:14px;color:#176c55;border-color:#9ab7ae;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-field-label{
+  font-size:15px;color:#28425a;font-weight:760;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-panel input:not([type="checkbox"]),
+body[data-layout="clean"][data-page="enviar"] .quick-panel textarea{
+  font-size:16px;min-height:53px;padding:13px 16px;background:#fff;color:#193247;border-color:#c4d5e0;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-panel textarea{line-height:1.65}
+body[data-layout="clean"][data-page="enviar"] .quick-inline>.btn{
+  font-size:15px;min-height:53px;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-help{
+  color:#5c7288!important;font-size:14px!important;line-height:1.6!important;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-bottom>span{
+  font-size:14px;color:#526a7e;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-bottom .btn{font-size:15px;min-height:50px}
+body[data-layout="clean"][data-page="enviar"] .quick-message{
+  font-size:15px;background:#ebf8f3;color:#23674c;border-color:#b6decf;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-message.is-error{
+  background:#fff1f1;color:#a3343b;border-color:#e2a7b3;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-selected strong{color:#163b2f;font-size:16px}
+body[data-layout="clean"][data-page="enviar"] .quick-selected small{color:#426e60;font-size:14px}
+body[data-layout="clean"][data-page="enviar"] .quick-selected{background:#e9f9f0}
+body[data-layout="clean"][data-page="enviar"] .quick-check{font-size:13px}
+body[data-layout="clean"][data-page="enviar"] .quick-new h3{font-size:18px}
+body[data-layout="clean"][data-page="enviar"] .quick-new>p,
+body[data-layout="clean"][data-page="enviar"] .quick-checkbox{font-size:14px;color:#526b7e}
+body[data-layout="clean"][data-page="enviar"] .quick-result-row{
+  background:#fff;color:#193246;border-color:#d4e1ec;
+}
+body[data-layout="clean"][data-page="enviar"] .quick-result-row strong{font-size:15px}
+body[data-layout="clean"][data-page="enviar"] .quick-result-row small{font-size:13px;color:#64798b}
+body[data-layout="clean"][data-page="enviar"] .quick-result-row>span:last-child{color:#136c50;font-size:14px}
+body[data-layout="clean"][data-page="enviar"] .quick-text-link{font-size:14px;color:#167052}
+body[data-layout="clean"][data-page="enviar"] .quick-preview-text{font-size:15px}
+body[data-layout="clean"][data-page="enviar"] .quick-result,
+body[data-layout="clean"][data-page="enviar"] .quick-guidance{font-size:15px}
+body[data-layout="clean"][data-page="enviar"] .quick-action{font-size:16px;min-height:54px}
+body[data-layout="clean"][data-page="enviar"] .quick-toast{
+  font-size:15px;padding:18px 21px;max-width:min(520px,calc(100vw - 32px));
+}
+body[data-layout="clean"][data-page="enviar"] .quick-preview-tools span,
+body[data-layout="clean"][data-page="enviar"] .quick-field-meta,
+body[data-layout="clean"][data-page="enviar"] .quick-safe-note{font-size:13px}
+body[data-layout="clean"][data-page="enviar"] .quick-connection summary,
+body[data-layout="clean"][data-page="enviar"] .quick-manual summary{font-size:15px}
+
+/* Cabeçalho e registro do botão devem explicar o motivo de não enviar. */
+body[data-layout="clean"] #rbLatestOutcome{
+  display:block;background:#fff8e9;color:#6a4b22;
+  border:1px solid #e8d5ad;border-radius:12px;padding:18px;
+  font-size:15px;line-height:1.7;margin:17px 0 0;
+}
+body[data-layout="clean"] #rbLatestOutcome[hidden]{display:none!important}
+body[data-layout="clean"] #rbLatestOutcome strong{font-size:16px;color:#503a22}
+body[data-layout="clean"] #rbLatestOutcome .text-link{
+  display:inline-flex;margin-left:8px;color:#805c2a!important;
+  text-decoration:underline;
+}
+body[data-layout="clean"] #rbLatestOutcome small{font-size:13px;display:block;margin-top:5px}
+body[data-layout="clean"] #rbAutoExplanation,
+body[data-layout="clean"] #rbAutoFeedback{font-size:15px;line-height:1.65}
+
+/* Listas e filas avançadas: texto normal sem mudar a lógica dos controles. */
+body[data-layout="clean"]:not([data-page]) .wrap{font-size:15px}
+body[data-layout="clean"]:not([data-page]) .eyebrow{font-size:12px}
+body[data-layout="clean"]:not([data-page]) .hero p,
+body[data-layout="clean"]:not([data-page]) .card p{font-size:15px;line-height:1.6}
+body[data-layout="clean"]:not([data-page]) label{font-size:14px}
+body[data-layout="clean"]:not([data-page]) input,
+body[data-layout="clean"]:not([data-page]) textarea{font-size:15px;min-height:48px}
+body[data-layout="clean"]:not([data-page]) button{font-size:14px;min-height:43px}
+body[data-layout="clean"]:not([data-page]) details>summary{font-size:15px}
+body[data-layout="clean"]:not([data-page]) .workflow-links a{font-size:14px}
+
+@media(max-width:850px){
+  body[data-layout="clean"] .clean-topbar{min-height:67px;height:67px}
+  body[data-layout="clean"] .clean-topbar-breadcrumb,
+  body[data-layout="clean"] .clean-topbar-breadcrumb strong{font-size:13px}
+  body[data-layout="clean"] .clean-local-badge{font-size:12px}
+}
+@media(max-width:650px){
+  body[data-layout="clean"] .reactivate-test-form{padding:15px}
+  body[data-layout="clean"] .reactivate-proof-fields{gap:12px}
+  body[data-layout="clean"][data-page="enviar"] .quick-panel{padding:22px 17px}
+  body[data-layout="clean"][data-page="enviar"] .quick-progress{padding:13px 12px;gap:6px}
+  body[data-layout="clean"][data-page="enviar"] .quick-progress-item{gap:6px;flex:1}
+  body[data-layout="clean"][data-page="enviar"] .quick-progress-item b{font-size:12px;line-height:1.3}
+  body[data-layout="clean"][data-page="enviar"] .quick-progress-item span{width:29px;height:29px;font-size:13px}
+  body[data-layout="clean"][data-page="enviar"] .quick-progress-line{min-width:4px;flex:0 1 12px}
+  body[data-layout="clean"][data-page="enviar"] .quick-choice-row{gap:10px}
+  body[data-layout="clean"][data-page="enviar"] .quick-choice{min-height:144px;padding:15px}
+  body[data-layout="clean"][data-page="enviar"] .quick-choice strong{font-size:15px}
+  body[data-layout="clean"][data-page="enviar"] .quick-choice small{font-size:13px}
+  body[data-layout="clean"][data-page="enviar"] .quick-inline{flex-wrap:wrap}
+  body[data-layout="clean"][data-page="enviar"] .quick-inline>.btn{flex:1}
+}
