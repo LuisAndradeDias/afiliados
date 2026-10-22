@@ -21,19 +21,20 @@ const choices = new Map([
   ['CPV_NAO_INTERESSE', 'Nao tenho interesse'],
 ]);
 function findChoice(payload) {
-  const serialized = JSON.stringify(payload?.data ?? {});
-  for (const [identifier, label] of choices) {
-    if (serialized.includes(identifier)) return { identifier, label };
-  }
-  return { identifier: null, label: 'Opcao nao identificada' };
+  const identifier = String(payload?.data?.buttonId ?? payload?.data?.response?.buttonId ?? '');
+  return {
+    identifier: choices.has(identifier) ? identifier : null,
+    label: choices.get(identifier) ?? 'Opcao nao identificada',
+  };
 }
 function addEvent(payload) {
-  const type = String(payload?.event ?? '').toUpperCase();
-  if (!['BUTTON_CLICK', 'SEND_MESSAGE', 'CONNECTION'].includes(type)) return;
+  const raw = String(payload?.event ?? '').replace(/[^A-Za-z]/g, '').toUpperCase();
+  const type = ({ BUTTONCLICK: 'BUTTON_CLICK', SENDMESSAGE: 'SEND_MESSAGE', CONNECTION: 'CONNECTION' })[raw];
+  if (!type) return;
   const event = {
     quando: new Date().toISOString(),
     evento: type,
-    instancia: String(payload.instance ?? '').slice(0, 60),
+    instancia: String(payload?.instanceName ?? payload?.instance ?? '').slice(0, 60),
     ...(type === 'BUTTON_CLICK' ? { escolha: findChoice(payload) } : {}),
   };
   history.unshift(event);

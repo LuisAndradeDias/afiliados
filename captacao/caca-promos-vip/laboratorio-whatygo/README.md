@@ -131,3 +131,42 @@ sem armazenar numero de telefone, texto de mensagem ou chave de API.
 
 Se o evento chegar com "Opcao nao identificada", conferir o formato do
 webhook antes de integrar. Nunca automatizar inclusao em grupo neste teste.
+
+## Novo teste supervisionado entre duas contas (22/10/2026)
+
+Instancia nova criada via API: cpv-lab-remetente-4306.
+- Remetente previsto: WhatsApp secundario com final 4306.
+- Destinatario autorizado: WhatsApp principal com final 1632.
+- A instancia foi criada SEM pareamento e com CONNECT_ON_STARTUP=false.
+- URL de webhook: http://127.0.0.1:4011/webhook
+- Assinaturas: BUTTON_CLICK, SEND_MESSAGE, CONNECTION.
+- Conta existente "teste" preservada sem alteracoes por nao ser possivel
+  comprovar seu numero a partir das informacoes disponiveis.
+- A sessao antiga deve ser desvinculada pelo titular em Aparelhos conectados
+  se ela for do numero Business principal.
+
+Passos:
+1. Abra http://127.0.0.1:4000/manager no computador ACER.
+2. Em Instancias, escolha somente "cpv-lab-remetente-4306".
+3. Clique Conectar e leia o QR Code usando o WHATSAPP SECUNDARIO (final 4306):
+   Aparelhos conectados -> Conectar aparelho.
+4. Confirme no painel que essa instancia esta conectada. Nao use "teste".
+5. Confira que http://127.0.0.1:4011 esta online (monitor de eventos).
+6. Antes de enviar, confira a previa sem enviar:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\enviar-convite-unico.ps1"
+7. Depois de conferir e autorizar conscientemente UM UNICO envio:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\enviar-convite-unico.ps1" -Enviar
+8. No principal (final 1632), confira se os botoes nao estao cinza
+   e toque em uma opcao. Verifique o evento no monitor.
+
+Seguranca:
+- O script aceita APENAS a conta remetente autorizada e o numero destino
+  fixado em arquivos privados (nao versionados).
+- O arquivo private\convite-um-unico-envio.lock e criado ANTES da chamada de
+  envio e impede repeticoes involuntarias mesmo se houver timeout da API.
+- Nao apague o lock para repetir sem analisar a mensagem no celular.
+- O monitor foi corrigido para reconhecer o evento real "ButtonClick"
+  (alem de "BUTTON_CLICK") e o campo "instanceName".
+- Os dois eventos foram verificados com payloads simulados e depois
+  removidos do historico. A validacao REAL ainda depende do QR e do toque.
+- Codigo e ferramentas experimentais nao sao garantia de seguranca da conta.
