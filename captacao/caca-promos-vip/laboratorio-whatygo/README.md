@@ -105,3 +105,29 @@ incluidos no Git. Nao utilizar esta compilacao para testar figurinhas.
 - GET http://127.0.0.1:3045/inicio: 200 (Central original intacta).
 - Banco de testes apenas na porta 55432 local.
 - Nenhuma conta pareada, nenhuma mensagem enviada pelo laboratorio.
+
+## Monitor local de cliques (opcional)
+
+O laboratorio possui um receptor de webhook independente na porta 4011,
+sem armazenar numero de telefone, texto de mensagem ou chave de API.
+
+- Executar "Iniciar Monitor de Cliques.cmd".
+- Abrir "Abrir Monitor de Cliques.cmd" (http://127.0.0.1:4011).
+- No painel WhatyGo, apos criar a instancia de TESTE:
+  abrir a instancia > "Webhook e eventos".
+- Em URL do webhook, usar: http://127.0.0.1:4011/webhook
+- Marcar BUTTON_CLICK, SEND_MESSAGE e CONNECTION, depois salvar.
+- Enviar somente UMA mensagem autorizada para o numero de testes,
+  verificar os botoes no telefone e clicar em UMA opcao de cada vez.
+- A pagina mostra os eventos e o identificador da escolha quando recebido.
+- O monitor aceita os codigos aceitar_grupo, recusar_grupo, CPV_ENTRAR
+  e CPV_NAO_INTERESSE.
+- O arquivo runtime/eventos-botoes.jsonl guarda apenas o tipo do evento,
+  nome da instancia, data e a escolha. Ele e ignorado pelo Git.
+- HTTP 200 do webhook nao confirma entrega ou representacao visual:
+  sempre verificar no aparelho.
+- Para interromper o monitor: executar powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File ".\parar-monitor.ps1".
+
+Se o evento chegar com "Opcao nao identificada", conferir o formato do
+webhook antes de integrar. Nunca automatizar inclusao em grupo neste teste.
