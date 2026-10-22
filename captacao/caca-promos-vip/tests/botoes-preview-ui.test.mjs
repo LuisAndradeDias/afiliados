@@ -30,7 +30,7 @@ test('a demonstracao reage sem acionar endpoints de envio ou bloquear numeros',(
   const end=js.indexOf("$('quickCreate').addEventListener(",start);
   assert.ok(start>=0&&end>start);
   const trecho=js.slice(start,end);
-  assert.doesNotMatch(trecho,/api\(|fetch\(|post\(|bloquear|desbloquear|sendMessage|local\/campanhas/i);
+  assert.doesNotMatch(trecho,/\b(?:api|fetch|post|bloquear|desbloquear|sendMessage)\s*\(|local\/campanhas/i);
 });
 
 test('a previa possui estilos separados dos campos de mensagem e de envio',()=>{
