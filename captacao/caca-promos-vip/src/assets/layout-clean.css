@@ -533,3 +533,33 @@ body[data-layout="clean"]:not([data-page]) .workflow-links a{font-size:14px}
   body[data-layout="clean"][data-page="enviar"] .quick-inline{flex-wrap:wrap}
   body[data-layout="clean"][data-page="enviar"] .quick-inline>.btn{flex:1}
 }
+
+/* WhatsApp button click: clearly distinguish received, attempted and confirmed. */
+body[data-layout="clean"] .rb-send-diagnostic {
+  display:block;
+  font-size:13px;
+  line-height:1.55;
+  font-weight:500;
+  color:#826034;
+  margin-top:7px;
+  max-width:380px;
+}
+body[data-layout="clean"] .rb-send-explanation {
+  margin:11px 0 4px;
+  font-size:14px;
+  line-height:1.65;
+  color:#6b4a20;
+}
+body[data-layout="clean"] #rbLatestOutcome .rb-send-explanation {
+  margin-top:12px;
+  color:#765324;
+}
+body[data-layout="clean"] #rbRows td {
+  vertical-align:top;
+  line-height:1.55;
+}
+body[data-layout="clean"] #rbRows .btn {
+  min-height:46px;
+  white-space:normal;
+  text-align:center;
+}

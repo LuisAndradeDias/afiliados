@@ -149,7 +149,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:11px;border-bottom:1px s
 </tr></thead><tbody id="events"><tr><td colspan="4">Nenhum evento ainda.</td></tr></tbody></table></section>
 <p class="small">O monitor grava somente tipo do evento, nome da instância e identificador da opção.
 Abra as respostas detalhadas na <a href="http://127.0.0.1:3045/respostas-botoes">Central Caça Promos VIP</a>.
-A API sozinha não garante entrega.</p></main>
+IMPORTANTE: auto-na-fila significa somente que a Central recebeu o clique e o colocou na fila; NÃO significa link enviado. Consulte a página Respostas para ver o status final. A API sozinha não garante entrega.</p></main>
 <script>
 async function load(){
 try {

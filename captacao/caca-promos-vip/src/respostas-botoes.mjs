@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { contatoComConsentimento, telefoneBrasil } from './contatos.mjs';
-import { enviarLinkSolicitado, validarConviteGrupo } from './whatygo-responder-link.mjs';
+import { enviarLinkSolicitado, validarConviteGrupo, diagnosticoSeguroEnvio } from './whatygo-responder-link.mjs';
 
 const CHOICES = new Map([
   ['aceitar_grupo', 'aceitar'],
@@ -13,7 +13,7 @@ const CHOICES = new Map([
 const MAX_ENTRIES = 5000;
 const MAX_AUTO_DIA = 50;
 const MIN_AUTO_CONTACT_INTERVAL = 24 * 3600 * 1000;
-const AUTO_ATTEMPT_STATES = new Set(['auto-na-fila', 'auto-tentando', 'auto-link-enviado-api', 'auto-incerto']);
+const AUTO_ATTEMPT_STATES = new Set(['auto-na-fila', 'auto-tentando', 'auto-link-enviado-api', 'auto-incerto', 'auto-falha-preenvio']);
 const MAX_EVENT_AGE = 48 * 3600 * 1000;
 const EXPECTED_INSTANCE = 'cpv-lab-remetente-4306';
 
@@ -148,12 +148,19 @@ export function iniciarRespostasBotoes({
     renameSync(temp, autoConfigFile);
     return configuracaoAutomacao();
   }
-  function atualizarStatus(id, status, detalhe) {
+  function atualizarStatus(id, status, detalhe, diagnostico = null) {
     const doc = load();
     const linha = doc.eventos.find(x => x.id === id);
     if (!linha) return false;
     linha.status = status;
     linha.detalhe = detalhe;
+    if (diagnostico) {
+      linha.diagnostico = {
+        codigo: diagnostico.codigo,
+        etapa: diagnostico.etapa,
+        statusHttp: diagnostico.statusHttp,
+      };
+    }
     save(doc);
     return true;
   }
@@ -191,9 +198,10 @@ export function iniciarRespostasBotoes({
         atualizarStatus(id, 'auto-incerto',
           'A API não confirmou o envio com ID. Verifique o WhatsApp; não haverá reenvio automático.');
       }
-    } catch {
-      atualizarStatus(id, 'auto-incerto',
-        'Resultado incerto ou serviço indisponível. Não haverá reenvio automático.');
+    } catch (error) {
+      const d = diagnosticoSeguroEnvio(error);
+      atualizarStatus(id, d.etapa === 'preenvio' ? 'auto-falha-preenvio' : 'auto-incerto',
+        d.texto, d);
     }
   }
   function agendarConvite(id, telefone) {
@@ -312,14 +320,14 @@ export function iniciarRespostasBotoes({
       recusas: rows.filter(x => x.acao === 'recusar').length,
       bloqueios: rows.filter(x => x.status === 'recusa-bloqueada').length,
       pendentes: rows.filter(x => x.status.startsWith('pendente-') ||
-        ['auto-na-fila', 'auto-tentando', 'auto-incerto', 'auto-interrompido'].includes(x.status)).length,
+        ['auto-na-fila', 'auto-tentando', 'auto-incerto', 'auto-interrompido', 'auto-falha-preenvio'].includes(x.status)).length,
       respostasAutomaticas: rows.filter(x => x.status === 'auto-link-enviado-api').length,
     };
     return {
       total,
       automacao: configuracaoAutomacao(),
       registros: rows.slice(0, 100).map(x => {
-        const canCopy = ['aceite-pendente-operador', 'auto-interrompido'].includes(x.status);
+        const canCopy = ['aceite-pendente-operador', 'auto-interrompido', 'auto-incerto', 'auto-falha-preenvio'].includes(x.status);
         const stillEligible = canCopy && x.contatoId &&
           contatos.listar().some(c => c.id === x.contatoId && contatoComConsentimento(c) &&
             !denuncias.estaBloqueado(c.telefone));

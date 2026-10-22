@@ -15,7 +15,8 @@
     'auto-na-fila': 'Convite na fila de resposta automática',
     'auto-tentando': 'Tentativa de resposta iniciada — aguarde',
     'auto-link-enviado-api': 'Link aceito pelo WhatyGo — confirmar no celular',
-    'auto-incerto': 'Resposta incerta — não reenviar automaticamente',
+    'auto-incerto': 'O WhatyGo não confirmou o envio — verificar manualmente',
+    'auto-falha-preenvio': 'Falha antes do envio — conferir sessão WhatyGo',
     'auto-interrompido': 'Automação interrompida — conferir manualmente',
     'auto-limite-contato': 'Limite de 1 resposta por contato em 24 horas',
     'auto-limite-diario': 'Limite diário de respostas automáticas atingido',
@@ -42,7 +43,7 @@
   function render() {
     const shown = items.filter((entry) => filter === 'todos' ||
       (filter === 'pendentes' && (entry.status.startsWith('pendente-') ||
-        ['auto-na-fila','auto-tentando','auto-incerto','auto-interrompido'].includes(entry.status))) ||
+        ['auto-na-fila','auto-tentando','auto-incerto','auto-interrompido','auto-falha-preenvio'].includes(entry.status))) ||
       entry.acao === filter);
     table.replaceChildren();
     if (shown.length === 0) {
@@ -59,15 +60,25 @@
       cell(tr, Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR'));
       cell(tr, entry.telefone || 'Não identificado');
       cell(tr, entry.acao === 'aceitar' ? 'Entrar no grupo' : 'Não tenho interesse');
-      cell(tr, labels[entry.status] || 'Aguardando análise');
+      const statusCell = cell(tr, labels[entry.status] || 'Aguardando análise');
+      if (['auto-incerto','auto-falha-preenvio'].includes(entry.status) && entry.detalhe) {
+        const description=document.createElement('small');
+        description.className='rb-send-diagnostic';
+        description.textContent=entry.detalhe;
+        statusCell.appendChild(description);
+      }
 
       const td = document.createElement('td');
       if (entry.linkGrupo) {
         const action = document.createElement('button');
         action.type = 'button';
         action.className = 'btn btn-quiet';
-        action.textContent = 'Copiar convite';
+        action.textContent = ['auto-incerto','auto-falha-preenvio'].includes(entry.status)
+          ? 'Copiar link para conferência' : 'Copiar convite';
         action.addEventListener('click', async () => {
+          if (entry.status === 'auto-incerto' && !window.confirm(
+            'O envio deste clique não foi confirmado. Confira primeiro a conversa no WhatsApp para evitar convites duplicados. Deseja apenas COPIAR o link?'
+          )) return;
           try {
             const group = new URL(entry.linkGrupo);
             if (group.protocol !== 'https:' || group.hostname !== 'chat.whatsapp.com') throw Error('Link de grupo inválido');
@@ -121,7 +132,8 @@
       'auto-na-fila': 'Aceite válido. O envio aguarda processamento.',
       'auto-tentando': 'Tentativa de envio iniciada. Aguardando retorno do WhatyGo.',
       'auto-link-enviado-api': 'O WhatyGo aceitou o envio do link; confira a entrega e a entrada no aplicativo.',
-      'auto-incerto': 'Resultado de envio incerto. Confira manualmente; não há reenvio automático.',
+      'auto-incerto': 'O clique foi registrado, mas o WhatyGo não confirmou o envio. Confira o status e a conversa; não há reenvio automático.',
+      'auto-falha-preenvio': 'O clique foi registrado, mas a validação da sessão falhou ANTES do envio. Nenhuma mensagem foi solicitada ao WhatyGo.',
       'auto-limite-contato': 'Nenhum novo convite: limite de um envio por contato a cada 24 horas.',
       'auto-limite-diario': 'Nenhum novo convite: limite diário da automação atingido.',
       'auto-interrompido': 'Envio automático interrompido. Verifique antes de tentar manualmente.',
@@ -130,6 +142,12 @@
     const outcome = document.createElement('span');
     outcome.textContent = messages[latest.status] || 'Consulte o histórico abaixo.';
     indicator.appendChild(outcome);
+    if (['auto-incerto','auto-falha-preenvio'].includes(latest.status) && latest.detalhe) {
+      const diagnostic=document.createElement('p');
+      diagnostic.className='rb-send-explanation';
+      diagnostic.textContent=latest.detalhe;
+      indicator.appendChild(diagnostic);
+    }
     if (latest.status === 'impedido-bloqueado' || latest.status === 'recusa-bloqueada' || latest.status === 'aceite-antigo-reativado') {
       const explanation = document.createElement('span');
       explanation.textContent = latest.status === 'aceite-antigo-reativado'

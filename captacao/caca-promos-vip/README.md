@@ -654,3 +654,52 @@ Testes isolados, sem qualquer envio real:
 consulta sem alteração, Chrome);
 `tests/reativacao-numero-teste-sem-cadastro.test.mjs`;
 `tests/layout-clean.test.mjs`; e os testes de automação com transporte mock.
+
+## Diagnostico de resposta automatica incerta (22/10/2026)
+
+No clique real de 17h21:08 (America/Sao_Paulo), o webhook recebeu
+`aceitar_grupo`, a Central encontrou um contato autorizado e sem
+bloqueio, e a automacao estava habilitada. O monitor 4011 mostrou
+`auto-na-fila`, mas a Central gravou `auto-incerto` em seguida.
+Portanto, a fila foi acionada, mas a API NAO confirmou o envio do link.
+Nao interpretar auto-na-fila como entrega.
+
+Verificacoes nao invasivas:
+- WhatyGo 4000 estava online, sessao autorizada conectada, token privado
+  e telefone da conta iguais aos da instancia ativa.
+- Consulta real `GET /instance/all` passou na validacao da funcao
+  `enviarLinkSolicitado` com `POST /send/text` interceptado por mock.
+- A rota `POST /send/text` respondeu HTTP 400 quando recebeu corpo
+  intencionalmente vazio, demonstrando disponibilidade e validacao,
+  SEM solicitar qualquer mensagem real.
+- A documentacao/codigo WhatyGo confirma `number`, `text` e
+  `data.Info.ID` no contrato do envio. O erro original da tentativa
+  de 17h21 foi descartado pelo `catch` antigo: nao ha codigo tecnico
+  salvo para recuperar retroativamente. NAO presumir a causa exata.
+
+Correcoes:
+- `src/whatygo-responder-link.mjs`: diagnostico por etapa e codigo
+  seguro, preservando HTTP status quando a API rejeita (sem registrar
+  payload, numero, URL, token, raw response ou excecao original).
+- `src/respostas-botoes.mjs`: falhas ANTES do POST usam
+  `auto-falha-preenvio`; falhas ou timeout APOS iniciar o POST usam
+  `auto-incerto`. O limite de uma tentativa por contato em 24h vale
+  para ambos, sem retentativas automaticas ou replay de cliques antigos.
+- `src/assets/respostas-botoes.js`: status final, detalhes categorizados
+  e link para copiar o convite manualmente em estados incertos, somente
+  se ainda houver consentimento valido e nenhuma supressao. Para um
+  envio incerto, exige conferir a conversa e confirmar antes de copiar.
+  Copiar o link nao envia mensagem pelo WhatsApp.
+- `laboratorio-whatygo/monitor-cliques.mjs`: explica que o
+  `auto-na-fila` exibido pelo monitor e uma resposta inicial, nao
+  prova de envio nem entrega.
+
+Nenhum bloqueio ou autorizacao foi alterado. Nenhuma mensagem foi
+enviada durante os testes desta correcao. O clique original segue
+`auto-incerto`, sem ser retomado automaticamente. Um novo teste do
+envio REAL deve ser feito apenas pelo titular apos verificar a conversa
+e respeitar os limites, usando um novo clique elegivel quando permitido.
+
+Regressoes sem envio real:
+`node --test tests/whatygo-envio-diagnostico.test.mjs
+tests/respostas-botoes-automacao.test.mjs tests/respostas-botoes-auto-api.test.mjs`.
