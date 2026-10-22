@@ -1,15 +1,16 @@
 import { createServer } from 'node:http';
 import { mkdirSync, existsSync, readFileSync, appendFileSync, writeFileSync } from 'node:fs';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { instanciaAutorizada, segredoPonteCentral } from './ponte-identidade.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const logDir = join(root, 'runtime');
 const logFile = join(logDir, 'eventos-botoes.jsonl');
 const privateDir = join(root, 'private');
 const keyPath = join(privateDir, 'webhook-recebimento-chave.txt');
-const bridgeKeyPath = join(root, '..', 'dados', 'whatygo-ponte-chave.txt');
+const bridgeKeyPath = segredoPonteCentral(root);
 mkdirSync(privateDir, { recursive: true });
 let incomingKey;
 if (existsSync(keyPath)) incomingKey = readFileSync(keyPath, 'utf8').trim();
@@ -35,8 +36,7 @@ async function relay(payload) {
   });
   if (!instances.ok) throw new Error('Não foi possível conferir a sessão remetente.');
   const all = await instances.json();
-  const matches = (all.data ?? []).filter(i => i.name === payload.instanceName);
-  if (matches.length !== 1 || matches[0].connected !== true || matches[0].jid !== expectedJid) {
+  if (!instanciaAutorizada(all.data, payload.instanceName, expectedJid)) {
     throw new Error('A sessão remetente não está verificada.');
   }
   const key = readFileSync(bridgeKeyPath, 'utf8').trim();
@@ -58,12 +58,36 @@ async function relay(payload) {
     signal: AbortSignal.timeout(4000),
   });
   if (!response.ok) throw new Error('Central recusou evento HTTP ' + response.status);
+  const result = await response.json();
+  return result?.ok === true ? (result.status || 'recebido') : 'ignorado-pela-central';
+}
+function safeEventHash(payload) {
+  if (payload?.event !== 'ButtonClick') return null;
+  const id = payload?.data?.messageId;
+  if (typeof id !== 'string' || id.length < 6 || id.length > 180) return null;
+  return createHash('sha256')
+    .update(String(payload?.instanceName || '') + ':' + id + ':' + String(payload?.data?.buttonId || ''))
+    .digest('hex');
 }
 const history = [];
+const diagnostics = {
+  receivedClicks: 0, forwardedClicks: 0, failedClicks: 0,
+  lastClickAt: null, lastResult: null, lastError: null,
+};
 mkdirSync(logDir, { recursive: true });
 if (existsSync(logFile)) {
-  for (const line of readFileSync(logFile, 'utf8').split(/\r?\n/).filter(Boolean).slice(-25)) {
-    try { const item = JSON.parse(line); if (item?.evento && item?.quando) history.unshift(item); } catch {}
+  for (const line of readFileSync(logFile, 'utf8').split(/\r?\n/).filter(Boolean).slice(-100)) {
+    try {
+      const item = JSON.parse(line);
+      if (item?.evento && item?.quando) {
+        if (item.idHash) {
+          const old = history.findIndex(e => e.idHash === item.idHash);
+          if (old >= 0) history.splice(old, 1);
+        }
+        history.unshift(item);
+        history.splice(25);
+      }
+    } catch {}
   }
 }
 
@@ -80,16 +104,22 @@ function findChoice(payload) {
     label: choices.get(identifier) ?? 'Opcao nao identificada',
   };
 }
-function addEvent(payload) {
+function addEvent(payload, integration = 'recebido') {
   const raw = String(payload?.event ?? '').replace(/[^A-Za-z]/g, '').toUpperCase();
   const type = ({ BUTTONCLICK: 'BUTTON_CLICK', SENDMESSAGE: 'SEND_MESSAGE', CONNECTION: 'CONNECTION' })[raw];
   if (!type) return;
+  const idHash = safeEventHash(payload);
   const event = {
+    ...(idHash ? { idHash } : {}),
     quando: new Date().toISOString(),
     evento: type,
     instancia: String(payload?.instanceName ?? payload?.instance ?? '').slice(0, 60),
-    ...(type === 'BUTTON_CLICK' ? { escolha: findChoice(payload) } : {}),
+    ...(type === 'BUTTON_CLICK' ? { escolha: findChoice(payload), integracao: integration } : {}),
   };
+  if (idHash) {
+    const previous = history.findIndex(row => row.idHash === idHash);
+    if (previous >= 0) history.splice(previous, 1);
+  }
   history.unshift(event);
   history.splice(25);
   appendFileSync(logFile, JSON.stringify(event) + '\n', 'utf8');
@@ -109,9 +139,10 @@ table{border-collapse:collapse;width:100%}td,th{padding:11px;border-bottom:1px s
 <h1>Caça Promos VIP · Monitor de botões</h1>
 <p class="small">Laboratório local. Nenhuma mensagem é enviada por esta tela.</p>
 <section><span class="pill" id="status">Aguardando...</span>
-<p class="small">Webhook local autenticado. As respostas válidas são repassadas à Central.</p></section>
+<p class="small">Webhook local autenticado. As respostas válidas são repassadas à Central.</p>
+<p class="small" id="bridgeState">Conferindo a ponte...</p></section>
 <section><h2>Eventos recebidos</h2><table><thead><tr>
-<th>Horário</th><th>Evento</th><th>Instância</th><th>Escolha</th>
+<th>Horário</th><th>Evento</th><th>Instância</th><th>Escolha</th><th>Integração</th>
 </tr></thead><tbody id="events"><tr><td colspan="4">Nenhum evento ainda.</td></tr></tbody></table></section>
 <p class="small">O monitor grava somente tipo do evento, nome da instância e identificador da opção.
 Abra as respostas detalhadas na <a href="http://127.0.0.1:3045/respostas-botoes">Central Caça Promos VIP</a>.
@@ -121,11 +152,15 @@ async function load(){
 try {
  const r=await fetch('/status',{cache:'no-store'}); if(!r.ok)throw Error();
  const d=await r.json();document.getElementById('status').textContent='Monitor ativo';
+ const b=d.bridge||{};
+ document.getElementById('bridgeState').textContent=!b.keyPresent?'Ponte: falta chave local':
+  b.lastError?'Ponte: último encaminhamento falhou ('+b.lastError+')':
+  'Ponte: chave correta; cliques recebidos '+(b.receivedClicks||0)+', encaminhados '+(b.forwardedClicks||0);
  const body=document.getElementById('events');body.replaceChildren();
  if(!d.events.length){let tr=document.createElement('tr');let td=document.createElement('td');
- td.colSpan=4;td.textContent='Aguardando evento...';tr.append(td);body.append(tr);return}
+ td.colSpan=5;td.textContent='Aguardando evento...';tr.append(td);body.append(tr);return}
  for(const e of d.events){let tr=document.createElement('tr');
- for(const text of [new Date(e.quando).toLocaleTimeString('pt-BR'),e.evento,e.instancia,e.escolha?.label??'-']){
+ for(const text of [new Date(e.quando).toLocaleTimeString('pt-BR'),e.evento,e.instancia,e.escolha?.label??'-',e.integracao??'-']){
  let td=document.createElement('td');td.textContent=text;tr.append(td)}
  body.append(tr)}
 }catch {document.getElementById('status').textContent='Monitor desconectado';}}
@@ -143,7 +178,44 @@ const server = createServer((req, res) => {
   }
   if (req.method === 'GET' && url.pathname === '/status') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ active: true, events: history }));
+    res.end(JSON.stringify({
+      active: true, events: history,
+      bridge: {
+        keyPresent: existsSync(bridgeKeyPath),
+        ...diagnostics,
+      },
+    }));
+    return;
+  }
+  // Diagnostic: exercises the actual instance check and Central bridge, but
+  // deliberately uses an unknown button, so the Central rejects it without
+  // registering a click or changing a contact.
+  if (req.method === 'POST' && url.pathname === '/diagnosticar-ponte') {
+    if (req.socket.remoteAddress !== '127.0.0.1' ||
+        !authenticated(url.searchParams.get('key'))) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end('{"ok":false}');
+      return;
+    }
+    void (async () => {
+      try {
+        const result = await relay({
+          event: 'ButtonClick',
+          instanceName: 'cpv-lab-remetente-4306',
+          data: { buttonId: '__diagnostico_inerte__' },
+        });
+        if (result !== 'ignorado-pela-central') throw new Error('Resposta inesperada da Central.');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end('{"ok":true,"diagnostico":"ponte-autenticada-sem-registro"}');
+      } catch (error) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          ok: false,
+          diagnostico: 'ponte-falhou',
+          erro: String(error?.message || 'erro').slice(0, 100).replace(/[0-9]{9,}/g, '[oculto]'),
+        }));
+      }
+    })();
     return;
   }
   if (req.method === 'POST' && url.pathname === '/webhook') {
@@ -173,12 +245,31 @@ const server = createServer((req, res) => {
         res.end('JSON invalido');
         return;
       }
+      const isClick = payload?.event === 'ButtonClick';
+      if (isClick) {
+        diagnostics.receivedClicks += 1;
+        diagnostics.lastClickAt = new Date().toISOString();
+      }
       try {
-        if (payload?.event === 'ButtonClick') await relay(payload);
-        addEvent(payload);
+        let result = 'recebido';
+        if (isClick) {
+          result = await relay(payload);
+          diagnostics.forwardedClicks += 1;
+          diagnostics.lastResult = result;
+          diagnostics.lastError = null;
+        }
+        addEvent(payload, result);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('{"ok":true}');
-      } catch {
+      } catch (error) {
+        if (isClick) {
+          diagnostics.failedClicks += 1;
+          diagnostics.lastResult = 'falha-ponte';
+          const note = String(error?.message || 'Falha não identificada');
+          diagnostics.lastError = note.slice(0, 120).replace(/[0-9]{9,}/g, '[oculto]');
+          addEvent(payload, 'falha-ponte');
+        }
+        // Return 503 so WhatyGo may retry. No contact is changed by the monitor.
         res.writeHead(503, { 'Content-Type': 'application/json' });
         res.end('{"ok":false,"error":"Ponte local indisponivel"}');
       }

@@ -235,8 +235,9 @@ Usar `-Aplicar` apenas para configurar o webhook (não envia mensagens).
 
 A conexão WhatyGo → monitor → Central utiliza a instância já pareada;
 o nome histórico da instância termina em 4306, mas o remetente verdadeiro
-é a conta principal verificada previamente. O script compara a identidade
-de forma exata com o JID privado preservado; não deixa números pessoais no Git.
+é a conta principal verificada previamente. O script compara o número do remetente ao JID privado preservado,
+permitindo a rotação do sufixo do aparelho após reconexões; não deixa
+números pessoais no Git.
 
 As recusas validadas usam o bloqueio existente mesmo se não houver cadastro.
 Os aceites apenas entram na fila de revisão manual de consentimento e grupo.
@@ -247,3 +248,29 @@ Cliques antigos do monitor tinham só opção e data, sem remetente.
 Portanto, NÃO são vinculados automaticamente a contatos. Somente novos
 cliques recebidos após ativar o webhook autenticado terão identidade.
 Nenhuma publicação ou instalação altera as sessões WhatsApp nem envia algo.
+
+## Correcao do clique que nao aparecia no painel (22/10/2026)
+
+Problemas diagnosticados a partir dos eventos reais:
+1. O monitor procurava `whatygo-ponte-chave.txt` em `dados/`,
+   mas a Central ativa na porta 3045 guarda seu estado em
+   `dados/previa-acer/`. O encaminhamento recebia erro e retornava HTTP 503.
+2. Apos reconectar o WhatsApp, o JID manteve o MESMO numero de telefone,
+   mas trocou o sufixo :dispositivo. A ponte tratava isso como uma nova
+   conta e rejeitava o evento. Agora validamos o numero e a instancia, e
+   rejeitamos numeros distintos, LID, grupo ou sessao desconectada.
+
+Mudancas adicionais:
+- O monitor exibe `bridge.keyPresent`, ultima falha e numero de cliques
+  encaminhados em http://127.0.0.1:4011/status, sem guardar telefones brutos.
+- Cada clique recebido pelo monitor e registrado mesmo se a Central falhar,
+  marcado como `falha-ponte`; HTTP 503 permite tentativa de entrega posterior.
+- Retransmissoes do mesmo ID de mensagem/botao sao deduplicadas visualmente.
+- Um diagnostico em `POST /diagnosticar-ponte?key=<segredo-privado>` exercita
+  o fluxo completo, utilizando uma opcao que a Central IGNORA. Nao grava
+  clique, nao altera cadastro e nao envia mensagem. Nao compartilhar URL.
+- Testes de regressao: `tests/whatygo-ponte-identidade.test.mjs`.
+
+Os cliques que falharam antes da correcao nao podem ser atribuidos
+retroativamente se a mensagem bruta nao tiver sido preservada pelo WhatyGo.
+A conta remetente e a sessao existente nao foram substituidas.

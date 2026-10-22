@@ -193,7 +193,10 @@ const responses=`
     <h1>Respostas dos botões</h1>
     <p>Acompanhe cliques reais, pedidos de entrada e recusas. Nada é enviado automaticamente.</p>
   </div>
-  <a class="btn btn-quiet" href="http://127.0.0.1:4000/manager" target="_blank" rel="noopener noreferrer">Abrir WhatyGo ↗</a>
+  <div class="toolbar-light">
+    <a class="btn btn-quiet" href="http://127.0.0.1:4011/" target="_blank" rel="noopener noreferrer">Diagnóstico dos cliques ↗</a>
+    <a class="btn btn-quiet" href="http://127.0.0.1:4000/manager" target="_blank" rel="noopener noreferrer">Abrir WhatyGo ↗</a>
+  </div>
 </section>
 <section class="stats-grid stats-grid-5" aria-label="Resumo dos cliques">
   ${estatistica('Respostas recebidas','rbAll','Identificadas pelo webhook')}

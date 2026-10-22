@@ -33,9 +33,19 @@ $phone = [string]$x.jid
 $expectedFile = Join-Path $lab 'private\remetente-autorizado-jid.txt'
 if (-not (Test-Path $expectedFile)) { throw 'Identidade autorizada não foi preservada.' }
 $expected = ([IO.File]::ReadAllText($expectedFile)).Trim()
-if ($phone -ne $expected -or $phone -notmatch '^55[0-9]{10,11}(?::[0-9]+)?@s\.whatsapp\.net$') {
+$jidPattern = '^([1-9][0-9]{9,14})(?::[0-9]{1,3})?@s\.whatsapp\.net$'
+if ($phone -notmatch $jidPattern) {
+  throw 'O remetente atual não possui identidade de telefone verificável.'
+}
+$currentPhone = $Matches[1]
+if ($expected -notmatch $jidPattern) {
+  throw 'A identidade de remetente preservada é inválida.'
+}
+$authorizedPhone = $Matches[1]
+if ($currentPhone -ne $authorizedPhone) {
   throw 'A conta conectada não corresponde ao remetente previamente autorizado.'
 }
+# Uma nova sessão pode receber outro sufixo :device; não é troca de número.
 foreach ($pt in @(3045,4000,4011)) {
   if (-not (Get-NetTCPConnection -LocalPort $pt -State Listen -ErrorAction SilentlyContinue)) {
     throw ('Serviço local indisponível na porta '+$pt)
@@ -56,5 +66,5 @@ $webhookUrl = 'http://127.0.0.1:4011/webhook?key='+$secret
 $body = @{ webhookUrl = $webhookUrl; subscribe = @('BUTTON_CLICK','SEND_MESSAGE','CONNECTION') } | ConvertTo-Json -Compress
 Invoke-RestMethod -Method Put -Uri ($api+'/instance/'+$x.id+'/integrations') -Headers $headers -ContentType 'application/json' -Body $body -TimeoutSec 12 | Out-Null
 Write-Output 'WEBHOOK_AUTENTICADO_CONFIGURADO'
-Write-Output 'EVENTOS_ASSINADOS_LOGICAMENTE_POR_SEGREDO_LOCAL'
+Write-Output 'WEBHOOK_AUTENTICADO_POR_SEGREDO_LOCAL'
 Write-Output 'NENHUM_ENVIO_REAL_EFETUADO'
