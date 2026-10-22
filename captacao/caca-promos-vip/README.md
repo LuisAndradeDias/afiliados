@@ -567,3 +567,47 @@ real do ACER; toda validacao ocorre em diretorios temporarios.
 
 Testes: `node --test tests/reativacao-numero-teste-sem-cadastro.test.mjs`
 (inclui browser Chrome real com numero ficticio).
+
+## Interface clean com menu lateral — 22/10/2026
+
+A Central local em `http://127.0.0.1:3045/inicio` usa uma interface
+minimalista com barra lateral escura e conteudo claro, conforme a
+previa aprovada pelo operador. O menu substitui a navegacao superior
+em todas as seis rotas administrativas:
+
+- Inicio: `/inicio` — atalhos e indicadores reais das APIs locais.
+- Enviar convite: `/enviar` — formulario individual supervisionado,
+  sem a coluna lateral de explicacoes que desviava o foco.
+- Respostas: `/respostas-botoes` — cliques, recusas, automacao e acoes.
+- Contatos: `/contatos` — consulta e gestao dos autorizados.
+- Filas e envios: `/campanhas` — area avancada preservada.
+- Seguranca: `/denuncias` — recusas, bloqueios e reativacoes.
+- Atalho "Reativar numero": `/contatos#reativar-teste` na lateral.
+
+O tema claro e aplicado APENAS ao painel privado da Central. As
+paginas publicas de consentimento, saida e denuncia nao sao modificadas.
+Em dispositivos com largura de ate 850px, a barra lateral vira
+um menu recolhivel, com acesso por teclado, Escape, foco e overlay.
+
+A pagina inicial mostra somente tres atalhos principais, quatro
+indicadores (contatos autorizados, envios iniciados hoje, respostas,
+bloqueios persistentes), uma lista curta de respostas mascaradas e
+estado do envio supervisionado. Todos os numeros vem das APIs locais,
+sem valores estaticos inventados nem exposicao de contatos completos.
+
+Implementacao:
+- `src/layout-clean.mjs`: sidebar, cabecalho, pagina inicial e aplicacao
+  do layout sem alterar os sistemas de negocio.
+- `src/assets/layout-clean.css`: tema, responsividade e hierarquia visual.
+- `src/assets/layout-clean.js`: menu mobile e dados atualizados do inicio.
+- `src/server.mjs`: decoracao das seis telas e os novos arquivos estaticos.
+- `tests/layout-clean.test.mjs`: verificacoes reais de desktop/mobile
+  no Chrome, ausencia de overflow e preservacao dos formularios.
+- `tests/gestao-ux.test.mjs`: atualizado para a nova barra lateral e os
+  indicadores reais, mantendo testes de seguranca e cadastro.
+
+A alteracao e visual. Nao muda credenciais, sessao WhatsApp, limites,
+contatos, envios, webhook, opt-in, bloqueios ou automacoes. O estado da
+automacao de respostas e preservado no reinicio seguro da porta 3045.
+Dados pessoais, snapshots de testes e backups ficam somente no disco
+C do ACER, jamais enviados ao GitHub ou ao Google Drive.

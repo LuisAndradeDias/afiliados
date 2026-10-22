@@ -1,3 +1,5 @@
+import { inicioClean } from './layout-clean.mjs';
+
 const ITENS=[
   {href:'/inicio',label:'Visão geral',chave:'inicio'},
   {href:'/contatos',label:'Contatos',chave:'contatos'},
@@ -286,5 +288,5 @@ const responses=`
 
 export function renderGestao(pagina='inicio'){
   if(!['inicio','contatos','denuncias','respostas'].includes(pagina))throw new Error('Página desconhecida.');
-  return shell(pagina,{inicio:home,contatos:contacts,denuncias:reports,respostas:responses}[pagina]);
+  return shell(pagina,{inicio:inicioClean,contatos:contacts,denuncias:reports,respostas:responses}[pagina]);
 }

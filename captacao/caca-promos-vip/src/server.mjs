@@ -18,6 +18,7 @@ import { renderEnvioRapido } from './envio-rapido-ui.mjs';
 import { iniciarEnvioRapido } from './envio-rapido.mjs';
 import { iniciarRespostasBotoes } from './respostas-botoes.mjs';
 import { renderGestao } from './gestao-ui.mjs';
+import { aplicarLayoutClean } from './layout-clean.mjs';
 import { iniciarGestaoContatos } from './gestao-contatos.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderDescadastro } from './descadastro-ui.mjs';
@@ -35,9 +36,11 @@ const scripts = new Map([
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
   ['/assets/denuncia.js', readFileSync(join(sourceDir, 'assets', 'denuncia.js'), 'utf8')],
   ['/assets/respostas-botoes.js', readFileSync(join(sourceDir, 'assets', 'respostas-botoes.js'), 'utf8')],
+  ['/assets/layout-clean.js', readFileSync(join(sourceDir, 'assets', 'layout-clean.js'), 'utf8')],
 ]);
 const styles=new Map([
   ['/assets/painel-theme.css',readFileSync(join(sourceDir,'assets','painel-theme.css'),'utf8')],
+  ['/assets/layout-clean.css',readFileSync(join(sourceDir,'assets','layout-clean.css'),'utf8')],
   ['/assets/envio-rapido.css',readFileSync(join(sourceDir,'assets','envio-rapido.css'),'utf8')],
 ]);
 const headersBase = {
@@ -326,17 +329,17 @@ export function criarPiloto({
       if (['/inicio','/contatos','/denuncias','/respostas-botoes'].includes(pathname) && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
           'Área administrativa disponível somente no ACER, via 127.0.0.1.');
-        return codigoHtml(res,200,renderGestao(pathname==='/respostas-botoes'?'respostas':pathname.slice(1)));
+        return codigoHtml(res,200,aplicarLayoutClean(renderGestao(pathname==='/respostas-botoes'?'respostas':pathname.slice(1)),pathname==='/respostas-botoes'?'respostas':pathname.slice(1)));
       }
       if (pathname === '/enviar' && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
           'Envio guiado disponível somente no ACER, via 127.0.0.1.');
-        return codigoHtml(res,200,renderEnvioRapido(convitesUnicos.configuracao()));
+        return codigoHtml(res,200,aplicarLayoutClean(renderEnvioRapido(convitesUnicos.configuracao()),'enviar'));
       }
       if (pathname === '/campanhas' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
           'Painel de campanhas disponível somente no computador local, via 127.0.0.1.');
-        return codigoHtml(res, 200, renderCampanhas());
+        return codigoHtml(res, 200, aplicarLayoutClean(renderCampanhas(),'campanhas'));
       }
       if (pathname === '/sair' && leitura) return codigoHtml(res, 200, renderDescadastro());
       // A página pública é inerte até o clique explícito no botão.
