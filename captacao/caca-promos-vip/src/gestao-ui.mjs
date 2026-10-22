@@ -2,6 +2,7 @@ const ITENS=[
   {href:'/inicio',label:'Visão geral',chave:'inicio'},
   {href:'/contatos',label:'Contatos',chave:'contatos'},
   {href:'/enviar',label:'Enviar convite',chave:'enviar'},
+  {href:'/respostas-botoes',label:'Respostas dos botões',chave:'respostas'},
   {href:'/campanhas',label:'Listas e filas',chave:'campanhas'},
   {href:'/denuncias',label:'Denúncias',chave:'denuncias'},
 ];
@@ -20,10 +21,11 @@ function shell(pagina,conteudo){
   return `<!doctype html><html lang="pt-BR"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#101923"><meta name="referrer" content="no-referrer">
-  <title>${pagina==='inicio'?'Visão geral':pagina==='contatos'?'Contatos':'Denúncias'} | Caça Promos VIP</title>
+  <title>${pagina==='inicio'?'Visão geral':pagina==='contatos'?'Contatos':pagina==='respostas'?'Respostas dos botões':'Denúncias'} | Caça Promos VIP</title>
   <link rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="/assets/painel-theme.css">
   <script defer src="/assets/gestao.js"></script>
+  ${pagina==='respostas'?'<script defer src="/assets/respostas-botoes.js"></script>':''}
   </head><body data-page="${pagina}">
   <header class="site-header"><div class="container header-inner">
     <a class="app-brand" href="/inicio" aria-label="Voltar para visão geral">
@@ -56,7 +58,9 @@ const home=`
     <span>Consulte autorizados, bloqueados, pendentes e descadastros. Pesquise por nome ou número.</span><b>Ver contatos →</b></a>
   <a class="action-card" href="/campanhas"><span class="action-glyph" aria-hidden="true">02</span><strong>Preparar convites</strong>
     <span>Importe a planilha, salve sua mensagem e prepare cada conversa no WhatsApp Web.</span><b>Abrir convites →</b></a>
-  <a class="action-card" href="/denuncias"><span class="action-glyph" aria-hidden="true">03</span><strong>Conferir denúncias</strong>
+  <a class="action-card" href="/respostas-botoes"><span class="action-glyph" aria-hidden="true">03</span><strong>Respostas dos botões</strong>
+    <span>Consulte quem aceitou, recusou ou precisa de verificação antes do convite.</span><b>Ver respostas →</b></a>
+  <a class="action-card" href="/denuncias"><span class="action-glyph" aria-hidden="true">04</span><strong>Conferir denúncias</strong>
     <span>Veja solicitações recebidas pelo Netlify e o estado da sincronização.</span><b>Ver denúncias →</b></a>
 </section>
 <div class="two-columns">
@@ -183,7 +187,45 @@ const reports=`
 </section>
 <p class="context-note">Ao confirmar a denúncia no Netlify, a solicitação é armazenada até o ACER sincronizar. O bloqueio local é aplicado após a sincronização. Isso <strong>não</strong> é uma denúncia oficial ao WhatsApp.</p>`;
 
+const responses=`
+<section class="page-heading">
+  <div><span class="overline">WHATSAPP • BOTÕES INTERATIVOS</span>
+    <h1>Respostas dos botões</h1>
+    <p>Acompanhe cliques reais, pedidos de entrada e recusas. Nada é enviado automaticamente.</p>
+  </div>
+  <a class="btn btn-quiet" href="http://127.0.0.1:4000/manager" target="_blank" rel="noopener noreferrer">Abrir WhatyGo ↗</a>
+</section>
+<section class="stats-grid stats-grid-5" aria-label="Resumo dos cliques">
+  ${estatistica('Respostas recebidas','rbAll','Identificadas pelo webhook')}
+  ${estatistica('Aceites','rbAccept','Intenção de participar','stat-ok')}
+  ${estatistica('Recusas','rbDecline','Pediu para não receber','stat-danger')}
+  ${estatistica('Bloqueios','rbBlocked','Novos convites impedidos','stat-attention')}
+  ${estatistica('Pendentes','rbPending','Precisam de confirmação')}
+</section>
+<section class="panel">
+  <div class="panel-head"><div><h2>Histórico das respostas</h2>
+    <p>Identificadores e telefones parcialmente ocultos. Só cliques com remetente verificável podem bloquear.</p>
+    </div><button type="button" class="btn btn-quiet" id="rbRefresh">Atualizar</button>
+  </div>
+  <div id="rbFeedback" class="context-note" role="status" aria-live="polite">Carregando respostas verificadas...</div>
+  <div class="tabbar" id="rbFilters" role="group" aria-label="Filtrar cliques">
+    <button class="filter-tab is-selected" aria-pressed="true" data-choice="todos" type="button">Todas</button>
+    <button class="filter-tab" aria-pressed="false" data-choice="aceitar" type="button">Entrar no grupo</button>
+    <button class="filter-tab" aria-pressed="false" data-choice="recusar" type="button">Não tenho interesse</button>
+    <button class="filter-tab" aria-pressed="false" data-choice="pendentes" type="button">Pendentes</button>
+  </div>
+  <div class="table-scroll">
+    <table class="contact-table"><thead><tr><th scope="col">Quando</th>
+      <th scope="col">Contato</th><th scope="col">Resposta</th>
+      <th scope="col">Situação</th><th scope="col">Próxima ação</th>
+    </tr></thead>
+    <tbody id="rbRows"><tr><td colspan="5" class="state-empty">Aguardando eventos...</td></tr></tbody></table>
+  </div>
+  <div class="panel-bottom"><small>O clique em “Entrar” não desbloqueia contatos e não inclui pessoas no grupo. A recusa verificada impede novos convites no cadastro local.</small></div>
+</section>
+<p class="context-note"><strong>Privacidade:</strong> eventos anteriores à ativação desta integração não possuíam identidade verificável e não foram importados. Para enviar um convite, confira o consentimento e utilize o link manualmente.</p>`;
+
 export function renderGestao(pagina='inicio'){
-  if(!['inicio','contatos','denuncias'].includes(pagina))throw new Error('Página desconhecida.');
-  return shell(pagina,{inicio:home,contatos:contacts,denuncias:reports}[pagina]);
+  if(!['inicio','contatos','denuncias','respostas'].includes(pagina))throw new Error('Página desconhecida.');
+  return shell(pagina,{inicio:home,contatos:contacts,denuncias:reports,respostas:responses}[pagina]);
 }

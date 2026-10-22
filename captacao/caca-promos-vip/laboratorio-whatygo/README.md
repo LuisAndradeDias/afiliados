@@ -217,3 +217,33 @@ A pasta de backup privada fica em runtime\manager-dist-before-custom.
 O servidor de Go continua na porta 4000, sem reiniciar nem alterar sessoes.
 Os testes sao locais: a entrega/click do WhatsApp continuam nao garantidos
 por serem uma integracao nao oficial. Nunca enviar para quem nao autorizou.
+
+## Ponte de cliques para a Central 3045 (ativada em 22/10/2026)
+
+O webhook é protegido por segredo local, armazenado exclusivamente em
+`private/webhook-recebimento-chave.txt`. O monitor autentica a URL, valida
+a origem local e encaminha só os campos de evento necessários para
+`127.0.0.1:3045`, por outra chave mantida nos dados privados da Central.
+
+Página de operação:
+`http://127.0.0.1:3045/respostas-botoes`
+
+Para conferir ou reaplicar a ligação depois de um restart:
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+  ".\\sincronizar-webhook-central.ps1"`
+Usar `-Aplicar` apenas para configurar o webhook (não envia mensagens).
+
+A conexão WhatyGo → monitor → Central utiliza a instância já pareada;
+o nome histórico da instância termina em 4306, mas o remetente verdadeiro
+é a conta principal verificada previamente. O script compara a identidade
+de forma exata com o JID privado preservado; não deixa números pessoais no Git.
+
+As recusas validadas usam o bloqueio existente mesmo se não houver cadastro.
+Os aceites apenas entram na fila de revisão manual de consentimento e grupo.
+Se o remetente vier como LID não resolvido, grupo, auto-resposta ou identidade
+ambígua, a Central não aplica bloqueios nem autorizações.
+
+Cliques antigos do monitor tinham só opção e data, sem remetente.
+Portanto, NÃO são vinculados automaticamente a contatos. Somente novos
+cliques recebidos após ativar o webhook autenticado terão identidade.
+Nenhuma publicação ou instalação altera as sessões WhatsApp nem envia algo.

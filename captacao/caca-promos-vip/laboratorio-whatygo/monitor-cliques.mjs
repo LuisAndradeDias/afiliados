@@ -1,11 +1,64 @@
 import { createServer } from 'node:http';
-import { mkdirSync, existsSync, readFileSync, appendFileSync } from 'node:fs';
+import { mkdirSync, existsSync, readFileSync, appendFileSync, writeFileSync } from 'node:fs';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const logDir = join(root, 'runtime');
 const logFile = join(logDir, 'eventos-botoes.jsonl');
+const privateDir = join(root, 'private');
+const keyPath = join(privateDir, 'webhook-recebimento-chave.txt');
+const bridgeKeyPath = join(root, '..', 'dados', 'whatygo-ponte-chave.txt');
+mkdirSync(privateDir, { recursive: true });
+let incomingKey;
+if (existsSync(keyPath)) incomingKey = readFileSync(keyPath, 'utf8').trim();
+else {
+  incomingKey = randomBytes(32).toString('hex');
+  writeFileSync(keyPath, incomingKey + '\n', { flag: 'wx', mode: 0o600 });
+}
+if (!/^[a-f0-9]{64}$/.test(incomingKey)) throw new Error('Segredo de webhook inválido.');
+function authenticated(key) {
+  if (typeof key !== 'string' || !/^[a-f0-9]{64}$/.test(key)) return false;
+  return timingSafeEqual(Buffer.from(key, 'hex'), Buffer.from(incomingKey, 'hex'));
+}
+async function relay(payload) {
+  // Confirm the linked sender has not been replaced by a different account.
+  const settings = readFileSync(join(root, '.env.native'), 'utf8');
+  const admin = settings.split(/\r?\n/).find(line => line.startsWith('GLOBAL_API_KEY='))?.slice('GLOBAL_API_KEY='.length);
+  const expectedJid = readFileSync(join(privateDir, 'remetente-autorizado-jid.txt'), 'utf8').trim();
+  if (!admin || !expectedJid || payload?.instanceName !== 'cpv-lab-remetente-4306') {
+    throw new Error('Instância não autorizada.');
+  }
+  const instances = await fetch('http://127.0.0.1:4000/instance/all', {
+    headers: { apikey: admin }, signal: AbortSignal.timeout(4000),
+  });
+  if (!instances.ok) throw new Error('Não foi possível conferir a sessão remetente.');
+  const all = await instances.json();
+  const matches = (all.data ?? []).filter(i => i.name === payload.instanceName);
+  if (matches.length !== 1 || matches[0].connected !== true || matches[0].jid !== expectedJid) {
+    throw new Error('A sessão remetente não está verificada.');
+  }
+  const key = readFileSync(bridgeKeyPath, 'utf8').trim();
+  if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Ponte interna não configurada.');
+  const d = payload?.data ?? {};
+  const safe = {
+    event: payload?.event,
+    instanceName: payload?.instanceName,
+    data: {
+      buttonId: d.buttonId, messageId: d.messageId,
+      phone: d.phone, jid: d.jid, chat: d.chat,
+      fromMe: d.fromMe, timestamp: d.timestamp,
+    },
+  };
+  const response = await fetch('http://127.0.0.1:3045/api/local/whatygo/evento', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-cpv-whatygo': key },
+    body: JSON.stringify(safe),
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!response.ok) throw new Error('Central recusou evento HTTP ' + response.status);
+}
 const history = [];
 mkdirSync(logDir, { recursive: true });
 if (existsSync(logFile)) {
@@ -56,12 +109,13 @@ table{border-collapse:collapse;width:100%}td,th{padding:11px;border-bottom:1px s
 <h1>Caça Promos VIP · Monitor de botões</h1>
 <p class="small">Laboratório local. Nenhuma mensagem é enviada por esta tela.</p>
 <section><span class="pill" id="status">Aguardando...</span>
-<p class="small">Webhook: http://127.0.0.1:4011/webhook</p></section>
+<p class="small">Webhook local autenticado. As respostas válidas são repassadas à Central.</p></section>
 <section><h2>Eventos recebidos</h2><table><thead><tr>
 <th>Horário</th><th>Evento</th><th>Instância</th><th>Escolha</th>
 </tr></thead><tbody id="events"><tr><td colspan="4">Nenhum evento ainda.</td></tr></tbody></table></section>
 <p class="small">O monitor grava somente tipo do evento, nome da instância e identificador da opção.
-Confira os botões no celular: a API sozinha não garante entrega.</p></main>
+Abra as respostas detalhadas na <a href="http://127.0.0.1:3045/respostas-botoes">Central Caça Promos VIP</a>.
+A API sozinha não garante entrega.</p></main>
 <script>
 async function load(){
 try {
@@ -93,6 +147,12 @@ const server = createServer((req, res) => {
     return;
   }
   if (req.method === 'POST' && url.pathname === '/webhook') {
+    if (req.socket.remoteAddress !== '127.0.0.1' ||
+        !authenticated(url.searchParams.get('key'))) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end('{"ok":false}');
+      return;
+    }
     let body = '';
     req.setEncoding('utf8');
     req.on('data', (chunk) => {
@@ -104,15 +164,23 @@ const server = createServer((req, res) => {
         body += chunk;
       }
     });
-    req.on('end', () => {
+    req.on('end', async () => {
       if (res.writableEnded) return;
+      let payload;
+      try { payload = JSON.parse(body); }
+      catch {
+        res.writeHead(400);
+        res.end('JSON invalido');
+        return;
+      }
       try {
-        addEvent(JSON.parse(body));
+        if (payload?.event === 'ButtonClick') await relay(payload);
+        addEvent(payload);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('{"ok":true}');
       } catch {
-        res.writeHead(400);
-        res.end('JSON invalido');
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end('{"ok":false,"error":"Ponte local indisponivel"}');
       }
     });
     return;

@@ -16,6 +16,7 @@ import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaM
 import { renderCampanhas } from './campanhas-ui.mjs';
 import { renderEnvioRapido } from './envio-rapido-ui.mjs';
 import { iniciarEnvioRapido } from './envio-rapido.mjs';
+import { iniciarRespostasBotoes } from './respostas-botoes.mjs';
 import { renderGestao } from './gestao-ui.mjs';
 import { iniciarGestaoContatos } from './gestao-contatos.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
@@ -33,6 +34,7 @@ const scripts = new Map([
   ['/assets/gestao.js', readFileSync(join(sourceDir, 'assets', 'gestao.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
   ['/assets/denuncia.js', readFileSync(join(sourceDir, 'assets', 'denuncia.js'), 'utf8')],
+  ['/assets/respostas-botoes.js', readFileSync(join(sourceDir, 'assets', 'respostas-botoes.js'), 'utf8')],
 ]);
 const styles=new Map([
   ['/assets/painel-theme.css',readFileSync(join(sourceDir,'assets','painel-theme.css'),'utf8')],
@@ -167,6 +169,9 @@ export function criarPiloto({
   });
   const envioRapido=iniciarEnvioRapido({
     contatos,denuncias,gestaoContatos,convites:convitesUnicos,agora,
+  });
+  const respostasBotoes=iniciarRespostasBotoes({
+    dataDir,contatos,denuncias,convites:convitesUnicos,agora,
   });
   const sessoes = new Map();
   const limites = new Map();
@@ -318,10 +323,10 @@ export function criarPiloto({
         res.writeHead(302, {...headersBase,location:'/enviar'});
         return res.end();
       }
-      if (['/inicio','/contatos','/denuncias'].includes(pathname) && leitura) {
+      if (['/inicio','/contatos','/denuncias','/respostas-botoes'].includes(pathname) && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
           'Área administrativa disponível somente no ACER, via 127.0.0.1.');
-        return codigoHtml(res,200,renderGestao(pathname.slice(1)));
+        return codigoHtml(res,200,renderGestao(pathname==='/respostas-botoes'?'respostas':pathname.slice(1)));
       }
       if (pathname === '/enviar' && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
@@ -372,6 +377,30 @@ export function criarPiloto({
         return contatos.descadastrarPorToken(entrada.token)
           ? json(res, 200, { ok: true })
           : json(res, 404, { ok: false, mensagem: 'Link de descadastro não encontrado.' });
+      }
+
+      // Ponte privada do monitor WhatyGo (somente processo local autorizado).
+      // Nunca aceitar cookies, Origin de navegador ou mensagens sem chave.
+      if (pathname === '/api/local/whatygo/evento') {
+        if (method !== 'POST')return codigoTexto(res,405,'Método não permitido');
+        if (req.socket.remoteAddress!=='127.0.0.1' ||
+            req.socket.localAddress!=='127.0.0.1' ||
+            req.headers.host!=='127.0.0.1:'+servidor.address()?.port ||
+            req.headers.origin ||
+            !respostasBotoes.checkBridgeKey(req.headers['x-cpv-whatygo'])) {
+          return json(res,403,{ok:false,mensagem:'Ponte local não autorizada.'});
+        }
+        try {
+          const entrada=await corpoJson(req,4096);
+          const resultado=respostasBotoes.receive(entrada);
+          return json(res,200,resultado);
+        }catch {
+          return json(res,400,{ok:false,mensagem:'Evento de botão inválido.'});
+        }
+      }
+      if (pathname === '/api/local/whatygo/respostas' && leitura) {
+        if(!acessoCampanhasLocais(req))return json(res,403,{ok:false,mensagem:'Somente no computador local.'});
+        return json(res,200,{ok:true,...respostasBotoes.list()});
       }
 
       // Visão gerencial restrita à instalação local, sem dados pessoais no Netlify.

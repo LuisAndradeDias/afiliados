@@ -412,3 +412,39 @@ Os testes automatizados usam números fictícios e um Chrome **simulado**.
 Nenhuma mensagem real é enviada durante a suíte. A validação visual da
 interface do WhatsApp Web real depende de sua autorização para um teste
 com destinatário próprio e da disponibilidade da sessão de promoções.
+
+## Integração dos cliques WhatyGo na Central — 22/10/2026
+
+Página local: **http://127.0.0.1:3045/respostas-botoes**. Há também um
+atalho na navegação principal e na visão geral.
+
+Fluxo implementado:
+- WhatyGo envia `ButtonClick` ao monitor local `127.0.0.1:4011` com
+  segredo próprio na URL (o segredo NÃO é colocado no código).
+- O monitor encaminha somente os campos necessários para a Central em
+  `127.0.0.1:3045/api/local/whatygo/evento`, autenticado por chave privada.
+- A Central valida nome da instância, data recente, ID do evento, identidade
+  WhatsApp de remetente/chat e se a resposta não foi enviada por nossa conta.
+- Se o número for comprovado e clicar em **Não tenho interesse**, a Central
+  usa o bloqueio persistente por hash existente, marca descadastro em um
+  cadastro correspondente e impede convites futuros por listas e filas.
+- Em **Entrar no grupo**, registra o aceite; se o contato já tiver autorização
+  documentada e não estiver bloqueado, o operador pode copiar o link do
+  grupo pela interface e fazer o encaminhamento manualmente.
+- Contatos não cadastrados, eventos de grupo, LIDs não resolvidos e identidade
+  incerta nunca são tratados como autorização ou recusa comprovada.
+- Nenhum clique envia mensagens, reativa contato bloqueado ou adiciona
+  automaticamente pessoas aos grupos.
+- Respostas duplicadas são idempotentes; registros ocultam o telefone completo,
+  guardam hash do evento, situação e data, sem copiar conteúdos de conversas.
+- Os dois cliques de laboratório registrados ANTES desta implantação eram
+  anonimizados pelo monitor e não podem ser atribuídos retroativamente a
+  um contato: é necessário um NOVO clique real para vinculá-lo.
+
+Credenciais e histórico ficam somente em `dados/previa-acer/` (quando a
+Central 3045 está ativa) e `laboratorio-whatygo/private/`.
+Não compartilhar URLs completas de webhook, tokens, arquivos de sessão ou
+bancos de dados. Nunca enviar convites a pessoas sem autorização documentada.
+
+A opção WhatyGo é **não oficial**, podendo falhar ou causar restrições da
+conta. Use o painel de modo supervisionado e não automatize disparos em massa.
