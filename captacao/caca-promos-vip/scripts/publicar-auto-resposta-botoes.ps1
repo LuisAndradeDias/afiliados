@@ -3,7 +3,7 @@ $root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $dataDir=Join-Path $root 'dados\previa-acer'
 $server=Join-Path $root 'src\server.mjs'
 if(-not(Test-Path (Join-Path $dataDir 'chave-admin.txt'))){throw 'Dados privados 3045 ausentes.'}
-foreach($f in @('src\respostas-botoes.mjs','src\whatygo-responder-link.mjs','src\gestao-ui.mjs','src\assets\respostas-botoes.js')){
+foreach($f in @('src\respostas-botoes.mjs','src\whatygo-responder-link.mjs','src\gestao-ui.mjs','src\assets\respostas-botoes.js','src\contatos.mjs','src\gestao-contatos.mjs','src\server.mjs','src\assets\gestao.js')){
   & node.exe --check (Join-Path $root $f)
   if($LASTEXITCODE -ne 0){throw ('Erro de sintaxe: '+$f)}
 }
@@ -47,7 +47,9 @@ for($i=0;$i -lt 60;$i++){
   $r=Invoke-RestMethod 'http://127.0.0.1:3045/api/local/whatygo/respostas' -TimeoutSec 3
   $ui=Invoke-WebRequest 'http://127.0.0.1:3045/respostas-botoes' -TimeoutSec 3 -UseBasicParsing
   $asset=Invoke-WebRequest 'http://127.0.0.1:3045/assets/respostas-botoes.js' -TimeoutSec 3 -UseBasicParsing
-  if($r.ok -and [bool]$r.automacao.habilitada -eq $previousAutomation -and $ui.Content.Contains('rbAutoEnable') -and $asset.Content.Contains('/api/local/whatygo/automacao')){$online=$true;break}
+  $contactUi=Invoke-WebRequest 'http://127.0.0.1:3045/contatos' -TimeoutSec 3 -UseBasicParsing
+  $contactJs=Invoke-WebRequest 'http://127.0.0.1:3045/assets/gestao.js' -TimeoutSec 3 -UseBasicParsing
+  if($r.ok -and [bool]$r.automacao.habilitada -eq $previousAutomation -and $ui.Content.Contains('rbAutoEnable') -and $asset.Content.Contains('/api/local/whatygo/automacao') -and $contactUi.Content.Contains('reactivateTestForm') -and $contactJs.Content.Contains('/api/local/gestao/numero/reativar-teste')){$online=$true;break}
  }catch{}
 }
 if(-not $online){throw 'Central ativa, mas rota de automação não respondeu como esperado.'}

@@ -9,6 +9,7 @@
     'aceite-pendente-operador': 'Aceitou — encaminhar manualmente',
     'recusa-bloqueada': 'Recusa registrada — bloqueado',
     'impedido-bloqueado': 'Bloqueado — não enviar',
+    'aceite-antigo-reativado': 'Reativado depois: faça um novo clique para solicitar o link',
     'pendente-consentimento': 'Conferir consentimento',
     'pendente-identidade': 'Identidade não verificada — nenhuma ação',
     'auto-na-fila': 'Convite na fila de resposta automática',
@@ -104,6 +105,7 @@
     indicator.appendChild(heading);
     const messages = {
       'impedido-bloqueado': 'Nenhum convite enviado: o destinatário está bloqueado após um pedido de não receber mensagens.',
+      'aceite-antigo-reativado': 'O número foi reativado depois deste clique, mas a solicitação antiga não é reprocessada. Faça um novo envio manual dos botões e toque novamente em Entrar no grupo.',
       'pendente-consentimento': 'Nenhum convite enviado: falta registro prévio de consentimento desse destinatário.',
       'pendente-identidade': 'Nenhum convite enviado: a identidade do destinatário não pôde ser comprovada.',
       'aceite-pendente-operador': 'Aceite registrado. Automação desligada no momento do clique: envio somente manual.',
@@ -119,16 +121,20 @@
     const outcome = document.createElement('span');
     outcome.textContent = messages[latest.status] || 'Consulte o histórico abaixo.';
     indicator.appendChild(outcome);
-    if (latest.status === 'impedido-bloqueado' || latest.status === 'recusa-bloqueada') {
+    if (latest.status === 'impedido-bloqueado' || latest.status === 'recusa-bloqueada' || latest.status === 'aceite-antigo-reativado') {
       const explanation = document.createElement('span');
-      explanation.textContent = latest.contatoId
+      explanation.textContent = latest.status === 'aceite-antigo-reativado'
+        ? ' A conta está liberada para um novo teste individual autorizado.'
+        : latest.contatoId
         ? ' Uma nova autorização documentada é necessária para desbloquear o contato.'
         : ' Esse número não possui cadastro associado na Central. Para testar agora, utilize outro contato previamente autorizado e não bloqueado; não reative esta recusa automaticamente.';
       indicator.appendChild(explanation);
       const link = document.createElement('a');
       link.className = 'text-link';
-      link.href = latest.contatoId ? '/contatos?filtro=bloqueado' : '/enviar';
-      link.textContent = latest.contatoId ? ' Consultar contatos bloqueados →' : ' Preparar outro número de teste →';
+      link.href = latest.status === 'aceite-antigo-reativado' ? '/enviar'
+        : latest.contatoId ? '/contatos?filtro=bloqueado' : '/contatos#reativar-teste';
+      link.textContent = latest.status === 'aceite-antigo-reativado' ? ' Preparar novo convite →'
+        : latest.contatoId ? ' Consultar contatos bloqueados →' : ' Reativar meu número de teste →';
       indicator.appendChild(link);
     }
     if (Number.isInteger(total?.respostasAutomaticas)) {

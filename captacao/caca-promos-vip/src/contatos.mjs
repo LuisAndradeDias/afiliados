@@ -286,6 +286,57 @@ export function iniciarContatos(dataDir, agora = () => new Date()) {
     return {id:contato.id,reativadoEm:instante};
   }
 
+  // Reativação específica para um opt-out recebido de número SEM cadastro.
+  // Primeiro materializamos a nova autorização documentada ENQUANTO o número
+  // segue bloqueado; só depois a gestão pode remover a supressão por hash.
+  // Em caso de falha de disco entre as etapas, o bloqueio continua válido.
+  function cadastrarReativacaoSemCadastro({
+    nome, telefone, origemAutorizacao, referenciaAutorizacao,
+    dataAutorizacao, bloqueadoEm,
+  }={}) {
+    const numero=telefoneBrasil(telefone);
+    if(!numero)throw new Error('Informe um WhatsApp brasileiro válido com DDD.');
+    const prova=validarNovaAutorizacao({
+      origemAutorizacao,referenciaAutorizacao,dataAutorizacao,bloqueadoEm,agora,
+    });
+    const nomeLimpo=String(nome??'').trim().replace(/[<>\x00-\x1f]/g,' ').trim().slice(0,80);
+    if(nomeLimpo.length<2)throw new Error('Informe o nome do titular para o novo cadastro.');
+    const dados=ler();
+    const anterior=dados.contatos.find(c=>c.telefone===numero);
+    if(anterior) {
+      // Permite somente concluir uma operação já preparada e interrompida
+      // antes de retirar o bloqueio. Nenhum outro cadastro é modificado.
+      if(anterior.origem==='reativacao-anonima-com-autorizacao' &&
+        anterior.status==='ativo' && !anterior.descadastroEm &&
+        anterior.registroAutorizacao?.tipo==='nova-autorizacao-apos-bloqueio' &&
+        anterior.registroAutorizacao?.referencia===prova.referencia &&
+        anterior.registroAutorizacao?.origem===prova.origem &&
+        anterior.registroAutorizacao?.dataAutorizacao===prova.dataAutorizacao &&
+        anterior.bloqueioOriginalEm===bloqueadoEm) {
+        return {id:anterior.id,preparadoAnteriormente:true};
+      }
+      throw new Error('Já existe cadastro para o número. Utilize o desbloqueio pela ficha do contato.');
+    }
+    const instante=agoraIso(agora);
+    const novo={
+      id:randomUUID(),nome:nomeLimpo,telefone:numero,
+      origem:'reativacao-anonima-com-autorizacao',status:'ativo',
+      consentimentoDeclaradoEm:instante,consentimentoConfirmadoEm:instante,
+      versaoTermo:'reativacao-documentada-v1',evidencia:EVIDENCIA_IMPORTADA,
+      registroAutorizacao:{
+        origem:prova.origem,referencia:prova.referencia,
+        dataAutorizacao:prova.dataAutorizacao,declaradoEm:instante,
+        tipo:'nova-autorizacao-apos-bloqueio',
+      },
+      bloqueioOriginalEm:bloqueadoEm,reativadoEm:instante,
+      codigoConfirmacao:null,tokenDescadastro:randomBytes(24).toString('hex'),
+      ultimoEnvioManualEm:null,descadastroEm:null,
+    };
+    dados.contatos.push(novo);
+    salvar(dados);
+    return {id:novo.id,preparadoAnteriormente:false};
+  }
+
   function descadastrarPorId(id) {
     const dados = ler();
     const contato = dados.contatos.find((c) => c.id === id);
@@ -382,5 +433,6 @@ export function iniciarContatos(dataDir, agora = () => new Date()) {
     descadastrarPorId, descadastrarPorToken, prepararMensagem,
     marcarEnvioManual, excluirPorId, exportarCsv,
     importarConsentimentosExternos,reativarComNovaAutorizacao,
+    cadastrarReativacaoSemCadastro,
   };
 }

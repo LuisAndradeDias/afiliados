@@ -1,5 +1,5 @@
 import {contatoComConsentimento,EVIDENCIA_IMPORTADA,
-  validarNovaAutorizacao} from './contatos.mjs';
+  validarNovaAutorizacao,telefoneBrasil} from './contatos.mjs';
 
 const FILTROS=new Set(['todos','autorizado','bloqueado','descadastrado','pendente','sem-autorizacao']);
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -117,6 +117,75 @@ export function iniciarGestaoContatos({
     });
     return {bloqueado:true,jaBloqueado:false};
   }
+  let reativacaoAnonimaEmAndamento=false;
+  async function reativarNumeroTesteSemCadastro({
+    telefone,nome,confirmado=false,novaAutorizacao=false,souTitular=false,
+    origemAutorizacao,referenciaAutorizacao,dataAutorizacao,
+  }={}) {
+    if(confirmado!==true||novaAutorizacao!==true||souTitular!==true) {
+      throw new Error('Confirme que o número é seu e que autorizou novamente os convites.');
+    }
+    const numero=telefoneBrasil(telefone);
+    if(!numero)throw new Error('Informe o número brasileiro completo com DDD.');
+    if(reativacaoAnonimaEmAndamento)throw new Error('Já existe uma reativação sendo processada. Aguarde.');
+    reativacaoAnonimaEmAndamento=true;
+    try {
+      const chaveConsulta='bloqueio-sem-cadastro';
+      const consultar=()=>denuncias.bloqueiosPorContato([
+        {id:chaveConsulta,telefone:numero},
+      ]).get(chaveConsulta);
+      let bloqueio=consultar();
+      if(!bloqueio)throw new Error('Este número não está bloqueado.');
+      // Esta tela cobre somente o teste de opt-out voluntário, nunca
+      // denúncias internas ou bloqueios administrativos de terceiros.
+      if(bloqueio.motivo!=='saida-solicitada') {
+        throw new Error('Esse bloqueio exige revisão pela gestão; não pode ser liberado por este formulário.');
+      }
+      const registro=contatos.listar().find(c=>c.telefone===numero);
+      if(registro && !(registro.origem==='reativacao-anonima-com-autorizacao' &&
+          registro.status==='ativo' && !registro.descadastroEm)) {
+        throw new Error('Já existe um contato cadastrado. Use Contatos → Bloqueados → Desbloquear contato.');
+      }
+      let prova=validarNovaAutorizacao({origemAutorizacao,
+        referenciaAutorizacao,dataAutorizacao,
+        bloqueadoEm:bloqueio.primeiroBloqueioEm,agora});
+      if(sincronizacaoNetlify?.estado().configurada){
+        const resultado=await sincronizacaoNetlify.sincronizar();
+        if(!resultado.ok||resultado.novas>=50) {
+          throw new Error('Não foi possível conferir as recusas pendentes do Netlify. Tente novamente depois da sincronização.');
+        }
+      }
+      const worker=controleWhatsapp?.estado();
+      if(worker?.ocupado||worker?.processoAtivo||conexaoWhatsapp?.estado().ocupado){
+        throw new Error('Conclua a sessão de envio do WhatsApp antes de reativar.');
+      }
+      bloqueio=consultar();
+      if(!bloqueio||bloqueio.motivo!=='saida-solicitada'){
+        throw new Error('O bloqueio mudou. Atualize a página e confira novamente.');
+      }
+      prova=validarNovaAutorizacao({origemAutorizacao,
+        referenciaAutorizacao,dataAutorizacao,
+        bloqueadoEm:bloqueio.primeiroBloqueioEm,agora});
+      const preparado=contatos.cadastrarReativacaoSemCadastro({
+        nome,telefone:numero,origemAutorizacao:prova.origem,
+        referenciaAutorizacao:prova.referencia,dataAutorizacao:prova.dataAutorizacao,
+        bloqueadoEm:bloqueio.primeiroBloqueioEm,
+      });
+      // O contato passa a existir com opt-in auditável, mas CONTINUA
+      // bloqueado até esta segunda operação completar com sucesso.
+      const liberacao=denuncias.liberarComNovaAutorizacao({
+        telefone:numero,contatoId:preparado.id,
+      });
+      return {
+        desbloqueado:true,contatoId:preparado.id,liberadoEm:liberacao.liberadoEm,
+        cadastroCriado:!preparado.preparadoAnteriormente,
+        mensagem:'Número reativado. O histórico anterior foi preservado. Nenhuma mensagem enviada.',
+      };
+    } finally {
+      reativacaoAnonimaEmAndamento=false;
+    }
+  }
+
   async function desbloquear({
     id,confirmado=false,novaAutorizacao=false,origemAutorizacao,
     referenciaAutorizacao,dataAutorizacao,
@@ -167,5 +236,5 @@ export function iniciarGestaoContatos({
       filasAnterioresEncerradas:antigasWeb+antigasCrm,
       liberadoEm:liberacao.liberadoEm};
   }
-  return {listar,detalhe,bloquear,desbloquear,resumo:()=>dados().resumo};
+  return {listar,detalhe,bloquear,desbloquear,reativarNumeroTesteSemCadastro,resumo:()=>dados().resumo};
 }

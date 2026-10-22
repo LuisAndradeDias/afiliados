@@ -119,9 +119,41 @@ const contacts=`
       <button type="button" class="btn btn-quiet" id="nextPage" disabled>Próxima →</button></div>
   </div>
 </section>
+<section class="panel" id="reativar-teste" aria-labelledby="reativarTesteTitulo">
+  <div class="panel-head">
+    <div>
+      <span class="overline">TESTE WHATSAPP • REATIVAÇÃO DOCUMENTADA</span>
+      <h2 id="reativarTesteTitulo">Reativar meu número de testes sem cadastro</h2>
+      <p>Para um número seu que clicou em “Não tenho interesse” e ainda não aparece na lista de contatos.</p>
+    </div>
+  </div>
+  <p class="context-note">O bloqueio protege os contatos contra novos convites. Este formulário exige uma autorização NOVA, dada depois da recusa. Ele não envia mensagens, não restaura filas antigas e preserva o histórico.</p>
+  <form id="reactivateTestForm" class="unlock-form" style="display:grid;gap:12px;max-width:620px">
+    <label for="reactivateTestPhone">Meu número de testes (com DDD)</label>
+    <input id="reactivateTestPhone" type="tel" required inputmode="tel" autocomplete="off" placeholder="Ex.: 22 99999-0000">
+    <label for="reactivateTestName">Nome do titular do número</label>
+    <input id="reactivateTestName" type="text" required minlength="2" maxlength="80" autocomplete="name" placeholder="Identificação do titular">
+    <label for="reactivateTestOrigin">Onde ocorreu a nova autorização?</label>
+    <input id="reactivateTestOrigin" type="text" required minlength="6" maxlength="140" placeholder="Ex.: autorização do próprio titular neste teste local">
+    <label for="reactivateTestDate">Data da nova autorização, após a recusa</label>
+    <input id="reactivateTestDate" type="date" required>
+    <label for="reactivateTestReference">Referência verificável da nova autorização</label>
+    <textarea id="reactivateTestReference" required minlength="8" maxlength="240" rows="2" placeholder="Descreva a autorização do titular e onde ela pode ser conferida."></textarea>
+    <label class="unlock-checkbox" for="reactivateTestOwner">
+      <input id="reactivateTestOwner" type="checkbox" required>
+      <span>Confirmo que sou titular desse número de testes e voltei a autorizar convites DEPOIS da recusa.</span>
+    </label>
+    <label class="unlock-checkbox" for="reactivateTestConfirmed">
+      <input id="reactivateTestConfirmed" type="checkbox" required>
+      <span>Estou ciente de que a recusa original ficará no histórico e nenhuma mensagem será enviada agora.</span>
+    </label>
+    <div><button type="submit" class="btn btn-primary" id="reactivateTestSubmit">Reativar meu número de teste</button></div>
+    <p id="reactivateTestFeedback" class="context-note" role="status" aria-live="polite">Use esta opção somente para seu próprio número, após nova autorização. Para um contato já cadastrado, utilize o desbloqueio na ficha.</p>
+  </form>
+</section>
 <p class="context-note"><strong>Importante:</strong> contatos bloqueados não recebem novos convites.
-  Para reativar um número (inclusive um teste seu), abra sua ficha, confirme a nova autorização do titular
-  e use <strong>Desbloquear contato</strong>. Filas antigas permanecem encerradas.</p>
+  Se já existe cadastro, abra a ficha do contato e use <strong>Desbloquear contato</strong> com nova autorização.
+  Se seu próprio número de testes não está na lista, use o formulário acima. Filas antigas permanecem encerradas.</p>
 <dialog class="contact-dialog" id="contactDialog" aria-labelledby="contactDialogTitle">
   <div class="dialog-header"><div><span class="overline">FICHA DO CONTATO</span><h2 id="contactDialogTitle">Contato</h2>
     <p id="detailPhone">Número mascarado</p></div>

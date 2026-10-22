@@ -257,6 +257,64 @@
     }catch(err){notificar(err.message,true);}
     finally{btn.disabled=false;}
   }
+  function iniciarReativacaoMeuTeste() {
+    const form=$('reactivateTestForm');
+    if(!form)return;
+    const dateInput=$('reactivateTestDate');
+    const agora=new Date();
+    const hojeLocal=new Date(agora.valueOf()-agora.getTimezoneOffset()*60000)
+      .toISOString().slice(0,10);
+    dateInput.value=hojeLocal;
+    dateInput.max=hojeLocal;
+    if(location.hash==='#reativar-teste') {
+      setTimeout(()=>$('reactivateTestPhone')?.focus({preventScroll:true}),30);
+    }
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();
+      const field=(id)=>$(id).value.trim();
+      if(!$('reactivateTestOwner').checked||!$('reactivateTestConfirmed').checked){
+        notificar('Confirme que o número é seu e que houve nova autorização.',true);
+        return;
+      }
+      const telefone=field('reactivateTestPhone');
+      const nome=field('reactivateTestName');
+      const referenciaAutorizacao=field('reactivateTestReference');
+      const origemAutorizacao=field('reactivateTestOrigin');
+      const dataAutorizacao=field('reactivateTestDate');
+      const texto='Reativar seu número de teste?\n\n'
+        +'A recusa anterior permanecerá no histórico. Você confirma que é titular '
+        +'deste número e autorizou NOVAMENTE os convites, depois de clicar em '
+        +'“Não tenho interesse”? Nenhuma mensagem será enviada agora.';
+      if(!confirm(texto))return;
+      const button=$('reactivateTestSubmit');
+      const feedback=$('reactivateTestFeedback');
+      button.disabled=true;
+      feedback.textContent='Validando autorização, conferindo bloqueio e preservando o histórico...';
+      try{
+        const r=await api('/api/local/gestao/numero/reativar-teste',{
+          nome,telefone,origemAutorizacao,referenciaAutorizacao,
+          dataAutorizacao,confirmado:true,novaAutorizacao:true,souTitular:true,
+        });
+        if(r?.resultado?.desbloqueado!==true)throw new Error('Não foi possível confirmar a reativação.');
+        form.reset();
+        dateInput.value=hojeLocal;
+        feedback.textContent='Número reativado e registrado com nova autorização. '
+          +'A recusa antiga foi preservada. Para testar novamente, '
+          +'envie você mesmo um novo convite; o sistema não enviou mensagens nesta operação.';
+        notificar('Número de teste desbloqueado. Cadastro autorizado criado e histórico mantido.');
+        state.filtro='autorizado';
+        setFilterButtons($('contactFilters'),'autorizado');
+        state.pagina=1;
+        await carregarContatos();
+      }catch(error){
+        feedback.textContent='Reativação não concluída: '+(error.message||'revise a autorização.');
+        notificar(error.message||'Não foi possível desbloquear o número.',true);
+      }finally{
+        button.disabled=false;
+      }
+    });
+  }
+
   function iniciarContatos(){
     if(!Object.hasOwn(filtros,state.filtro))state.filtro='todos';
     setFilterButtons($('contactFilters'),state.filtro);
@@ -289,6 +347,7 @@
     $('unlockContact').addEventListener('click',mostrarDesbloqueio);
     $('cancelUnlock').addEventListener('click',cancelarDesbloqueio);
     $('unlockForm').addEventListener('submit',enviarDesbloqueio);
+    iniciarReativacaoMeuTeste();
     $('contactDialog').addEventListener('click',e=>{
       if(e.target===$('contactDialog'))$('contactDialog').close();
     });

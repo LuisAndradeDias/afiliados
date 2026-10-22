@@ -453,6 +453,13 @@ export function criarPiloto({
             const entrada=await corpoJson(req,1500);
             return json(res,200,{ok:true,resultado:gestaoContatos.bloquear(entrada)});
           }
+          if (pathname === '/api/local/gestao/numero/reativar-teste' && method==='POST'){
+            if(!limitar(req,'gestao-reativar-teste-sem-cadastro',6))
+              return json(res,429,{ok:false,mensagem:'Limite de tentativas de reativação atingido.'});
+            const entrada=await corpoJson(req,1800);
+            return json(res,200,{ok:true,
+              resultado:await gestaoContatos.reativarNumeroTesteSemCadastro(entrada)});
+          }
           if (pathname === '/api/local/gestao/contato/desbloquear' && method==='POST'){
             if(!limitar(req,'gestao-desbloquear',12))
               return json(res,429,{ok:false,mensagem:'Limite de reativações atingido.'});

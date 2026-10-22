@@ -304,10 +304,18 @@ export function iniciarRespostasBotoes({
             !denuncias.estaBloqueado(c.telefone));
         const laterBlocked = x.acao === 'aceitar' && x.contatoId &&
           contatos.listar().some(c => c.id === x.contatoId && denuncias.estaBloqueado(c.telefone));
+        // An old acceptance was correctly denied while the number was
+        // blocked. If its owner later reauthorizes and the suppression is
+        // released, show the new state WITHOUT replaying the old click.
+        const reativadoDepois = x.status === 'impedido-bloqueado' && x.hashContato &&
+          contatos.listar().some(c=>
+            hmac(eventSecret,'phone:'+c.telefone)===x.hashContato &&
+            contatoComConsentimento(c) && !denuncias.estaBloqueado(c.telefone));
         const { hashContato: _privado, ...publico } = x;
         return {
           ...publico,
-          status: laterBlocked ? 'impedido-bloqueado' : x.status,
+          status: laterBlocked ? 'impedido-bloqueado'
+            : reativadoDepois ? 'aceite-antigo-reativado' : x.status,
           linkGrupo: stillEligible ? groupUrl : null,
         };
       }),

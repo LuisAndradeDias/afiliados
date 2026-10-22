@@ -525,3 +525,45 @@ sem remover silenciosamente a recusa previa.
 O script `scripts/publicar-auto-resposta-botoes.ps1` preserva o estado
 real da automacao ao reiniciar a Central, sem forca-la a ficar desativada.
 Nao reinicia o WhatyGo nem reprocessa cliques antigos.
+
+## Desbloqueio de numero de teste sem cadastro (22/10/2026)
+
+Acesse no ACER: `http://127.0.0.1:3045/contatos#reativar-teste`.
+
+Cenario: um numero de teste pertencente ao operador clicou em
+"Não tenho interesse" no WhatyGo, gerando um bloqueio persistente por
+hash, mas ele nao estava cadastrado em contatos. A opcao antiga
+"Desbloquear contato" exige ficha existente, portanto nao serve
+nesse caso.
+
+Novo formulario: "Reativar meu número de testes sem cadastro".
+Exige numero brasileiro completo, nome do titular, origem, data e
+referencia verificavel da NOVA autorizacao concedida apos a recusa,
+alem de duas confirmacoes (titularidade e preservacao do historico).
+Somente o painel em loopback pode chamar a rota local protegida
+`POST /api/local/gestao/numero/reativar-teste`; CSRF, Origin e
+limite de 6 tentativas/hora sao verificados.
+
+A operacao nao desbloqueia so porque houve clique em "Entrar".
+Apenas reativa quando o titular explicitamente registra nova
+autorizacao. Tambem recusa: cadastro existente, motivo de bloqueio
+administrativo/denuncia, autorizacao retroativa ou ausente, sessoes
+ocupadas, falha na sincronizacao de recusas pendentes do Netlify,
+numero nao bloqueado e tentativas duplicadas.
+
+A sequencia e intencional: registra um NOVO contato autorizado
+com evidencia documentada ENQUANTO o bloqueio antigo continua
+ativo; so entao remove a supressao por hash e registra
+`reativacao-autorizada`. Se a segunda etapa falhar, o bloqueio
+persiste. O reenvio com os MESMOS dados consegue concluir uma
+operacao parcialmente preparada, sem criar outro contato.
+A recusa original permanece nos eventos de auditoria.
+
+A tela de respostas pode indicar `aceite-antigo-reativado` depois
+dessa liberacao: cliques passados NAO sao reaproveitados para disparar
+convites automaticos. O titular devera fazer um NOVO teste dos botoes.
+Nenhum desbloqueio e realizado durante testes automatizados no banco
+real do ACER; toda validacao ocorre em diretorios temporarios.
+
+Testes: `node --test tests/reativacao-numero-teste-sem-cadastro.test.mjs`
+(inclui browser Chrome real com numero ficticio).
