@@ -1,8 +1,15 @@
-# Ambiente de testes: nao publicar credenciais, logs, sessoes ou dados.
+# Laboratorio isolado - somente scripts e documentacao sob Git
 .env
 .env.*
 !.env.example
 private/
 runtime/
 logs/
+tools/
+_upstream/
+cache/
+bin/
 *.log
+*.pid
+*.sqlite
+*.db

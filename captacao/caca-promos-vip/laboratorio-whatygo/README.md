@@ -1,40 +1,107 @@
-# Laboratorio WhatyGo (isolado)
+# Laboratorio de botoes WhatyGo - Windows 10 atual, sem Docker
 
-## Status
-Preparado no ACER. Nao se conecta ao WhatsApp nem envia mensagens automaticamente.
-Depende do Docker Desktop (ainda nao instalado quando este laboratorio foi criado).
-Fonte: https://github.com/lucasgiovannibr/whatygo
-Compose adaptado do docker/instalacao-simples/docker-compose.yml, com uma rede interna,
-porta 4000 apenas em loopback, volumes isolados e reinicio automatico desabilitado.
+Ambiente experimental isolado para avaliar os botoes Native Flow do WhatsApp.
+Nao modifica o Windows, nao instala servicos permanentes e NAO usa a conta
+Business de producao. Na primeira etapa, nenhum envio e feito automaticamente.
 
-## Antes de executar
-1. Instale Docker Desktop para Windows no ACER (pode exigir permissao administrativa,
-   WSL 2 e reinicializacao). Nao reinstale o Chrome ou o painel atual.
-2. Confirme Docker Desktop aberto: docker compose version
-3. Na pasta deste laboratorio, execute: docker compose config -q
-4. Execute: docker compose pull
-5. Execute: docker compose up -d
-6. Verifique: http://127.0.0.1:4000/health
-7. Abra http://127.0.0.1:4000/manager e use a chave GLOBAL_API_KEY gerada
-   exclusivamente em .env. Nao compartilhe a chave.
+## Caminho e portas
 
-## Guardrails
-- Use somente CONTA REMETENTE SEPARADA para o laboratorio; nao pareie o numero
-  Business de producao nem reutilize perfis Playwright, tokens ou cookies.
-- Destinatario de homologacao: numero brasileiro fornecido pelo titular, final 1632.
-- Zero envios por API sem clique consciente e aprovacao do numero/conta de teste.
-- Enviar no maximo UMA mensagem inicial com botoes e nao repetir se incerto.
-- Confirmar recebimento no celular, clicar nos botoes um de cada vez e observar
-  eventos BUTTON_CLICK vinculados ao remetente e ao ID originais.
-- O clique 'Entrar no grupo' nao adiciona a pessoa sem pedido/confirmacao.
-- 'Nao tenho interesse' so altera cadastro mediante verificacao da origem.
-- Nunca ativar campanhas ou filas reais neste laboratorio.
-- Nunca expor 4000 para a rede ou internet; manter apenas 127.0.0.1.
+- Projeto: C:\projeto01\captacao\caca-promos-vip\laboratorio-whatygo
+- Central original: http://127.0.0.1:3045 (nao modificar)
+- WhatyGo nativo: http://127.0.0.1:4000/manager (apenas localhost)
+- PostgreSQL de testes: 127.0.0.1:55432 (instancia portatil isolada)
+- PostgreSQL antigo de terceiro: 5432 (NUNCA tocar)
 
-## Parar
-docker compose down
-Nao use docker compose down -v: isso apaga volumes com o estado do laboratorio.
+## Origem das dependencias
 
-## Cuidado
-O fork nao oficial tem risco de incompatibilidade e restricao da conta.
-HTTP 200 ou ID de mensagem nao prova entrega/renderizacao de botoes.
+- Repositorio WhatyGo: https://github.com/lucasgiovannibr/whatygo
+- Commit fixado: 6e0abc8c18b162e413bfdb60e0e458f752c066b0
+- Go 1.26.8: https://go.dev/dl/go1.26.8.windows-amd64.zip
+  SHA-256: b92c3b2adae85a11ba71fe7216daf0d84e82af4c8ab6c5625807f28622043a59
+- PostgreSQL 17.11-3 ZIP (EDB): https://get.enterprisedb.com/postgresql/postgresql-17.11-3-windows-x64-binaries.zip
+  SHA-256: 4b8db0930c38f6ef845db919551dedda3b6b845aeb0927b3d79a6e8e9e4537cf
+- Go e Postgres extraidos em tools/ (nao instalados globalmente).
+- Codigo externo em _upstream/ (ignorado no Git principal).
+- Cache, sessoes, logs, senhas e bancos em caminhos ignorados pelo Git.
+
+## Primeiro uso no ACER
+
+Sem alterar ExecutionPolicy global:
+
+1. Com dependencias baixadas, executar via PowerShell:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\configurar-nativo.ps1"
+2. Compilar (se bin/whatygo.exe ainda nao existir):
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\construir-nativo.ps1"
+3. Iniciar apenas este ambiente:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\iniciar-nativo.ps1"
+4. Diagnosticar:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\verificar-nativo.ps1"
+5. Abrir http://127.0.0.1:4000/manager
+6. A chave GLOBAL_API_KEY fica em .env.native (arquivo privado no ACER).
+7. Finalizar: powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\parar-nativo.ps1"
+
+Os atalhos .cmd podem ser usados para os passos 3 a 7. O script do banco
+usa apenas seu cluster em runtime\pgdata, sem criar servicos do Windows.
+
+## Por que compilamos o codigo com uma mudanca local?
+
+O WhatyGo original define Addr: ":" + SERVER_PORT e, assim, escutaria todas
+as interfaces. O construir-nativo.ps1 altera SOMENTE a copia _upstream para
+Addr: "127.0.0.1:" + SERVER_PORT, impedindo exposicao acidental na rede.
+Esta alteracao e verificada antes da compilacao.
+
+## Credenciais e isolamento
+
+O script configurar-nativo.ps1 gera SEGREDOS NOVOS separados daqueles da
+Central e do antigo compose.yaml. Eles ficam somente em:
+- .env.native: senha de acesso ao painel e DSNs privadas
+- private/postgres-pass.txt: senha do Postgres de testes
+- runtime/pgdata: bancos do laboratorio
+- runtime/whatygo.*.log: logs do executavel
+- bin/dbdata: estado local do cliente quando aplicavel
+
+Esses arquivos nunca devem ir ao GitHub nem ao Google Drive.
+
+## Teste de botoes (apenas depois de subir e verificar)
+
+- Conectar por QR Code somente UMA conta remetente de teste separada,
+  nunca o WhatsApp Business usado para publicar as promocoes.
+- Destinatario com autorizacao: numero pessoal de testes com final 1632.
+- Um unico convite inicial, somente apos confirmacao humana e conferencia
+  do numero; nenhum reenvio automatico se a entrega for incerta.
+- Dois quick replies: "Entrar no grupo" e "Nao tenho interesse".
+- Eventos a observar: SEND_MESSAGE, BUTTON_CLICK e status de conexao.
+- Conferir se a mensagem e os botoes realmente aparecem no telefone.
+  HTTP 200, ID ou mensagem "enviada" nao comprovam renderizacao.
+- Nao adicionar contato a grupo automaticamente.
+- Nao bloquear por botao sem confirmar origem da resposta.
+- Sem listas de terceiros, disparos em massa nem contatos de producao.
+
+AVISO: uso de bibliotecas nao oficiais pode gerar restricoes na conta.
+O laboratorio nao elimina esse risco: use apenas uma conta descartavel
+de testes de que voce e titular.
+
+## Versao Docker
+
+O compose.yaml fica como referencia, mas nao e utilizado nesta maquina
+Windows 10 21H2; instalacao nativa e o caminho principal.
+
+## Compilacao no Windows sem compilador C
+
+O projeto upstream depende de github.com/chai2010/webp, que exige CGO.
+Para este laboratorio de apenas botoes de texto, preparar-sem-cgo.ps1
+substitui o decodificador por golang.org/x/image/webp e desativa
+EXCLUSIVAMENTE a conversao de imagem PNG/JPEG para figurinha WebP.
+O construir-nativo.ps1 aplica o patch local idempotente e compila com
+CGO_ENABLED=0; nenhum compilador C nem modificacao global e necessario.
+O binario fica em bin/whatygo.exe e os arquivos externos nao sao
+incluidos no Git. Nao utilizar esta compilacao para testar figurinhas.
+
+## Estado validado em 22/10/2026
+
+- WhatyGo compilado diretamente em Windows 10 21H2 (Go 1.26.8).
+- GET http://127.0.0.1:4000/health: 200, authDb ok, usersDb ok.
+- GET http://127.0.0.1:4000/manager: 200.
+- GET http://127.0.0.1:3045/inicio: 200 (Central original intacta).
+- Banco de testes apenas na porta 55432 local.
+- Nenhuma conta pareada, nenhuma mensagem enviada pelo laboratorio.
