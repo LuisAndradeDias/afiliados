@@ -402,6 +402,22 @@ export function criarPiloto({
         if(!acessoCampanhasLocais(req))return json(res,403,{ok:false,mensagem:'Somente no computador local.'});
         return json(res,200,{ok:true,...respostasBotoes.list()});
       }
+      if (pathname === '/api/local/whatygo/automacao') {
+        if (method !== 'POST') return json(res,405,{ok:false,mensagem:'Método não permitido.'});
+        if (!acessoCampanhasLocais(req,true)) {
+          return json(res,403,{ok:false,mensagem:'Somente no painel local autorizado.'});
+        }
+        if (!limitar(req,'automacao-botoes-config',12)) {
+          return json(res,429,{ok:false,mensagem:'Aguarde para alterar a automação.'});
+        }
+        try {
+          const input=await corpoJson(req,1024);
+          const automacao=respostasBotoes.configurarAutomacao(input);
+          return json(res,200,{ok:true,automacao});
+        }catch(error){
+          return json(res,400,{ok:false,mensagem:error.message});
+        }
+      }
 
       // Visão gerencial restrita à instalação local, sem dados pessoais no Netlify.
       if (pathname.startsWith('/api/local/gestao/')){

@@ -448,3 +448,56 @@ bancos de dados. Nunca enviar convites a pessoas sem autorização documentada.
 
 A opção WhatyGo é **não oficial**, podendo falhar ou causar restrições da
 conta. Use o painel de modo supervisionado e não automatize disparos em massa.
+
+## Automação supervisionada após clicar em "Entrar no grupo" (22/10/2026)
+
+Na página local `http://127.0.0.1:3045/respostas-botoes` foi incluído o painel
+**Enviar link automaticamente após o aceite**. A automação inicia DESATIVADA.
+Somente o operador local pode habilitar, confirmando consentimento, e pode
+desabilitá-la a qualquer momento. Nunca é habilitada por deploy ou testes.
+
+Fluxo com a opção habilitada:
+1. Um destinatário toca no quick reply `aceitar_grupo` no próprio WhatsApp.
+2. O WhatyGo entrega um `ButtonClick` e o monitor autentica a sessão.
+3. A Central valida os dados de origem, ID, horário e telefone. Apenas contatos
+   previamente cadastrados com consentimento documentado, sem bloqueio,
+   entram na fila de resposta automática.
+4. O processamento envia **somente uma resposta solicitada** via
+   `POST http://127.0.0.1:4000/send/text`, com o link de convite atual
+   de `chat.whatsapp.com`. O próprio usuário toca no link e confirma a
+   entrada; o servidor não o inclui diretamente no grupo.
+5. A resposta da API é tratada como `auto-link-enviado-api`, nunca como
+   entrega ou entrada confirmada no WhatsApp.
+
+Segurança operacional:
+- No máximo 1 resposta por destinatário em uma janela móvel de 24 horas.
+- Até 50 tentativas totais de envio automático em 24 horas; uma simultânea.
+- Idempotência: ID de evento autenticado; a fila grava `auto-tentando` antes
+  da chamada HTTP. Falhas, timeouts ou respostas sem ID são `auto-incerto`.
+  Não há reenvio após falha, reinicialização nem reprocessamento de históricos.
+- Imediatamente antes do envio, revalidar consentimento, bloqueio e URL.
+- O WhatyGo ainda valida a instância, identidade do número principal e token
+  privado antes de transmitir. Não usar contas ou grupos de terceiros.
+- Nenhuma nova mensagem ao receber `recusar_grupo`; a recusa verificada
+  mantém o bloqueio permanente já existente.
+- Se não existir contato previamente autorizado, o aceite permanece
+  `pendente-consentimento`, sem criar consentimento publicitário implícito.
+- As novas configurações e hashes privados ficam exclusivamente em
+  `dados/previa-acer`, nunca no GitHub ou no Netlify.
+- Somente usuários da interface local podem alterar o estado, com
+  Origin e cabeçalho antifalsificação de solicitações.
+
+A conta de teste usada no laboratório foi bloqueada depois do clique em
+`recusar_grupo`. Não contornar esse bloqueio em testes: cadastrar e
+documentar nova autorização conforme o fluxo existente, ou usar outro contato
+de teste com autorização válida.
+
+A entrada direta por `POST /group/participant` exige privilégio real de
+admin e ainda está sujeita às configurações de privacidade do destinatário.
+O vínculo com o grupo configurado foi identificado pelo WhatyGo, mas a
+permissão de admin da sessão não foi comprovada; essa modalidade NÃO foi
+ativada. O caminho por link mantém a escolha de entrar nas mãos da pessoa.
+
+Testes isolados e de API: `node --test tests/respostas-botoes-automacao.test.mjs
+tests/respostas-botoes-auto-api.test.mjs`. Eles usam transportes simulados e
+não enviam mensagens reais.

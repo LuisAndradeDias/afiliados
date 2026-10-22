@@ -191,12 +191,35 @@ const responses=`
 <section class="page-heading">
   <div><span class="overline">WHATSAPP • BOTÕES INTERATIVOS</span>
     <h1>Respostas dos botões</h1>
-    <p>Acompanhe cliques reais, pedidos de entrada e recusas. Nada é enviado automaticamente.</p>
+    <p>Acompanhe cliques reais, pedidos de entrada e recusas. Ative a resposta automática apenas para contatos autorizados.</p>
   </div>
   <div class="toolbar-light">
     <a class="btn btn-quiet" href="http://127.0.0.1:4011/" target="_blank" rel="noopener noreferrer">Diagnóstico dos cliques ↗</a>
     <a class="btn btn-quiet" href="http://127.0.0.1:4000/manager" target="_blank" rel="noopener noreferrer">Abrir WhatyGo ↗</a>
   </div>
+</section>
+<section class="panel" id="rbAutomationPanel" aria-label="Automação dos convites">
+  <div class="panel-head">
+    <div>
+      <span class="overline">CONVITES SOLICITADOS PELO DESTINATÁRIO</span>
+      <h2>Enviar link automaticamente após o aceite</h2>
+      <p>Ao clicar em “Entrar no grupo”, um contato já autorizado recebe o link por mensagem privada, sem envio manual.</p>
+    </div>
+    <span class="status-pill" id="rbAutoStatus">Desativado</span>
+  </div>
+  <p class="context-note" id="rbAutoExplanation">Este recurso está desativado por padrão. Não envia nada aos contatos bloqueados, sem consentimento ou com identidade incerta.</p>
+  <div class="form-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <label class="checkline" for="rbAutoConsent">
+      <input type="checkbox" id="rbAutoConsent">
+      Confirmo que os contatos estão autorizados e aceito habilitar os envios solicitados por botão.
+    </label>
+    <button type="button" id="rbAutoEnable" class="btn btn-primary">Ativar automação</button>
+    <button type="button" id="rbAutoDisable" class="btn btn-quiet" hidden>Desativar automação</button>
+  </div>
+  <p id="rbAutoFeedback" class="context-note" role="status" aria-live="polite">
+    Máximo de 50 envios em 24 horas, um envio por contato e sem repetição automática.
+    O botão não inclui a pessoa diretamente no grupo: ela confirma a entrada ao abrir o convite.
+  </p>
 </section>
 <section class="stats-grid stats-grid-5" aria-label="Resumo dos cliques">
   ${estatistica('Respostas recebidas','rbAll','Identificadas pelo webhook')}
@@ -224,9 +247,9 @@ const responses=`
     </tr></thead>
     <tbody id="rbRows"><tr><td colspan="5" class="state-empty">Aguardando eventos...</td></tr></tbody></table>
   </div>
-  <div class="panel-bottom"><small>O clique em “Entrar” não desbloqueia contatos e não inclui pessoas no grupo. A recusa verificada impede novos convites no cadastro local.</small></div>
+  <div class="panel-bottom"><small>O clique em “Entrar” não desbloqueia contatos. A resposta automática envia somente o link; o destinatário confirma a entrada. Recusas verificadas bloqueiam novos convites.</small></div>
 </section>
-<p class="context-note"><strong>Privacidade:</strong> eventos anteriores à ativação desta integração não possuíam identidade verificável e não foram importados. Para enviar um convite, confira o consentimento e utilize o link manualmente.</p>`;
+<p class="context-note"><strong>Privacidade:</strong> eventos anteriores à ativação desta integração não possuíam identidade verificável e não foram importados. Para enviar um convite automático, ative a opção acima e confirme o consentimento. Em caso de falha incerta, confira o WhatsApp sem repetir o envio.</p>`;
 
 export function renderGestao(pagina='inicio'){
   if(!['inicio','contatos','denuncias','respostas'].includes(pagina))throw new Error('Página desconhecida.');

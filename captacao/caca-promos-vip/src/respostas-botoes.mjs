@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { contatoComConsentimento, telefoneBrasil } from './contatos.mjs';
+import { enviarLinkSolicitado, validarConviteGrupo } from './whatygo-responder-link.mjs';
 
 const CHOICES = new Map([
   ['aceitar_grupo', 'aceitar'],
@@ -10,6 +11,9 @@ const CHOICES = new Map([
   ['CPV_NAO_INTERESSE', 'recusar'],
 ]);
 const MAX_ENTRIES = 5000;
+const MAX_AUTO_DIA = 50;
+const MIN_AUTO_CONTACT_INTERVAL = 24 * 3600 * 1000;
+const AUTO_ATTEMPT_STATES = new Set(['auto-na-fila', 'auto-tentando', 'auto-link-enviado-api', 'auto-incerto']);
 const MAX_EVENT_AGE = 48 * 3600 * 1000;
 const EXPECTED_INSTANCE = 'cpv-lab-remetente-4306';
 
@@ -87,13 +91,15 @@ export function parseButtonClick(payload, {
 
 export function iniciarRespostasBotoes({
   dataDir, contatos, denuncias, convites, agora = () => new Date(),
-  instanceName = EXPECTED_INSTANCE,
+  instanceName = EXPECTED_INSTANCE, enviarLink = enviarLinkSolicitado,
 } = {}) {
   if (!dataDir || !contatos || !denuncias) throw new Error('Dependências de respostas incompletas.');
   mkdirSync(dataDir, { recursive: true });
   const dbFile = join(dataDir, 'respostas-botoes-whatygo.json');
   const eventSecret = privateKey(join(dataDir, 'respostas-botoes-hmac-local.txt'));
   const bridgeSecret = privateKey(join(dataDir, 'whatygo-ponte-chave.txt'));
+  const autoConfigFile = join(dataDir, 'respostas-botoes-automacao.json');
+  let filaEnvio = Promise.resolve();
 
   function checkBridgeKey(token) {
     return keyMatches(token, bridgeSecret);
@@ -113,6 +119,93 @@ export function iniciarRespostasBotoes({
     writeFileSync(temp, JSON.stringify(doc, null, 2) + '\n', { encoding: 'utf8', mode: 0o600 });
     renameSync(temp, dbFile);
   }
+  function configuracaoAutomacao() {
+    try {
+      const config = JSON.parse(readFileSync(autoConfigFile, 'utf8'));
+      if (config.versao !== 1 || typeof config.habilitada !== 'boolean') {
+        throw new Error('Configuração da automação inválida.');
+      }
+      return { habilitada: config.habilitada, limiteDiario: MAX_AUTO_DIA, modo: 'convite-por-link' };
+    } catch (error) {
+      if (error.code === 'ENOENT') return {
+        habilitada: false, limiteDiario: MAX_AUTO_DIA, modo: 'convite-por-link',
+      };
+      throw error;
+    }
+  }
+  function configurarAutomacao({ habilitada, confirmado } = {}) {
+    if (typeof habilitada !== 'boolean') throw new Error('Escolha ativar ou desativar.');
+    if (habilitada) {
+      if (confirmado !== true) throw new Error('Confirme que os destinatários autorizaram o convite.');
+      if (!validarConviteGrupo(convites?.configuracao?.().grupoUrl)) {
+        throw new Error('Salve primeiro um link válido do grupo na Central.');
+      }
+    }
+    const temp = autoConfigFile + '.' + process.pid + '.' + randomBytes(4).toString('hex') + '.tmp';
+    writeFileSync(temp, JSON.stringify({
+      versao: 1, habilitada, atualizadoEm: agora().toISOString(),
+    }) + '\n', { encoding: 'utf8', mode: 0o600 });
+    renameSync(temp, autoConfigFile);
+    return configuracaoAutomacao();
+  }
+  function atualizarStatus(id, status, detalhe) {
+    const doc = load();
+    const linha = doc.eventos.find(x => x.id === id);
+    if (!linha) return false;
+    linha.status = status;
+    linha.detalhe = detalhe;
+    save(doc);
+    return true;
+  }
+  async function executarConvite(id, telefone) {
+    const row = load().eventos.find(x => x.id === id);
+    if (!row || row.status !== 'auto-na-fila') return;
+    const config = configuracaoAutomacao();
+    if (!config.habilitada) {
+      atualizarStatus(id, 'auto-interrompido', 'Automação desativada antes do envio. Nenhuma mensagem enviada.');
+      return;
+    }
+    const contato = contatos.listar().find(c => c.telefone === telefone);
+    if (denuncias.estaBloqueado(telefone)) {
+      atualizarStatus(id, 'impedido-bloqueado', 'Contato bloqueado antes do envio. Nenhuma mensagem enviada.');
+      return;
+    }
+    if (!contato || !contatoComConsentimento(contato)) {
+      atualizarStatus(id, 'pendente-consentimento', 'Consentimento ausente antes do envio. Nenhuma mensagem enviada.');
+      return;
+    }
+    const urlGrupo = validarConviteGrupo(convites?.configuracao?.().grupoUrl);
+    if (!urlGrupo) {
+      atualizarStatus(id, 'auto-interrompido', 'Link do grupo inválido. Nenhuma mensagem enviada.');
+      return;
+    }
+    // This write is deliberately BEFORE the external API call. After any crash,
+    // timeout or uncertain response, no background retry can send a duplicate.
+    atualizarStatus(id, 'auto-tentando', 'Tentativa única iniciada; aguarde verificação no WhatsApp.');
+    try {
+      const resultado = await enviarLink({ telefone, urlGrupo });
+      if (resultado?.aceitoPelaApi === true) {
+        atualizarStatus(id, 'auto-link-enviado-api',
+          'WhatyGo aceitou o envio do convite. Entrega e entrada no grupo não foram verificadas.');
+      } else {
+        atualizarStatus(id, 'auto-incerto',
+          'A API não confirmou o envio com ID. Verifique o WhatsApp; não haverá reenvio automático.');
+      }
+    } catch {
+      atualizarStatus(id, 'auto-incerto',
+        'Resultado incerto ou serviço indisponível. Não haverá reenvio automático.');
+    }
+  }
+  function agendarConvite(id, telefone) {
+    // One concurrent send, only after a verified button click. No timers/pollers.
+    filaEnvio = filaEnvio.catch(() => {}).then(() => executarConvite(id, telefone));
+    filaEnvio = filaEnvio.catch(() => {
+      try {
+        atualizarStatus(id, 'auto-incerto', 'Falha local de processamento; não repetir automaticamente.');
+      } catch {}
+    });
+  }
+
   // This method must only be called after the loopback-only HTTP endpoint
   // authenticates the monitor's shared secret; unverified button data is inert.
   function receive(payload) {
@@ -147,6 +240,23 @@ export function iniciarRespostasBotoes({
       } else {
         status = 'aceite-pendente-operador';
         detail = 'Aceite registrado. O operador pode encaminhar o link do grupo manualmente.';
+        if (configuracaoAutomacao().habilitada) {
+          const contactHash = hmac(eventSecret, 'phone:' + phone);
+          const since = agora().getTime() - MIN_AUTO_CONTACT_INTERVAL;
+          const previous = doc.eventos.filter(x =>
+            AUTO_ATTEMPT_STATES.has(x.status) &&
+            new Date(x.registradoEm).getTime() >= since);
+          if (previous.some(x => x.hashContato === contactHash)) {
+            status = 'auto-limite-contato';
+            detail = 'Esse contato já teve uma tentativa nas últimas 24 horas. Não repetir automaticamente.';
+          } else if (previous.length >= MAX_AUTO_DIA) {
+            status = 'auto-limite-diario';
+            detail = 'Limite de 50 tentativas automáticas em 24 horas atingido.';
+          } else {
+            status = 'auto-na-fila';
+            detail = 'Aceite verificado. Convite aguardando a vez para envio único.';
+          }
+        }
       }
     }
     const entry = {
@@ -158,11 +268,13 @@ export function iniciarRespostasBotoes({
       detalhe: detail,
       contatoId: contact?.id || null,
       telefone: maskPhone(phone),
+      ...(phone ? { hashContato: hmac(eventSecret, 'phone:' + phone) } : {}),
       instancia: event.instance,
     };
     doc.eventos.unshift(entry);
     doc.eventos.length = Math.min(doc.eventos.length, MAX_ENTRIES);
     save(doc);
+    if (status === 'auto-na-fila') agendarConvite(hash, phone);
     return { ok: true, duplicate: false, status };
   }
   function list() {
@@ -178,23 +290,28 @@ export function iniciarRespostasBotoes({
       aceites: rows.filter(x => x.acao === 'aceitar').length,
       recusas: rows.filter(x => x.acao === 'recusar').length,
       bloqueios: rows.filter(x => x.status === 'recusa-bloqueada').length,
-      pendentes: rows.filter(x => x.status.startsWith('pendente-')).length,
+      pendentes: rows.filter(x => x.status.startsWith('pendente-') ||
+        ['auto-na-fila', 'auto-tentando', 'auto-incerto', 'auto-interrompido'].includes(x.status)).length,
+      respostasAutomaticas: rows.filter(x => x.status === 'auto-link-enviado-api').length,
     };
     return {
       total,
+      automacao: configuracaoAutomacao(),
       registros: rows.slice(0, 100).map(x => {
-        const stillEligible = x.status === 'aceite-pendente-operador' && x.contatoId &&
+        const canCopy = ['aceite-pendente-operador', 'auto-interrompido'].includes(x.status);
+        const stillEligible = canCopy && x.contatoId &&
           contatos.listar().some(c => c.id === x.contatoId && contatoComConsentimento(c) &&
             !denuncias.estaBloqueado(c.telefone));
-        const laterBlocked = x.status === 'aceite-pendente-operador' && x.contatoId &&
+        const laterBlocked = x.acao === 'aceitar' && x.contatoId &&
           contatos.listar().some(c => c.id === x.contatoId && denuncias.estaBloqueado(c.telefone));
+        const { hashContato: _privado, ...publico } = x;
         return {
-          ...x,
+          ...publico,
           status: laterBlocked ? 'impedido-bloqueado' : x.status,
           linkGrupo: stillEligible ? groupUrl : null,
         };
       }),
     };
   }
-  return { receive, list, checkBridgeKey };
+  return { receive, list, checkBridgeKey, configuracaoAutomacao, configurarAutomacao };
 }
