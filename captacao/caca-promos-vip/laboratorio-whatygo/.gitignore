@@ -1,0 +1,8 @@
+# Ambiente de testes: nao publicar credenciais, logs, sessoes ou dados.
+.env
+.env.*
+!.env.example
+private/
+runtime/
+logs/
+*.log

@@ -1,0 +1,45 @@
+name: cpv-whatygo-lab
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?configure o segredo no .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  whatygo:
+    image: ghcr.io/lucasgiovannibr/whatygo:${IMAGE_TAG:-0.7.2}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:4000:4000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add: [CHOWN, SETUID, SETGID]
+    mem_limit: 1g
+    environment:
+      SERVER_PORT: "4000"
+      GLOBAL_API_KEY: ${GLOBAL_API_KEY:?configure o segredo no .env}
+      POSTGRES_AUTH_DB: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/whatygo_auth?sslmode=disable
+      POSTGRES_USERS_DB: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/whatygo_users?sslmode=disable
+      CONNECT_ON_STARTUP: "false"
+      DATABASE_SAVE_MESSAGES: "false"
+      WADEBUG: "WARN"
+      LOGTYPE: "console"
+    volumes:
+      - data:/app/dbdata
+      - logs:/app/logs
+volumes:
+  pgdata:
+  data:
+  logs:
