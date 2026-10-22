@@ -171,3 +171,49 @@ Protecoes:
 - Webhook em localhost e laboratorio nao eliminam o risco de conta:
   WhatyGo usa conexao nao oficial do WhatsApp.
 - Os testes sinteticos de ButtonClick foram apagados antes do envio real.
+
+## Painel editavel: envio manual de 1, 2 ou 3 botoes (22/10/2026)
+
+Agora o proprio Manager em http://127.0.0.1:4000/manager oferece o modelo
+"Caça Promos VIP — Personalizado" em Instancias > Testar envio > Botoes.
+
+Campos personalizaveis:
+- Numero do destinatario autorizado: 55+DDD+numero (ou DDD+numero, o
+  formulario acrescenta 55 em numeros brasileiros de 10/11 digitos).
+- Titulo, texto completo da mensagem e rodape.
+- Quantidade de quick replies: 1, 2 (padrao) ou 3.
+- Rotulo e ID de resposta de cada botao. Os dois IDs padrao sao
+  aceitar_grupo e recusar_grupo, compativeis com o monitor local.
+- Previa JSON e cURL atualizada sem realizar envios.
+- Confirmacao do consentimento do destinatario e do numero antes de enviar.
+  A confirmacao e desmarcada ao editar destino, texto ou botoes.
+- Protecao contra clique duplo durante a requisicao.
+- O envio continua MANUAL, individual, sem filas ou disparos programados.
+- O titulo e a mensagem padrao reaparecem quando o formulario e reaberto.
+- Nenhum numero pessoal fica gravado no codigo publico do patch.
+
+Arquivos versionados:
+- painel-botoes-personalizados.patch: diferenca aplicada apenas nos arquivos
+  React do Manager que vivem na copia _upstream ignorada pelo Git principal.
+- publicar-painel-whatygo.ps1: publica a compilacao somente apos validar e
+  preservar um backup da versao anterior; possui rollback (-Restaurar).
+
+Para reaplicar apos restaurar a copia limpa do WhatyGo (commit pinado):
+1. No repositorio _upstream: git apply ..\painel-botoes-personalizados.patch
+   (na pratica, utilize o caminho absoluto para o arquivo patch).
+2. Na pasta _upstream\manager: npm.cmd ci --no-audit --no-fund.
+3. Na pasta _upstream\manager: npm.cmd run typecheck; npm.cmd run test.
+4. Na pasta _upstream\manager:
+   npm.cmd run build -- --outDir dist-cpv-stage
+5. Na pasta do laboratorio:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+   ".\publicar-painel-whatygo.ps1" -Publicar
+
+Para restaurar rapidamente apenas o frontend anterior:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+".\publicar-painel-whatygo.ps1" -Restaurar
+
+A pasta de backup privada fica em runtime\manager-dist-before-custom.
+O servidor de Go continua na porta 4000, sem reiniciar nem alterar sessoes.
+Os testes sao locais: a entrega/click do WhatsApp continuam nao garantidos
+por serem uma integracao nao oficial. Nunca enviar para quem nao autorizou.
