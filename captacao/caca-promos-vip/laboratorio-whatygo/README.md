@@ -132,41 +132,42 @@ sem armazenar numero de telefone, texto de mensagem ou chave de API.
 Se o evento chegar com "Opcao nao identificada", conferir o formato do
 webhook antes de integrar. Nunca automatizar inclusao em grupo neste teste.
 
-## Novo teste supervisionado entre duas contas (22/10/2026)
+## Teste real de botoes entre dois numeros (22/10/2026)
 
-Instancia nova criada via API: cpv-lab-remetente-4306.
-- Remetente previsto: WhatsApp secundario com final 4306.
-- Destinatario autorizado: WhatsApp principal com final 1632.
-- A instancia foi criada SEM pareamento e com CONNECT_ON_STARTUP=false.
-- URL de webhook: http://127.0.0.1:4011/webhook
-- Assinaturas: BUTTON_CLICK, SEND_MESSAGE, CONNECTION.
-- Conta existente "teste" preservada sem alteracoes por nao ser possivel
-  comprovar seu numero a partir das informacoes disponiveis.
-- A sessao antiga deve ser desvinculada pelo titular em Aparelhos conectados
-  se ela for do numero Business principal.
+Correcao de papeis confirmada com o usuario:
+- REMETENTE: WhatsApp principal, numero brasileiro com final 1632.
+- DESTINATARIO: WhatsApp de testes, numero brasileiro com final 4306.
+- Nome da instancia no WhatyGo: "cpv-lab-remetente-4306" (nome historico;
+  NAO representa o numero de envio). Ela foi pareada com a conta principal.
+- O JID da instancia continha sufixo ":dispositivo"; apos separar esse
+  sufixo, o numero de origem foi verificado como o principal, final 1632.
+- Instancia antiga "teste" preservada e desconectada na ultima verificacao.
+- CONNECT_ON_STARTUP permanece false.
 
-Passos:
-1. Abra http://127.0.0.1:4000/manager no computador ACER.
-2. Em Instancias, escolha somente "cpv-lab-remetente-4306".
-3. Clique Conectar e leia o QR Code usando o WHATSAPP SECUNDARIO (final 4306):
-   Aparelhos conectados -> Conectar aparelho.
-4. Confirme no painel que essa instancia esta conectada. Nao use "teste".
-5. Confira que http://127.0.0.1:4011 esta online (monitor de eventos).
-6. Antes de enviar, confira a previa sem enviar:
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\enviar-convite-unico.ps1"
-7. Depois de conferir e autorizar conscientemente UM UNICO envio:
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\enviar-convite-unico.ps1" -Enviar
-8. No principal (final 1632), confira se os botoes nao estao cinza
-   e toque em uma opcao. Verifique o evento no monitor.
+Verificacoes e envio:
+- WhatyGo: http://127.0.0.1:4000/health respondeu HTTP 200.
+- Monitor: http://127.0.0.1:4011/status ativo.
+- Consulta /user/check confirmou que o destinatario final 4306 tem WhatsApp.
+- O script enviar-convite-unico.ps1 guarda o JID completo esperado apenas
+  em private/remetente-autorizado-jid.txt e o destinatario apenas em
+  private/numero-destinatario-teste.txt. Esses arquivos NAO vao ao Git.
+- O script confere sessao, nome da instancia, token, JID exato e os dois
+  numeros aprovados antes de permitir o envio.
+- Foi executado o envio real UNICO para o destinatario final 4306.
+- API /send/button retornou "success" com ID da mensagem presente.
+- O monitor recebeu um evento SEND_MESSAGE na instancia correta.
+- A entrega visual e o clique no celular ainda precisam ser confirmados
+  pelo destinatario. Ate aqui nao houve BUTTON_CLICK real.
 
-Seguranca:
-- O script aceita APENAS a conta remetente autorizada e o numero destino
-  fixado em arquivos privados (nao versionados).
-- O arquivo private\convite-um-unico-envio.lock e criado ANTES da chamada de
-  envio e impede repeticoes involuntarias mesmo se houver timeout da API.
-- Nao apague o lock para repetir sem analisar a mensagem no celular.
-- O monitor foi corrigido para reconhecer o evento real "ButtonClick"
-  (alem de "BUTTON_CLICK") e o campo "instanceName".
-- Os dois eventos foram verificados com payloads simulados e depois
-  removidos do historico. A validacao REAL ainda depende do QR e do toque.
-- Codigo e ferramentas experimentais nao sao garantia de seguranca da conta.
+PROXIMA ACAO: verificar no WhatsApp final 4306 se os dois botoes chegaram
+ativos; clicar em "Entrar no grupo" OU "Nao tenho interesse"; verificar o
+evento BUTTON_CLICK no monitor local http://127.0.0.1:4011.
+
+Protecoes:
+- Lock criado em private/convite-um-unico-envio.lock ANTES da chamada HTTP.
+  O script bloqueia qualquer segunda tentativa, mesmo com timeout.
+- NAO apagar o lock para repetir sem analise manual do que ocorreu.
+- A resposta recebida nao modifica contatos, grupos nem filas de producao.
+- Webhook em localhost e laboratorio nao eliminam o risco de conta:
+  WhatyGo usa conexao nao oficial do WhatsApp.
+- Os testes sinteticos de ButtonClick foram apagados antes do envio real.

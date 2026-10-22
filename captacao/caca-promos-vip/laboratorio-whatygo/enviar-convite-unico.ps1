@@ -4,19 +4,20 @@ $base=$PSScriptRoot
 $private=Join-Path $base 'private'
 $api='http://127.0.0.1:4000'
 $tokenFile=Join-Path $private 'instancia-remetente-4306.token'
-$senderFile=Join-Path $private 'numero-remetente-teste.txt'
+$senderJidFile=Join-Path $private 'remetente-autorizado-jid.txt'
 $destinationFile=Join-Path $private 'numero-destinatario-teste.txt'
+$envFile=Join-Path $base '.env.native'
 $lockFile=Join-Path $private 'convite-um-unico-envio.lock'
-foreach($file in @($tokenFile,$senderFile,$destinationFile)){
-  if(-not(Test-Path $file)){throw 'Configuracao privada do laboratorio incompleta.'}
-}
+$name='cpv-lab-remetente-4306' # Nome historico da instancia; o numero secundario sera o destinatario
+foreach($f in @($tokenFile,$senderJidFile,$destinationFile,$envFile)){if(-not(Test-Path $f)){throw 'Configuracao privada incompleta.'}}
 $token=([IO.File]::ReadAllText($tokenFile)).Trim()
-$sender=([IO.File]::ReadAllText($senderFile)).Trim()
+$expectedJid=([IO.File]::ReadAllText($senderJidFile)).Trim()
 $destination=([IO.File]::ReadAllText($destinationFile)).Trim()
-if($sender -notmatch '^55[0-9]{10,11}$' -or $destination -notmatch '^55[0-9]{10,11}$'){
-  throw 'Formato de telefone invalido.'
-}
-if($sender -eq $destination){throw 'Remetente e destinatario nao podem ser iguais.'}
+if($destination -ne '5522998024306'){throw 'Destino nao autorizado. Envio bloqueado.'}
+if($expectedJid -notmatch '^([0-9]+)(?::[0-9]+)?@s\.whatsapp\.net$'){throw 'Identificador da conta remetente invalido.'}
+$senderDigits=$Matches[1]
+if($senderDigits -ne '5522999931632'){throw 'Remetente nao corresponde ao WhatsApp principal autorizado.'}
+if($senderDigits -eq $destination){throw 'Remetente e destinatario sao iguais.'}
 $payload=@{
   number=$destination
   title=('Convite Ca'+[char]0x00E7+'a Promos VIP '+[char]::ConvertFromUtf32(0x1F451))
@@ -27,32 +28,40 @@ $payload=@{
     @{type='reply';displayText=('N'+[char]0x00E3+'o tenho interesse');id='recusar_grupo'}
   )
 }
-Write-Output 'LAB WHATYGO - ENVIO CONTROLADO'
-Write-Output ('Remetente esperado: ***'+$sender.Substring($sender.Length-4))
-Write-Output ('Destinatario permitido: ***'+$destination.Substring($destination.Length-4))
+Write-Output 'LAB WHATYGO - TESTE UNICO DE BOTOES'
+Write-Output 'Remetente: conta atualmente vinculada a instancia de testes'
+Write-Output ('Destinatario: ***'+$destination.Substring($destination.Length-4))
 Write-Output 'Botoes: Entrar no grupo / Nao tenho interesse'
 if(-not $Enviar){
-  Write-Output 'MODO PREVIA: nenhuma mensagem foi enviada.'
-  Write-Output 'Somente o parametro -Enviar permite uma tentativa.'
+  Write-Output 'PREVIA APENAS: nenhuma mensagem enviada.'
   exit 0
 }
-if(Test-Path $lockFile){throw 'Ja existe uma tentativa anterior. Sem reenvio automatico.'}
-if(-not (Get-NetTCPConnection -State Listen -LocalPort 4000 -ErrorAction SilentlyContinue)){
-  throw 'WhatyGo nao esta ativo.'
-}
+if(Test-Path $lockFile){throw 'Tentativa anterior ja registrada; nao reenviar.'}
 $status=Invoke-RestMethod -Uri ($api+'/instance/status') -Headers @{apikey=$token} -TimeoutSec 8
-if($status.data.connected -ne $true -or $status.data.loggedIn -ne $true){
-  throw 'Remetente secundario ainda nao esta conectado e autenticado.'
-}
-$jid=[string]$status.data.myJid
-$current=(($jid -split '@')[0]) -replace '[^0-9]',''
-if($current -ne $sender){throw 'A conta conectada nao corresponde ao remetente autorizado. ENVIO BLOQUEADO.'}
-[IO.File]::WriteAllText($lockFile,('Tentativa iniciada UTC '+[DateTime]::UtcNow.ToString('o')+' - nao reenviar automaticamente'),(New-Object System.Text.UTF8Encoding($false)))
-try{
-  $response=Invoke-RestMethod -Method Post -Uri ($api+'/send/button') -Headers @{apikey=$token} -ContentType 'application/json' -Body ($payload|ConvertTo-Json -Depth 6 -Compress) -TimeoutSec 30
-  Write-Output ('API_RESPONSE='+[string]$response.message)
-  Write-Output 'Tentativa concluida. Confira no telefone e no monitor de cliques.'
+if($status.data.connected -ne $true -or $status.data.loggedIn -ne $true){throw 'WhatsApp ainda nao esta conectado.'}
+$line=Get-Content $envFile|Where-Object {$_ -like 'GLOBAL_API_KEY=*'}|Select-Object -First 1
+if(-not $line){throw 'Chave admin local ausente.'}
+$admin=$line.Substring('GLOBAL_API_KEY='.Length)
+$instances=Invoke-RestMethod -Uri ($api+'/instance/all') -Headers @{apikey=$admin} -TimeoutSec 8
+$matching=@($instances.data|Where-Object {$_.name -eq $name})
+if($matching.Count -ne 1){throw 'Instancia inesperada ou duplicada.'}
+$currentJid=([string]$matching[0].jid).Trim()
+if($matching[0].connected -ne $true -or $currentJid -ne $expectedJid){throw 'A identidade da sessao mudou: envio bloqueado.'}
+$currentToken=[string]$matching[0].token
+if($currentToken -ne $token){throw 'Token e instancia nao coincidem.'}
+$created=[IO.File]::Open($lockFile,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+try {
+  $info='Tentativa unica iniciada '+[DateTime]::UtcNow.ToString('o')+'Z; nao reenviar sem avaliacao manual.'
+  $bytes=[Text.Encoding]::UTF8.GetBytes($info)
+  $created.Write($bytes,0,$bytes.Length)
+} finally { $created.Dispose() }
+Write-Output 'Tentativa registrada; sem repeticao automatica.'
+try {
+  $r=Invoke-RestMethod -Method Post -Uri ($api+'/send/button') -Headers @{apikey=$token} -ContentType 'application/json' -Body ($payload|ConvertTo-Json -Depth 6 -Compress) -TimeoutSec 30
+  Write-Output ('API_STATUS='+[string]$r.message)
+  Write-Output ('API_MESSAGE_ID_PRESENT='+[bool]$r.data.Info.ID)
+  Write-Output 'Confira no destinatario se os botoes aparecem e funcionam.'
 }catch{
-  Write-Output 'RESULTADO INCERTO: nao repetir o envio. Conferir no aparelho e em logs privados.'
-  throw 'O servico nao confirmou a tentativa.'
+  Write-Output 'RESULTADO INCERTO: nao repetir. Verificar aparelho e logs.'
+  throw 'Servico nao confirmou a mensagem.'
 }
