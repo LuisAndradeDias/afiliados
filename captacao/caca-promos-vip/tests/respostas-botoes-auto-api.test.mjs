@@ -45,6 +45,7 @@ test('automatic invite activation is loopback-only, explicit, and requires confi
   const page = await (await fetch(server.base + '/respostas-botoes')).text();
   assert.match(page, /rbAutoEnable/);
   assert.match(page, /rbAutoDisable/);
+  assert.match(page, /rbLatestOutcome/);
   const script = await (await fetch(server.base + '/assets/respostas-botoes.js')).text();
   assert.match(script, /changeAuto\(true\)/);
   assert.match(script, /changeAuto\(false\)/);

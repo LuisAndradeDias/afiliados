@@ -501,3 +501,27 @@ ativada. O caminho por link mantém a escolha de entrar nas mãos da pessoa.
 Testes isolados e de API: `node --test tests/respostas-botoes-automacao.test.mjs
 tests/respostas-botoes-auto-api.test.mjs`. Eles usam transportes simulados e
 não enviam mensagens reais.
+
+## Diagnostico do teste que nao recebeu o link (22/10/2026)
+
+O clique novo das 15h42 foi recebido e validado (`aceitar_grupo`),
+mas ficou em `impedido-bloqueado`; ele se refere ao mesmo numero que
+havia clicado em `recusar_grupo` antes da automacao. A Central nao enviou
+mensagem: esse comportamento e intencional, mesmo com a automacao ligada.
+
+O numero bloqueado nao tem cadastro de contato na Central
+(`contatoId: null`). A tela padrao Contatos > Desbloquear exige contato
+existente e nova autorizacao documentada; ela nao consegue liberar esse
+bloqueio anonimo do laboratorio. Nao contornar por ajuste direto em
+arquivos ou por importacao. Para continuar testando de imediato, usar
+outro numero de teste com autorizacao valida e nao bloqueado.
+
+A pagina `/respostas-botoes` agora apresenta o motivo do ultimo clique
+imediatamente sob o controle da automacao, com atalho para preparar
+outro numero. Se uma nova autorizacao do proprio titular for registrada,
+o fluxo de reativacao apropriado deve ser implementado com auditoria,
+sem remover silenciosamente a recusa previa.
+
+O script `scripts/publicar-auto-resposta-botoes.ps1` preserva o estado
+real da automacao ao reiniciar a Central, sem forca-la a ficar desativada.
+Nao reinicia o WhatyGo nem reprocessa cliques antigos.

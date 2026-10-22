@@ -7,6 +7,11 @@ foreach($f in @('src\respostas-botoes.mjs','src\whatygo-responder-link.mjs','src
   & node.exe --check (Join-Path $root $f)
   if($LASTEXITCODE -ne 0){throw ('Erro de sintaxe: '+$f)}
 }
+$before=Invoke-RestMethod 'http://127.0.0.1:3045/api/local/whatygo/respostas' -TimeoutSec 5
+if(-not $before.ok){throw 'Não foi possível validar a Central anterior.'}
+$previousAutomation=[bool]$before.automacao.habilitada
+$unfinished=@($before.registros|Where-Object {$_.status -in @('auto-na-fila','auto-tentando')})
+if($unfinished.Count){throw 'Há respostas automáticas em andamento; aguarde antes da publicação.'}
 $state=Invoke-RestMethod 'http://127.0.0.1:3045/api/local/campanhas/convite/whatsapp/estado' -TimeoutSec 5
 $conn=Invoke-RestMethod 'http://127.0.0.1:3045/api/local/campanhas/convite/whatsapp/conexao/estado' -TimeoutSec 5
 if($state.estado.processoAtivo -or $state.estado.ocupado -or $conn.estado.ocupado -or $state.estado.fase -notin @('inativo','parado','desconectado')){
@@ -42,12 +47,12 @@ for($i=0;$i -lt 60;$i++){
   $r=Invoke-RestMethod 'http://127.0.0.1:3045/api/local/whatygo/respostas' -TimeoutSec 3
   $ui=Invoke-WebRequest 'http://127.0.0.1:3045/respostas-botoes' -TimeoutSec 3 -UseBasicParsing
   $asset=Invoke-WebRequest 'http://127.0.0.1:3045/assets/respostas-botoes.js' -TimeoutSec 3 -UseBasicParsing
-  if($r.ok -and $r.automacao.habilitada -eq $false -and $ui.Content.Contains('rbAutoEnable') -and $asset.Content.Contains('/api/local/whatygo/automacao')){$online=$true;break}
+  if($r.ok -and [bool]$r.automacao.habilitada -eq $previousAutomation -and $ui.Content.Contains('rbAutoEnable') -and $asset.Content.Contains('/api/local/whatygo/automacao')){$online=$true;break}
  }catch{}
 }
 if(-not $online){throw 'Central ativa, mas rota de automação não respondeu como esperado.'}
 Write-Output ('CENTRAL_PROCESS='+$new.Id)
 Write-Output 'CENTRAL_3045_AUTOMATION_UI_AND_API_HTTP_200'
-Write-Output 'AUTOMATION_DEFAULT_DISABLED'
+Write-Output ('AUTOMATION_STATE_PRESERVED='+$previousAutomation)
 Write-Output 'WHATYGO_AND_POSTGRESQL_NOT_RESTARTED'
 Write-Output 'NO_MESSAGES_SENT'

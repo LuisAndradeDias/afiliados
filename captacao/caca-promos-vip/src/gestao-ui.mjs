@@ -208,6 +208,7 @@ const responses=`
     <span class="status-pill" id="rbAutoStatus">Desativado</span>
   </div>
   <p class="context-note" id="rbAutoExplanation">Este recurso está desativado por padrão. Não envia nada aos contatos bloqueados, sem consentimento ou com identidade incerta.</p>
+  <p id="rbLatestOutcome" class="context-note" role="status" aria-live="polite" hidden></p>
   <div class="form-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <label class="checkline" for="rbAutoConsent">
       <input type="checkbox" id="rbAutoConsent">

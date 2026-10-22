@@ -89,6 +89,55 @@
     }
   }
 
+  function renderLastOutcome(registros, total) {
+    const indicator = $('#rbLatestOutcome');
+    if (!indicator) return;
+    const latest = Array.isArray(registros) ? registros[0] : null;
+    indicator.replaceChildren();
+    if (!latest) {
+      indicator.hidden = true;
+      return;
+    }
+    indicator.hidden = false;
+    const heading = document.createElement('strong');
+    heading.textContent = 'Último clique: ';
+    indicator.appendChild(heading);
+    const messages = {
+      'impedido-bloqueado': 'Nenhum convite enviado: o destinatário está bloqueado após um pedido de não receber mensagens.',
+      'pendente-consentimento': 'Nenhum convite enviado: falta registro prévio de consentimento desse destinatário.',
+      'pendente-identidade': 'Nenhum convite enviado: a identidade do destinatário não pôde ser comprovada.',
+      'aceite-pendente-operador': 'Aceite registrado. Automação desligada no momento do clique: envio somente manual.',
+      'auto-na-fila': 'Aceite válido. O envio aguarda processamento.',
+      'auto-tentando': 'Tentativa de envio iniciada. Aguardando retorno do WhatyGo.',
+      'auto-link-enviado-api': 'O WhatyGo aceitou o envio do link; confira a entrega e a entrada no aplicativo.',
+      'auto-incerto': 'Resultado de envio incerto. Confira manualmente; não há reenvio automático.',
+      'auto-limite-contato': 'Nenhum novo convite: limite de um envio por contato a cada 24 horas.',
+      'auto-limite-diario': 'Nenhum novo convite: limite diário da automação atingido.',
+      'auto-interrompido': 'Envio automático interrompido. Verifique antes de tentar manualmente.',
+      'recusa-bloqueada': 'A recusa foi registrada. O contato não receberá novos convites.',
+    };
+    const outcome = document.createElement('span');
+    outcome.textContent = messages[latest.status] || 'Consulte o histórico abaixo.';
+    indicator.appendChild(outcome);
+    if (latest.status === 'impedido-bloqueado' || latest.status === 'recusa-bloqueada') {
+      const explanation = document.createElement('span');
+      explanation.textContent = latest.contatoId
+        ? ' Uma nova autorização documentada é necessária para desbloquear o contato.'
+        : ' Esse número não possui cadastro associado na Central. Para testar agora, utilize outro contato previamente autorizado e não bloqueado; não reative esta recusa automaticamente.';
+      indicator.appendChild(explanation);
+      const link = document.createElement('a');
+      link.className = 'text-link';
+      link.href = latest.contatoId ? '/contatos?filtro=bloqueado' : '/enviar';
+      link.textContent = latest.contatoId ? ' Consultar contatos bloqueados →' : ' Preparar outro número de teste →';
+      indicator.appendChild(link);
+    }
+    if (Number.isInteger(total?.respostasAutomaticas)) {
+      const summary = document.createElement('small');
+      summary.textContent = ' Respostas automáticas aceitas pela API: ' + total.respostasAutomaticas + '.';
+      indicator.appendChild(summary);
+    }
+  }
+
   function renderAuto(configuration) {
     const enabled = configuration?.habilitada === true;
     $('#rbAutoStatus').textContent = enabled ? 'Habilitado' : 'Desativado';
@@ -149,6 +198,7 @@
       if (!data.ok || !Array.isArray(data.registros)) throw new Error('Formato da resposta inválido.');
       items = data.registros;
       renderAuto(data.automacao);
+      renderLastOutcome(data.registros, data.total);
       for (const [key, selector] of Object.entries(nums)) {
         const el = $(selector);
         if (el) el.textContent = String(data.total?.[key] ?? 0);
