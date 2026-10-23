@@ -347,3 +347,15 @@ por falha ao preparar a janela.
 
 Testes sem mensagens reais: `npm run typecheck`,
 `npm run test:painel-operacional`, `npm run test:whatsapp-grupo`.
+
+## Envio automatico com mouse fisico no computador novo
+
+O destino salvo na configuracao local e reutilizado em todas as ofertas.
+A edicao do grupo no painel e opcional, dentro de Alterar grupo.
+WHATSAPP_AUTO_SEND_ENABLED=true permite uma unica tentativa fisica de
+clique depois que a imagem e a legenda estao prontas. O sistema aguarda
+4500ms para mover o ponteiro ate o botao de enviar.
+Se o botao nao puder ser validado, nao repetira o clique.
+Confirmacao de envio e historico antiduplicacao continuam obrigatorios.
+Para desativar: WHATSAPP_AUTO_SEND_ENABLED=false e reiniciar a Central
+de Ofertas (porta 3030).

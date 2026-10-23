@@ -246,6 +246,8 @@ try {
     ...base,
     grupo: "Não configurado",
     grupoConfigurado: false,
+    whatsappAutoEnvioAtivo: true,
+    whatsappAutoEnvioAtrasoMs: 4500,
     sessaoWhatsapp: true,
     operacaoEstado: "offer-pending",
     operacaoPlataforma: "amazon",
@@ -260,9 +262,9 @@ try {
     "Sem grupo, o título deve explicar por que o WhatsApp não abriu."
   );
   assert(
-    await page.locator("#whatsappGroupInput").isVisible() &&
+    !(await page.locator("#whatsappGroupInput").isVisible()) &&
     await page.locator('#openWhatsappConnectionButton').isVisible(),
-    "O painel deve oferecer configuração do grupo e abertura da sessão."
+    "A configuração do grupo é opcional e deve ficar recolhida por padrão."
   );
   assert(
     !(await page.locator("#sendNowButton").isVisible()),
@@ -276,6 +278,11 @@ try {
     (await page.locator("#reviewWhatsappState").innerText()).includes("salve"),
     "O motivo da falha deve ser apresentado junto à oferta."
   );
+  assert(
+    (await page.locator("#autoSendStatus").innerText()).includes("Autoenvio ativo"),
+    "A tela deve exibir quando o clique físico automático está habilitado."
+  );
+  await page.locator(".group-advanced summary").click();
   const sizes=await page.locator("#whatsappGroupInput").evaluate(el=>({
     h:el.getBoundingClientRect().height,
     font:parseFloat(getComputedStyle(el).fontSize)

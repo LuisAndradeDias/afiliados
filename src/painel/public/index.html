@@ -626,6 +626,9 @@
     .group-box strong { font-size: 16px; }
     .group-box .group-hint { font-size: 13px; line-height: 1.55; margin-top: 7px; }
     .group-box .whatsapp-target-label { display: block; margin-top: 16px; font-size: 14px; font-weight: 750; color: var(--text); }
+    .group-advanced { padding-top: 10px; border-top: 1px solid var(--line); margin-top: 12px; }
+    .group-advanced summary { cursor: pointer; font-size: 14px; font-weight: 650; color: var(--muted); }
+    #autoSendStatus { font-size: 14px; padding-top: 8px; font-weight: 730; color: #18795a; }
     .whatsapp-group-controls { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 8px; }
     .whatsapp-group-controls input { width: 100%; min-width: 150px; flex: 1 1 175px; min-height: 48px; font-size: 15px; }
     .whatsapp-group-controls button { flex: 1 1 auto; min-height: 47px; font-size: 14px; }
@@ -1072,11 +1075,14 @@
             <small>Destino WhatsApp</small>
             <strong id="grupoEnvio">...</strong>
             <span id="reviewWhatsappState" class="group-hint">Aguardando oferta.</span>
-            <label class="field-label whatsapp-target-label" for="whatsappGroupInput">Nome exato do grupo para receber promoções</label>
+            <span id="autoSendStatus" class="group-hint" aria-live="polite">Conferindo envio automático...</span>
+            <details class="group-advanced"><summary>Alterar grupo (opcional)</summary>
+            <label class="field-label whatsapp-target-label" for="whatsappGroupInput">Novo nome de grupo (somente se quiser trocar)</label>
             <div class="whatsapp-group-controls">
               <input id="whatsappGroupInput" type="text" maxlength="110" autocomplete="off" placeholder="Digite o nome exato do grupo" />
               <button class="secondary" type="button" data-action="whatsapp-group-save">Salvar grupo</button>
             </div>
+            </details>
             <span id="whatsappSetupHint" class="group-hint">O grupo deve ser escolhido antes de preparar a oferta. Nenhuma mensagem será enviada ao configurar.</span>
             <button id="openWhatsappConnectionButton" class="secondary" type="button" data-action="login">Abrir WhatsApp do painel / verificar sessão</button>
           </div>
@@ -1562,6 +1568,9 @@
           grupoCampo.value = grupoSalvo;
           grupoCampo.dataset.ultimoSalvo = grupoSalvo;
         }
+        $("autoSendStatus").textContent = s.whatsappAutoEnvioAtivo
+          ? "Autoenvio ativo: quando a oferta ficar pronta, o mouse clicará uma vez após " + Math.round((s.whatsappAutoEnvioAtrasoMs || 1500) / 1000) + " s. Sem repetição se a confirmação falhar."
+          : "Autoenvio pausado: é necessário confirmar o envio no WhatsApp ou no painel.";
         $("whatsappSetupHint").textContent = s.grupoConfigurado
           ? "Grupo salvo. Confira a sessão do WhatsApp. Se abriu pela opção de login, feche essa janela após conectar antes de reabrir a promoção."
           : "Salve o nome exato do grupo. O perfil do painel é diferente do Chrome comum; se abrir para conectar, feche a janela depois do login.";
@@ -1886,7 +1895,9 @@
             $("reviewSubtitle").textContent =
               "O WhatsApp está aberto com esta oferta. Revise a mensagem e confirme o envio.";
             $("reviewWhatsappState").textContent =
-              "WhatsApp pronto. Você pode enviar na janela do WhatsApp ou pelo botão abaixo.";
+              s.whatsappAutoEnvioAtivo
+                ? "WhatsApp pronto. Autoenvio armado: clique físico em poucos segundos, sem duplicação."
+                : "WhatsApp pronto. Você pode enviar na janela do WhatsApp ou pelo botão abaixo.";
           } else if ((s.executando || []).includes("login")) {
             $("reviewSubtitle").textContent =
               "WhatsApp aberto para conferir a sessão. A oferta continua salva, sem envio.";

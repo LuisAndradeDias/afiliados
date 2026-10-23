@@ -1283,6 +1283,8 @@ async function estado() {
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME?.trim() || "Não configurado",
     grupoConfigurado: Boolean(process.env.WHATSAPP_GROUP_NAME?.trim()),
+    whatsappAutoEnvioAtivo: process.env.WHATSAPP_AUTO_SEND_ENABLED === "true",
+    whatsappAutoEnvioAtrasoMs: Number(process.env.WHATSAPP_AUTO_SEND_DELAY_MS ?? "1500"),
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
     afiliadoTag: process.env.AMAZON_ASSOCIATE_TAG?.trim() ?? "",
     linkAfiliadoAtual: pacote.urlAfiliado ?? "",
