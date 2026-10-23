@@ -30,13 +30,16 @@ test('all six local screens share the same accessible sidebar and keep their con
     assert.match(html,/id="cleanMenuButton"/,route);
     assert.match(html,/layout-clean\.css/,route);
     assert.match(html,/layout-clean\.js/,route);
-    assert.match(html,/Local \(ACER\)/,route);
+    assert.match(html,/Local · protegido/,route);
+    assert.match(html,/afiliados-v2\.tokens\.css/,route);
+    assert.match(html,/afiliados-v2\.css/,route);
+    assert.match(html,/class="clean-global-link" href="http:\/\/127\.0\.0\.1:3030\/central"/,route);
     assert.match(html,new RegExp('id="'+key+'"'),route);
     assert.match(html,new RegExp('aria-current="page"[^>]*>'),route);
     assert.match(html,new RegExp(title,'i'),route);
     assert.match(html,/href="\/contatos#reativar-teste"/,route);
   }
-  for(const asset of ['/assets/layout-clean.css','/assets/layout-clean.js']){
+  for(const asset of ['/assets/layout-clean.css','/assets/layout-clean.js','/assets/afiliados-v2.css','/assets/afiliados-v2.tokens.css']){
     const response=await fetch(app.base+asset);
     assert.equal(response.status,200,asset);
     assert.ok((await response.text()).length>800);
