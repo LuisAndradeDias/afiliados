@@ -21,12 +21,44 @@ A fonte principal é **Inter**. A identidade mantém a linguagem já utilizada n
 - Tokens CSS semânticos: `--af-surface-canvas`, `--af-surface-panel`, `--af-brand-primary`, `--af-border-default`, `--af-nav-background`, `--af-status-danger`, etc. Figma liga aliases aos valores primitivos correspondentes.
 - Acessibilidade: alvos interativos mínimos de 44px no cockpit, foco visível e redução de movimento conforme preferência do sistema.
 
-## Escopo atual e limite explícito
+## Etapa 3 — Aplicação às telas reais (na branch de revisão)
 
-Esta etapa **não** aplica automaticamente a nova identidade às seis páginas de captação, nem converte o servidor de ofertas existente de HTML monolítico para um framework. A propagação para essas telas virá após auditoria dos seletores e testes de navegador atuais. Também não instala PostgreSQL, não usa Remote Desktop Commander, não mexe em credenciais/estado local, e não realiza merge na branch principal.
+Esta etapa aplicou a linguagem visual ao **HTML existente**, sem recriar controles ou scripts de operação.
 
-## Validação
+### Central de Ofertas (3030)
 
-Na máquina autorizada, com dependências existentes: `npm run typecheck`, `npm run test:central-unificada`, `npm run test:painel-operacional` e `npm test --prefix captacao/caca-promos-vip`. Conferir contraste real em browser, foco, overflow em 390px e que CSS é carregado de 3030 corretamente. Nenhum envio de WhatsApp real deve fazer parte dos testes visuais.
+- `src/painel/public/ofertas-v2.css` — personalização da tela legada com a paleta semântica, legibilidade, foco, 44px mínimos, responsividade e movimento reduzido;
+- `src/painel/public/index.html` — navegação clara para Central Unificada, ciclo, revisão e Instagram; continua com os mesmos IDs, elementos de controle e script principal;
+- `src/painel/server.ts` — CSS novo servido apenas por caminho exato na allowlist `/central/assets/ofertas-v2.css`, como os arquivos já utilizados pelo cockpit.
 
-Próxima etapa: estabilizar componentes e incorporar a nova hierarquia em **todas** as telas de Ofertas e Captação, preservando contratos e IDs dos elementos.
+### Central de Captação (3045, com compatibilidade 3040)
+
+- `src/assets/afiliados-v2.tokens.css` — cópia idêntica dos tokens da Central de Ofertas, para que a captação possa continuar funcionando **independentemente**, sem montar um proxy entre portas;
+- `src/assets/afiliados-v2.css` — apresentação das seis telas locais: `/inicio`, `/enviar`, `/contatos`, `/campanhas`, `/respostas-botoes` e `/denuncias`;
+- `src/layout-clean.mjs` — acrescentados links diretos à Central Unificada e a Ofertas em `127.0.0.1:3030`; navegação interna original, IDs, labels e formulário do envio mantidos;
+- `src/server.mjs` — apenas duas rotas de ativos estáticos acrescentadas à allowlist; mesmas regras de segurança `Origin`, `Host`, `x-cpv-local`, sessão local e loopback.
+- Rótulos ligados ao antigo computador ACER foram ajustados para **este computador**.
+
+**Os links de 3045 para 3030 são navegação normal do navegador.** Não há requisição `fetch` cruzando portas para contatos, mensagens ou filas. Se o processo 3030 estiver desligado, o link não funcionará até iniciar a Central de Ofertas.
+
+### O que não foi alterado
+
+Motores de Amazon, Mercado Livre, OAuth, extensão, Instagram, WhatsApp Web/Chrome/Playwright, WhatyGo, Netlify, consentimentos, bloqueios, filas, contadores, dados locais, perfis Chrome e mensagem/grupo padrão. Nenhum envio real foi executado durante esta implementação.
+
+## Contrato de design entre os serviços
+
+A fonte dos valores visuais é `src/painel/public/central.tokens.css` e o arquivo autônomo de captação é `captacao/caca-promos-vip/src/assets/afiliados-v2.tokens.css`. O teste `afiliados-v2.test.mjs` exige **igualdade exata entre os dois**; edite ambos ao mudar tokens e mantenha o Figma alinhado.
+
+## Validação e publicação
+
+- CI específica: `.github/workflows/ui-afiliados-v2.yml`, disparada na branch `refactor/unificar-paineis-v2` e nos PRs direcionados à branch de desenvolvimento.
+- Contratos do cockpit e Ofertas: `npm run test:central-unificada`.
+- Contratos das seis telas, estilos e rotas públicas: `node --test captacao/caca-promos-vip/tests/afiliados-v2.test.mjs`.
+- Testes de regressão mais amplos: `npm run typecheck`, `npm run test:painel-operacional`, `npm test --prefix captacao/caca-promos-vip`. Alguns testes usam Chrome no **Windows** e exigem a máquina autorizada.
+- Revisão visual obrigatória: 390px e 1440px, foco/contraste, scroll horizontal, botões ativos/desativados, carga do CSS, sessões reais, fluxo de autorização, campanhas e reativação com prova documentada.
+- Antes do deploy: fazer backup local de configurações e estado no disco C:, manter rollback para branch atual, verificar CI e testar no Windows, **sem enviar mensagens verdadeiras nos testes de interface**.
+- Nada foi instalado nem mesclado automaticamente. **Sem PostgreSQL, sem Remote Desktop Commander e sem API paga obrigatória.**
+
+## Próxima fase
+
+Refatoração estrutural incremental: extrair os blocos grandes de HTML/CSS/JS em módulos reutilizáveis mantendo os identificadores, modularizar servidores Node preservando os contratos de autenticação e fazer teste ponta a ponta em máquina Windows autorizada antes de qualquer fusão real de processos.
