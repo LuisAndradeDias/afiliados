@@ -30,3 +30,17 @@ test("portal maintains existing routes and forbids proxy of captação", async (
   assert.match(src, /requestUrl\.pathname === "\/api\/action"/);
   assert.doesNotMatch(src, /createProxyMiddleware|httpProxy\.createProxyServer/);
 });
+
+test("Figma design tokens are exposed on local route and referenced by cockpit", async () => {
+  const [tokens, css, server] = await Promise.all([
+    file("src/painel/public/central.tokens.css"),
+    file("src/painel/public/central.css"),
+    file("src/painel/server.ts")
+  ]);
+  for (const key of ["--af-surface-canvas", "--af-brand-primary", "--af-nav-background", "--af-text-default", "--af-touch-min"]) {
+    assert.ok(tokens.includes(key), key);
+  }
+  assert.match(css, /@import url\("\.\/central\.tokens\.css"\)/);
+  assert.match(server, /"\/central\/assets\/central\.tokens\.css": "central\.tokens\.css"/);
+  assert.match(css, /prefers-reduced-motion/);
+});
