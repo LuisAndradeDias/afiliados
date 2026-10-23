@@ -78,7 +78,7 @@
   function elementosClicaveis() {
     return [
       ...document.querySelectorAll(
-        'a, button, [role="button"], [tabindex="0"]'
+        'a, button, input[type="submit"], input[type="button"], [role="button"], [tabindex="0"]'
       )
     ].filter(visivel);
   }
@@ -165,32 +165,83 @@
       .map(avaliar)
       .sort((a, b) => b.score - a.score)[0];
 
-    // Nunca escolhe um campo genérico só porque é o único input da página.
-    // O Gerador de Links precisa apresentar indícios claros de URL/link/produto.
+    // Nunca escolhe um campo gen�rico s� porque � o �nico input da p�gina.
+    // O Gerador de Links precisa apresentar ind�cios claros de URL/link/produto.
     return melhor && melhor.score >= 6 ? melhor.el : null;
   }
 
-  function localizarBotaoGerar() {
-    const candidatos = elementosClicaveis()
-      .map((el) => ({
-        el,
-        texto: normalizar(
-          [el.textContent, el.getAttribute("aria-label")]
-            .filter(Boolean)
-            .join(" ")
-        )
-      }))
-      .filter(({ texto }) =>
-        texto === "gerar" ||
-        texto === "gerar link" ||
-        texto === "gerar links" ||
-        texto.includes("gerar link")
-      );
+  function botaoDesabilitado(el) {
+    if ((el instanceof HTMLButtonElement || el instanceof HTMLInputElement) &&
+        el.disabled) return true;
+    return el.getAttribute("aria-disabled") === "true";
+  }
 
-    return candidatos.find(({ el }) => {
-      if (el instanceof HTMLButtonElement) return !el.disabled;
-      return el.getAttribute("aria-disabled") !== "true";
-    })?.el || null;
+  function localizarBotaoGerar(aceitarDesabilitado = false) {
+    const campo = localizarCampoUrl();
+    const formulario = campo?.closest("form, dialog, [role='dialog'], section, article");
+    const candidatos = elementosClicaveis()
+      .map((el) => {
+        const texto = normalizar(
+          [el.textContent, el.getAttribute("value"), el.getAttribute("aria-label"),
+           el.getAttribute("title")].filter(Boolean).join(" ")
+        );
+        const valido = /^(?:gerar|criar)$/.test(texto) ||
+          /\b(?:gerar|criar)\s+(?:o\s+|meu\s+|novo\s+)?(?:link|links|url|urls)\b/.test(texto);
+        const noFormulario = formulario?.contains(el) ? 8 : 0;
+        const exato = /^(?:gerar|criar)(?:\s+links?)?$/.test(texto) ? 4 : 0;
+        return { el, texto, valido, score: noFormulario + exato };
+      })
+      .filter(({ valido, el }) => valido &&
+        (aceitarDesabilitado || !botaoDesabilitado(el)))
+      .sort((a, b) => b.score - a.score);
+    return candidatos[0]?.el || null;
+  }
+
+  function escolherEtiquetaNativa() {
+    const selects = [...document.querySelectorAll("select")].filter(visivel);
+    for (const el of selects) {
+      const contexto = normalizar([
+        el.getAttribute("aria-label"), el.getAttribute("name"),
+        el.closest("label")?.textContent,
+        el.parentElement?.textContent?.slice(0,150)
+      ].filter(Boolean).join(" "));
+      if (!/(etiqueta|tag)/.test(contexto)) continue;
+      if (el.value && !/selecion|escolh|etiqueta/.test(
+        normalizar(el.selectedOptions?.[0]?.textContent))) return false;
+      const opcoes = [...el.options].filter(o => o.value && !o.disabled &&
+        !/(selecion|escolh|criar|nova etiqueta)/.test(normalizar(o.textContent)));
+      const padrao = opcoes.find(o =>
+        /(padrao|principal|default)/.test(normalizar(o.textContent))) ||
+        (opcoes.length === 1 ? opcoes[0] : null);
+      if (!padrao) return false;
+      el.value = padrao.value;
+      el.dispatchEvent(new Event("input",{bubbles:true}));
+      el.dispatchEvent(new Event("change",{bubbles:true}));
+      return true;
+    }
+    return false;
+  }
+
+  async function escolherEtiquetaUnica() {
+    if (escolherEtiquetaNativa()) return true;
+    const combos = elementosClicaveis().filter(el =>
+      (el.matches('[role="combobox"],[aria-haspopup="listbox"]') ||
+       el instanceof HTMLButtonElement) &&
+      /(etiqueta|tag)/.test(normalizar([
+        el.getAttribute("aria-label"),el.textContent?.slice(0,120)
+      ].filter(Boolean).join(" ")))
+    );
+    if (!combos.length) return false;
+    combos[0].click();
+    await new Promise(resolve=>setTimeout(resolve,350));
+    const opts = [...document.querySelectorAll('[role="option"]')].filter(visivel)
+      .filter(el => !/(selecion|criar|nova etiqueta)/.test(normalizar(el.textContent)));
+    const opcao = opts.find(el =>
+      /(padrao|principal|default)/.test(normalizar(el.textContent))) ||
+      (opts.length === 1 ? opts[0] : null);
+    if (!opcao) return false;
+    opcao.click();
+    return true;
   }
 
   function preencher(el, valor) {
@@ -270,7 +321,7 @@
         .trim();
 
       if (
-        /válido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(
+        /v�lido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(
           bloco
         )
       ) {
@@ -298,7 +349,7 @@
   async function processar(job) {
     processando = true;
     jobAtual = job.id;
-    mostrarStatus("Automação Meli: preparando o Gerador de Links...");
+    mostrarStatus("Automa��o Meli: preparando o Gerador de Links...");
 
     try {
       await enviar({ type: "startJob", id: job.id });
@@ -309,28 +360,45 @@
         const gerador = await esperar(localizarGerador, 12000);
         if (!gerador) {
           throw new Error(
-            "Não encontrei o botão Gerador de Links. Abra a área de Afiliados e tente novamente."
+            "N�o encontrei o bot�o Gerador de Links. Abra a �rea de Afiliados e tente novamente."
           );
         }
 
         gerador.click();
-        mostrarStatus("Automação Meli: abrindo o Gerador de Links...");
+        mostrarStatus("Automa��o Meli: abrindo o Gerador de Links...");
         campo = await esperar(localizarCampoUrl, 15000);
       }
 
       if (!campo) {
-        throw new Error("Não encontrei o campo para colar a URL do produto.");
+        throw new Error("N�o encontrei o campo para colar a URL do produto.");
       }
 
+      const url = new URL(job.urlProduto);
+      if (url.protocol !== "https:" ||
+          !/(^|\.)mercadolivre\.com(?:\.br)?$/.test(url.hostname) ||
+          !/^\/p\/[A-Za-z0-9_-]+/.test(url.pathname)) {
+        throw new Error("O produto informado n�o � uma p�gina de cat�logo autorizada.");
+      }
       preencher(campo, job.urlProduto);
-      mostrarStatus("Automação Meli: URL preenchida. Gerando link...");
+      campo.blur();
+      mostrarStatus("Automa��o Meli: URL preenchida. Localizando o Gerador...");
 
-      const botao = await esperar(localizarBotaoGerar, 10000);
+      let botao = await esperar(() => localizarBotaoGerar(), 3500);
       if (!botao) {
-        throw new Error("Não encontrei o botão Gerar.");
+        const etiquetaEscolhida = await escolherEtiquetaUnica();
+        if (etiquetaEscolhida) {
+          mostrarStatus("Automa��o Meli: etiqueta padr�o selecionada. Gerando link...");
+          botao = await esperar(() => localizarBotaoGerar(), 6000);
+        }
+      }
+      if (!botao) {
+        if (localizarBotaoGerar(true)) {
+          throw new Error("Bot�o Gerar desabilitado. Confira a etiqueta de afiliado e o formato de link na Central.");
+        }
+        throw new Error("A Central de Afiliados n�o mostrou o bot�o Criar/Gerar link. Abra o Gerador oficial.");
       }
 
-      // Em execuções consecutivas o resultado anterior pode continuar visível.
+      // Em execu��es consecutivas o resultado anterior pode continuar vis�vel.
       // Guardamos os links existentes para nunca devolver o link da oferta anterior.
       const linksAntes = new Set(linksNaTela());
       botao.click();
@@ -348,7 +416,7 @@
 
       if (!link) {
         throw new Error(
-          "O Mercado Livre não exibiu um link oficial reconhecível após gerar."
+          "O Mercado Livre n�o exibiu um link oficial reconhec�vel ap�s gerar."
         );
       }
 
@@ -367,7 +435,7 @@
     } catch (error) {
       const mensagem =
         error instanceof Error ? error.message : String(error);
-      mostrarStatus("Automação Meli: " + mensagem, "erro");
+      mostrarStatus("Automa��o Meli: " + mensagem, "erro");
       await enviar({
         type: "result",
         id: job.id,
@@ -378,11 +446,17 @@
     }
   }
 
+  function paginaAfiliados() {
+    return /(?:^|\/)(?:afiliados?|creators?|criadores?)(?:[/-]|$)/i
+      .test(location.pathname);
+  }
+
   async function ciclo() {
     await enviar({ type: "ping" });
     await observarCupons();
 
-    if (processando) return;
+    // Outras abas Mercado Livre nao podem disputar um link pendente.
+    if (processando || !paginaAfiliados()) return;
 
     const resposta = await enviar({ type: "getJob" });
     const job = resposta?.job;
