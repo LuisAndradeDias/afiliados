@@ -318,3 +318,32 @@ O botão principal usa uma ação idempotente `monitor-set`. A interface envia e
 A plataforma exibida na revisão vem do pacote real da oferta (`ultima-oferta-whatsapp.json`), e não da última plataforma consultada pelo monitor.
 
 Se o WhatsApp fechar ou falhar depois que a oferta foi criada, a oferta é preservada como `offer-pending`; o ciclo não inicia outra busca por cima dela.
+
+## WhatsApp no computador novo: grupo e sessao do painel
+
+A janela normal do Chrome e o perfil persistente do robô **nao sao a mesma
+sessao**. O painel usa `C:\projeto01\data\whatsapp-profile` (nao
+commitado); a existencia dessa pasta **nao comprova que o login esta ativo**.
+
+1. Com o painel em `http://127.0.0.1:3030/`, na oferta clique em
+   **Abrir WhatsApp do painel / verificar sessao**. Se houver QR Code,
+   conecte pelo aplicativo oficial do WhatsApp.
+2. Depois que as conversas aparecerem, feche **essa janela do WhatsApp
+   do painel** para liberar o perfil Playwright.
+3. No cartao **Destino WhatsApp**, informe o nome **exato** do grupo ja
+   existente, inclusive acentos/emojis, e clique **Salvar grupo**.
+   O nome e gravado na `.env` local; configurar o grupo nao envia nada.
+4. Com a oferta preservada no painel, clique **Reabrir no WhatsApp**.
+   Revise destinatario, imagem e legenda. O envio depende de um clique
+   humano confirmado, nao ocorre ao salvar ou reabrir.
+5. Se o monitor de ofertas tiver sido pausado durante o diagnostico,
+   so reative o ciclo depois de confirmar a janela de revisao.
+
+Se o grupo estiver vazio, o painel agora informa o motivo e bloqueia a
+tentativa **antes de abrir o preparador**, preservando a oferta. Uma
+pasta de perfil salva nunca mais e rotulada como "Conectado" sem
+verificacao ativa. O historico e os arquivos da oferta nao sao apagados
+por falha ao preparar a janela.
+
+Testes sem mensagens reais: `npm run typecheck`,
+`npm run test:painel-operacional`, `npm run test:whatsapp-grupo`.

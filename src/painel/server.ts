@@ -858,6 +858,13 @@ function iniciarPreparacaoWhatsapp(
   origem: PlataformaMonitor
 ): boolean {
   if (processos.has("preparar")) return false;
+  // O nome do destino é obrigatório ANTES de criar qualquer processo/browser.
+  // Uma oferta pendente deve ser preservada; jamais adivinhar outro grupo.
+  if (!process.env.WHATSAPP_GROUP_NAME?.trim()) {
+    registrar("whatsapp", "Grupo não configurado. A oferta continua salva; informe o nome exato do grupo em Destino.");
+    atualizarFluxoMercadoLivre("idle", "Escolha o grupo em Destino para abrir o WhatsApp. Nenhum envio foi iniciado.");
+    return false;
+  }
 
   origemPreparacaoAtual = origem;
   origemPreparacaoEmExecucao = origem;
@@ -1274,7 +1281,8 @@ async function estado() {
                       : "paused";
 
   return {
-    grupo: process.env.WHATSAPP_GROUP_NAME || "Não configurado",
+    grupo: process.env.WHATSAPP_GROUP_NAME?.trim() || "Não configurado",
+    grupoConfigurado: Boolean(process.env.WHATSAPP_GROUP_NAME?.trim()),
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
     afiliadoTag: process.env.AMAZON_ASSOCIATE_TAG?.trim() ?? "",
     linkAfiliadoAtual: pacote.urlAfiliado ?? "",
@@ -1489,6 +1497,32 @@ async function executarAcao(
       ok: true,
       mensagem:
         "Redirect URI salvo. Confirme que esta mesma URL está cadastrada no DevCenter e depois clique em Autorizar OAuth."
+    };
+  }
+
+  if (acao === "whatsapp-group-save") {
+    const grupo = String(dados.grupo ?? "").trim().normalize("NFC");
+    if (!grupo || grupo.length > 110 || /[\x00-\x1F\x7F]/.test(grupo) ||
+        grupo === "Não configurado" || /^https?:\/\//i.test(grupo)) {
+      return {
+        ok: false,
+        mensagem: "Informe apenas o nome exato do grupo do WhatsApp (até 110 caracteres)."
+      };
+    }
+    // O nome pode ser salvo enquanto a janela de LOGIN estiver aberta.
+    // Bloqueamos apenas uma revisão em andamento, para não alterar o destino
+    // no meio da preparação de uma oferta.
+    if (processos.has("preparar")) {
+      return {
+        ok: false,
+        mensagem: "Feche ou conclua a revisão atual antes de alterar o grupo."
+      };
+    }
+    await salvarVariavelEnv("WHATSAPP_GROUP_NAME", grupo);
+    registrar("painel", "Destino WhatsApp configurado pelo usuário no painel.");
+    return {
+      ok: true,
+      mensagem: "Grupo salvo. Confira a sessão do WhatsApp e clique em Reabrir no WhatsApp. Nenhuma mensagem foi enviada."
     };
   }
 
@@ -1712,6 +1746,12 @@ async function executarAcao(
   }
 
   if (acao === "preparar") {
+    if (!process.env.WHATSAPP_GROUP_NAME?.trim()) {
+      return {
+        ok: false,
+        mensagem: "Grupo não configurado. Informe o nome exato no cartão Destino e clique em Salvar grupo. A oferta continua salva."
+      };
+    }
     if (processos.has("preparar")) {
       return {
         ok: false,
