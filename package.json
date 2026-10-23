@@ -30,7 +30,8 @@
     "test:variedade-ofertas": "tsx tests/variedade-ofertas.mts",
     "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts",
     "test:instagram-content": "tsx tests/instagram-content.mts",
-    "test:intervalos-envio": "tsx tests/intervalos-envio.mts"
+    "test:intervalos-envio": "tsx tests/intervalos-envio.mts",
+    "test:central-unificada": "tsx --test tests/central-unificada.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
