@@ -1,0 +1,75 @@
+/* Afiliados 2.0 · Design foundations — Figma UI Kit: 1PPA925AnmmApIV8fCPfGV
+ * Centraliza a linguagem visual sem interferir em rotas, dados ou automações.
+ * Mapeado de: Afiliados/Primitives, Afiliados/Semantic, Afiliados/Dimensions.
+ */
+:root {
+  --af-primitive-slate-950: #172333;
+  --af-primitive-slate-900: #1b2938;
+  --af-primitive-slate-800: #203346;
+  --af-primitive-slate-600: #64748b;
+  --af-primitive-slate-500: #8191a3;
+  --af-primitive-slate-100: #e3e8ee;
+  --af-primitive-slate-50: #f6f8fb;
+  --af-primitive-white: #ffffff;
+  --af-primitive-surface-soft: #f8fafc;
+  --af-primitive-green-600: #148a69;
+  --af-primitive-green-700: #0e795c;
+  --af-primitive-green-100: #e7f7ef;
+  --af-primitive-nav-selected: #285246;
+  --af-primitive-nav-foreground: #d5e0ea;
+  --af-primitive-amber-700: #b7791f;
+  --af-primitive-amber-50: #fffaf0;
+  --af-primitive-red-700: #b42318;
+  --af-primitive-red-50: #fef3f2;
+  --af-primitive-focus: #61c5a4;
+  --af-surface-canvas: var(--af-primitive-slate-50);
+  --af-surface-panel: var(--af-primitive-white);
+  --af-surface-soft: var(--af-primitive-surface-soft);
+  --af-text-default: var(--af-primitive-slate-900);
+  --af-text-muted: var(--af-primitive-slate-600);
+  --af-text-subtle: var(--af-primitive-slate-500);
+  --af-text-on-dark: var(--af-primitive-white);
+  --af-border-default: var(--af-primitive-slate-100);
+  --af-brand-primary: var(--af-primitive-green-600);
+  --af-brand-hover: var(--af-primitive-green-700);
+  --af-brand-soft: var(--af-primitive-green-100);
+  --af-brand-on-primary: var(--af-primitive-white);
+  --af-nav-background: var(--af-primitive-slate-950);
+  --af-nav-foreground: var(--af-primitive-nav-foreground);
+  --af-nav-active: var(--af-primitive-nav-selected);
+  --af-status-success: var(--af-primitive-green-600);
+  --af-status-warning: var(--af-primitive-amber-700);
+  --af-status-danger: var(--af-primitive-red-700);
+  --af-status-warning-soft: var(--af-primitive-amber-50);
+  --af-status-danger-soft: var(--af-primitive-red-50);
+  --af-focus-ring: var(--af-primitive-focus);
+  --af-space-1: 4px;
+  --af-space-2: 8px;
+  --af-space-3: 12px;
+  --af-space-4: 16px;
+  --af-space-5: 20px;
+  --af-space-6: 24px;
+  --af-space-8: 32px;
+  --af-space-10: 40px;
+  --af-radius-sm: 8px;
+  --af-radius-md: 12px;
+  --af-radius-lg: 17px;
+  --af-touch-min: 44px;
+  --af-type-display-lg: 42px;
+  --af-type-heading-lg: 32px;
+  --af-type-heading-md: 24px;
+  --af-type-heading-sm: 18px;
+  --af-type-body-base: 14px;
+  --af-type-body-emphasis: 14px;
+  --af-type-body-sm: 13px;
+  --af-type-caption: 11px;
+  /* Compatibilidade com o cockpit inicial, sem ruptura do CSS existente. */
+  --ink: var(--af-text-default);
+  --muted: var(--af-text-muted);
+  --line: var(--af-border-default);
+  --bg: var(--af-surface-canvas);
+  --surface: var(--af-surface-panel);
+  --dark: var(--af-nav-background);
+  --mint: var(--af-brand-primary);
+  --mint-bg: var(--af-brand-soft);
+}
