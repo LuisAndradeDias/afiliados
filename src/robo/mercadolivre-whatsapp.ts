@@ -6,6 +6,7 @@ import { registrarOfertaVista } from "../ofertas/historico.js";
 import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { revalidarCupomMercadoLivre } from "../afiliados/mercadolivre-cupons.js";
+import { descontoMinimoOferta, avaliarQualidadeOferta } from "../ofertas/qualidade.js";
 
 let oferta = await lerOfertaMercadoLivre();
 
@@ -18,14 +19,25 @@ if (!oferta.urlAfiliado) {
 if (oferta.cupomCodigo) {
   const codigoAnterior = oferta.cupomCodigo;
   oferta = await revalidarCupomMercadoLivre(oferta);
+  if (oferta.cupomCodigo && oferta.cupomValidacao !== "produto-confirmado") {
+    console.warn("Cupom publico nao confirmado para este produto; o codigo nao sera publicado.");
+    oferta = {
+      ...oferta,
+      cupom: undefined, cupomCodigo: undefined, cupomPercentual: undefined,
+      cupomValor: undefined, cupomCompraMinima: undefined,
+      cupomDescontoMaximo: undefined, cupomValidoAte: undefined,
+      cupomValidacao: undefined, precoComCupomEstimado: undefined,
+      descontoEfetivoPercentual: oferta.descontoPercentual ?? 0
+    };
+  }
 
   if (oferta.cupomCodigo) {
     console.log(
-      `Cupom ${oferta.cupomCodigo} revalidado no catálogo oficial imediatamente antes do WhatsApp.`
+      `Cupom ${oferta.cupomCodigo} revalidado no cat�logo oficial imediatamente antes do WhatsApp.`
     );
   } else {
     console.warn(
-      `Cupom ${codigoAnterior} não está mais disponível; a oferta será reavaliada sem o cupom.`
+      `Cupom ${codigoAnterior} n�o est� mais dispon�vel; a oferta ser� reavaliada sem o cupom.`
     );
   }
 
@@ -36,7 +48,7 @@ if (oferta.cupomCodigo) {
   );
 }
 
-const minimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
+const minimo = descontoMinimoOferta();
 const beneficioEfetivo =
   oferta.descontoEfetivoPercentual ??
   oferta.descontoPercentual ??
@@ -44,13 +56,18 @@ const beneficioEfetivo =
 
 if (beneficioEfetivo < minimo) {
   throw new Error(
-    `A oferta perdeu elegibilidade após revalidar o cupom: benefício efetivo ${beneficioEfetivo}% abaixo do mínimo de ${minimo}%.`
+    `A oferta perdeu elegibilidade ap�s revalidar o cupom: benef�cio efetivo ${beneficioEfetivo}% abaixo do m�nimo de ${minimo}%.`
   );
 }
 
+const qualidade = avaliarQualidadeOferta(oferta);
+if (!qualidade.elegivel) {
+  throw new Error("Oferta reprovada antes do envio: " + qualidade.motivo +
+    ". Nenhuma mensagem sera enviada.");
+}
 const mensagem = formatarOfertaWhatsapp(oferta);
 
-console.log("\n--- PREVIA WHATSAPP · MERCADO LIVRE ---\n");
+console.log("\n--- PREVIA WHATSAPP � MERCADO LIVRE ---\n");
 console.log(mensagem);
 console.log("\n----------------------------------------\n");
 

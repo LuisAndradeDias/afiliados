@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Oferta } from "../fontes/types.js";
 
@@ -8,6 +8,22 @@ const CUPONS_URL =
 const CACHE_PATH = "data/cupons-mercadolivre.json";
 const OBSERVED_CACHE_PATH =
   "data/cupons-mercadolivre-observados.json";
+const COUPON_FAILURE_PATH = "data/cupons-mercadolivre-falha.json";
+const COUPON_RETRY_MS = 15 * 60_000;
+async function falhaCupomRecente(): Promise<boolean> {
+  const arquivo = await readFile(COUPON_FAILURE_PATH, "utf8").catch(() => "");
+  if (!arquivo) return false;
+  try {
+    const dado = JSON.parse(arquivo) as { verificadoEm?: string };
+    const instante = Date.parse(dado.verificadoEm ?? "");
+    return Number.isFinite(instante) && Date.now() - instante < COUPON_RETRY_MS;
+  } catch { return false; }
+}
+async function registrarFalhaCupom(): Promise<void> {
+  await mkdir("data", { recursive: true });
+  await writeFile(COUPON_FAILURE_PATH,
+    JSON.stringify({ verificadoEm: new Date().toISOString() }), "utf8");
+}
 
 export interface CupomMercadoLivre {
   codigo: string;
@@ -47,12 +63,12 @@ function limparHtml(html: string): string {
     .replace(/&amp;|&#38;/gi, "&")
     .replace(/&quot;|&#34;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&aacute;/gi, "á")
-    .replace(/&eacute;/gi, "é")
-    .replace(/&iacute;/gi, "í")
-    .replace(/&oacute;/gi, "ó")
-    .replace(/&uacute;/gi, "ú")
-    .replace(/&ccedil;/gi, "ç")
+    .replace(/&aacute;/gi, "�")
+    .replace(/&eacute;/gi, "�")
+    .replace(/&iacute;/gi, "�")
+    .replace(/&oacute;/gi, "�")
+    .replace(/&uacute;/gi, "�")
+    .replace(/&ccedil;/gi, "�")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -89,14 +105,14 @@ function datasDoTermo(termos: string): {
   validoAte?: string;
 } {
   const inicio = termos.match(
-    /(?:Cupom\s+)?válido\s+de\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
+    /(?:Cupom\s+)?v�lido\s+de\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
   );
   if (!inicio) return {};
 
   const validoDe = isoDataBrasil(inicio[1], inicio[2], inicio[3]);
   const restante = termos.slice((inicio.index ?? 0) + inicio[0].length);
   const fim = restante.match(
-    /(?:até|a)\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
+    /(?:at�|a)\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
   );
 
   if (fim) {
@@ -106,7 +122,7 @@ function datasDoTermo(termos: string): {
     };
   }
 
-  if (/até\s+(?:às?|as)\s*23h59/i.test(termos)) {
+  if (/at�\s+(?:�s?|as)\s*23h59/i.test(termos)) {
     return {
       validoDe,
       validoAte: isoDataBrasil(inicio[1], inicio[2], inicio[3], true)
@@ -119,7 +135,7 @@ function datasDoTermo(termos: string): {
 function parsearCupom(codigo: string, termos: string): CupomMercadoLivre | null {
   const percentualMatch =
     termos.match(
-      /Desconto(?:\s+de)?(?:\s+até)?\s*(\d+(?:[.,]\d+)?)\s*%/i
+      /Desconto(?:\s+de)?(?:\s+at�)?\s*(\d+(?:[.,]\d+)?)\s*%/i
     ) ??
     termos.match(/(\d+(?:[.,]\d+)?)\s*%\s*OFF/i);
 
@@ -136,7 +152,7 @@ function parsearCupom(codigo: string, termos: string): CupomMercadoLivre | null 
     /compra(?:s)?\s+a\s+partir\s+de\s+R\$\s*([\d.]+(?:,\d+)?)/i
   );
   const descontoMaximoMatch = termos.match(
-    /desconto\s+máximo\s+de\s+R\$\s*([\d.]+(?:,\d+)?)/i
+    /desconto\s+m�ximo\s+de\s+R\$\s*([\d.]+(?:,\d+)?)/i
   );
   const limiteMatch = termos.match(
     /limite\s+de\s+([\d.]+)\s+cupons/i
@@ -158,8 +174,8 @@ function parsearCupom(codigo: string, termos: string): CupomMercadoLivre | null 
     validoDe: datas.validoDe,
     validoAte: datas.validoAte,
     limiteCupons: numeroBR(limiteMatch?.[1]),
-    naoCumulativo: /não\s+(?:é\s+)?cumulativ[oa]/i.test(termos),
-    somenteItensElegiveis: /itens?\s+elegíveis?/i.test(termos),
+    naoCumulativo: /n�o\s+(?:�\s+)?cumulativ[oa]/i.test(termos),
+    somenteItensElegiveis: /itens?\s+eleg�veis?/i.test(termos),
     termos: termos.slice(0, 2_500),
     origem: "mercadolivre-promocoes",
     coletadoEm: new Date().toISOString()
@@ -182,7 +198,7 @@ export function extrairCuponsMercadoLivre(html: string): CupomMercadoLivre[] {
         : Math.min(texto.length, inicio + 3_500);
 
     const termos = texto.slice(inicio, Math.min(fim, inicio + 3_500));
-    if (!/válido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(termos)) {
+    if (!/v�lido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(termos)) {
       continue;
     }
 
@@ -318,7 +334,7 @@ async function baixarCupons(): Promise<CupomMercadoLivre[]> {
 
   if (!resposta.ok) {
     throw new Error(
-      `Mercado Livre cupons HTTP ${resposta.status}: não foi possível atualizar o catálogo.`
+      `Mercado Livre cupons HTTP ${resposta.status}: n�o foi poss�vel atualizar o cat�logo.`
     );
   }
 
@@ -327,7 +343,7 @@ async function baixarCupons(): Promise<CupomMercadoLivre[]> {
 
   if (cupons.length === 0) {
     throw new Error(
-      "A página oficial de promoções não retornou cupons reconhecíveis."
+      "A p�gina oficial de promo��es n�o retornou cupons reconhec�veis."
     );
   }
 
@@ -347,15 +363,18 @@ export async function obterCuponsMercadoLivre(
   let cupons = cache?.cupons ?? [];
 
   if (opcoes.forcarAtualizacao || idade >= refreshMs() || cupons.length === 0) {
-    try {
-      cupons = await baixarCupons();
-    } catch (error) {
-      if (cupons.length === 0) throw error;
-
-      const mensagem = error instanceof Error ? error.message : String(error);
-      console.warn(
-        `Mercado Livre: usando cache de cupons porque a atualização falhou: ${mensagem}`
-      );
+    // A p�gina p�blica frequentemente n�o traz cupons novos ou retorna HTML
+    // din�mico. Evitar outra consulta a cada minuto: sem fabricar cupons.
+    if (opcoes.forcarAtualizacao || !(await falhaCupomRecente())) {
+      try {
+        cupons = await baixarCupons();
+        await rm(COUPON_FAILURE_PATH, { force: true });
+      } catch {
+        await registrarFalhaCupom();
+        console.warn(
+          "Mercado Livre: cupons p�blicos n�o verific�veis; buscas de ofertas com descontos pr�prios continuam normalmente (nova consulta de cupons em at� 15 min)."
+        );
+      }
     }
   }
 
@@ -565,7 +584,7 @@ export async function revalidarCupomMercadoLivre(
 
   if (!cupom) {
     console.warn(
-      `Mercado Livre: cupom ${oferta.cupomCodigo} não aparece mais no catálogo oficial; removendo da oferta.`
+      `Mercado Livre: cupom ${oferta.cupomCodigo} n�o aparece mais no cat�logo oficial; removendo da oferta.`
     );
     return limparCupomOferta(oferta);
   }

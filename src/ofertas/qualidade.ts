@@ -36,7 +36,9 @@ export function faixaPrecoOferta(preco: number): FaixaPrecoOferta {
 export function economiaRealOferta(oferta: Oferta): number {
   const precoAtual = oferta.precoAtual;
   const anterior = oferta.precoAnterior;
+  // Cupom publico generico nao garante elegibilidade deste produto.
   const comCupom =
+    oferta.cupomValidacao === "produto-confirmado" &&
     oferta.precoComCupomEstimado &&
     oferta.precoComCupomEstimado > 0 &&
     oferta.precoComCupomEstimado < precoAtual
@@ -75,6 +77,10 @@ function configuracaoPositiva(entrada: string | undefined, padrao: number): numb
     : padrao;
 }
 
+export function descontoMinimoOferta(env: NodeJS.ProcessEnv = process.env): number {
+  return configuracaoPositiva(env.MIN_DISCOUNT_PERCENT, 20);
+}
+
 /**
  * Filtro editorial para o grupo: privilegia o produto principal de
  * eletronicos/eletrodomesticos, desconto verificavel e ganho real em reais.
@@ -83,7 +89,7 @@ export function avaliarQualidadeOferta(
   oferta: Oferta,
   env: NodeJS.ProcessEnv = process.env
 ): AvaliacaoQualidadeOferta {
-  const minimoDesconto = configuracaoPositiva(env.MIN_DISCOUNT_PERCENT, 25);
+  const minimoDesconto = descontoMinimoOferta(env);
   const minimoPreco = configuracaoPositiva(env.MIN_OFFER_PRICE_BRL, 49);
   const minimoEconomiaBase = configuracaoPositiva(env.MIN_OFFER_SAVINGS_BRL, 20);
   const faixa = faixaPrecoOferta(oferta.precoAtual);
@@ -109,8 +115,9 @@ export function avaliarQualidadeOferta(
     return retorno(false, "acessorio ou consumivel");
   }
 
-  const desconto =
-    oferta.descontoEfetivoPercentual ?? oferta.descontoPercentual ?? 0;
+  const desconto = oferta.cupomValidacao === "produto-confirmado"
+    ? (oferta.descontoEfetivoPercentual ?? oferta.descontoPercentual ?? 0)
+    : (oferta.descontoPercentual ?? 0);
   if (!Number.isFinite(desconto) || desconto < minimoDesconto || desconto > 90) {
     return retorno(false, "desconto insuficiente ou nao confiavel");
   }
