@@ -41,13 +41,16 @@ function shell(current){
       <span class="clean-brand-copy"><strong>CAÇA PROMOS VIP</strong><small>Central de gestão</small></span>
     </a>
     <nav class="clean-nav" aria-label="Seções da Central">
-      <div class="clean-nav-section" role="presentation">PRINCIPAL</div>
+      <div class="clean-nav-section" role="presentation">PLATAFORMA</div>
+      <a class="clean-global-link" href="http://127.0.0.1:3030/central" title="Abrir a Central Unificada na porta 3030">${ico('home')}<span>Central Unificada</span></a>
+      <a class="clean-global-link" href="http://127.0.0.1:3030/ofertas" title="Abrir o painel de Ofertas na porta 3030">${ico('layers')}<span>Ofertas · Amazon e Meli</span></a>
+      <div class="clean-nav-section" role="presentation">RELACIONAMENTO</div>
       ${links}
       <a class="clean-subnav" href="/contatos#reativar-teste">${ico('lock')}<span>Reativar número</span></a>
     </nav>
     <div class="clean-sidebar-bottom">
       <span class="clean-status-dot"></span>
-      <span><strong>Central local</strong><small>Dados protegidos no ACER</small></span>
+      <span><strong>Central local</strong><small>Dados protegidos neste computador</small></span>
     </div>
   </aside>
   <header class="clean-topbar">
@@ -56,13 +59,14 @@ function shell(current){
         aria-label="Abrir menu" aria-controls="cleanSidebar" aria-expanded="false">${ico('menu')}</button>
       <span class="clean-topbar-breadcrumb">Caça Promos VIP <span aria-hidden="true">/</span> <strong>${title}</strong></span>
     </div>
-    <span class="clean-local-badge"><span class="clean-status-dot"></span> Local (ACER)</span>
+    <a class="clean-topbar-shortcut" href="http://127.0.0.1:3030/central" title="Abrir painel de Ofertas e visão unificada">Central Unificada ↗</a>
+    <span class="clean-local-badge"><span class="clean-status-dot"></span> Local · protegido</span>
   </header>`;
 }
 export function aplicarLayoutClean(html,current) {
   if(typeof html!=='string'||!/<body[\s>]/i.test(html))throw new Error('Página inválida.');
   const decorated=html.replace(/<\/head>/i,
-    '<link rel="stylesheet" href="/assets/layout-clean.css"><script defer src="/assets/layout-clean.js"></script></head>')
+    '<link rel="stylesheet" href="/assets/layout-clean.css"><link rel="stylesheet" href="/assets/afiliados-v2.tokens.css"><link rel="stylesheet" href="/assets/afiliados-v2.css"><script defer src="/assets/layout-clean.js"></script></head>')
     .replace(/<body([^>]*)>/i,(whole,attrs)=>'<body'+attrs+' data-layout="clean">'+shell(current));
   return decorated;
 }
