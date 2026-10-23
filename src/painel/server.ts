@@ -2056,6 +2056,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && requestUrl.pathname.startsWith("/central/assets/")) {
       const assets: Record<string, string> = {
         "/central/assets/central.css": "central.css",
+        "/central/assets/central.tokens.css": "central.tokens.css",
         "/central/assets/central.js": "central.js"
       };
       const assetName = assets[requestUrl.pathname];
