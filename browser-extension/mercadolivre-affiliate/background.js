@@ -16,7 +16,7 @@ async function api(path, options = {}) {
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    data = { ok: false, mensagem: text || "Resposta inválida do painel." };
+    data = { ok: false, mensagem: text || "Resposta inv�lida do painel." };
   }
 
   if (!response.ok) {
@@ -44,7 +44,15 @@ async function garantirAbaParaJob() {
     ]
   });
 
-  const ativa = abas.find((aba) => aba.id && !aba.discarded);
+  // Uma aba de produto comum nao tem necessariamente o Gerador de Links.
+  // Criar a aba oficial caso nenhuma janela da area de Afiliados esteja aberta.
+  const ativa = abas.find((aba) => {
+    if (!aba.id || aba.discarded || !aba.url) return false;
+    try {
+      return /(?:^|\/)(?:afiliados?|creators?|criadores?)(?:[/-]|$)/i
+        .test(new URL(aba.url).pathname);
+    } catch { return false; }
+  });
   if (ativa) return;
 
   await chrome.tabs.create({
@@ -58,8 +66,8 @@ async function cicloBackground() {
     await ping();
     await garantirAbaParaJob();
   } catch {
-    // Painel fechado, Chrome sem permissão ou rede indisponível.
-    // O próximo ciclo tenta novamente.
+    // Painel fechado, Chrome sem permiss�o ou rede indispon�vel.
+    // O pr�ximo ciclo tenta novamente.
   }
 }
 
@@ -86,7 +94,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const executar = async () => {
     if (!message || typeof message !== "object") {
-      return { ok: false, mensagem: "Mensagem inválida." };
+      return { ok: false, mensagem: "Mensagem inv�lida." };
     }
 
     if (message.type === "ping") {
@@ -127,7 +135,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       });
     }
 
-    return { ok: false, mensagem: "Ação desconhecida." };
+    return { ok: false, mensagem: "A��o desconhecida." };
   };
 
   executar()

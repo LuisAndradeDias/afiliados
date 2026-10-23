@@ -1,0 +1,348 @@
+diff --git a/manager/src/features/instance-detail/custom-buttons.test.ts b/manager/src/features/instance-detail/custom-buttons.test.ts
+new file mode 100644
+index 0000000..f1226fd
+--- /dev/null
++++ b/manager/src/features/instance-detail/custom-buttons.test.ts
+@@ -0,0 +1,43 @@
++import { describe, expect, it } from 'vitest';
++import { buildCustomButtons, CUSTOM_BUTTON_DEFAULTS, validateCustomButtons } from './custom-buttons';
++
++const NUMBER = '5511999990000';
++
++describe('Caça Promos VIP customized reply buttons', () => {
++  it('starts with exactly 2 editable reply buttons and the preserved invitation', () => {
++    const p = buildCustomButtons(NUMBER, CUSTOM_BUTTON_DEFAULTS);
++    expect(validateCustomButtons(CUSTOM_BUTTON_DEFAULTS)).toBeNull();
++    expect(p).toMatchObject({
++      number: NUMBER,
++      title: 'Convite Caça Promos VIP 👑',
++      footer: 'Caça Promos VIP',
++      buttons: [
++        { type: 'reply', displayText: 'Entrar no grupo', id: 'aceitar_grupo' },
++        { type: 'reply', displayText: 'Não tenho interesse', id: 'recusar_grupo' },
++      ],
++    });
++    expect((p.buttons as unknown[])).toHaveLength(2);
++  });
++
++  it('edits text independently of the buttons', () => {
++    const v = { ...CUSTOM_BUTTON_DEFAULTS, title: 'Novo título', description: 'Texto atualizado!', footer: '' };
++    expect(buildCustomButtons(NUMBER, v)).toMatchObject({ title: 'Novo título', description: 'Texto atualizado!' });
++    expect(buildCustomButtons(NUMBER, v)).not.toHaveProperty('footer');
++  });
++
++  it('allows 1, 2 or 3 replies without ghost buttons', () => {
++    expect((buildCustomButtons(NUMBER, { ...CUSTOM_BUTTON_DEFAULTS, buttonCount: '1' }).buttons as unknown[])).toHaveLength(1);
++    expect((buildCustomButtons(NUMBER, { ...CUSTOM_BUTTON_DEFAULTS, buttonCount: '3' }).buttons as unknown[])).toHaveLength(3);
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, buttonCount: '3' })).toBeNull();
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, buttonCount: '4' })).toMatch(/1 a 3/);
++  });
++
++  it('does not allow missing message content or invalid labels and identifiers', () => {
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, description: ' ' })).toMatch(/mensagem/);
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, button1Text: '' })).toMatch(/botão 1/);
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, button2Text: 'I'.repeat(21) })).toMatch(/20 caracteres/);
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, button2Id: 'aceitar_grupo' })).toMatch(/diferentes/);
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, button2Id: 'a value with spaces' })).toMatch(/ID/);
++    expect(validateCustomButtons({ ...CUSTOM_BUTTON_DEFAULTS, description: 'a'.repeat(1025) })).toMatch(/1024/);
++  });
++});
+diff --git a/manager/src/features/instance-detail/custom-buttons.ts b/manager/src/features/instance-detail/custom-buttons.ts
+new file mode 100644
+index 0000000..feb8d55
+--- /dev/null
++++ b/manager/src/features/instance-detail/custom-buttons.ts
+@@ -0,0 +1,61 @@
++/**
++ * Safe, editable quick-reply messages for the Caça Promos VIP lab.
++ * No sending is performed here: this module only validates and builds a payload.
++ */
++export const CUSTOM_BUTTON_PRESET = 'btn_custom_cpv';
++
++export type CustomButtonValues = Record<string, string>;
++
++export const CUSTOM_BUTTON_DEFAULTS: CustomButtonValues = {
++  preset: CUSTOM_BUTTON_PRESET,
++  title: 'Convite Caça Promos VIP 👑',
++  description: 'Olá! 👋\n\nGostaria de participar do nosso grupo VIP e receber as melhores promoções diretamente no WhatsApp?\n\nEscolha uma opção abaixo:',
++  footer: 'Caça Promos VIP',
++  buttonCount: '2',
++  button1Text: 'Entrar no grupo',
++  button1Id: 'aceitar_grupo',
++  button2Text: 'Não tenho interesse',
++  button2Id: 'recusar_grupo',
++  button3Text: 'Saiba mais',
++  button3Id: 'cpv_saiba_mais',
++};
++
++const cleaned = (v: string | undefined) => (v ?? '').trim();
++
++export const customButtonCount = (v: CustomButtonValues): number => Number(v.buttonCount);
++
++export function validateCustomButtons(v: CustomButtonValues): string | null {
++  const count = customButtonCount(v);
++  if (!Number.isInteger(count) || count < 1 || count > 3) return 'Selecione de 1 a 3 botões de resposta.';
++  if (!cleaned(v.description)) return 'Preencha o texto da mensagem.';
++  if (cleaned(v.description).length > 1024) return 'O texto da mensagem deve ter até 1024 caracteres.';
++  if (cleaned(v.title).length > 80) return 'O título deve ter até 80 caracteres.';
++  if (cleaned(v.footer).length > 60) return 'O rodapé deve ter até 60 caracteres.';
++  const ids = new Set<string>();
++  for (let n = 1; n <= count; n += 1) {
++    const label = cleaned(v[`button${n}Text`]);
++    const id = cleaned(v[`button${n}Id`]);
++    if (!label) return `Preencha o texto do botão ${n}.`;
++    if (Array.from(label).length > 20) return `O texto do botão ${n} deve ter no máximo 20 caracteres.`;
++    if (!id || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) return `O ID do botão ${n} deve ter entre 1 e 64 letras, números, _ ou -.`;
++    if (ids.has(id)) return 'Os IDs dos botões precisam ser diferentes.';
++    ids.add(id);
++  }
++  return null;
++}
++
++export function buildCustomButtons(number: string, v: CustomButtonValues): Record<string, unknown> {
++  const count = customButtonCount(v);
++  const buttons = Array.from({ length: count }, (_, index) => {
++    const n = index + 1;
++    return { type: 'reply', displayText: cleaned(v[`button${n}Text`]), id: cleaned(v[`button${n}Id`]) };
++  });
++  const payload: Record<string, unknown> = {
++    number,
++    description: cleaned(v.description),
++    buttons,
++  };
++  if (cleaned(v.title)) payload.title = cleaned(v.title);
++  if (cleaned(v.footer)) payload.footer = cleaned(v.footer);
++  return payload;
++}
+diff --git a/manager/src/features/instance-detail/send-catalog.test.ts b/manager/src/features/instance-detail/send-catalog.test.ts
+index 257a569..ff099c4 100644
+--- a/manager/src/features/instance-detail/send-catalog.test.ts
++++ b/manager/src/features/instance-detail/send-catalog.test.ts
+@@ -61,7 +61,16 @@ describe('send catalog', () => {
+ 
+   it('interactive kinds are built from presets for the right endpoint', () => {
+     const d = defaultsOf();
+-    expect(kindOf('button').build(NUMBER, d.button)).toMatchObject({ number: NUMBER, buttons: [{ type: 'reply' }] });
++    expect(kindOf('button').build(NUMBER, d.button)).toMatchObject({
++      number: NUMBER,
++      buttons: [
++        { type: 'reply', displayText: 'Entrar no grupo', id: 'aceitar_grupo' },
++        { type: 'reply', displayText: 'Não tenho interesse', id: 'recusar_grupo' },
++      ],
++    });
++    expect(kindOf('button').build(NUMBER, { ...d.button, preset: 'btn_reply_1' })).toMatchObject({
++      buttons: [{ type: 'reply', id: 'test_reply_1' }],
++    });
+     expect(kindOf('list').build(NUMBER, d.list)).toHaveProperty('sections');
+     expect(kindOf('carousel').build(NUMBER, d.carousel)).toHaveProperty('cards');
+   });
+diff --git a/manager/src/features/instance-detail/send-catalog.ts b/manager/src/features/instance-detail/send-catalog.ts
+index 9ae2938..a4b947b 100644
+--- a/manager/src/features/instance-detail/send-catalog.ts
++++ b/manager/src/features/instance-detail/send-catalog.ts
+@@ -1,4 +1,5 @@
+ import { presetsOf, type PresetGroup } from './presets';
++import { buildCustomButtons, CUSTOM_BUTTON_DEFAULTS, CUSTOM_BUTTON_PRESET, validateCustomButtons } from './custom-buttons';
+ 
+ /** Every message the public API can send to a chat or to the status (path after /send/). */
+ export type SendKind =
+@@ -119,6 +120,62 @@ function presetKind(
+   };
+ }
+ 
++
++/** Allows editable quick replies while leaving every existing demo preset available. */
++function buttonKind(): KindDef {
++  const base = presetKind('button', {
++    id: 'button',
++    label: 'Botões',
++    description: 'Botões de resposta, copiar, abrir link, ligar ou Pix.',
++    first: CUSTOM_BUTTON_PRESET,
++    note: {
++      tone: 'info',
++      text: 'Personalize a mensagem com 1 a 3 botões. Use somente destinatários autorizados; a conexão com o WhatsApp é não oficial.',
++    },
++  });
++  const custom = (v: Values) => v.preset === CUSTOM_BUTTON_PRESET;
++  const second = (v: Values) => custom(v) && v.buttonCount !== '1';
++  const third = (v: Values) => custom(v) && v.buttonCount === '3';
++
++  return {
++    ...base,
++    confirm: 'Esta mensagem será enviada de verdade. Confira o número e confirme que o destinatário autorizou o contato. Não repita um envio com resultado incerto.',
++    fields: [
++      {
++        ...base.fields[0],
++        options: [
++          { value: CUSTOM_BUTTON_PRESET, label: 'Caça Promos VIP — Personalizado' },
++          ...(base.fields[0]?.options ?? []),
++        ],
++      } as FieldDef,
++      { key: 'title', label: 'Título da mensagem', control: 'input', optional: true, showIf: custom },
++      { key: 'description', label: 'Texto da mensagem', control: 'textarea', rows: 5, showIf: custom },
++      { key: 'footer', label: 'Rodapé', control: 'input', optional: true, showIf: custom },
++      {
++        key: 'buttonCount',
++        label: 'Quantidade de botões',
++        control: 'select',
++        hint: 'Botões de resposta rápida (máximo 3).',
++        options: [
++          { value: '1', label: '1 botão' },
++          { value: '2', label: '2 botões' },
++          { value: '3', label: '3 botões' },
++        ],
++        showIf: custom,
++      },
++      { key: 'button1Text', label: 'Botão 1 — Texto', control: 'input', showIf: custom },
++      { key: 'button1Id', label: 'Botão 1 — ID de resposta', control: 'input', hint: 'Usado para identificar o clique no monitor.', showIf: custom },
++      { key: 'button2Text', label: 'Botão 2 — Texto', control: 'input', showIf: second },
++      { key: 'button2Id', label: 'Botão 2 — ID de resposta', control: 'input', showIf: second },
++      { key: 'button3Text', label: 'Botão 3 — Texto', control: 'input', showIf: third },
++      { key: 'button3Id', label: 'Botão 3 — ID de resposta', control: 'input', showIf: third },
++    ],
++    defaults: { ...base.defaults, ...CUSTOM_BUTTON_DEFAULTS },
++    build: (number, v) => (custom(v) ? buildCustomButtons(number, v) : base.build(number, v)),
++    validate: (v) => (custom(v) ? validateCustomButtons(v) : null),
++  };
++}
++
+ /** The list is refused by WhatsApp on linked devices; the server then sends it as reply buttons unless told not to. */
+ function listKind(): KindDef {
+   const base = presetKind('list', {
+@@ -300,16 +357,7 @@ export const KINDS: KindDef[] = [
+     build: (number, v) => ({ number, sticker: trimmed(v.sticker) }),
+     validate: (v) => urlError(v.sticker ?? '', 'A URL da imagem'),
+   },
+-  presetKind('button', {
+-    id: 'button',
+-    label: 'Botões',
+-    description: 'Botões de resposta, copiar, abrir link, ligar ou Pix.',
+-    first: 'btn_reply_1',
+-    note: {
+-      tone: 'info',
+-      text: 'Botões de resposta (até 3) e CTAs agrupados aparecem no celular e no WhatsApp Web. O Pix só aparece no celular.',
+-    },
+-  }),
++  buttonKind(),
+   listKind(),
+   presetKind('carousel', {
+     id: 'carousel',
+diff --git a/manager/src/features/instance-detail/tab-test.tsx b/manager/src/features/instance-detail/tab-test.tsx
+index 476876b..3bc642d 100644
+--- a/manager/src/features/instance-detail/tab-test.tsx
++++ b/manager/src/features/instance-detail/tab-test.tsx
+@@ -1,4 +1,4 @@
+-import { useMemo, useState } from 'react';
++import { useMemo, useRef, useState } from 'react';
+ import { useMutation } from '@tanstack/react-query';
+ import {
+   ChartColumn,
+@@ -35,6 +35,7 @@ import { Switch } from '@/components/ui/switch';
+ import { useInstanceActions } from '@/features/instances/actions';
+ import { useInstanceContext } from './instance-page';
+ import { defaultsOf, GROUPS, kindOf, KINDS, type FieldDef, type KindDef, type SendKind } from './send-catalog';
++import { CUSTOM_BUTTON_PRESET } from './custom-buttons';
+ 
+ const ICONS: Record<SendKind, React.ReactNode> = {
+   text: <MessageSquareText />,
+@@ -155,19 +156,27 @@ export function TabTest() {
+   const [view, setView] = useState<'json' | 'curl'>('json');
+   const [attempts, setAttempts] = useState<Attempt[]>([]);
+   const [last, setLast] = useState<Attempt | null>(null);
++  const sendingRef = useRef(false);
+ 
+   const def: KindDef = kindOf(kind);
+   const v = values[kind];
+   const digits = number.replace(/\D/g, '');
+-  const numberError = touched && def.recipient && digits.length < 10 ? 'Informe o número completo com DDI, ex.: 5511999990000.' : null;
++  const isCustomReply = kind === 'button' && v.preset === CUSTOM_BUTTON_PRESET;
++  // Add Brazil's DDI only if someone entered DDD + phone in the editable mode.
++  const resolvedNumber = isCustomReply && (digits.length === 10 || digits.length === 11) ? `55${digits}` : digits;
++  const invalidNumber = def.recipient && (isCustomReply ? !/^55\d{10,11}$/.test(resolvedNumber) : digits.length < 10);
++  const numberError = touched && invalidNumber
++    ? (isCustomReply ? 'Informe um número brasileiro com DDD; o DDI 55 é adicionado automaticamente.' : 'Informe o número completo com DDI, ex.: 5511999990000.')
++    : null;
+   const formError = touched ? def.validate(v) : null;
++  const mustConfirm = !!def.confirm;
+ 
+   const payload = useMemo(() => {
+-    const body = def.build(digits || FALLBACK_NUMBER, v);
++    const body = def.build(resolvedNumber || FALLBACK_NUMBER, v);
+     const ms = Number(delay);
+     if (def.recipient && Number.isFinite(ms) && ms > 0) body.delay = Math.round(ms);
+     return body;
+-  }, [def, digits, v, delay]);
++  }, [def, resolvedNumber, v, delay]);
+ 
+   const curl = useMemo(
+     () => buildCurl({ method: 'POST', url: `${apiUrl.replace(/\/+$/, '')}/send/${kind}`, headers: { apikey: '<token da instância>', 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+@@ -191,8 +200,10 @@ export function TabTest() {
+     onError: (e) => record({ label: def.label, ok: false, detail: failure(e) }),
+   });
+ 
+-  const setField = (key: string, value: string) =>
++  const setField = (key: string, value: string) => {
++    setConfirmed(false);
+     setValues((all) => ({ ...all, [kind]: def.patch ? def.patch(key, value, all[kind]) : { ...all[kind], [key]: value } }));
++  };
+ 
+   const pickKind = (k: SendKind) => {
+     setKind(k);
+@@ -202,13 +213,15 @@ export function TabTest() {
+   };
+ 
+   const submit = () => {
++    if (sendingRef.current || send.isPending) return;
+     setTouched(true);
+-    if (def.recipient && digits.length < 10) return;
+-    if (def.validate(v)) return;
+-    if (def.confirm && !confirmed) return;
++    if (invalidNumber || def.validate(v)) return;
++    if (mustConfirm && !confirmed) return;
++    sendingRef.current = true;
++    setConfirmed(false);
+     setLast(null);
+     saveNumber(number);
+-    send.mutate();
++    send.mutate(undefined, { onSettled: () => { sendingRef.current = false; } });
+   };
+ 
+   const disabled = !instance.connected;
+@@ -235,9 +248,9 @@ export function TabTest() {
+           <CardHeader title="Mensagem de teste" description="Envia uma mensagem real pela API usando o token desta instância." icon={<Send />} />
+           <CardBody className="space-y-4">
+             {def.recipient ? (
+-              <Field label="Número de destino" error={numberError} hint="Com código do país, apenas dígitos. O DDI do Brasil é 55.">
++              <Field label="Número de destino" error={numberError} hint={isCustomReply ? 'DDD + número ou 55 + DDD + número. Se omitir o DDI, adicionamos 55 automaticamente.' : 'Com código do país, apenas dígitos. O DDI do Brasil é 55.'}>
+                 {(id) => (
+-                  <Input id={id} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="5511999990000" inputMode="numeric" autoComplete="off" invalid={!!numberError} />
++                  <Input id={id} value={number} onChange={(e) => { setNumber(e.target.value); setConfirmed(false); }} placeholder="5511999990000" inputMode="numeric" autoComplete="off" invalid={!!numberError} />
+                 )}
+               </Field>
+             ) : null}
+@@ -262,19 +275,21 @@ export function TabTest() {
+ 
+             {def.recipient ? (
+               <Field label="Atraso de digitação (ms)" optional hint="Mostra “digitando…” por esse tempo antes de enviar.">
+-                {(id) => <Input id={id} value={delay} onChange={(e) => setDelay(e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="0" className="max-w-40" />}
++                {(id) => <Input id={id} value={delay} onChange={(e) => { setDelay(e.target.value.replace(/\D/g, '')); setConfirmed(false); }} inputMode="numeric" placeholder="0" className="max-w-40" />}
+               </Field>
+             ) : null}
+ 
+-            {def.confirm ? (
++            {mustConfirm ? (
+               <div className="flex items-start gap-3 rounded-control border border-warn/30 bg-warn-soft p-3">
+-                <Switch checked={confirmed} onChange={setConfirmed} label="Confirmo a publicação do status" />
++                <Switch checked={confirmed} onChange={setConfirmed} label={kind === 'button' ? 'Confirmo o número e a autorização do destinatário' : 'Confirmo a publicação do status'} />
+                 <p className="text-[13px] leading-snug">{def.confirm}</p>
+               </div>
+             ) : null}
+ 
+             {formError ? <p className="text-xs text-danger">{formError}</p> : null}
+-            {touched && def.confirm && !confirmed && !formError ? <p className="text-xs text-danger">Confirme a publicação para enviar.</p> : null}
++            {touched && mustConfirm && !confirmed && !formError && !numberError ? (
++              <p className="text-xs text-danger">{kind === 'button' ? 'Confira o destinatário e marque a confirmação antes de enviar.' : 'Confirme a publicação para enviar.'}</p>
++            ) : null}
+ 
+             <div className="flex items-center gap-3">
+               <Button variant="primary" onClick={submit} loading={send.isPending} disabled={disabled}>

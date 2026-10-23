@@ -10,6 +10,7 @@ const html = await readFile("src/painel/public/index.html", "utf8");
 
 const base = {
   grupo: "Ofertas",
+  grupoConfigurado: true,
   afiliadoConfigurado: true,
   afiliadoTag: "topoutlet05-20",
   sessaoWhatsapp: true,
@@ -239,6 +240,61 @@ try {
     "Enviar não pode aparecer se a janela do WhatsApp não está pronta."
   );
 
+  // A migração para o PC novo começa sem grupo; a oferta deve ser
+  // preservada, com um formulário legível e login separado da preparação.
+  state = {
+    ...base,
+    grupo: "Não configurado",
+    grupoConfigurado: false,
+    whatsappAutoEnvioAtivo: true,
+    whatsappAutoEnvioAtrasoMs: 4500,
+    sessaoWhatsapp: true,
+    operacaoEstado: "offer-pending",
+    operacaoPlataforma: "amazon",
+    ofertaPlataformaAtual: "amazon",
+    ofertaPreparada: true,
+    mensagem: "Oferta Amazon aguardando destino",
+    whatsappRevisaoPronta: false
+  };
+  await page.waitForTimeout(1_700);
+  assert(
+    (await page.locator("#flowTitle").innerText()).includes("configure o grupo"),
+    "Sem grupo, o título deve explicar por que o WhatsApp não abriu."
+  );
+  assert(
+    !(await page.locator("#whatsappGroupInput").isVisible()) &&
+    await page.locator('#openWhatsappConnectionButton').isVisible(),
+    "A configuração do grupo é opcional e deve ficar recolhida por padrão."
+  );
+  assert(
+    !(await page.locator("#sendNowButton").isVisible()),
+    "O envio não pode estar disponível sem a janela de revisão."
+  );
+  assert(
+    (await page.locator("#cycleWhatsapp").innerText()) === "Destino pendente",
+    "Pasta de perfil existente não comprova WhatsApp conectado."
+  );
+  assert(
+    (await page.locator("#reviewWhatsappState").innerText()).includes("salve"),
+    "O motivo da falha deve ser apresentado junto à oferta."
+  );
+  assert(
+    (await page.locator("#autoSendStatus").innerText()).includes("Autoenvio ativo"),
+    "A tela deve exibir quando o clique físico automático está habilitado."
+  );
+  await page.locator(".group-advanced summary").click();
+  const sizes=await page.locator("#whatsappGroupInput").evaluate(el=>({
+    h:el.getBoundingClientRect().height,
+    font:parseFloat(getComputedStyle(el).fontSize)
+  }));
+  assert(sizes.h >= 44 && sizes.font >= 14,"Campo de grupo ficou pequeno: "+JSON.stringify(sizes));
+  const draft=page.locator("#whatsappGroupInput");
+  await draft.fill("Meu grupo ainda não salvo");
+  await page.waitForTimeout(1_700);
+  assert(
+    await draft.inputValue() === "Meu grupo ainda não salvo",
+    "O polling da tela não pode apagar a edição do nome do grupo."
+  );
   assert(
     pageErrors.length === 0,
     `Erros de página: ${pageErrors.join(" | ")}`

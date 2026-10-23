@@ -70,6 +70,11 @@ footer{margin-top:40px;text-align:center;color:var(--soft);font-size:11px}
 .bubble-time{position:absolute;right:11px;bottom:5px;font-size:9px;color:#acccbf}
 .phone-choice{background:#103941;border:1px solid #3b6a73;border-radius:7px;color:#87eecb;padding:11px;text-align:center;font-size:12px;font-weight:800;margin-top:6px}
 .phone-note{color:var(--soft);font-size:10px;text-align:center;margin:11px 0 0!important}
+.connection-box{padding:18px;margin:16px 0 21px;border:1px solid #356e63;background:linear-gradient(135deg,#0c3238,#0c2b37);border-radius:13px}
+.connection-box h3{margin:4px 0 8px;font-size:18px}
+.connection-box .view-title{margin-bottom:12px}
+.connection-box .muted{font-size:12px;line-height:1.6}
+.connection-box .row-actions{margin:12px 0}
 .import-only{display:block;margin-top:18px}
 .import-only .card{width:100%}
 .cloud-queues{display:grid;gap:9px}
@@ -80,6 +85,100 @@ footer{margin-top:40px;text-align:center;color:var(--soft);font-size:11px}
 @media(max-width:900px){.stage-grid,.cloud-grid,.cloud-lower{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:460px){.cloud-mini-grid{grid-template-columns:1fr}.cloud-queue-item{align-items:flex-start;flex-direction:column}}
 @media(max-width:580px){.wrap{padding:0 15px 40px}.top-actions{gap:8px}.brand-name{font-size:12px}.hero{align-items:start;flex-direction:column}.card{padding:17px}.metrics{gap:8px}.metric{padding:13px}.metric b{font-size:25px}.list-row{padding:14px;align-items:flex-start;flex-direction:column}.toolbar input{max-width:100%}.dialog{padding:17px}}
+
+:root{--bg:#061923;--panel:#0b2834;--stroke:#294954;--mint:#6be7bd;--soft:#b2cbd0;--white:#f1faf7}
+.wrap{max-width:1070px}
+body{background:linear-gradient(135deg,#071e28,#061923 65%,#082c2b)}
+header{padding:17px 0}
+.top-actions{gap:15px}
+.hero{padding:25px 0 17px;align-items:center}
+.hero h1{font-size:clamp(31px,4.7vw,42px)}
+.hero p{font-size:13px;max-width:640px}
+.metrics{margin:0 0 16px;gap:9px}
+.metric{padding:11px 15px;background:#0a2834}
+.metric b{font-size:24px}
+.card{padding:23px 26px;margin-bottom:14px!important}
+.card h2{font-size:21px}
+.step{width:32px;height:32px;margin-right:9px}
+.hint{font-size:12px;line-height:1.5}
+.connection-box{margin:10px 0 13px;padding:15px}
+#manualStage .view-title p,#metaStage .view-title p{margin:4px 0 5px}
+#metaStatus,#metaConnectionBadge{display:none}
+#metaStage .cloud-grid{grid-template-columns:minmax(0,1fr);gap:11px}
+#metaStage .cloud-grid>div:first-child{max-width:780px}
+#metaStage textarea{min-height:160px}
+#metaStage .phone-preview{margin:12px 0;max-width:445px}
+#metaStage #singleSaveStatus{margin:8px 0 0}
+#metaStage .field{margin:12px 0}
+.preview-details,.minor-tools,.advanced-disclosure,.consent-disclosure,.expandable-connection{
+ border:1px solid var(--stroke);border-radius:12px;background:#092c36;margin:12px 0;
+}
+.preview-details>summary,.minor-tools>summary,.advanced-disclosure>summary,
+.consent-disclosure>summary,.expandable-connection>summary{
+ list-style:none;cursor:pointer;padding:12px 15px;color:#d7f7eb;font-weight:720;font-size:13px
+}
+.preview-details>summary::-webkit-details-marker,.minor-tools>summary::-webkit-details-marker,
+.advanced-disclosure>summary::-webkit-details-marker,.consent-disclosure>summary::-webkit-details-marker,
+.expandable-connection>summary::-webkit-details-marker{display:none}
+.preview-details>summary:after,.minor-tools>summary:after,.advanced-disclosure>summary:after,
+.consent-disclosure>summary:after,.expandable-connection>summary:after{content:"+";float:right;color:var(--mint)}
+.preview-details[open]>summary:after,.minor-tools[open]>summary:after,.advanced-disclosure[open]>summary:after,
+.consent-disclosure[open]>summary:after,.expandable-connection[open]>summary:after{content:"−"}
+.preview-details>div,.minor-tools>.row-actions,.advanced-disclosure>.row-actions{margin:8px 15px 15px}
+.advanced-disclosure{margin-top:22px}
+.advanced-disclosure>.muted{margin:10px 15px!important}
+.advanced-disclosure>.cloud-lower,.advanced-disclosure>#cloudQueueList,
+.advanced-disclosure>#complaintsDetail,.advanced-disclosure>h3,
+.advanced-disclosure>.divider-thin{margin-left:15px;margin-right:15px}
+.consent-disclosure>.connection-box,.expandable-connection>.connection-box{border:0;margin:0;background:transparent}
+.consent-disclosure>summary .muted,.expandable-connection>summary span{font-weight:500;font-size:11px;margin-left:8px}
+#manualStage>.hint{margin:12px 0}
+#manualStage .counts{margin-top:8px}
+#manualStage .row-actions{margin-top:12px}
+#manualQueueRequirement{font-size:12px;margin:12px 0;color:var(--soft)}
+.queue-search{margin:16px 0 10px}
+.queue-search input{max-width:420px}
+.queue-controls{margin:16px 0}
+.queue-controls .muted{font-size:12px}
+#manualQueuePeople .list-row{padding:12px 16px}
+#manualQueuePeople .list-row button{min-height:34px;padding:7px 10px}
+#manualQueuePeople .list-row strong{font-size:13px}
+.list-more{padding:14px;text-align:center}
+#manualComposer{border-radius:13px}
+#manualAlternative{padding:0}
+#manualAlternative>p,#manualAlternative>label,#manualAlternative>div{margin-left:14px;margin-right:14px}
+#manualAlternative>div.row-actions{margin-bottom:15px}
+#manualQueueList .cloud-queue-item{padding:12px 14px}
+.import-only{margin-top:0}
+#importStage>.hint{background:none;border-color:var(--stroke);color:var(--soft);font-size:11px}
+#metaStage .advanced-disclosure .row-actions{margin-top:10px}
+#queueTools>p{padding:0 15px 12px;margin-bottom:0;font-size:11px}
+#netlifySyncStatus{font-size:11px}
+#complaintsDetail .ledger{margin:8px 14px 14px}
+#complaintsDetail .row-actions{margin-bottom:8px}
+.queue-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.queue-head-actions button{font-size:12px;min-height:39px}
+.danger-action{color:#f5b7b2;border-color:#7b5556}
+.danger-action:hover{color:#ffe0dc;background:#40272b;text-decoration:none}
+.queue-contact-disclosure{margin:20px 0 0}
+.queue-contact-disclosure .queue-search{margin:5px 14px 14px}
+.queue-contact-disclosure .ledger{border:0;border-top:1px solid var(--stroke);border-radius:0 0 11px 11px}
+.queue-contact-disclosure summary .muted{font-size:12px;font-weight:500;margin-left:7px}
+@media(max-width:700px){
+ .queue-head-actions{width:100%}
+ .queue-head-actions button{flex:1}
+ .wrap{padding:0 14px 36px}
+ .hero{padding:23px 0 18px;display:block}
+ .hero .sticker{display:none}
+ .card{padding:17px 16px}
+ .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .metric b{font-size:22px}
+ .top-actions{gap:10px;font-size:11px}
+ .connection-box{padding:12px}
+ .queue-controls .primary{width:100%}
+ .cloud-lower{grid-template-columns:1fr}
+}
+
 `;
 
 export function renderCampanhas() {
@@ -89,16 +188,18 @@ export function renderCampanhas() {
 <meta name="theme-color" content="#051923"><meta name="referrer" content="no-referrer">
 <title>Campanhas | Caça Promos VIP</title>
 <link rel="icon" href="/favicon.svg">
-<style>${css}</style><script defer src="/assets/campanhas.js"></script>
+<style>${css}</style><link rel="stylesheet" href="/assets/painel-theme.css">
+<script defer src="/assets/campanhas.js"></script>
 </head><body>
 <div class="wrap">
 <header>
-  <div class="brand"><span class="brand-mark">CP</span><div><div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div><small>CENTRAL DE CAMPANHAS</small></div></div>
+  <div class="brand"><span class="brand-mark">CP</span><div><div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div><small>CENTRAL DE GESTÃO</small></div></div>
   <nav class="top-actions" aria-label="Navegação">
-    <a href="#metaStage">Convites</a>
-    <a href="#importStage">Planilha</a>
-    <a href="#complaintsDetail">Denúncias</a>
-    <a href="/campanhas" aria-current="page">Campanhas</a>
+    <a href="/inicio">Visão geral</a>
+    <a href="/contatos">Contatos</a>
+    <a href="/enviar">Enviar convite</a>
+    <a href="/campanhas" aria-current="page">Listas e filas</a>
+    <a href="/denuncias">Denúncias</a>
     <span class="sticker">Uso local · sem login</span>
   </nav>
 </header>
@@ -106,56 +207,111 @@ export function renderCampanhas() {
 
 <main id="appView">
   <section class="hero">
-    <div><div class="eyebrow">Campanhas supervisionadas · Nova fase</div>
-      <h1>Mensagens com <em>controle.</em></h1>
-      <p>Crie uma única mensagem para todos, visualize os dois botões e prepare sua fila com contatos autorizados. Não é necessário ter o número da Meta agora.</p></div>
-    <span class="sticker">Modo de preparação · sem número</span>
+    <div><div class="eyebrow">ÁREA AVANÇADA · LISTAS E CAMPANHAS</div>
+      <h1>Listas <em>e filas.</em></h1>
+      <p>Importação de planilhas, campanhas com vários contatos, relatórios e ferramentas avançadas.
+      Para enviar apenas um convite, use a tela simplificada.</p></div>
+    <span class="sticker">WhatsApp Web · Sem API paga</span>
   </section>
+  <div class="hint" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;
+     margin:0 0 20px;padding:19px;border:1px solid #61998a;background:#1b3737;border-radius:13px">
+    <div><strong style="display:block;font-size:15px;color:#d7fff0">Quer testar no seu próprio WhatsApp?</strong>
+      <span style="display:block;font-size:12px;margin-top:4px">
+        Você não precisa importar uma planilha nem gerenciar filas para isso.</span></div>
+    <a href="/enviar" class="primary" style="padding:12px 17px;border-radius:10px;text-decoration:none;
+       background:#78dbb8;color:#092a24;font-weight:800">Abrir envio guiado →</a>
+  </div>
+
+  <nav class="workflow-links" aria-label="Etapas dos convites">
+    <span>ETAPAS</span>
+    <a href="#importStage">1. Selecionar contatos</a>
+    <a href="#metaStage">2. Preparar mensagem</a>
+    <a href="#manualStage">3. Enviar no WhatsApp</a>
+  </nav>
 
   <section class="metrics" aria-label="Resumo">
-    <div class="metric"><small>Números na planilha</small><b id="metricImported">0</b></div>
-    <div class="metric"><small>Aptos a receber</small><b id="metricEligible">0</b></div>
-    <div class="metric"><small>Sem opt-in confirmado</small><b id="metricBlocked">0</b></div>
+    <div class="metric"><small>Importados nesta aba</small><b id="metricImported">0</b></div>
+    <div class="metric"><small>Selecionados autorizados</small><b id="metricEligible">0</b></div>
+    <div class="metric"><small>Excluídos da seleção</small><b id="metricBlocked">0</b></div>
     <div class="metric"><small>Filas de convites</small><b id="metricQueues">0</b></div>
   </section>
 
+  <section class="import-only">
+    <article class="card surface" id="importStage">
+      <h2><span class="step">1</span>Selecionar contatos</h2>
+      <p class="short-nav-note"><a href="/contatos">Ver cadastro completo, bloqueios e autorizações →</a></p>
+      <p>Importe um CSV com as pessoas que autorizaram os convites. Se houver coluna de autorização, apenas linhas marcadas <strong>SIM</strong> serão consideradas.</p>
+      <label class="upload"><strong>Selecionar arquivo CSV ou TXT</strong><small>Até 110 KB / 1.500 linhas • nome;telefone</small>
+        <input id="importFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" aria-label="Selecionar CSV">
+      </label>
+      <div id="importInfo" class="counts" aria-live="polite">
+        <span class="counter">Nenhum arquivo selecionado</span>
+      </div>
+      <details id="consentDisclosure" class="consent-disclosure">
+      <summary>Registrar autorizações de novos contatos <span class="muted">Origem, data e referência</span></summary>
+      <div class="connection-box" aria-labelledby="importConsentTitle">
+        <span class="eyebrow">Contatos que autorizaram antes da importação</span>
+        <h3 id="importConsentTitle">Registrar novos consentimentos</h3>
+        <p class="muted">Se essas pessoas já permitiram o envio de promoções e convites, informe onde e quando isso ocorreu. Não é necessário repetir o cadastro por QR Code ou enviar QUERO VIP.</p>
+        <div class="field">
+          <label for="consentOrigin">Onde os contatos autorizaram?</label>
+          <input id="consentOrigin" maxlength="140" placeholder="Ex.: conversa individual no WhatsApp">
+        </div>
+        <div class="field">
+          <label for="consentDate">Data da autorização</label>
+          <input id="consentDate" type="date">
+        </div>
+        <div class="field">
+          <label for="consentReference">Referência do consentimento</label>
+          <input id="consentReference" maxlength="240" placeholder="Ex.: mensagens de aceite registradas no WhatsApp">
+        </div>
+        <label class="consent-line">
+          <input type="checkbox" id="consentDeclaration">
+          <span>Confirmo que <strong>cada contato deste CSV autorizou mensagens promocionais e convites individuais</strong>, e que posso demonstrar essa autorização caso necessário.</span>
+        </label>
+        <div class="row-actions">
+          <button type="button" id="confirmConsentImport" class="primary" disabled>Registrar autorizações da planilha</button>
+        </div>
+        <p class="muted" id="consentImportResult" role="status" aria-live="polite">A confirmação não envia mensagens. Contatos que solicitaram SAIR ou foram bloqueados não serão reativados.</p>
+      </div>
+      </details>
+      <p class="muted" style="font-size:11px">Participar de um grupo não é consentimento. Contatos bloqueados ou descadastrados não serão reativados.</p>
+      <details class="minor-tools"><summary>Opções da planilha</summary><div class="row-actions"><button id="clearImport" type="button" class="quiet">Desselecionar arquivo</button></div></details>
+    </article>
+
+  </section>
   <section class="card surface" id="metaStage" aria-labelledby="metaTitle" style="margin-bottom:18px">
     <div class="view-title">
-      <div><span class="eyebrow">Convite único · WhatsApp Business Platform</span>
-        <h2 id="metaTitle">Uma mensagem. Dois botões.</h2>
+      <div><span class="eyebrow">Escreva uma vez, confira antes de enviar</span>
+        <h2 id="metaTitle"><span class="step">2</span>Sua mensagem</h2>
         <p id="metaStatus">Preparando a conexão com a Meta. Ainda não é necessário ter número.</p></div>
       <span id="metaConnectionBadge" class="tag warn">Aguardando número</span>
-    </div>
-    <div class="setup-steps" aria-label="Etapas de preparação">
-      <span class="setup-step active">01 · Escrever convite</span>
-      <span class="setup-step">02 · Importar CSV</span>
-      <span class="setup-step">03 · Simular fila</span>
-      <span class="setup-step">04 · Conectar Meta</span>
     </div>
     <div class="cloud-grid">
       <div>
         <div class="field"><label for="singleText">Mensagem enviada a TODOS, sem alterações</label>
           <textarea id="singleText" maxlength="1024" rows="9" spellcheck="true"
             placeholder="Escreva um convite único para todos os destinatários..."></textarea>
-          <small class="muted"><span id="singleLength">0</span>/1.024 caracteres · Não usa nomes nem variáveis</small>
+          <small class="muted"><span id="singleLength">0</span>/1.024 caracteres · A opção "Não tenho interesse" é acrescentada quando o site estiver atualizado</small>
         </div>
         <div class="field"><label for="groupLink">Link do grupo de ofertas</label>
           <input id="groupLink" type="url" maxlength="160" placeholder="https://chat.whatsapp.com/...">
-          <small class="muted">O link será enviado somente após o destinatário clicar em Entrar no grupo.</small>
+          <small class="muted">O link será incluído automaticamente no convite pelo WhatsApp Web.</small>
         </div>
+        <details id="campaignOptions" class="minor-tools"><summary>Nome da campanha e modelo</summary>
         <div class="cloud-mini-grid">
           <div class="field"><label for="cloudCampaignName">Nome da campanha</label>
             <input id="cloudCampaignName" maxlength="80" value="Convite para grupo de ofertas"></div>
           <div class="field"><label for="templateName">Modelo na Meta</label>
             <input id="templateName" maxlength="128" value="convite_ofertas_v1" spellcheck="false"></div>
         </div>
+        </details>
         <div class="row-actions">
-          <button id="saveSingle" type="button" class="primary">Salvar mensagem e link</button>
-          <button id="simulateSingle" type="button" class="secondary">Simular envio</button>
-          <button id="downloadModel" type="button" class="quiet">Exportar modelo Meta</button>
+          <button id="saveSingle" type="button" class="primary">Salvar convite</button>
         </div>
         <p id="singleSaveStatus" class="muted" aria-live="polite">Rascunho salvo neste computador, mesmo sem número.</p>
       </div>
+      <details id="messagePreview" class="preview-details"><summary>Ver prévia da mensagem</summary>
       <div>
         <div class="phone-preview">
           <div class="phone-top"><span class="phone-avatar">CP</span>
@@ -163,17 +319,22 @@ export function renderCampanhas() {
           <div class="bubble"><div id="singlePreview" class="bubble-body">Carregando convite...</div>
             <span class="bubble-time">Prévia</span></div>
           <div class="phone-choice">↗ &nbsp; Entrar no grupo</div>
-          <div class="phone-choice">⚑ &nbsp; Denunciar convite</div>
-          <p class="phone-note">Botões ilustrativos. Não enviam mensagens nesta tela.</p>
+          <div class="phone-choice">↩ &nbsp; Não tenho interesse</div>
+          <p class="phone-note">Prévia ilustrativa. No WhatsApp Web gratuito as opções são links, não botões nativos. "Não tenho interesse" registra um pedido de saída, não uma denúncia.</p>
         </div>
-        <div class="hint" id="cloudPreviewNotice">Não haverá envio para números sem opt-in. Denúncias internas bloqueiam campanhas futuras.</div>
+        <div class="hint" id="cloudPreviewNotice">Não haverá envio para números sem autorização. Pedidos de saída bloqueiam convites futuros.</div>
       </div>
+      </details>
     </div>
+    <details id="advancedMeta" class="advanced-disclosure">
+      <summary>Recursos avançados: API Meta (paga) e relatórios</summary>
+      <p class="muted">O WhatsApp Web gratuito funciona sem configurar esta área.</p>
+      <div class="row-actions"><button id="simulateSingle" type="button" class="secondary">Simular campanha</button><button id="downloadModel" type="button" class="quiet">Exportar modelo Meta</button></div>
     <div class="divider-thin"></div>
     <div class="cloud-lower">
       <div>
-        <h3>Fila de envio oficial</h3>
-        <p>Depois de importar a planilha, crie a fila apenas com contatos que consentiram receber convites. Você pode prepará-la agora, mesmo sem o número Meta.</p>
+        <h3>Fila da API Meta (opcional e paga)</h3>
+        <p>Esta fila usa a integração oficial de marketing da Meta. Para enviar com seu WhatsApp Web sem API paga, use a fila da seção gratuita acima.</p>
         <div class="counts" aria-live="polite">
           <span class="counter" id="cloudEligible">0 autorizados na planilha</span>
           <span class="counter" id="cloudBlocked">0 fora da fila</span>
@@ -181,7 +342,7 @@ export function renderCampanhas() {
           <span class="counter" id="metaBloqueios">0 bloqueados</span>
         </div>
         <div class="row-actions">
-          <button id="createCloudQueue" type="button" class="primary" disabled>Preparar fila de convites</button>
+          <button id="createCloudQueue" type="button" class="secondary" disabled>Criar fila da API Meta</button>
           <button id="refreshCloudQueues" type="button" class="quiet">Atualizar filas</button>
         </div>
       </div>
@@ -207,22 +368,151 @@ export function renderCampanhas() {
       </div>
     </div>
     <div class="divider-thin"></div>
-    <h3>Campanhas de convite preparadas</h3>
+    <h3>Filas da API Meta preparadas</h3>
     <div id="cloudQueueList" class="cloud-queues"><div class="empty">Nenhuma fila criada.</div></div>
-    <details class="legacy surface" id="complaintsDetail" style="margin-top:17px">
-      <summary>Denúncias e bloqueios internos</summary>
-      <p style="margin-top:12px">Quem denunciar será bloqueado para campanhas futuras, mesmo se o número reaparecer em outra planilha.</p>
-      <div id="complaintsList" class="ledger surface"><div class="empty">Nenhuma denúncia registrada.</div></div>
+     </details>
+  </section>
+  <section class="card surface" id="manualStage" aria-labelledby="manualTitle" style="margin-bottom:18px">
+    <div class="view-title">
+      <div>
+        <span class="eyebrow">WhatsApp Web gratuito · supervisionado</span>
+        <h2 id="manualTitle"><span class="step">3</span>Enviar pelo WhatsApp Web</h2>
+        <p>Abra a fila, confira cada número no WhatsApp e confirme o envio individualmente.</p>
+      </div>
+      <span class="tag">Supervisionado</span>
+    </div>
+    <details id="connectionDisclosure" class="expandable-connection" open>
+      <summary>Conexão do WhatsApp <span id="connectionBrief">Verificando sessão...</span></summary>
+    <div class="connection-box" id="whatsappConnectionStage" aria-labelledby="whatsappConnectionTitle">
+      <div class="view-title">
+        <div>
+          <span class="eyebrow">Etapa 1 · Conexão do aparelho</span>
+          <h3 id="whatsappConnectionTitle">Conectar seu WhatsApp Web</h3>
+          <p>Abre o Chrome das promoções sem escolher contatos e sem enviar mensagens. Use esta etapa antes de preparar a campanha.</p>
+        </div>
+        <span id="whatsappConnectionBadge" class="tag warn">Não verificado</span>
+      </div>
+      <p id="whatsappConnectionStatus" class="muted" role="status" aria-live="polite">Verificando a sessão local...</p>
+      <div class="row-actions">
+        <button id="whatsappConnectOpen" type="button" class="primary">Abrir WhatsApp Web</button>
+        <button id="whatsappConnectClose" type="button" class="secondary" disabled>Salvar sessão e fechar</button>
+        <button id="whatsappConnectRefresh" type="button" class="quiet">Verificar estado</button>
+      </div>
+      <p class="muted" style="margin-bottom:0">Se aparecer o QR Code, no celular vá em <strong>WhatsApp → Aparelhos conectados → Conectar aparelho</strong> e escaneie. Quando suas conversas aparecerem, clique em <strong>Salvar sessão e fechar</strong> para liberar o Chrome aos convites. Se o robô de promoções estiver usando esse perfil, encerre-o antes de conectar.</p>
+    </div>
+    </details>
+    <div class="counts" style="margin-bottom:12px">
+      <span class="counter" id="manualDaily">0 / 50 conversas hoje</span>
+      <span class="counter" id="manualConfirmed">0 envios confirmados</span>
+      <span class="counter">1 por vez · sem disparo automático</span>
+    </div>
+    <p id="complaintLinkStatus" class="muted" aria-live="polite">Verificando a opção Não tenho interesse...</p>
+    <details class="minor-tools"><summary>Cuidados com os envios</summary><div class="hint">O WhatsApp Web não oferece botões nativos sem a API Meta. Quando o site HTTPS estiver atualizado, o convite terá um link "Não tenho interesse" para solicitar a interrupção dos convites. Também é possível responder SAIR. O clique não gera denúncia. O limite diário de 50 preparações não garante evitar bloqueios.</div></details>
+    <p>Quando a planilha e a mensagem estiverem prontas, crie uma fila para o WhatsApp Web.</p>
+    <details id="sendOptions" class="minor-tools">
+      <summary>Opções de envio</summary>
+      <label class="consent-line" style="margin:10px 0 15px">
+        <input id="useChrome" type="checkbox" checked>
+        <span>Preparar no Chrome das promoções e confirmar cada envio no painel.</span>
+      </label>
+    </details>
+    <div class="row-actions">
+      <button id="createManualQueue" type="button" class="primary" disabled>Criar fila de convites</button>
+    </div>
+    <p id="manualQueueRequirement" class="hint" role="status" aria-live="polite">
+      Verificando os contatos autorizados e a planilha...
+    </p>
+    <div id="manualQueueList" class="cloud-queues" style="margin-top:16px">
+      <div class="empty">Nenhuma fila manual preparada.</div>
+    </div>
+    <details id="queueTools" class="minor-tools">
+      <summary>Gerenciar filas</summary>
+      <div class="row-actions">
+        <button id="refreshManualQueues" type="button" class="quiet">Atualizar filas</button>
+        <button id="clearAllQueues" type="button" class="quiet">Limpar filas antigas</button>
+      </div>
+      <p class="muted">Apaga somente filas sem envios ou tentativas registrados, com backup privado. Contatos e autorizações ficam preservados.</p>
+    </details>
+    <details id="complaintsDetail" class="minor-tools">
+      <summary>Pedidos de saída e denúncias <span id="complaintsCount" class="muted">(0)</span></summary>
+      <p class="muted" style="padding:0 15px">Quando alguém escolher "Não tenho interesse", será registrado um pedido de saída e o número será bloqueado para novos convites. As denúncias anteriores continuam no histórico.</p>
+      <p id="netlifySyncStatus" class="muted" style="padding:0 15px">Verificando conexão Netlify...</p>
+      <div class="row-actions" style="padding:0 15px 8px">
+        <button id="syncNetlifyNow" type="button" class="quiet" disabled>Buscar pedidos no Netlify agora</button>
+      </div>
+      <div id="complaintsList" class="ledger surface"><div class="empty">Nenhum pedido registrado.</div></div>
     </details>
   </section>
+
+  <section id="manualQueueDetail" class="card surface" hidden aria-labelledby="manualQueueTitle" style="margin-bottom:18px">
+    <div class="view-title">
+      <div><span class="eyebrow">Fila supervisionada</span>
+        <h2 id="manualQueueTitle">Sua fila de convites</h2>
+        <p id="manualQueueSummary">Escolha um contato autorizado para preparar uma conversa.</p></div>
+      <div class="queue-head-actions">
+        <button id="clearCurrentQueue" type="button" class="quiet danger-action">Limpar esta fila</button>
+        <button id="closeManualQueue" type="button" class="quiet">Fechar</button>
+      </div>
+    </div>
+    <div class="row-actions queue-controls">
+      <button id="prepareNextContact" type="button" class="primary" disabled>Preparar próximo contato</button>
+      <span class="muted">Ou escolha um contato na lista abaixo.</span>
+    </div>
+    <div id="manualComposer" class="surface" hidden style="padding:18px;margin:15px 0">
+      <strong id="manualRecipient">Contato</strong>
+      <p class="muted">Confira o número e o texto. No modo automático supervisionado, clique em Enviar agora no painel; no modo manual, use o link da alternativa.</p>
+      <label for="manualMessageReady">Texto para este destinatário (opção Não tenho interesse quando disponível)</label>
+      <textarea id="manualMessageReady" readonly rows="8"></textarea>
+      <div class="hint" style="margin-top:14px">
+        <strong>Mesma automação das promoções:</strong> o Chrome usa sua sessão atual,
+        preenche a conversa e aguarda seu clique em <strong>Enviar agora</strong>.
+        Confira o nome/número na tela do WhatsApp antes de confirmar.
+      </div>
+      <p id="chromeStatus" class="muted" role="status" aria-live="polite">
+        Aguardando o Chrome abrir e preencher a conversa...
+      </p>
+      <div class="row-actions">
+        <button id="chromePrepare" type="button" class="secondary">Preparar novamente no Chrome</button>
+        <button id="chromeSend" type="button" class="primary" disabled>Confirmar envio no WhatsApp</button>
+        <button id="chromeCancel" type="button" class="quiet" disabled>Cancelar conversa</button>
+      </div>
+      <details id="manualAlternative" class="legacy">
+        <summary>Alternativa manual e outras ações</summary>
+        <p>Se o WhatsApp estiver ocupado com o robô de promoções,
+          utilize este link e envie você mesmo.</p>
+        <a id="manualOpenWa" class="secondary" href="#" target="_blank" rel="noopener noreferrer">Abrir conversa no WhatsApp ↗</a>
+      <label class="consent-line">
+        <input id="manualSentConfirm" type="checkbox">
+        <span><strong>Apenas no modo manual:</strong> confirmo que enviei a mensagem nesta conversa.</span>
+      </label>
+      <div class="row-actions">
+        <button id="manualMarkSent" type="button" class="secondary" disabled>Registrar envio confirmado</button>
+        <button id="manualIgnore" type="button" class="quiet">Ignorar contato</button>
+        <button id="manualComplaint" type="button" class="quiet">Recebi "Não tenho interesse" / SAIR</button>
+        <button id="manualCancel" type="button" class="quiet">Cancelar preparação</button>
+      </div>
+      </details>
+      <p class="muted">O botão Enviar agora clica uma única vez no WhatsApp e tenta conferir a mensagem enviada na própria conversa. Em caso de dúvida, pare e verifique manualmente. Registre "Não tenho interesse" somente quando o contato realmente solicitar a saída.</p>
+    </div>
+    <details id="manualPeopleDisclosure" class="minor-tools queue-contact-disclosure">
+      <summary>Ver lista de contatos <span id="manualPeopleCount" class="muted"></span></summary>
+      <div class="queue-search">
+        <label for="manualSearch">Buscar nesta fila</label>
+        <input id="manualSearch" type="search" placeholder="Nome ou últimos dígitos do telefone" autocomplete="off">
+      </div>
+      <div id="manualQueuePeople" class="ledger surface"></div>
+    </details>
+  </section>
+
   <section id="cloudQueueDetail" class="card surface" hidden aria-labelledby="cloudQueueTitle" style="margin-bottom:18px">
     <div class="view-title">
-      <div><span class="eyebrow">Fila oficial de convites</span><h2 id="cloudQueueTitle">Campanha</h2>
+      <div><span class="eyebrow">Fila da API Meta, não é WhatsApp Web</span><h2 id="cloudQueueTitle">Campanha</h2>
         <p id="cloudQueueSummary">Envios ainda não iniciados.</p></div>
       <button id="closeCloudQueue" class="quiet" type="button">Fechar detalhes</button>
     </div>
-    <div class="hint">O envio real exige número configurado, modelo MARKETING aprovado, consentimento e sua confirmação. Sem esses requisitos só existe a simulação.</div>
+    <div class="hint">Esta é uma fila da API oficial da Meta (serviço pago). Para usar a sua conta no WhatsApp Web gratuito, converta esta fila antes de enviar. A conversão mantém os contatos e não envia mensagens.</div>
     <div class="row-actions">
+      <button id="convertCloudToWeb" class="secondary" type="button" hidden>Usar esta fila no WhatsApp Web gratuito</button>
       <button id="sendCloudBatch" class="primary" type="button" disabled>Enviar próximo lote (até 10)</button>
       <button id="refreshCloudDetail" class="secondary" type="button">Atualizar status</button>
       <button id="exportCloudReport" class="quiet" type="button">Baixar relatório CSV</button>
@@ -230,24 +520,6 @@ export function renderCampanhas() {
     <div id="cloudQueuePeople" class="ledger surface"></div>
   </section>
 
-  <section class="import-only">
-    <article class="card surface" id="importStage">
-      <h2><span class="step">1</span>Importar a planilha</h2>
-      <p>Selecione o CSV exportado pela extensão. Ele será lido apenas no navegador e cruzado com as autorizações existentes nesta Central.</p>
-      <label class="upload"><strong>Selecionar arquivo CSV ou TXT</strong><small>Até 110 KB / 1.500 linhas • nome;telefone</small>
-        <input id="importFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" aria-label="Selecionar CSV">
-      </label>
-      <div id="importInfo" class="counts" aria-live="polite">
-        <span class="counter">Nenhum arquivo selecionado</span>
-      </div>
-      <div class="hint"><strong>Importante:</strong> participar do grupo ou ter autorizado o registro do telefone não autoriza mensagens comerciais. Apenas contatos que já confirmaram esse consentimento estarão na fila.</div>
-      <div class="row-actions">
-        <span class="muted" style="font-size:12px">Contatos sem autorização de mensagens não entram na fila.</span>
-        <button id="clearImport" type="button" class="quiet">Limpar planilha</button>
-      </div>
-    </article>
-
-  </section>
   <footer>Caça Promos VIP • Dados locais • Cada envio exige sua confirmação • Respeite solicitações de SAIR</footer>
 </main>
 </div>

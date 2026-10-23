@@ -9,11 +9,21 @@ import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
 import { iniciarImportacaoAutorizada } from './importacao-autorizada.mjs';
 import { iniciarCampanhas } from './campanhas.mjs';
 import { iniciarConvitesUnicos } from './convites-unicos.mjs';
+import { iniciarControleWhatsapp } from './whatsapp-convite-controller.mjs';
+import { iniciarConexaoWhatsapp } from './whatsapp-conexao-controller.mjs';
 import { iniciarDenuncias } from './denuncias.mjs';
 import { obterConfigMeta, resumoMeta, verificarDesafioMeta, verificarAssinaturaMeta, lerEventosMeta, lerStatusMeta } from './meta-cloud.mjs';
 import { renderCampanhas } from './campanhas-ui.mjs';
+import { renderEnvioRapido } from './envio-rapido-ui.mjs';
+import { iniciarEnvioRapido } from './envio-rapido.mjs';
+import { iniciarRespostasBotoes } from './respostas-botoes.mjs';
+import { renderGestao } from './gestao-ui.mjs';
+import { aplicarLayoutClean } from './layout-clean.mjs';
+import { iniciarGestaoContatos } from './gestao-contatos.mjs';
 import { renderLanding, renderRelatorio, renderFavicon } from './templates.mjs';
 import { renderDescadastro } from './descadastro-ui.mjs';
+import { renderDenuncia } from './denuncia-ui.mjs';
+import {lerConfigNetlify,iniciarSincronizacaoNetlify} from './netlify-denuncia-sync.mjs';
 
 const GROUP_URL = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
 const sourceDir = dirname(fileURLToPath(import.meta.url));
@@ -21,7 +31,17 @@ const planilhaModelo = readFileSync(join(sourceDir, '..', 'modelos', 'Modelo_Con
 const scripts = new Map([
   ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
   ['/assets/campanhas.js', readFileSync(join(sourceDir, 'assets', 'campanhas.js'), 'utf8')],
+  ['/assets/envio-rapido.js', readFileSync(join(sourceDir, 'assets', 'envio-rapido.js'), 'utf8')],
+  ['/assets/gestao.js', readFileSync(join(sourceDir, 'assets', 'gestao.js'), 'utf8')],
   ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
+  ['/assets/denuncia.js', readFileSync(join(sourceDir, 'assets', 'denuncia.js'), 'utf8')],
+  ['/assets/respostas-botoes.js', readFileSync(join(sourceDir, 'assets', 'respostas-botoes.js'), 'utf8')],
+  ['/assets/layout-clean.js', readFileSync(join(sourceDir, 'assets', 'layout-clean.js'), 'utf8')],
+]);
+const styles=new Map([
+  ['/assets/painel-theme.css',readFileSync(join(sourceDir,'assets','painel-theme.css'),'utf8')],
+  ['/assets/layout-clean.css',readFileSync(join(sourceDir,'assets','layout-clean.css'),'utf8')],
+  ['/assets/envio-rapido.css',readFileSync(join(sourceDir,'assets','envio-rapido.css'),'utf8')],
 ]);
 const headersBase = {
   'cache-control': 'no-store',
@@ -35,7 +55,7 @@ function codigoHtml(res, status, html) {
   res.writeHead(status, {
     ...headersBase,
     'content-type': 'text/html; charset=utf-8',
-    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    'content-security-policy': "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   });
   res.end(html);
 }
@@ -113,6 +133,10 @@ export function criarPiloto({
   inviteUrl = GROUP_URL,
   agora = () => new Date(),
   metaAmbiente = process.env,
+  publicBaseUrl = process.env.CAPTACAO_PUBLIC_BASE_URL || '',
+  netlifySecret = '',
+  recusaAtiva = true,
+  whatsappWorkerTeste = false,
 } = {}) {
   let urlGrupo;
   try { urlGrupo = new URL(inviteUrl); }
@@ -130,6 +154,27 @@ export function criarPiloto({
   const configMeta = obterConfigMeta(metaAmbiente);
   const convitesUnicos = iniciarConvitesUnicos({
     dataDir,contatos,bloqueios:denuncias,configMeta,grupoInicial:urlGrupo.toString(),agora,
+    publicBaseUrl,netlifySecret,recusaAtiva,
+  });
+  const controleWhatsapp = iniciarControleWhatsapp({
+    convites:convitesUnicos,sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
+  });
+  const conexaoWhatsapp = iniciarConexaoWhatsapp({
+    sourceDir,simulacaoWorker:whatsappWorkerTeste,agora,
+  });
+  const sincronizacaoNetlify=iniciarSincronizacaoNetlify({
+    config:netlifySecret?{publicBaseUrl,segredo:netlifySecret}:null,
+    denuncias,agora,
+  });
+  const gestaoContatos=iniciarGestaoContatos({
+    contatos,denuncias,convitesUnicos,campanhas,sincronizacaoNetlify,
+    controleWhatsapp,conexaoWhatsapp,agora,
+  });
+  const envioRapido=iniciarEnvioRapido({
+    contatos,denuncias,gestaoContatos,convites:convitesUnicos,agora,
+  });
+  const respostasBotoes=iniciarRespostasBotoes({
+    dataDir,contatos,denuncias,convites:convitesUnicos,agora,
   });
   const sessoes = new Map();
   const limites = new Map();
@@ -201,8 +246,9 @@ export function criarPiloto({
       if (pathname === '/saude' && leitura) return codigoTexto(res, 200, 'OK');
       if (pathname === '/favicon.svg' && leitura) return codigoTexto(res, 200, renderFavicon(), 'image/svg+xml; charset=utf-8');
       if (scripts.has(pathname) && leitura) return codigoTexto(res, 200, scripts.get(pathname), 'text/javascript; charset=utf-8');
+      if (styles.has(pathname) && leitura) return codigoTexto(res,200,styles.get(pathname),'text/css; charset=utf-8');
       if (pathname === '/robots.txt' && leitura) return codigoTexto(res, 200,
-        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /api/\nDisallow: /sair\n');
+        'User-agent: *\nDisallow: /relatorio\nDisallow: /relatorio.csv\nDisallow: /painel\nDisallow: /campanhas\nDisallow: /inicio\nDisallow: /contatos\nDisallow: /denuncias\nDisallow: /api/\nDisallow: /sair\nDisallow: /denunciar\n');
 
       // Endpoint preparado para o webhook HTTPS oficial da Meta.
       // Nunca libera dados ou contatos sem HMAC valido; sem segredos, fica desativado.
@@ -277,15 +323,38 @@ export function criarPiloto({
       if (pathname === '/painel' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
           'Painel disponivel somente no computador local.');
-        res.writeHead(302, {...headersBase,location:'/campanhas'});
+        res.writeHead(302, {...headersBase,location:'/enviar'});
         return res.end();
+      }
+      if (['/inicio','/contatos','/denuncias','/respostas-botoes'].includes(pathname) && leitura) {
+        if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
+          'Área administrativa disponível somente no ACER, via 127.0.0.1.');
+        return codigoHtml(res,200,aplicarLayoutClean(renderGestao(pathname==='/respostas-botoes'?'respostas':pathname.slice(1)),pathname==='/respostas-botoes'?'respostas':pathname.slice(1)));
+      }
+      if (pathname === '/enviar' && leitura) {
+        if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
+          'Envio guiado disponível somente no ACER, via 127.0.0.1.');
+        return codigoHtml(res,200,aplicarLayoutClean(renderEnvioRapido(convitesUnicos.configuracao()),'enviar'));
       }
       if (pathname === '/campanhas' && leitura) {
         if (!acessoCampanhasLocais(req)) return codigoTexto(res, 403,
           'Painel de campanhas disponível somente no computador local, via 127.0.0.1.');
-        return codigoHtml(res, 200, renderCampanhas());
+        return codigoHtml(res, 200, aplicarLayoutClean(renderCampanhas(),'campanhas'));
       }
       if (pathname === '/sair' && leitura) return codigoHtml(res, 200, renderDescadastro());
+      // A página pública é inerte até o clique explícito no botão.
+      if (pathname === '/denunciar' && leitura) return codigoHtml(res,200,renderDenuncia());
+      if (pathname === '/api/denunciar' && method === 'POST') {
+        if (!limitar(req,'denuncia-link',30)) return json(res,429,
+          {ok:false,mensagem:'Muitas tentativas. Aguarde um pouco.'});
+        let entrada;
+        try { entrada=await corpoJson(req,1024); }
+        catch { return json(res,400,{ok:false,mensagem:'Solicitação inválida.'}); }
+        const resultado=denuncias.registrarCliqueDenuncia(entrada.token);
+        return resultado.encontrado
+          ? json(res,200,{ok:true,registrada:true,bloqueado:true})
+          : json(res,404,{ok:false,mensagem:'Este link de denúncia não foi encontrado.'});
+      }
 
       if (pathname === '/api/cadastro' && method === 'POST') {
         if (!limitar(req, 'cadastro', 10)) {
@@ -313,6 +382,110 @@ export function criarPiloto({
           : json(res, 404, { ok: false, mensagem: 'Link de descadastro não encontrado.' });
       }
 
+      // Ponte privada do monitor WhatyGo (somente processo local autorizado).
+      // Nunca aceitar cookies, Origin de navegador ou mensagens sem chave.
+      if (pathname === '/api/local/whatygo/evento') {
+        if (method !== 'POST')return codigoTexto(res,405,'Método não permitido');
+        if (req.socket.remoteAddress!=='127.0.0.1' ||
+            req.socket.localAddress!=='127.0.0.1' ||
+            req.headers.host!=='127.0.0.1:'+servidor.address()?.port ||
+            req.headers.origin ||
+            !respostasBotoes.checkBridgeKey(req.headers['x-cpv-whatygo'])) {
+          return json(res,403,{ok:false,mensagem:'Ponte local não autorizada.'});
+        }
+        try {
+          const entrada=await corpoJson(req,4096);
+          const resultado=respostasBotoes.receive(entrada);
+          return json(res,200,resultado);
+        }catch {
+          return json(res,400,{ok:false,mensagem:'Evento de botão inválido.'});
+        }
+      }
+      if (pathname === '/api/local/whatygo/respostas' && leitura) {
+        if(!acessoCampanhasLocais(req))return json(res,403,{ok:false,mensagem:'Somente no computador local.'});
+        return json(res,200,{ok:true,...respostasBotoes.list()});
+      }
+      if (pathname === '/api/local/whatygo/automacao') {
+        if (method !== 'POST') return json(res,405,{ok:false,mensagem:'Método não permitido.'});
+        if (!acessoCampanhasLocais(req,true)) {
+          return json(res,403,{ok:false,mensagem:'Somente no painel local autorizado.'});
+        }
+        if (!limitar(req,'automacao-botoes-config',12)) {
+          return json(res,429,{ok:false,mensagem:'Aguarde para alterar a automação.'});
+        }
+        try {
+          const input=await corpoJson(req,1024);
+          const automacao=respostasBotoes.configurarAutomacao(input);
+          return json(res,200,{ok:true,automacao});
+        }catch(error){
+          return json(res,400,{ok:false,mensagem:error.message});
+        }
+      }
+
+      // Visão gerencial restrita à instalação local, sem dados pessoais no Netlify.
+      if (pathname.startsWith('/api/local/gestao/')){
+        if (!acessoCampanhasLocais(req,method==='POST'))
+          return json(res,403,{ok:false,mensagem:'Acesso permitido apenas no painel local.'});
+        try{
+          if (pathname === '/api/local/gestao/contatos' && leitura)
+            return json(res,200,{ok:true,...gestaoContatos.listar({
+              filtro:endereco.searchParams.get('filtro')||'todos',
+              busca:endereco.searchParams.get('busca')||'',
+              pagina:Number(endereco.searchParams.get('pagina')||1),
+              limite:15,
+            })});
+          if (pathname === '/api/local/gestao/contato' && leitura)
+            return json(res,200,{ok:true,contato:gestaoContatos.detalhe(
+              endereco.searchParams.get('id'))});
+          if (pathname === '/api/local/gestao/resumo' && leitura){
+            const todas=convitesUnicos.listarFilas();
+            const eventos=denuncias.listar();
+            return json(res,200,{ok:true,contatos:gestaoContatos.resumo(),
+              filas:{total:todas.length,web:todas.filter(f=>f.modo==='web').length,
+                pendentes:todas.reduce((n,f)=>n+(f.pendentes||0),0)},
+              whatsapp:{fase:controleWhatsapp.estado().fase},
+              denuncias:eventos.filter(e=>e.motivo==='denuncia-convite').slice(0,5),
+              sincronizacao:sincronizacaoNetlify.estado()});
+          }
+          if (pathname === '/api/local/gestao/denuncias' && leitura)
+            return json(res,200,{ok:true,ocorrencias:denuncias.listar(),
+              resumo:denuncias.resumo(),sincronizacao:sincronizacaoNetlify.estado()});
+          if (pathname === '/api/local/gestao/contato/bloquear' && method==='POST'){
+            if(!limitar(req,'gestao-bloquear',25))
+              return json(res,429,{ok:false,mensagem:'Limite de bloqueios atingido.'});
+            const entrada=await corpoJson(req,1500);
+            return json(res,200,{ok:true,resultado:gestaoContatos.bloquear(entrada)});
+          }
+          if (pathname === '/api/local/gestao/numero/diagnostico' && method==='POST'){
+            if(!limitar(req,'gestao-diagnostico-numero',30))
+              return json(res,429,{ok:false,mensagem:'Limite de consultas atingido. Aguarde.'});
+            const entrada=await corpoJson(req,512);
+            const numero=gestaoContatos.consultarNumeroTeste(entrada);
+            const cliques=respostasBotoes.diagnosticarNumero(entrada.telefone);
+            return json(res,200,{ok:true,numero,cliques,
+              automacao:respostasBotoes.configuracaoAutomacao()});
+          }
+          if (pathname === '/api/local/gestao/numero/reativar-teste' && method==='POST'){
+            if(!limitar(req,'gestao-reativar-teste-sem-cadastro',6))
+              return json(res,429,{ok:false,mensagem:'Limite de tentativas de reativação atingido.'});
+            const entrada=await corpoJson(req,1800);
+            return json(res,200,{ok:true,
+              resultado:await gestaoContatos.reativarNumeroTesteSemCadastro(entrada)});
+          }
+          if (pathname === '/api/local/gestao/contato/desbloquear' && method==='POST'){
+            if(!limitar(req,'gestao-desbloquear',12))
+              return json(res,429,{ok:false,mensagem:'Limite de reativações atingido.'});
+            const entrada=await corpoJson(req,1500);
+            return json(res,200,{ok:true,
+              resultado:await gestaoContatos.desbloquear(entrada)});
+          }
+          return json(res,method==='GET'?404:405,
+            {ok:false,mensagem:'Recurso de gestão não encontrado.'});
+        }catch(erro){
+          return json(res,400,{ok:false,mensagem:erro.message});
+        }
+      }
+
       // As campanhas têm um fluxo local sem senha; o CRM administrativo e
       // suas demais APIs continuam exigindo autenticação como antes.
       if (pathname === '/api/local/campanhas' ||
@@ -329,7 +502,15 @@ export function criarPiloto({
             denuncias:denuncias.resumo() });
         }
         if (pathname === '/api/local/campanhas/denuncias' && leitura) {
-          return json(res, 200, { ok:true, ocorrencias:denuncias.listar() });
+          return json(res, 200, { ok:true, ocorrencias:denuncias.listar(),
+            sincronizacao:sincronizacaoNetlify.estado() });
+        }
+        if (pathname === '/api/local/campanhas/rapido/contatos' && leitura) {
+          if(!limitar(req,'rapido-busca',120))return json(res,429,
+            {ok:false,mensagem:'Muitas consultas de contatos. Aguarde.'});
+          return json(res,200,{ok:true,...envioRapido.buscar({
+            termo:endereco.searchParams.get('busca'),
+          })});
         }
         if (pathname === '/api/local/campanhas/convite/modelo' && leitura) {
           return json(res, 200, { ok:true, configuracao:convitesUnicos.configuracao(),
@@ -337,6 +518,15 @@ export function criarPiloto({
         }
         if (pathname === '/api/local/campanhas/convite/filas' && leitura) {
           return json(res, 200, { ok:true, filas:convitesUnicos.listarFilas() });
+        }
+        if (pathname === '/api/local/campanhas/convite/manual/estatisticas' && leitura) {
+          return json(res, 200, {ok:true,controle:convitesUnicos.estatisticasManual()});
+        }
+        if (pathname === '/api/local/campanhas/convite/whatsapp/estado' && leitura) {
+          return json(res, 200, {ok:true,estado:controleWhatsapp.estado()});
+        }
+        if (pathname === '/api/local/campanhas/convite/whatsapp/conexao/estado' && leitura) {
+          return json(res, 200, {ok:true,estado:conexaoWhatsapp.estado()});
         }
         if (pathname === '/api/local/campanhas/convite/fila' && leitura) {
           try {return json(res, 200, {ok:true,
@@ -370,16 +560,57 @@ export function criarPiloto({
         }
         let dados;
         try {
-          dados = await corpoJson(req, pathname === '/api/local/campanhas' ? 90_000 : 4096);
+          dados = await corpoJson(req,
+            pathname === '/api/local/campanhas' ||
+            pathname === '/api/local/campanhas/convite/fila'
+              ? 90_000 : pathname === '/api/local/campanhas/importar-autorizados'
+                ? 24_000 : 4096);
         } catch {
           return json(res, 400, { ok: false, mensagem: 'Dados inválidos para campanhas.' });
         }
         try {
+          if (pathname === '/api/local/campanhas/rapido/consultar') {
+            if(!limitar(req,'rapido-consulta',100))return json(res,429,
+              {ok:false,mensagem:'Muitas verificações de números. Aguarde.'});
+            return json(res,200,{ok:true,contato:envioRapido.consultar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/rapido/cadastrar') {
+            if(!limitar(req,'rapido-cadastro',12))return json(res,429,
+              {ok:false,mensagem:'Limite de cadastros individuais atingido.'});
+            return json(res,200,{ok:true,...envioRapido.cadastrarProprio(dados)});
+          }
+          if (pathname === '/api/local/campanhas/rapido/criar') {
+            if(!limitar(req,'rapido-criar',25))return json(res,429,
+              {ok:false,mensagem:'Limite de convites individuais atingido.'});
+            if(conexaoWhatsapp.estado().ocupado||controleWhatsapp.estado().processoAtivo)
+              return json(res,409,{ok:false,
+                mensagem:'Finalize a janela atual do WhatsApp antes de começar outra.'});
+            return json(res,200,{ok:true,...envioRapido.criar(dados)});
+          }
           if (pathname === '/api/local/campanhas') {
             if (!limitar(req, 'campanhas-locais-criar', 30)) {
               return json(res, 429, { ok: false, mensagem: 'Limite de criação de campanhas atingido.' });
             }
             return json(res, 200, { ok: true, campanha: campanhas.criar(dados) });
+          }
+          if (pathname === '/api/local/campanhas/importar-autorizados') {
+            if (!limitar(req,'campanhas-importar-consentimento',50)) {
+              return json(res,429,{ok:false,
+                mensagem:'Muitos lotes importados nesta hora. Aguarde para continuar.'});
+            }
+            // Apenas contatos que o operador declara ter autorizado a publicidade.
+            // A origem e a data ficam documentadas e SAIR/denuncia nunca e reativado.
+            return json(res,200,{ok:true,
+              resultado:contatos.importarConsentimentosExternos({
+                ...dados,verificarBloqueio:telefone=>denuncias.estaBloqueado(telefone),
+              })});
+          }
+          if (pathname === '/api/local/campanhas/denuncias/sincronizar') {
+            if (!limitar(req,'denuncia-netlify-sincronizacao',25))
+              return json(res,429,{ok:false,mensagem:'Muitas sincronizações solicitadas.'});
+            const resultado=await sincronizacaoNetlify.sincronizar();
+            return json(res,resultado.ok?200:503,
+              {ok:resultado.ok,resultado,mensagem:resultado.mensagem});
           }
           if (pathname === '/api/local/campanhas/convite/modelo') {
             return json(res, 200, {ok:true,
@@ -393,10 +624,77 @@ export function criarPiloto({
               {ok:false,mensagem:'Limite de criacao de filas atingido.'});
             return json(res, 200, {ok:true,fila:convitesUnicos.criarFila(dados)});
           }
+          if (pathname === '/api/local/campanhas/convite/fila/usar-web') {
+            if (!limitar(req,'convite-converter-web',20))return json(res,429,
+              {ok:false,mensagem:'Limite de conversoes de filas atingido.'});
+            return json(res,200,{ok:true,
+              fila:convitesUnicos.converterFilaParaWeb(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/fila/limpar') {
+            if (!limitar(req,'convite-limpar-uma',10))return json(res,429,
+              {ok:false,mensagem:'Limite de limpezas de fila atingido.'});
+            if (controleWhatsapp.estado().processoAtivo || conexaoWhatsapp.estado().ocupado) {
+              return json(res,409,{ok:false,
+                mensagem:'Existe uma conversa aberta no WhatsApp. Finalize ou cancele antes de limpar esta fila.'});
+            }
+            return json(res,200,{ok:true,
+              resultado:convitesUnicos.limparFilaSelecionada(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/filas/limpar') {
+            if (!limitar(req,'convite-limpar',5))return json(res,429,
+              {ok:false,mensagem:'Limite de limpezas de fila atingido.'});
+            if (controleWhatsapp.estado().processoAtivo || conexaoWhatsapp.estado().ocupado) {
+              return json(res,409,{ok:false,
+                mensagem:'Há uma janela do WhatsApp ativa. Finalize ou cancele a conversa antes de limpar as filas.'});
+            }
+            return json(res,200,{ok:true,
+              resultado:convitesUnicos.limparFilasPendentes(dados)});
+          }
           if (pathname === '/api/local/campanhas/convite/enviar') {
             if (!limitar(req,'convite-enviar',100))return json(res,429,
               {ok:false,mensagem:'Limite de requisicoes de envio atingido.'});
             return json(res, 200, {ok:true,resultado:await convitesUnicos.processarLote(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/manual/preparar') {
+            return json(res, 200, {ok:true,conversa:convitesUnicos.prepararManual(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/conexao/abrir') {
+            if (!limitar(req,'whatsapp-conexao-abrir',12))return json(res,429,
+              {ok:false,mensagem:'Muitas tentativas de abrir a sessão do WhatsApp.'});
+            if (controleWhatsapp.estado().ocupado) {
+              return json(res,409,{ok:false,
+                mensagem:'Finalize a conversa atual antes de abrir a conexão.'});
+            }
+            return json(res,202,{ok:true,estado:conexaoWhatsapp.abrir()});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/conexao/fechar') {
+            return json(res,202,{ok:true,estado:conexaoWhatsapp.fechar()});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/preparar') {
+            if (!limitar(req,'whatsapp-preparar',60))return json(res,429,
+              {ok:false,mensagem:'Limite de preparacoes atingido.'});
+            if (conexaoWhatsapp.estado().ocupado) {
+              return json(res,409,{ok:false,
+                mensagem:'Finalize a conexão do WhatsApp Web antes de preparar um convite.'});
+            }
+            return json(res, 202, {ok:true,estado:controleWhatsapp.iniciar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/enviar') {
+            return json(res, 202, {ok:true,estado:controleWhatsapp.enviar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/cancelar') {
+            return json(res, 202, {ok:true,estado:controleWhatsapp.cancelar(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/whatsapp/conciliar') {
+            if (controleWhatsapp.estado().ocupado) {
+              return json(res, 409, {ok:false,
+                mensagem:'Aguarde o Chrome terminar antes de conciliar uma tentativa.'});
+            }
+            return json(res, 200, {ok:true,
+              resultado:convitesUnicos.conciliarTentativa(dados)});
+          }
+          if (pathname === '/api/local/campanhas/convite/manual/registrar') {
+            return json(res, 200, {ok:true,resultado:convitesUnicos.marcarManual(dados)});
           }
           if (pathname === '/api/local/campanhas/remetente') {
             return json(res, 200, { ok: true,
@@ -587,7 +885,7 @@ export function criarPiloto({
 
       if (pathname === '/' && leitura && acessoCampanhasLocais(req)) {
         // Links publicos de opt-in /c/<origem> permanecem operacionais.
-        res.writeHead(302, {...headersBase,location:'/campanhas'});
+        res.writeHead(302, {...headersBase,location:'/enviar'});
         return res.end();
       }
       if ((pathname === '/' || pathname.startsWith('/c/')) && leitura) {
@@ -608,7 +906,8 @@ export function criarPiloto({
       return json(res, 500, { ok: false, mensagem: 'Erro interno. Consulte o administrador.' });
     }
   });
-  return { servidor, chave: metricas.chave, contatos, grupos };
+  servidor.on('close',()=>sincronizacaoNetlify.parar());
+  return {servidor,chave:metricas.chave,contatos,grupos,sincronizacaoNetlify};
 }
 
 export async function iniciarServidor({
@@ -617,16 +916,25 @@ export async function iniciarServidor({
   dataDir = process.env.DATA_DIR ?? join(sourceDir, '..', 'dados'),
   inviteUrl = process.env.CAPTACAO_GROUP_URL ?? GROUP_URL,
   metaAmbiente = process.env,
+  publicBaseUrl = process.env.CAPTACAO_PUBLIC_BASE_URL || '',
+  whatsappWorkerTeste = false,
   agora,
 } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new Error('Porta inválida');
   }
-  const { servidor, chave, contatos } = criarPiloto({ dataDir, inviteUrl, agora, metaAmbiente });
+  const confNetlify=lerConfigNetlify(dataDir,metaAmbiente);
+  const urlEfetiva=confNetlify?.publicBaseUrl||publicBaseUrl;
+  const { servidor, chave, contatos, sincronizacaoNetlify } = criarPiloto({
+    dataDir,inviteUrl,agora,metaAmbiente,whatsappWorkerTeste,
+    publicBaseUrl:urlEfetiva,netlifySecret:confNetlify?.segredo||'',
+    recusaAtiva:confNetlify?.recusaAtiva===true,
+  });
   await new Promise((resolve, reject) => {
     servidor.once('error', reject);
     servidor.listen(port, host, resolve);
   });
+  sincronizacaoNetlify.iniciar();
   const endereco = servidor.address();
   const base = `http://${host}:${endereco.port}`;
   return { servidor, base, chave, contatos };

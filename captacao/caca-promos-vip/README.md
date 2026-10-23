@@ -1,93 +1,705 @@
-# Caça Promos VIP 👑 — Painel de Campanhas
+# Caça Promos VIP 👑 — Convites pelo seu WhatsApp Web
 
-Sistema em desenvolvimento para preparar convites ao grupo de promoções por meio da
-**WhatsApp Business Platform (Cloud API)**. O painel antigo de captação foi
-aposentado; existe **um único painel operacional**, local e sem chave administrativa.
+Painel local de campanhas que reutiliza o **Chrome, Playwright, perfil persistente
+e observador de envio** do robô de promoções. Não depende da API paga da Meta,
+de um segundo WhatsApp nem de SDKs não oficiais. A automação é **supervisionada,
+uma conversa de cada vez**, somente para contatos que consentiram em receber
+convites comerciais.
 
-## Onde abrir
+**Acesso no ACER:** http://127.0.0.1:3045/inicio
 
-- No ACER: `http://127.0.0.1:3045/campanhas`
-- Atalho na pasta: **`Abrir Campanhas.cmd`**
-- Outros computadores, depois de instalados: o iniciador detecta a instância
-  local (preferência 3045 ou 3040) ou inicia o serviço na pasta oficial.
-- URLs antigas `/` e `/painel` redirecionam para `/campanhas` quando abertas
-  no próprio computador. Não há mais a tela `Central de Captação v0.5`.
+## Se a mensagem desaparecer ao clicar em Enviar ou Enter
 
-O código e os dados permanecem exclusivamente na instalação oficial:
+- O texto do convite fica preservado em **Enviar convite → Copiar mensagem**.
+- O Chrome abre **somente a conversa**, sem inserir o texto por parâmetro
+  de URL. A mensagem é preenchida depois de a conversa carregar, e o
+  observador de mensagens enviadas é armado ANTES disso.
+- O painel acompanha o WhatsApp mesmo quando você clica diretamente no
+  navegador ou usa Enter. Só registra envio confirmado ao detectar uma
+  nova mensagem de saída contendo referência ao convite.
+- Se o campo ficar vazio e não surgir uma mensagem de saída confirmada,
+  o painel mostra **Resultado incerto**. Essa tentativa não pode ser
+  repetida até você conferir o histórico no WhatsApp e conciliá-la em
+  **Listas e filas**. Campo vazio **não prova envio**.
+- Não clique repetidamente para tentar compensar desaparecimento de
+  texto. Verifique primeiro o WhatsApp e, se necessário, copie o convite
+  salvo no painel. Nenhuma rotina fará uma segunda tentativa sozinha.
+- Para instalar esta correção na porta 3045, depois de conferir o resultado
+  da tentativa atual e fechar a janela controlada do WhatsApp, execute
+  `Aplicar correcao WhatsApp.cmd` na pasta do projeto no **disco C:**.
+  O atalho **se recusa a reiniciar** se houver conversa ativa, cria backup
+  privado com verificação SHA-256 e nunca clica em Enviar.
+
+## Botões interativos: prévia experimental, sem envio nativo habilitado
+
+Na tela de **Enviar convite → Conferir convite**, o painel mostra a prévia
+com as duas opções solicitadas: **Entrar no grupo** e
+**Não tenho interesse**. A simulação não envia nada e não altera contatos.
+
+O módulo `src/botoes-interativos-experimentais.mjs` também prepara o
+formato `interactiveButtons`/Native Flow, usado por algumas bibliotecas
+não oficiais baseadas no WhatsApp Web. Esse código está **desconectado**
+da sessão real e só inclui um teste unitário com transporte falso.
+
+**Limitação importante:** o WhatsApp Business comum e o WhatsApp Web com
+Chrome/Playwright não oferecem personalização de botões nativos na janela
+de composição. A biblioteca oficial Meta/Business Platform aceita botões
+Quick Reply, porém os modelos de marketing podem ter custo. Forks não
+oficiais podem gerar mensagens que o destinatário não recebe nem consegue
+renderizar; podem também resultar em restrições à conta Business. A prévia
+não deve ser confundida com um envio com botões.
+
+**Nenhum pacote não oficial foi instalado; nenhum número foi pareado;
+nenhuma mensagem foi enviada.** O envio atual continua com o texto e as
+opções antigas, até a conexão experimental ser aprovada, instalada e
+validada no próprio número. Não enviar em massa durante testes.
+
+Se um dia for ativada, a opção **Entrar no grupo** representa um pedido de
+participação: não adiciona alguém automaticamente ao grupo. A resposta
+**Não tenho interesse** só deve bloquear novos envios quando vier de uma
+mensagem autenticada e vinculada ao contato correspondente. O botão não
+deve esconder links, alterar consentimentos sem confirmação ou ignorar o
+histórico de bloqueios existente.
+
+## Enviar um convite para o meu próprio número (novo)
+
+**Página simples:** http://127.0.0.1:3045/enviar
+
+1. Escolha **Enviar para mim**, digite seu WhatsApp brasileiro com DDD e
+   clique em **Verificar número**. O sistema procura a autorização existente.
+   Caso não esteja cadastrado, você poderá informar seu nome e declarar que
+   é o titular do número e autorizou o teste; **isso não envia mensagem**.
+2. Se o número aparecer como bloqueado ou descadastrado, ele não poderá ser
+   incluído por essa tela. Abra **Contatos → Bloqueados → Ver ficha →
+   Desbloquear contato**, com uma nova autorização documentada. Volte a
+   **Enviar convite** depois.
+3. Clique em **Continuar**. A etapa **Confira antes de preparar** já abre
+   com a mensagem e o link do grupo previamente salvos, mesmo se a consulta
+   pelo navegador falhar ou se a página for atualizada. Você pode editar
+   o texto; **Restaurar padrão** recupera os dois campos da última versão
+   salva e solicita confirmação antes de substituir edições não salvas.
+   Ao clicar em **Salvar e preparar 1 convite**, a mensagem editada passa
+   a ser o novo modelo salvo para próximos convites.
+   Confira/edite a mensagem e o link do grupo,
+   depois **Salvar e preparar 1 convite**. O sistema registra um convite
+   para esse único destinatário; **ainda não envia**.
+4. Clique em **1. Abrir conversa no Chrome**. Se precisar conectar o WhatsApp,
+   use o painel expansível de conexão, escaneie o QR e **Salve sessão e feche**
+   antes de preparar.
+5. Confira número e mensagem no Chrome. Só então clique em
+   **2. Confirmar e enviar esta mensagem**. O registro de envio exige
+   confirmação efetiva no WhatsApp. Há uma alternativa manual disponível,
+   com declaração de envio somente após sua realização.
+
+**Para outra pessoa autorizada**, escolha **Outro contato**, pesquise o nome
+ou os últimos quatro dígitos, selecione a pessoa e siga os mesmos passos.
+A tela mostra apenas contatos autorizados. Não há envio em massa automático.
+
+**Onde estão as listas e filas?** Em `/campanhas`, agora chamado
+**Listas e filas** (área avançada). Uma fila é somente a sequência/histórico
+de convites: o envio individual cria e controla essa fila sem exigir que você
+importe CSV ou navegue pelos detalhes. Tentativas incertas não são reenviadas
+automaticamente e exigem conferência manual. Uma reautorização verdadeira
+permite um NOVO convite, sem reabrir campanhas antigas.
+
+## Central de gestão — experiência reorganizada
+
+O painel está dividido em **cinco áreas com navegação fixa**:
+
+1. **Visão geral** (`/inicio`): resumo de contatos, bloqueios e situações.
+2. **Enviar convite** (`/enviar`): caminho principal para testar no seu
+   número ou escolher uma pessoa, sem planilha, com confirmação de envio.
+3. **Contatos** (`/contatos`): cadastro, autorizações, descadastros e
+   desbloqueio documentado.
+4. **Listas e filas** (`/campanhas`): ferramentas avançadas para importação
+   de CSV, campanhas com vários destinatários, modelos e histórico.
+5. **Denúncias** (`/denuncias`): histórico de reclamações, pedidos de saída
+   e sincronização Netlify.
+
+### Segurança e bloqueios
+
+- `Bloqueado` corresponde a uma denúncia interna recebida, um pedido de
+  saída persistente ou um **bloqueio administrativo**.
+- `Descadastrado` é um contato removido do envio sem um bloqueio por hash
+  persistente. As categorias da lista são mutuamente exclusivas.
+- **Bloquear novos convites** na ficha exige confirmação e deixa uma marca
+  administrativa — **não fabrica denúncia** do destinatário. O bloqueio
+  persiste mesmo após importar novamente o número.
+- **Desbloquear contato**: em `/contatos?filtro=bloqueado`, abra
+  **Ver ficha → Desbloquear contato**. É necessário documentar uma
+  **nova autorização do titular** (origem, data posterior ao bloqueio e
+  referência verificável), marcar a confirmação e confirmar a ação.
+  Apenas o cadastro escolhido é reativado. O histórico original da
+  reclamação não é apagado; uma nova ocorrência de **Reativação com
+  nova autorização** é acrescentada à auditoria.
+- A operação verifica primeiro pedidos pendentes no Netlify e recusa a
+  liberação se não conseguir sincronizar. Filas antigas sem tentativa
+  são encerradas, e tentativas incertas não podem ser retomadas como
+  pendentes. Nenhuma mensagem é enviada ao desbloquear; o operador deve
+  iniciar **uma fila nova**, e o envio segue supervisionado.
+- Se a pessoa voltar a clicar em **Não tenho interesse**, inclusive no
+  mesmo link antigo após a reativação, um novo pedido de saída será
+  respeitado. O bloqueio voltará a valer normalmente.
+- Não existe desbloqueio em massa ou automático. Não utilize esse
+  botão sem nova permissão expressa (ou, para um teste seu,
+  confirmação de que você é o titular e autoriza novos convites).
+- Os endpoints da Central ficam em `127.0.0.1`; não são publicados pelo
+  Netlify. Números completos e segredos não aparecem na tabela/API nova.
+- O visual usa fundo grafite-azulado neutro, superfície clara sobre fundo
+  escuro, verde discreto para autorizado/ação principal e vermelho apenas
+  para bloqueio. As cores nunca são o único indicador: todos os estados
+  têm texto explícito.
+
+O atalho **Abrir Campanhas.cmd** abre a Visão geral. O novo fluxo simples
+fica em `/enviar`. A rota antiga `/campanhas` continua válida para
+filas e importações, com todos os dados anteriores preservados.
+
+Também existe o atalho `Abrir Campanhas.cmd` na pasta oficial
 `C:\projeto01\captacao\caca-promos-vip`.
-Não crie projetos, worktrees ou pastas duplicadas em `C:\`.
+O painel é local (127.0.0.1) e não pede chave de acesso.
+As instâncias existentes 3040 e 3045 têm bases de dados privadas distintas.
 
-## O que o novo painel faz
+## Primeiro passo: abrir e conectar o WhatsApp Web
 
-1. **Convite único**: escreva uma mensagem idêntica para todos, sem variáveis
-   por destinatário; configure o link do grupo de ofertas.
-2. **Botões no WhatsApp**: `Entrar no grupo` e `Denunciar convite`,
-   como duas respostas rápidas de um template de marketing a ser aprovado.
-3. **Planilha CSV**: importe o arquivo `nome;telefone` exportado pela
-   [extensão para Chrome](extensao-lateral/README.md). A planilha fica
-   na memória do navegador; o serviço cruza os números com os opt-ins
-   confirmados no cadastro.
-4. **Simulação**: prepare a mensagem, confira contatos aptos e bloqueados
-   e crie filas persistentes sem número Meta.
-5. **Envio pela API**: somente depois de configurar número, aprovação
-   do template, webhook, orçamento e autorização; cada lote depende de
-   confirmação explícita. Sem conta configurada, o envio fica bloqueado.
-6. **Denúncias e descadastros**: quando o webhook receber denúncia assinada,
-   o contato é bloqueado para campanhas futuras, inclusive após uma
-   nova importação. Relatórios usam telefones mascarados.
+1. Abra no ACER `http://127.0.0.1:3045/campanhas`.
+2. Na seção **Conectar seu WhatsApp Web**, clique em **Abrir WhatsApp Web**.
+   O sistema abre uma janela visível do Chrome no endereço oficial
+   `https://web.whatsapp.com/`, usando o perfil persistente das promoções.
+3. Se aparecer um QR Code, no celular abra **WhatsApp → Aparelhos conectados
+   → Conectar aparelho** e escaneie o código da janela do Chrome.
+   Se o WhatsApp já estiver conectado, aguarde a lista de conversas aparecer.
+4. O painel mostra **Escaneie o QR** ou **Conectado**, conforme o estado.
+   Não copia QR Codes, tokens ou cookies para o painel.
+5. Quando suas conversas aparecerem, clique em **Salvar sessão e fechar**.
+   O login permanece no perfil do Chrome. A janela deve ser fechada
+   **antes de preparar convites**, para liberar a mesma sessão do navegador.
 
-**Não faz envio para números retirados de grupos sem consentimento
-específico para mensagens comerciais.** Ter um número no CSV não equivale
-a autorização para publicidade.
+Essa etapa não usa a planilha, não acessa contatos de campanhas e
+**não envia nenhuma mensagem**. O botão não exige número novo da Meta.
+Se a sessão já estiver ocupada pelo robô de promoções ou por outra
+instância do painel, finalize a utilização anterior primeiro.
+O modo de conexão e o modo de envio compartilham uma trava de sessão local.
 
-## O que foi retirado
+## Por que a fila pode ficar desabilitada?
 
-- HTML da antiga Central de Captação e seus scripts de painel/importação.
-- Modo de convite manual via `wa.me` que ainda aparecia no painel novo.
-- Atalhos de relatório e chave do projeto antigo, iniciador obsoleto e
-  instaladores antigos para o computador Luis.
-- Documentação obsoleta das versões de captação anteriores.
+Conectar o WhatsApp Web **não ativa a fila de envio**. O botão
+**Criar fila para WhatsApp Web** será habilitado quando houver um CSV
+importado **nesta aba** e pelo menos um telefone estiver registrado
+como autorizado.
 
-O histórico de código desses itens continua recuperável pelo Git.
+### Planilha com autorização obtida anteriormente
 
-## O que foi preservado de propósito
+Para listas de pessoas que **já autorizaram expressamente convites
+comerciais**, não é necessário solicitar novo cadastro por QR Code nem
+exigir que cada pessoa envie `QUERO VIP`.
 
-- `dados/` inteiro: cadastro, autorizações, chaves internas, opt-outs,
-  bloqueios, denúncias, campanhas, métricas e rascunhos. **Não apagar.**
-- APIs existentes de contato/consentimento, grupos e importação, usadas
-  para auditoria e compatibilidade. As rotas administrativas continuam
-  protegidas, embora não exista mais a antiga tela de login.
-- `/c/<origem>`: página opcional de **cadastro voluntário**, útil para
-  coletar consentimento de quem realmente desejar mensagens.
-  Para abri-la há o atalho **`Abrir Cadastro Voluntario.cmd`**.
-- `/sair` e `/api/descadastro`: descadastro voluntário independente.
-- Extensão de leitura supervisionada dos participantes do WhatsApp Web.
-- Base de campanhas históricas e de proteção contra reenvio.
+1. Selecione o CSV `nome;telefone` ou um CSV com colunas `Telefone;Grupo;Coletado em;Autorizado para envio`. Se houver a coluna de autorização, apenas linhas marcadas `SIM` são selecionadas; `NÃO` ou campo vazio ficam fora. O arquivo é lido no navegador, e marcar `SIM` não substitui a documentação do consentimento.
+2. Em **Registrar autorização da sua planilha**, informe **onde** a
+   autorização foi obtida, **a data verdadeira** e uma **referência
+   onde o aceite pode ser comprovado**.
+3. Marque a declaração de que cada pessoa da planilha já autorizou o
+   recebimento **dessas mensagens promocionais individuais**.
+4. Clique em **Registrar autorizações da planilha**. Contatos aceitos
+   são gravados somente no servidor local, identificados com
+   `autorizacao-externa-declarada-com-origem-e-data`, sem simular
+   uma confirmação do próprio destinatário pelo sistema.
+5. Os números autorizados são liberados para criar a fila. Bloqueados
+   ou descadastrados **não são reativados**, mesmo após reimportação.
 
-Os dados pessoais e os segredos de acesso nunca devem entrar no GitHub.
+A declaração do operador é um **registro da informação fornecida**,
+não uma prova independente do consentimento. Guarde as evidências reais.
+Não invente uma data comum para autorizações recebidas em dias
+diferentes: divida a planilha em lotes por data, se necessário.
 
-## Quando adquirir o número WhatsApp Business
+Quem ainda não autorizou pode se inscrever pelo fluxo voluntário
+`/c/<origem>` e confirmar o pedido pelo próprio WhatsApp.
+Só participar de um grupo, aparecer numa planilha ou fornecer o
+telefone não constitui autorização para publicidade.
 
-Siga [INTEGRACAO_META.md](INTEGRACAO_META.md): crie o portfólio e aplicativo
-Meta, conecte o número, configure cobrança e token privado, aprove
-o modelo MARKETING e prepare um **webhook HTTPS público exclusivo**.
-O painel de campanhas local **não deve ser exposto à Internet**.
+Os contatos aprovados são gravados em `dados/contatos-autorizados.json`
+na instalação local; as portas 3040 e 3045 possuem bases privadas
+separadas. O CSV permanece no navegador até a confirmação. Nenhum
+arquivo de contatos é publicado no GitHub. Reimporte o CSV após
+recarregar a página para fazer outra campanha.
 
-Até essa etapa, `WA_META_ENABLE_SENDING=false` e nenhum envio real é realizado.
+## Interface simplificada (WhatsApp Web como padrão)
 
-## Desenvolvimento e testes
+A página /campanhas apresenta três etapas, nesta ordem:
+
+1. **Seus contatos:** selecione o CSV. Se o telefone já está autorizado no
+   cadastro local, será reconhecido. Para novos consentimentos, abra
+   **Registrar autorizações de novos contatos** e preencha origem, data e
+   referência verdadeiras. Não existe autorização presumida para quem apenas
+   consta de um grupo.
+2. **Sua mensagem:** escreva o texto e link do grupo e clique em
+   **Salvar convite**. Visualização, nome da campanha e recursos da Meta
+   ficam recolhidos.
+3. **Enviar pelo WhatsApp Web:** abra ou crie a fila e use
+   **Preparar próximo contato**. A lista mostra até 12 contatos por vez,
+   com busca e **Mostrar mais contatos**. O envio continua exigindo
+   confirmação individual.
+
+A integração paga da Meta fica em **Recursos avançados**. O botão
+**Gerenciar filas** disponibiliza a atualização e a limpeza das filas.
+
+### Limpeza segura de filas
+
+Para apagar somente a fila aberta, clique em **Limpar esta fila**, no topo
+dos detalhes. A lista de contatos fica recolhida em **Ver lista de
+contatos**; use **Preparar próximo contato** para continuar sem expandi-la.
+Se preferir limpar todas as filas pendentes, abra **Gerenciar filas** e
+clique em **Limpar filas antigas**. Em ambos os casos, digite `LIMPAR`
+para confirmar que nenhum envio ficou sem registro. Somente filas sem tentativas ou envios registrados
+podem ser limpas. O servidor recusa a limpeza quando uma janela do
+WhatsApp está ativa, inclusive durante o encerramento do Chrome.
+
+Antes de limpar, o servidor arquiva a fila completa de forma privada em
+`dados/backups-privados/`. Contatos, consentimentos, bloqueios e a
+mensagem salva permanecem intactos. Quando houver envio registrado ou
+resultado incerto, confira o histórico em vez de zerar os registros,
+pois apagá-los permitiria novos convites indevidos ou resetaria os
+limites operacionais.
+
+## Fluxo de envio pelo WhatsApp Web
+
+1. Escreva **uma mensagem única para todos**, salve o link
+   `https://chat.whatsapp.com/...` e importe a planilha CSV
+   `nome;telefone` da extensão do Chrome.
+2. O servidor seleciona apenas **contatos que confirmaram opt-in específico
+   para mensagens comerciais**, verifica a lista de bloqueios e elimina
+   duplicações. Estar em um grupo de terceiros não equivale a esse consentimento.
+3. Clique em **Criar fila para WhatsApp Web**, depois em
+   **Preparar conversa**. O painel confere a elegibilidade no servidor e
+   abre o Chrome usando o mesmo perfil `data/whatsapp-profile` das promoções.
+4. O WhatsApp Web abre a conversa com o número e o texto preenchidos.
+   **Confira visualmente nome, telefone e texto**. O programa aguarda sua
+   confirmação, não executa envios ao abrir a página.
+5. Clique em **Enviar agora pelo WhatsApp** no painel, e confirme o diálogo.
+   Isso solicita **um clique único** usando a ferramenta de ponteiro já
+   existente no robô de promoções.
+6. O observador da conversa verifica se apareceu a mensagem enviada.
+   Somente depois dessa detecção o sistema registra o status
+   **Enviado** no histórico. Não há repetição automática de clique.
+7. Se o WhatsApp fechar, mudar de conversa ou o resultado da tentativa
+   não puder ser confirmado, o status fica **Incerto**. Não pressione
+   Enviar novamente. Confira a conversa e use no painel:
+   **Conferi: foi enviado** ou **Conferi: não foi enviado**.
+   A segunda opção exige uma confirmação textual explícita.
+8. Se a pessoa responder **SAIR** ou **NÃO TENHO INTERESSE**,
+   registre **Recebi “Não tenho interesse” / SAIR** na fila.
+   Isso registra um pedido de saída, sem inventar denúncia. O contato é
+   descadastrado e continua bloqueado após reimportações.
+9. Se o WhatsApp estiver ocupado pelo robô de promoções ou o Chrome não
+   abrir, finalize primeiro a sessão de conexão. Se a automação
+   continuar indisponível, desmarque **Usar a automação de Chrome** e
+   utilize a alternativa **Abrir conversa no WhatsApp** para enviar
+   manualmente.
+
+A mensagem no WhatsApp Web inclui o link do grupo e a opção de
+responder `SAIR`. **Depois de atualizar o Netlify**, também inclui
+um link exclusivo **Não tenho interesse** para cada contato. Esse
+link permite solicitar o bloqueio de novos convites, não denunciar.
+
+**O WhatsApp Web gratuito não admite botões de resposta rápida nativos.**
+A prévia dos botões no painel é ilustrativa. Criar botões reais na
+mensagem exige recurso compatível com a plataforma WhatsApp Business.
+
+## Não tenho interesse por clique no Netlify (sem API Meta)
+
+O site público vive em `denuncias-netlify/`, com HTML estático,
+três Netlify Functions (incluindo a nova `/api/recusar`) e armazenamento
+Netlify Blobs. **Não expomos a porta 3045**: o ACER consulta a fila
+do Netlify por HTTPS de saída.
+
+1. Para cada contato, a Central assina `UUID.HMAC` com o segredo
+   compartilhado apenas entre o ACER e o Netlify. O link não contém telefone
+   nem nome. O motivo `saida-solicitada` tem assinatura diferente de
+   `denuncia-convite`, impedindo que os dois sejam confundidos.
+2. Abrir `GET /nao-tenho-interesse/` não registra nada. Somente o
+   clique em **Não quero receber novos convites** envia um
+   `POST /api/recusar` ao Netlify.
+3. O ACER consulta `GET /api/denuncias-pendentes` por HTTPS e Bearer.
+   A resposta inclui o **motivo**. Só depois de registrar o pedido de saída
+   no ACER, bloquear o número e persistir o dado, o sistema confirma o
+   evento remoto. A confirmação pode ser repetida sem gerar duplicação.
+4. Links antigos `/denunciar/` continuam válidos e são registrados como
+   denúncias internas anteriores, não como recusa. O histórico é preservado.
+5. Enquanto o ACER está ligado, a sincronização ocorre aproximadamente
+   a cada **10 minutos**. O botão de busca manual no painel antecipa a consulta.
+
+A confirmação ao destinatário informa que sua preferência de
+**não receber novos convites** foi registrada. Ela não é uma denúncia
+ao WhatsApp. Se o ACER estiver desligado, a solicitação permanece no
+Netlify até a próxima sincronização. O bloqueio só é confirmado
+localmente quando a sincronização for concluída.
+
+### Publicação na sua conta Netlify
+
+- Atualize o site **cacapromosdenuncias** já existente no Netlify
+  (não crie outro). A publicação anterior foi manual: faça novo deploy
+  pelo painel de **Implantações (Deploys)** com o ZIP atualizado.
+- Também é possível configurar o site pelo GitHub, diretório-base:
+  `captacao/caca-promos-vip/denuncias-netlify`.
+- Em `netlify.toml`, o publish é `public` e as Functions são `netlify/functions`.
+- Na configuração de ambiente do site (escopo **Functions**), crie
+  `CPV_DENUNCIA_NETLIFY_SECRET` com 64 dígitos hexadecimais aleatórios.
+  **Nunca adicione o segredo ao GitHub nem à mensagem do WhatsApp.**
+- No computador ACER, salve somente em
+  `dados/previa-acer/denuncias-netlify-config.json`:
+  `{"publicBaseUrl":"https://seu-site.netlify.app","segredo":"MESMO_SEGREDO"}`.
+  Mantenha esse arquivo fora do controle de versão e preserve nos backups.
+- Reinicie a Central após configurar a URL e confira se
+  **Denúncias internas recebidas** indica conexão Netlify.
+  Teste com **contato fictício**, depois com um contato de teste voluntário,
+  antes de divulgar a página.
+
+Sem HTTPS e segredo configurados, o convite mantém a instrução
+`responda SAIR`, sem link falso. O novo link **fica desativado por padrão**
+mesmo que alguém reinicie o ACER antes da publicação. Depois que
+`GET /nao-tenho-interesse/` e `POST /api/recusar` estiverem disponíveis,
+execute `scripts/ativar-recusa-netlify.ps1` no ACER: o script valida
+a página, a função pública, o segredo e cria backup, depois ativa
+`recusaAtiva:true` na configuração privada. Só então reinicie a porta 3045. A API local e o painel
+não são publicados pelo Netlify. Functions e Blobs têm limites no
+plano gratuito.
+
+## Limites, duplicações e proteção
+
+- **1 conversa preparada por vez** por controlador local.
+- **50 conversas preparadas por dia**, contando no fuso de Brasília,
+  inclusive preparações canceladas. O limite é interno, não uma garantia
+  contra bloqueio da conta.
+- **Zero envios automáticos em lote**: cada destinatário depende de um
+  clique explícito do usuário em Enviar agora.
+- Verificação de opt-in antes de preparar e novamente imediatamente antes
+  de solicitar o clique de envio.
+- Persistência do estado `incerto` **antes** de solicitar o clique,
+  para evitar duplicações se o programa/Chrome cair.
+- Impedimento de segundo convite depois de confirmação, mesmo quando
+  o contato aparece novamente em outro CSV.
+- O resultado nunca é classificado como enviado apenas pelo retorno
+  do botão: exige detecção da mensagem na conversa ou confirmação
+  manual específica depois de conferência.
+- O controlador não precisa ler senhas, códigos do WhatsApp ou copiar cookies.
+  **Evite executar dois automatizadores sobre o mesmo perfil do Chrome**;
+  use o modo manual se o robô de promoções já estiver ocupando a sessão.
+
+**Aviso:** controle de velocidade, pausas e uso do WhatsApp Web não garantem
+evitar bloqueio. O WhatsApp pode restringir contas por mensagens indesejadas.
+O sistema não habilita contatos extraídos de grupos sem opt-in comprovado.
+
+## Dados e código preservados
+
+- `dados/`: cadastro, confirmação de consentimento, denúncias,
+  bloqueios, filas, rascunhos e histórico. **Nunca apagar nem publicar.**
+- `/c/<origem>`: cadastro voluntário para quem quiser receber ofertas.
+- `/sair`: descadastro independente.
+- `extensao-lateral/`: leitura supervisionada e exportação CSV.
+- A integração preparada para a Cloud API da Meta permanece opcional
+  e desativada. Veja [INTEGRACAO_META.md](INTEGRACAO_META.md).
+
+Projeto único: `C:\projeto01`. Não criar worktrees ou pastas de cópia
+em `C:\`.
+
+## Testes
 
 ```powershell
 cd C:\projeto01\captacao\caca-promos-vip
 node --test
-node src\server.mjs
 ```
 
-O serviço escuta em `127.0.0.1` por padrão. O iniciador `Abrir Campanhas.cmd`
-seleciona a instalação/diretório de dados existente e abre a interface
-no navegador, sem exigir senha. Não reinicia o robô principal de afiliados.
+Os testes automatizados usam números fictícios e um Chrome **simulado**.
+Nenhuma mensagem real é enviada durante a suíte. A validação visual da
+interface do WhatsApp Web real depende de sua autorização para um teste
+com destinatário próprio e da disponibilidade da sessão de promoções.
 
-**Segurança**: o painel de campanhas sem senha é intencionalmente **somente
-local**. Solicitações de escrita exigem origem local correspondente e cabeçalho
-de proteção; a Cloud API exige credenciais privadas, e os eventos Meta são
-validados com HMAC. O registro de um contato permanece distinto de seu opt-in.
+## Integração dos cliques WhatyGo na Central — 22/10/2026
+
+Página local: **http://127.0.0.1:3045/respostas-botoes**. Há também um
+atalho na navegação principal e na visão geral.
+
+Fluxo implementado:
+- WhatyGo envia `ButtonClick` ao monitor local `127.0.0.1:4011` com
+  segredo próprio na URL (o segredo NÃO é colocado no código).
+- O monitor encaminha somente os campos necessários para a Central em
+  `127.0.0.1:3045/api/local/whatygo/evento`, autenticado por chave privada.
+- A Central valida nome da instância, data recente, ID do evento, identidade
+  WhatsApp de remetente/chat e se a resposta não foi enviada por nossa conta.
+- Se o número for comprovado e clicar em **Não tenho interesse**, a Central
+  usa o bloqueio persistente por hash existente, marca descadastro em um
+  cadastro correspondente e impede convites futuros por listas e filas.
+- Em **Entrar no grupo**, registra o aceite; se o contato já tiver autorização
+  documentada e não estiver bloqueado, o operador pode copiar o link do
+  grupo pela interface e fazer o encaminhamento manualmente.
+- Contatos não cadastrados, eventos de grupo, LIDs não resolvidos e identidade
+  incerta nunca são tratados como autorização ou recusa comprovada.
+- Nenhum clique envia mensagens, reativa contato bloqueado ou adiciona
+  automaticamente pessoas aos grupos.
+- Respostas duplicadas são idempotentes; registros ocultam o telefone completo,
+  guardam hash do evento, situação e data, sem copiar conteúdos de conversas.
+- Os dois cliques de laboratório registrados ANTES desta implantação eram
+  anonimizados pelo monitor e não podem ser atribuídos retroativamente a
+  um contato: é necessário um NOVO clique real para vinculá-lo.
+
+Credenciais e histórico ficam somente em `dados/previa-acer/` (quando a
+Central 3045 está ativa) e `laboratorio-whatygo/private/`.
+Não compartilhar URLs completas de webhook, tokens, arquivos de sessão ou
+bancos de dados. Nunca enviar convites a pessoas sem autorização documentada.
+
+A opção WhatyGo é **não oficial**, podendo falhar ou causar restrições da
+conta. Use o painel de modo supervisionado e não automatize disparos em massa.
+
+## Automação supervisionada após clicar em "Entrar no grupo" (22/10/2026)
+
+Na página local `http://127.0.0.1:3045/respostas-botoes` foi incluído o painel
+**Enviar link automaticamente após o aceite**. A automação inicia DESATIVADA.
+Somente o operador local pode habilitar, confirmando consentimento, e pode
+desabilitá-la a qualquer momento. Nunca é habilitada por deploy ou testes.
+
+Fluxo com a opção habilitada:
+1. Um destinatário toca no quick reply `aceitar_grupo` no próprio WhatsApp.
+2. O WhatyGo entrega um `ButtonClick` e o monitor autentica a sessão.
+3. A Central valida os dados de origem, ID, horário e telefone. Apenas contatos
+   previamente cadastrados com consentimento documentado, sem bloqueio,
+   entram na fila de resposta automática.
+4. O processamento envia **somente uma resposta solicitada** via
+   `POST http://127.0.0.1:4000/send/text`, com o link de convite atual
+   de `chat.whatsapp.com`. O próprio usuário toca no link e confirma a
+   entrada; o servidor não o inclui diretamente no grupo.
+5. A resposta da API é tratada como `auto-link-enviado-api`, nunca como
+   entrega ou entrada confirmada no WhatsApp.
+
+Segurança operacional:
+- No máximo 1 resposta por destinatário em uma janela móvel de 24 horas.
+- Até 50 tentativas totais de envio automático em 24 horas; uma simultânea.
+- Idempotência: ID de evento autenticado; a fila grava `auto-tentando` antes
+  da chamada HTTP. Falhas, timeouts ou respostas sem ID são `auto-incerto`.
+  Não há reenvio após falha, reinicialização nem reprocessamento de históricos.
+- Imediatamente antes do envio, revalidar consentimento, bloqueio e URL.
+- O WhatyGo ainda valida a instância, identidade do número principal e token
+  privado antes de transmitir. Não usar contas ou grupos de terceiros.
+- Nenhuma nova mensagem ao receber `recusar_grupo`; a recusa verificada
+  mantém o bloqueio permanente já existente.
+- Se não existir contato previamente autorizado, o aceite permanece
+  `pendente-consentimento`, sem criar consentimento publicitário implícito.
+- As novas configurações e hashes privados ficam exclusivamente em
+  `dados/previa-acer`, nunca no GitHub ou no Netlify.
+- Somente usuários da interface local podem alterar o estado, com
+  Origin e cabeçalho antifalsificação de solicitações.
+
+A conta de teste usada no laboratório foi bloqueada depois do clique em
+`recusar_grupo`. Não contornar esse bloqueio em testes: cadastrar e
+documentar nova autorização conforme o fluxo existente, ou usar outro contato
+de teste com autorização válida.
+
+A entrada direta por `POST /group/participant` exige privilégio real de
+admin e ainda está sujeita às configurações de privacidade do destinatário.
+O vínculo com o grupo configurado foi identificado pelo WhatyGo, mas a
+permissão de admin da sessão não foi comprovada; essa modalidade NÃO foi
+ativada. O caminho por link mantém a escolha de entrar nas mãos da pessoa.
+
+Testes isolados e de API: `node --test tests/respostas-botoes-automacao.test.mjs
+tests/respostas-botoes-auto-api.test.mjs`. Eles usam transportes simulados e
+não enviam mensagens reais.
+
+## Diagnostico do teste que nao recebeu o link (22/10/2026)
+
+O clique novo das 15h42 foi recebido e validado (`aceitar_grupo`),
+mas ficou em `impedido-bloqueado`; ele se refere ao mesmo numero que
+havia clicado em `recusar_grupo` antes da automacao. A Central nao enviou
+mensagem: esse comportamento e intencional, mesmo com a automacao ligada.
+
+O numero bloqueado nao tem cadastro de contato na Central
+(`contatoId: null`). A tela padrao Contatos > Desbloquear exige contato
+existente e nova autorizacao documentada; ela nao consegue liberar esse
+bloqueio anonimo do laboratorio. Nao contornar por ajuste direto em
+arquivos ou por importacao. Para continuar testando de imediato, usar
+outro numero de teste com autorizacao valida e nao bloqueado.
+
+A pagina `/respostas-botoes` agora apresenta o motivo do ultimo clique
+imediatamente sob o controle da automacao, com atalho para preparar
+outro numero. Se uma nova autorizacao do proprio titular for registrada,
+o fluxo de reativacao apropriado deve ser implementado com auditoria,
+sem remover silenciosamente a recusa previa.
+
+O script `scripts/publicar-auto-resposta-botoes.ps1` preserva o estado
+real da automacao ao reiniciar a Central, sem forca-la a ficar desativada.
+Nao reinicia o WhatyGo nem reprocessa cliques antigos.
+
+## Desbloqueio de numero de teste sem cadastro (22/10/2026)
+
+Acesse no ACER: `http://127.0.0.1:3045/contatos#reativar-teste`.
+
+Cenario: um numero de teste pertencente ao operador clicou em
+"Não tenho interesse" no WhatyGo, gerando um bloqueio persistente por
+hash, mas ele nao estava cadastrado em contatos. A opcao antiga
+"Desbloquear contato" exige ficha existente, portanto nao serve
+nesse caso.
+
+Novo formulario: "Reativar meu número de testes sem cadastro".
+Exige numero brasileiro completo, nome do titular, origem, data e
+referencia verificavel da NOVA autorizacao concedida apos a recusa,
+alem de duas confirmacoes (titularidade e preservacao do historico).
+Somente o painel em loopback pode chamar a rota local protegida
+`POST /api/local/gestao/numero/reativar-teste`; CSRF, Origin e
+limite de 6 tentativas/hora sao verificados.
+
+A operacao nao desbloqueia so porque houve clique em "Entrar".
+Apenas reativa quando o titular explicitamente registra nova
+autorizacao. Tambem recusa: cadastro existente, motivo de bloqueio
+administrativo/denuncia, autorizacao retroativa ou ausente, sessoes
+ocupadas, falha na sincronizacao de recusas pendentes do Netlify,
+numero nao bloqueado e tentativas duplicadas.
+
+A sequencia e intencional: registra um NOVO contato autorizado
+com evidencia documentada ENQUANTO o bloqueio antigo continua
+ativo; so entao remove a supressao por hash e registra
+`reativacao-autorizada`. Se a segunda etapa falhar, o bloqueio
+persiste. O reenvio com os MESMOS dados consegue concluir uma
+operacao parcialmente preparada, sem criar outro contato.
+A recusa original permanece nos eventos de auditoria.
+
+A tela de respostas pode indicar `aceite-antigo-reativado` depois
+dessa liberacao: cliques passados NAO sao reaproveitados para disparar
+convites automaticos. O titular devera fazer um NOVO teste dos botoes.
+Nenhum desbloqueio e realizado durante testes automatizados no banco
+real do ACER; toda validacao ocorre em diretorios temporarios.
+
+Testes: `node --test tests/reativacao-numero-teste-sem-cadastro.test.mjs`
+(inclui browser Chrome real com numero ficticio).
+
+## Interface clean com menu lateral — 22/10/2026
+
+A Central local em `http://127.0.0.1:3045/inicio` usa uma interface
+minimalista com barra lateral escura e conteudo claro, conforme a
+previa aprovada pelo operador. O menu substitui a navegacao superior
+em todas as seis rotas administrativas:
+
+- Inicio: `/inicio` — atalhos e indicadores reais das APIs locais.
+- Enviar convite: `/enviar` — formulario individual supervisionado,
+  sem a coluna lateral de explicacoes que desviava o foco.
+- Respostas: `/respostas-botoes` — cliques, recusas, automacao e acoes.
+- Contatos: `/contatos` — consulta e gestao dos autorizados.
+- Filas e envios: `/campanhas` — area avancada preservada.
+- Seguranca: `/denuncias` — recusas, bloqueios e reativacoes.
+- Atalho "Reativar numero": `/contatos#reativar-teste` na lateral.
+
+O tema claro e aplicado APENAS ao painel privado da Central. As
+paginas publicas de consentimento, saida e denuncia nao sao modificadas.
+Em dispositivos com largura de ate 850px, a barra lateral vira
+um menu recolhivel, com acesso por teclado, Escape, foco e overlay.
+
+A pagina inicial mostra somente tres atalhos principais, quatro
+indicadores (contatos autorizados, envios iniciados hoje, respostas,
+bloqueios persistentes), uma lista curta de respostas mascaradas e
+estado do envio supervisionado. Todos os numeros vem das APIs locais,
+sem valores estaticos inventados nem exposicao de contatos completos.
+
+Implementacao:
+- `src/layout-clean.mjs`: sidebar, cabecalho, pagina inicial e aplicacao
+  do layout sem alterar os sistemas de negocio.
+- `src/assets/layout-clean.css`: tema, responsividade e hierarquia visual.
+- `src/assets/layout-clean.js`: menu mobile e dados atualizados do inicio.
+- `src/server.mjs`: decoracao das seis telas e os novos arquivos estaticos.
+- `tests/layout-clean.test.mjs`: verificacoes reais de desktop/mobile
+  no Chrome, ausencia de overflow e preservacao dos formularios.
+- `tests/gestao-ux.test.mjs`: atualizado para a nova barra lateral e os
+  indicadores reais, mantendo testes de seguranca e cadastro.
+
+A alteracao e visual. Nao muda credenciais, sessao WhatsApp, limites,
+contatos, envios, webhook, opt-in, bloqueios ou automacoes. O estado da
+automacao de respostas e preservado no reinicio seguro da porta 3045.
+Dados pessoais, snapshots de testes e backups ficam somente no disco
+C do ACER, jamais enviados ao GitHub ou ao Google Drive.
+
+## Correção de diagnóstico do clique e legibilidade (22/10/2026)
+
+O último clique em "Entrar no grupo" foi recebido pelo WhatyGo e pela
+Central, mas rejeitado como `impedido-bloqueado`. O titular informou um
+número com DDD diferente no formulário de reativação: ambos tinham os
+mesmos quatro dígitos finais, porém o bloqueio referia-se ao outro DDD.
+O sistema NÃO deve desbloquear, cadastrar ou enviar mensagens para o
+número errado.
+
+A rota `POST /api/local/gestao/numero/diagnostico` consulta SOMENTE o
+computador local autorizado. Recebe um número brasileiro, retorna
+máscara/DDD/final, registro de consentimento, bloqueio atual e o clique
+verificado relativo ao telefone via HMAC, destacando possível DDD
+diferente com o mesmo final. Nunca retorna números completos, chaves,
+links privados ou mensagens recebidas. Exige proteção de Origin/CSRF e
+tem limite de consultas. Nenhuma operação de consulta altera contatos,
+bloqueios, histórico, filas ou sessões.
+
+Em `Contatos > Reativar número`, agora é obrigatório conferir o DDD
+antes de abrir o formulário de autorização. Campos de reativação só
+aparecem quando houver bloqueio por saída voluntária de um número sem
+cadastro. Um número não bloqueado é explicado sem toast de erro.
+Para desbloquear um número realmente bloqueado continua sendo exigida
+nova autorização explícita, documentada e posterior à recusa. O clique
+antigo NUNCA gera envio automático retroativo.
+
+A tela `Respostas` mostra telefone mascarado, horário e status real
+do último clique, com acesso à consulta. A automação ativa por si só
+NÃO envia a quem está bloqueado ou sem consentimento.
+
+Ajustes visuais: barra superior e navegação legíveis, maior contraste,
+formulários e etapas de envio com texto normal (14-16 px), inputs e
+botões com pelo menos 48-53 px nas principais ações, mensagens e avisos
+maiores. `src/assets/layout-clean.css` mantém o layout responsivo e
+o menu lateral existente em desktop/mobile. Não altera HTML público
+nem os limites da automação.
+
+Testes isolados, sem qualquer envio real:
+`tests/diagnostico-numero-automacao.test.mjs` (DDD divergente, proteção,
+consulta sem alteração, Chrome);
+`tests/reativacao-numero-teste-sem-cadastro.test.mjs`;
+`tests/layout-clean.test.mjs`; e os testes de automação com transporte mock.
+
+## Diagnostico de resposta automatica incerta (22/10/2026)
+
+No clique real de 17h21:08 (America/Sao_Paulo), o webhook recebeu
+`aceitar_grupo`, a Central encontrou um contato autorizado e sem
+bloqueio, e a automacao estava habilitada. O monitor 4011 mostrou
+`auto-na-fila`, mas a Central gravou `auto-incerto` em seguida.
+Portanto, a fila foi acionada, mas a API NAO confirmou o envio do link.
+Nao interpretar auto-na-fila como entrega.
+
+Verificacoes nao invasivas:
+- WhatyGo 4000 estava online, sessao autorizada conectada, token privado
+  e telefone da conta iguais aos da instancia ativa.
+- Consulta real `GET /instance/all` passou na validacao da funcao
+  `enviarLinkSolicitado` com `POST /send/text` interceptado por mock.
+- A rota `POST /send/text` respondeu HTTP 400 quando recebeu corpo
+  intencionalmente vazio, demonstrando disponibilidade e validacao,
+  SEM solicitar qualquer mensagem real.
+- A documentacao/codigo WhatyGo confirma `number`, `text` e
+  `data.Info.ID` no contrato do envio. O erro original da tentativa
+  de 17h21 foi descartado pelo `catch` antigo: nao ha codigo tecnico
+  salvo para recuperar retroativamente. NAO presumir a causa exata.
+
+Correcoes:
+- `src/whatygo-responder-link.mjs`: diagnostico por etapa e codigo
+  seguro, preservando HTTP status quando a API rejeita (sem registrar
+  payload, numero, URL, token, raw response ou excecao original).
+- `src/respostas-botoes.mjs`: falhas ANTES do POST usam
+  `auto-falha-preenvio`; falhas ou timeout APOS iniciar o POST usam
+  `auto-incerto`. O limite de uma tentativa por contato em 24h vale
+  para ambos, sem retentativas automaticas ou replay de cliques antigos.
+- `src/assets/respostas-botoes.js`: status final, detalhes categorizados
+  e link para copiar o convite manualmente em estados incertos, somente
+  se ainda houver consentimento valido e nenhuma supressao. Para um
+  envio incerto, exige conferir a conversa e confirmar antes de copiar.
+  Copiar o link nao envia mensagem pelo WhatsApp.
+- `laboratorio-whatygo/monitor-cliques.mjs`: explica que o
+  `auto-na-fila` exibido pelo monitor e uma resposta inicial, nao
+  prova de envio nem entrega.
+
+Nenhum bloqueio ou autorizacao foi alterado. Nenhuma mensagem foi
+enviada durante os testes desta correcao. O clique original segue
+`auto-incerto`, sem ser retomado automaticamente. Um novo teste do
+envio REAL deve ser feito apenas pelo titular apos verificar a conversa
+e respeitar os limites, usando um novo clique elegivel quando permitido.
+
+Regressoes sem envio real:
+`node --test tests/whatygo-envio-diagnostico.test.mjs
+tests/respostas-botoes-automacao.test.mjs tests/respostas-botoes-auto-api.test.mjs`.

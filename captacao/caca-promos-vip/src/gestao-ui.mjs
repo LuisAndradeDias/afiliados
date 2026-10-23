@@ -1,0 +1,303 @@
+import { inicioClean } from './layout-clean.mjs';
+
+const ITENS=[
+  {href:'/inicio',label:'Visão geral',chave:'inicio'},
+  {href:'/contatos',label:'Contatos',chave:'contatos'},
+  {href:'/enviar',label:'Enviar convite',chave:'enviar'},
+  {href:'/respostas-botoes',label:'Respostas dos botões',chave:'respostas'},
+  {href:'/campanhas',label:'Listas e filas',chave:'campanhas'},
+  {href:'/denuncias',label:'Denúncias',chave:'denuncias'},
+];
+
+function nav(ativo){
+  return ITENS.map(n=>`<a href="${n.href}" class="nav-link${ativo===n.chave?' is-active':''}"${ativo===n.chave?' aria-current="page"':''}>${n.label}</a>`).join('');
+}
+function estatistica(label,id,legenda,tipo=''){
+  return `<article class="stat-card ${tipo}" aria-label="${label}">
+    <span class="stat-label">${label}</span>
+    <strong id="${id}" class="stat-number" aria-live="polite">—</strong>
+    <small>${legenda}</small>
+  </article>`;
+}
+function shell(pagina,conteudo){
+  return `<!doctype html><html lang="pt-BR"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101923"><meta name="referrer" content="no-referrer">
+  <title>${pagina==='inicio'?'Visão geral':pagina==='contatos'?'Contatos':pagina==='respostas'?'Respostas dos botões':'Denúncias'} | Caça Promos VIP</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/assets/painel-theme.css">
+  <script defer src="/assets/gestao.js"></script>
+  ${pagina==='respostas'?'<script defer src="/assets/respostas-botoes.js"></script>':''}
+  </head><body data-page="${pagina}">
+  <header class="site-header"><div class="container header-inner">
+    <a class="app-brand" href="/inicio" aria-label="Voltar para visão geral">
+      <span class="app-mark" aria-hidden="true">CP</span>
+      <span><strong>CAÇA PROMOS <em>VIP</em></strong><small>Central de gestão</small></span>
+    </a>
+    <nav class="site-nav" aria-label="Navegação principal">${nav(pagina)}</nav>
+    <span class="local-status" title="Acesso permitido somente neste computador"><i></i> Local</span>
+  </div></header>
+  <main id="main" class="container main-area">${conteudo}</main>
+  <footer class="container site-footer">Caça Promos VIP · Telefones e nomes ficam no ACER · O Netlify recebe somente identificadores assinados</footer>
+  <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
+  </body></html>`;
+}
+const home=`
+<section class="page-heading">
+  <div><span class="overline">CENTRAL DE CAMPANHAS</span><h1>Visão geral</h1>
+  <p>O que precisa de atenção, sem misturar contatos, convites e denúncias.</p></div>
+  <a class="btn btn-primary" href="/enviar">Enviar para mim / testar <span aria-hidden="true">↗</span></a>
+</section>
+<section class="stats-grid" aria-label="Resumo da operação">
+  ${estatistica('Contatos cadastrados','homeTotal','No seu cadastro local')}
+  ${estatistica('Autorizados','homeAllowed','Liberados para novos convites','stat-ok')}
+  ${estatistica('Bloqueados','homeBlocked','Não podem receber mensagens','stat-danger')}
+  ${estatistica('Denúncias','homeComplaints','Registradas internamente','stat-attention')}
+</section>
+<section class="section-heading"><div><span class="overline">ACESSOS RÁPIDOS</span><h2>O que deseja fazer?</h2></div></section>
+<section class="action-grid" aria-label="Áreas de trabalho">
+  <a class="action-card" href="/contatos"><span class="action-glyph" aria-hidden="true">01</span><strong>Gerenciar contatos</strong>
+    <span>Consulte autorizados, bloqueados, pendentes e descadastros. Pesquise por nome ou número.</span><b>Ver contatos →</b></a>
+  <a class="action-card" href="/campanhas"><span class="action-glyph" aria-hidden="true">02</span><strong>Preparar convites</strong>
+    <span>Importe a planilha, salve sua mensagem e prepare cada conversa no WhatsApp Web.</span><b>Abrir convites →</b></a>
+  <a class="action-card" href="/respostas-botoes"><span class="action-glyph" aria-hidden="true">03</span><strong>Respostas dos botões</strong>
+    <span>Consulte quem aceitou, recusou ou precisa de verificação antes do convite.</span><b>Ver respostas →</b></a>
+  <a class="action-card" href="/denuncias"><span class="action-glyph" aria-hidden="true">04</span><strong>Conferir denúncias</strong>
+    <span>Veja solicitações recebidas pelo Netlify e o estado da sincronização.</span><b>Ver denúncias →</b></a>
+</section>
+<div class="two-columns">
+  <section class="panel"><div class="panel-head"><div><h2>Situação dos envios</h2><p>Dados atuais das filas existentes.</p></div>
+    <a class="text-link" href="/campanhas#manualStage">Gerenciar filas avançadas →</a></div>
+    <div class="health-grid"><span>Filas cadastradas</span><strong id="homeQueues">—</strong>
+      <span>Contatos aguardando nas filas</span><strong id="homePending">—</strong>
+      <span>WhatsApp Web</span><strong id="homeWhatsapp">Verificando</strong></div>
+  </section>
+  <section class="panel"><div class="panel-head"><div><h2>Últimas denúncias</h2>
+    <p>Reclamações confirmadas pelos destinatários.</p></div>
+    <a class="text-link" href="/denuncias">Ver todas →</a></div>
+    <div id="homeLatest" class="compact-feed"><div class="state-empty">Consultando registros…</div></div>
+  </section>
+</div>`;
+const contacts=`
+<section class="page-heading"><div><span class="overline">CADASTRO E AUTORIZAÇÕES</span>
+  <h1>Contatos</h1><p>Encontre rapidamente quem pode receber convites e quem está protegido contra novos envios.</p></div>
+  <a class="btn btn-primary" href="/enviar">Enviar convite individual <span aria-hidden="true">↗</span></a>
+</section>
+<section class="stats-grid stats-grid-5" aria-label="Situação dos contatos">
+  ${estatistica('Total cadastrado','ctTotal','Registros locais')}
+  ${estatistica('Autorizados','ctAllowed','Consentimento registrado','stat-ok')}
+  ${estatistica('Bloqueados','ctBlocked','Denúncias ou bloqueio manual','stat-danger')}
+  ${estatistica('Descadastrados','ctRemoved','Sem bloqueio por denúncia','stat-attention')}
+  ${estatistica('Pendentes','ctPending','Aguardam confirmação')}
+</section>
+<section class="panel contact-panel" aria-labelledby="listTitle">
+  <div class="panel-head"><div><h2 id="listTitle">Sua lista de contatos</h2>
+    <p>O número é exibido parcialmente por privacidade. Bloqueados não voltam a receber convites após importações.</p></div>
+    <button type="button" class="btn btn-quiet" id="contactsRefresh">Atualizar lista</button>
+  </div>
+  <div class="tabbar" id="contactFilters" role="group" aria-label="Filtrar situação">
+    <button class="filter-tab is-selected" type="button" data-filter="todos" aria-pressed="true">Todos</button>
+    <button class="filter-tab" type="button" data-filter="autorizado" aria-pressed="false">Autorizados</button>
+    <button class="filter-tab" type="button" data-filter="bloqueado" aria-pressed="false">Bloqueados</button>
+    <button class="filter-tab" type="button" data-filter="descadastrado" aria-pressed="false">Descadastrados</button>
+    <button class="filter-tab" type="button" data-filter="pendente" aria-pressed="false">Pendentes</button>
+    <button class="filter-tab" type="button" data-filter="sem-autorizacao" aria-pressed="false">Sem autorização</button>
+  </div>
+  <div class="toolbar-light"><label class="search-box" for="contactSearch"><span class="search-icon" aria-hidden="true">⌕</span>
+    <input id="contactSearch" type="search" placeholder="Buscar nome ou últimos 4 dígitos" autocomplete="off"></label>
+    <span id="contactResults" class="result-count" aria-live="polite">Carregando...</span>
+  </div>
+  <div class="table-scroll">
+    <table class="contact-table"><thead><tr>
+      <th scope="col">Contato</th><th scope="col">Número</th><th scope="col">Situação</th>
+      <th scope="col">Origem</th><th scope="col"><span class="sr-only">Detalhes</span></th>
+    </tr></thead><tbody id="contactsBody">
+      <tr><td colspan="5" class="state-empty">Carregando contatos...</td></tr>
+    </tbody></table>
+  </div>
+  <div class="pagination">
+    <p id="contactsPageInfo" aria-live="polite">Página —</p>
+    <div><button type="button" class="btn btn-quiet" id="previousPage" disabled>← Anterior</button>
+      <button type="button" class="btn btn-quiet" id="nextPage" disabled>Próxima →</button></div>
+  </div>
+</section>
+<section class="panel" id="reativar-teste" aria-labelledby="reativarTesteTitulo">
+  <div class="panel-head">
+    <div>
+      <span class="overline">TESTE WHATSAPP • REATIVAÇÃO DOCUMENTADA</span>
+      <h2 id="reativarTesteTitulo">Reativar meu número de testes sem cadastro</h2>
+      <p>Para um número seu que clicou em “Não tenho interesse” e ainda não aparece na lista de contatos.</p>
+    </div>
+  </div>
+  <p class="context-note">O bloqueio protege os contatos contra novos convites. Este formulário exige uma autorização NOVA, dada depois da recusa. Ele não envia mensagens, não restaura filas antigas e preserva o histórico.</p>
+  <form id="reactivateTestForm" class="unlock-form reactivate-test-form">
+    <label for="reactivateTestPhone">Qual número recebeu o convite? (com DDD)</label>
+    <input id="reactivateTestPhone" type="tel" required inputmode="tel" autocomplete="off" placeholder="Ex.: 22 99999-0000">
+    <div class="reactivate-lookup-row">
+      <button type="button" class="btn btn-quiet" id="reactivateCheckStatus">Conferir situação do número</button>
+      <span>Confira o DDD e os últimos 4 dígitos antes de reativar.</span>
+    </div>
+    <div id="reactivateNumberDiagnosis" class="reactivate-diagnostic" role="status" aria-live="polite">
+      Consulte primeiro: o número do último clique pode ser diferente do digitado aqui.
+    </div>
+    <div id="reactivateProofFields" class="reactivate-proof-fields" hidden>
+    <h3>Nova autorização do titular</h3>
+    <p>Preencha somente após confirmar que esse número está bloqueado e que houve uma nova autorização.</p>
+    <label for="reactivateTestName">Nome do titular do número</label>
+    <input id="reactivateTestName" type="text" required minlength="2" maxlength="80" autocomplete="name" placeholder="Identificação do titular">
+    <label for="reactivateTestOrigin">Onde ocorreu a nova autorização?</label>
+    <input id="reactivateTestOrigin" type="text" required minlength="6" maxlength="140" placeholder="Ex.: autorização do próprio titular neste teste local">
+    <label for="reactivateTestDate">Data da nova autorização, após a recusa</label>
+    <input id="reactivateTestDate" type="date" required>
+    <label for="reactivateTestReference">Referência verificável da nova autorização</label>
+    <textarea id="reactivateTestReference" required minlength="8" maxlength="240" rows="2" placeholder="Descreva a autorização do titular e onde ela pode ser conferida."></textarea>
+    <label class="unlock-checkbox" for="reactivateTestOwner">
+      <input id="reactivateTestOwner" type="checkbox" required>
+      <span>Confirmo que sou titular desse número de testes e voltei a autorizar convites DEPOIS da recusa.</span>
+    </label>
+    <label class="unlock-checkbox" for="reactivateTestConfirmed">
+      <input id="reactivateTestConfirmed" type="checkbox" required>
+      <span>Estou ciente de que a recusa original ficará no histórico e nenhuma mensagem será enviada agora.</span>
+    </label>
+    <div><button type="submit" class="btn btn-primary" id="reactivateTestSubmit">Confirmar reativação autorizada</button></div>
+    </div>
+    <p id="reactivateTestFeedback" class="context-note" role="status" aria-live="polite">Consultar a situação não envia mensagens, não desbloqueia ninguém e não altera o cadastro.</p>
+  </form>
+</section>
+<p class="context-note"><strong>Importante:</strong> contatos bloqueados não recebem novos convites.
+  Se já existe cadastro, abra a ficha do contato e use <strong>Desbloquear contato</strong> com nova autorização.
+  Se seu próprio número de testes não está na lista, use o formulário acima. Filas antigas permanecem encerradas.</p>
+<dialog class="contact-dialog" id="contactDialog" aria-labelledby="contactDialogTitle">
+  <div class="dialog-header"><div><span class="overline">FICHA DO CONTATO</span><h2 id="contactDialogTitle">Contato</h2>
+    <p id="detailPhone">Número mascarado</p></div>
+    <button class="icon-close" id="detailClose" type="button" aria-label="Fechar detalhes">×</button></div>
+  <div id="detailStatus" class="dialog-status"></div>
+  <dl id="detailFields" class="detail-fields"></dl>
+  <div id="detailHistory" class="history-block"></div>
+  <form id="unlockForm" class="unlock-form" hidden>
+    <h3>Confirmar nova autorização</h3>
+    <p>Desbloqueie somente se o titular voltou a autorizar convites. O registro antigo permanece no histórico.</p>
+    <label for="unlockOrigin">Onde ocorreu a nova autorização?</label>
+    <input id="unlockOrigin" name="origemAutorizacao" required minlength="6" maxlength="140"
+      placeholder="Ex.: conversa no WhatsApp com o titular" autocomplete="off">
+    <label for="unlockDate">Data da nova autorização</label>
+    <input id="unlockDate" name="dataAutorizacao" type="date" required>
+    <label for="unlockReference">Referência para comprovar a autorização</label>
+    <textarea id="unlockReference" name="referenciaAutorizacao" rows="2"
+      required minlength="8" maxlength="240"
+      placeholder="Ex.: autorização recebida do titular; anote onde conferir"></textarea>
+    <label class="unlock-checkbox">
+      <input id="unlockConsent" type="checkbox" required>
+      <span>Confirmo que este número autorizou novamente os convites após o bloqueio.</span>
+    </label>
+    <p class="unlock-warning">Isso não envia mensagens nem reativa filas antigas. Para convidar novamente, crie uma nova fila.</p>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-quiet" id="cancelUnlock">Cancelar</button>
+      <button type="submit" class="btn btn-primary" id="confirmUnlock">Confirmar desbloqueio</button>
+    </div>
+  </form>
+  <div class="dialog-actions" id="contactActions">
+    <button class="btn btn-danger" id="blockContact" type="button" hidden>Bloquear novos convites</button>
+    <button class="btn btn-quiet" id="unlockContact" type="button" hidden>Desbloquear contato</button>
+    <button class="btn btn-quiet" id="detailDone" type="button">Fechar</button>
+  </div>
+  <p class="dialog-foot">Bloquear não inventa uma denúncia. Desbloquear exige nova autorização documentada e mantém o histórico.</p>
+</dialog>`;
+const reports=`
+<section class="page-heading"><div><span class="overline">SEGURANÇA E PREFERÊNCIAS</span>
+  <h1>Denúncias e bloqueios</h1><p>Solicitações reais recebidas por link ou registradas no painel, com histórico local.</p></div>
+  <button class="btn btn-primary" type="button" id="syncNow">Buscar denúncias no Netlify</button>
+</section>
+<section class="stats-grid stats-grid-5" aria-label="Resumo de denúncias">
+  ${estatistica('Denúncias registradas','repComplaints','Reclamações internas','stat-attention')}
+  ${estatistica('Bloqueios persistentes','repBlocked','Mesmo após reimportação','stat-danger')}
+  ${estatistica('Pedidos de saída','repExits','Descadastros registrados')}
+  ${estatistica('Reativações','repReactivated','Novas autorizações','stat-ok')}
+  ${estatistica('Sincronização','repSync','Estado da conexão com Netlify')}
+</section>
+<section class="panel">
+  <div class="panel-head"><div><h2>Histórico de ocorrências</h2>
+    <p>Números mascarados. Somente fatos realmente registrados; bloqueios administrativos não são denúncias do WhatsApp.</p></div>
+    <span class="soft-label" id="lastSync">Aguardando status</span>
+  </div>
+  <div class="tabbar" role="group" id="reportFilters" aria-label="Filtrar ocorrências">
+    <button type="button" data-filter="todos" class="filter-tab is-selected" aria-pressed="true">Todas</button>
+    <button type="button" data-filter="denuncia-convite" class="filter-tab" aria-pressed="false">Denúncias</button>
+    <button type="button" data-filter="saida-solicitada" class="filter-tab" aria-pressed="false">Pedidos de saída</button>
+    <button type="button" data-filter="bloqueio-administrativo" class="filter-tab" aria-pressed="false">Administrativos</button>
+    <button type="button" data-filter="reativacao-autorizada" class="filter-tab" aria-pressed="false">Reativações</button>
+  </div>
+  <div id="reportList" class="report-list"><div class="state-empty">Consultando ocorrências…</div></div>
+  <div class="panel-bottom"><a class="text-link" href="/contatos?filtro=bloqueado">Ver contatos bloqueados →</a></div>
+</section>
+<p class="context-note">Ao confirmar a denúncia no Netlify, a solicitação é armazenada até o ACER sincronizar. O bloqueio local é aplicado após a sincronização. Isso <strong>não</strong> é uma denúncia oficial ao WhatsApp.</p>`;
+
+const responses=`
+<section class="page-heading">
+  <div><span class="overline">WHATSAPP • BOTÕES INTERATIVOS</span>
+    <h1>Respostas dos botões</h1>
+    <p>Acompanhe cliques reais, pedidos de entrada e recusas. Ative a resposta automática apenas para contatos autorizados.</p>
+  </div>
+  <div class="toolbar-light">
+    <a class="btn btn-quiet" href="http://127.0.0.1:4011/" target="_blank" rel="noopener noreferrer">Diagnóstico dos cliques ↗</a>
+    <a class="btn btn-quiet" href="http://127.0.0.1:4000/manager" target="_blank" rel="noopener noreferrer">Abrir WhatyGo ↗</a>
+  </div>
+</section>
+<section class="panel" id="rbAutomationPanel" aria-label="Automação dos convites">
+  <div class="panel-head">
+    <div>
+      <span class="overline">CONVITES SOLICITADOS PELO DESTINATÁRIO</span>
+      <h2>Enviar link automaticamente após o aceite</h2>
+      <p>Ao clicar em “Entrar no grupo”, um contato já autorizado recebe o link por mensagem privada, sem envio manual.</p>
+    </div>
+    <span class="status-pill" id="rbAutoStatus">Desativado</span>
+  </div>
+  <p class="context-note" id="rbAutoExplanation">Este recurso está desativado por padrão. Não envia nada aos contatos bloqueados, sem consentimento ou com identidade incerta.</p>
+  <p id="rbLatestOutcome" class="context-note" role="status" aria-live="polite" hidden></p>
+  <div class="form-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <label class="checkline" for="rbAutoConsent">
+      <input type="checkbox" id="rbAutoConsent">
+      Confirmo que os contatos estão autorizados e aceito habilitar os envios solicitados por botão.
+    </label>
+    <button type="button" id="rbAutoEnable" class="btn btn-primary">Ativar automação</button>
+    <button type="button" id="rbAutoDisable" class="btn btn-quiet" hidden>Desativar automação</button>
+  </div>
+  <p id="rbAutoFeedback" class="context-note" role="status" aria-live="polite">
+    Máximo de 50 envios em 24 horas, um envio por contato e sem repetição automática.
+    O botão não inclui a pessoa diretamente no grupo: ela confirma a entrada ao abrir o convite.
+  </p>
+</section>
+<section class="stats-grid stats-grid-5" aria-label="Resumo dos cliques">
+  ${estatistica('Respostas recebidas','rbAll','Identificadas pelo webhook')}
+  ${estatistica('Aceites','rbAccept','Intenção de participar','stat-ok')}
+  ${estatistica('Recusas','rbDecline','Pediu para não receber','stat-danger')}
+  ${estatistica('Bloqueios','rbBlocked','Novos convites impedidos','stat-attention')}
+  ${estatistica('Pendentes','rbPending','Precisam de confirmação')}
+</section>
+<section class="panel">
+  <div class="panel-head"><div><h2>Histórico das respostas</h2>
+    <p>Identificadores e telefones parcialmente ocultos. Só cliques com remetente verificável podem bloquear.</p>
+    </div><button type="button" class="btn btn-quiet" id="rbRefresh">Atualizar</button>
+  </div>
+  <div id="rbFeedback" class="context-note" role="status" aria-live="polite">Carregando respostas verificadas...</div>
+  <div class="tabbar" id="rbFilters" role="group" aria-label="Filtrar cliques">
+    <button class="filter-tab is-selected" aria-pressed="true" data-choice="todos" type="button">Todas</button>
+    <button class="filter-tab" aria-pressed="false" data-choice="aceitar" type="button">Entrar no grupo</button>
+    <button class="filter-tab" aria-pressed="false" data-choice="recusar" type="button">Não tenho interesse</button>
+    <button class="filter-tab" aria-pressed="false" data-choice="pendentes" type="button">Pendentes</button>
+  </div>
+  <div class="table-scroll">
+    <table class="contact-table"><thead><tr><th scope="col">Quando</th>
+      <th scope="col">Contato</th><th scope="col">Resposta</th>
+      <th scope="col">Situação</th><th scope="col">Próxima ação</th>
+    </tr></thead>
+    <tbody id="rbRows"><tr><td colspan="5" class="state-empty">Aguardando eventos...</td></tr></tbody></table>
+  </div>
+  <div class="panel-bottom"><small>O clique em “Entrar” não desbloqueia contatos. A resposta automática envia somente o link; o destinatário confirma a entrada. Recusas verificadas bloqueiam novos convites.</small></div>
+</section>
+<p class="context-note"><strong>Privacidade:</strong> eventos anteriores à ativação desta integração não possuíam identidade verificável e não foram importados. Para enviar um convite automático, ative a opção acima e confirme o consentimento. Em caso de falha incerta, confira o WhatsApp sem repetir o envio.</p>`;
+
+export function renderGestao(pagina='inicio'){
+  if(!['inicio','contatos','denuncias','respostas'].includes(pagina))throw new Error('Página desconhecida.');
+  return shell(pagina,{inicio:inicioClean,contatos:contacts,denuncias:reports,respostas:responses}[pagina]);
+}

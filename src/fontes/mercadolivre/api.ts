@@ -1,4 +1,5 @@
 import type { Oferta } from "../types.js";
+import { descontoMinimoOferta } from "../../ofertas/qualidade.js";
 import {
   MercadoLivreReautorizacaoNecessaria,
   obterTokenMercadoLivreValido
@@ -278,16 +279,20 @@ export class MercadoLivreApiFonte {
       !process.env.MERCADOLIVRE_REFRESH_TOKEN?.trim()
     ) {
       throw new MercadoLivreReautorizacaoNecessaria(
-        "Mercado Livre API sem autorização configurada."
+        "Mercado Livre API sem autoriza��o configurada."
       );
     }
 
     const ofertas: Oferta[] = [];
     const produtosVistos = new Set<string>();
-    const maximo = Math.max(
-      1,
-      Number(process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY ?? 5)
-    );
+    const quantidade = Number(process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY ?? 10);
+    const maximo = Number.isFinite(quantidade)
+      ? Math.max(1, Math.min(16, Math.trunc(quantidade)))
+      : 10;
+    // S� as ofertas com DESCONTO verificado contam para encerrar a varredura.
+    // Antes, os primeiros 5 an�ncios sem desconto impediam a busca de avan�ar.
+    const minimoVerificado = descontoMinimoOferta();
+    let elegiveisPorDesconto = 0;
     const paginas = Math.max(
       1,
       Math.min(
@@ -356,20 +361,24 @@ export class MercadoLivreApiFonte {
             ? melhor.original_price
             : undefined;
 
+        const percentualVerificado = desconto(melhor.price, anterior);
         ofertas.push({
           plataforma: "Mercado Livre",
           produtoId: produto.id,
           titulo: produto.name,
           precoAtual: melhor.price,
           precoAnterior: anterior,
-          descontoPercentual: desconto(melhor.price, anterior),
+          descontoPercentual: percentualVerificado,
           imagem: imagemProduto(produto),
           urlProduto: urlProdutoCatalogo(produto.id),
           categoria: this.consulta,
           encontradoEm: new Date()
         });
 
-        if (ofertas.length >= maximo) return ofertas;
+        if ((percentualVerificado ?? 0) >= minimoVerificado) {
+          elegiveisPorDesconto++;
+        }
+        if (elegiveisPorDesconto >= maximo) return ofertas;
       }
 
       const total = dados.paging?.total;

@@ -158,7 +158,7 @@ test('fluxo com duas etapas, painel privado, csv seguro, descadastro e nenhum di
 
     const antigo = await fetch(base + '/painel', { redirect:'manual' });
     assert.equal(antigo.status, 302);
-    assert.equal(antigo.headers.get('location'), '/campanhas');
+    assert.equal(antigo.headers.get('location'), '/enviar');
     assert.equal((await fetch(base + '/assets/painel.js')).status, 404,
       'Script obsoleto não pode permanecer publicado');
     assert.equal((await fetch(base + '/sair?token=' + token)).status, 200);

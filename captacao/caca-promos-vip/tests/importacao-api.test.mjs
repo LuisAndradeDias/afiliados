@@ -56,7 +56,7 @@ test('API exige admin e importa apenas números com autorização declarada por 
     assert.equal((await (await fetch(base + '/api/admin/importados', { headers: { cookie } })).json()).total, 0);
     const antiga = await fetch(base + '/painel', { redirect:'manual' });
     assert.equal(antiga.status, 302);
-    assert.equal(antiga.headers.get('location'), '/campanhas');
+    assert.equal(antiga.headers.get('location'), '/enviar');
     assert.equal((await fetch(base + '/assets/importacao.js')).status, 404);
     const novo = await (await fetch(base + '/campanhas')).text();
     assert.match(novo, /id="importFile"/);

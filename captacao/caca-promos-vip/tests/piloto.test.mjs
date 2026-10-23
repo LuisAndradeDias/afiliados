@@ -43,7 +43,7 @@ test('página, CTA independente do cadastro e relatório agregado', async () => 
     assert.equal(landingParceria.status, 200);
     const raiz = await fetch(base + '/', { redirect:'manual' });
     assert.equal(raiz.status, 302);
-    assert.equal(raiz.headers.get('location'), '/campanhas');
+    assert.equal(raiz.headers.get('location'), '/enviar');
 
     const saida = await fetch(base + '/entrar?origem=instagram', { redirect: 'manual' });
     assert.equal(saida.status, 303);

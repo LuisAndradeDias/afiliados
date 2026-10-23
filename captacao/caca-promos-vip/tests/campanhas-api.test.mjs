@@ -25,7 +25,7 @@ test('painel de campanhas requer administrador e só permite fila com opt-in', a
   const painel=await fetch(url+'/campanhas');
   assert.equal(painel.status,200);
   const html=await painel.text();
-  assert.match(html,/Central de campanhas|CENTRAL DE CAMPANHAS/);
+  assert.match(html,/CENTRAL DE GESTÃO|Enviar convites/);
   assert.match(html,/id="importFile"/);
   assert.match(html,/id="singleText"/);
   const javascript=await fetch(url+'/assets/campanhas.js');

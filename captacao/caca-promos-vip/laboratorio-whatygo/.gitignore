@@ -1,0 +1,15 @@
+# Laboratorio isolado - somente scripts e documentacao sob Git
+.env
+.env.*
+!.env.example
+private/
+runtime/
+logs/
+tools/
+_upstream/
+cache/
+bin/
+*.log
+*.pid
+*.sqlite
+*.db

@@ -5,7 +5,8 @@ import { MercadoLivreApiFonte } from "../fontes/mercadolivre/api.js";
 import { MercadoLivreReautorizacaoNecessaria } from "../afiliados/mercadolivre-token.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
-import { avaliarQualidadeOferta } from "../ofertas/qualidade.js";
+import { avaliarQualidadeOferta, descontoMinimoOferta } from "../ofertas/qualidade.js";
+import { consultasMercadoLivre } from "../fontes/mercadolivre/busca-config.js";
 import { filtroHistoricoOfertas, ultimasOfertasEnviadas } from "../ofertas/historico.js";
 import { escolherOfertaVariada, planejarBuscasMercadoLivre } from "../ofertas/diversidade.js";
 import {
@@ -13,22 +14,15 @@ import {
   obterCuponsMercadoLivre
 } from "../afiliados/mercadolivre-cupons.js";
 
-const consultas = (
-  process.env.MERCADOLIVRE_QUERIES ??
-  process.env.MERCADOLIVRE_QUERY ??
-  "smartphone"
-)
-  .split(",")
-  .map((item) => item.trim())
-  .filter(Boolean);
+const consultas = consultasMercadoLivre();
 
 const limite = Number(process.env.MERCADOLIVRE_LIMIT ?? 10);
-const minimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
+const minimo = descontoMinimoOferta();
 const consultasPorRodada = Math.max(
   1,
   Math.min(
     consultas.length,
-    Number(process.env.MERCADOLIVRE_QUERIES_PER_RUN ?? 2)
+    Number(process.env.MERCADOLIVRE_QUERIES_PER_RUN ?? 3)
   )
 );
 const rotacaoPath = "data/rotacao-mercadolivre.json";
@@ -49,11 +43,15 @@ const plano = planejarBuscasMercadoLivre(
   process.env.MERCADOLIVRE_EXTRA_IF_LOW_SHARE !== "false"
 );
 const consultasUsadas = plano.consultas;
+console.log(
+  "Mercado Livre: busca rotativa de " + consultasUsadas.length +
+  " categorias entre " + consultas.length + " dispon�veis. " +
+  "Filtro editorial real: desconto m�nimo " + minimo + "%, economia em reais e vendedor verde."
+);
 const bloqueadoPorHistorico = await filtroHistoricoOfertas();
 let consultasRealizadas = 0;
-const cupons = await obterCuponsMercadoLivre().catch((error) => {
-  const mensagem = error instanceof Error ? error.message : String(error);
-  console.warn(`Mercado Livre: catálogo de cupons indisponível: ${mensagem}`);
+const cupons = await obterCuponsMercadoLivre().catch(() => {
+  console.warn("Mercado Livre: sem cupons oficiais verific�veis nesta rodada; buscando descontos dos pr�prios an�ncios.");
   return [];
 });
 const porProduto = new Map<string, Oferta>();
@@ -127,7 +125,7 @@ for (const oferta of todas) {
 }
 if (motivos.size) {
   console.log(
-    "Mercado Livre: diagnóstico dos filtros: " +
+    "Mercado Livre: diagn�stico dos filtros: " +
     [...motivos].map(([motivo, total]) => `${motivo}=${total}`).join(", ")
   );
 }
@@ -145,8 +143,8 @@ if (escolhida) {
 }
 
 console.log(
-  `Mercado Livre: ${todas.length} ofertas encontradas, ` +
-  `${elegiveis.length} elegiveis com minimo de ${minimo}% ` +
+  `Mercado Livre: ${todas.length} candidatos com vendedor verificado, ` +
+  `${elegiveis.length} elegiveis com minimo real de ${minimo}% ` +
   `(cupons ativos considerados: ${cupons.length}).`
 );
 if (!melhor) {

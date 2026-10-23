@@ -57,7 +57,7 @@ try {
     if (!$ok) { throw ('O painel não iniciou. Consulte: '+$erros) }
   }
 
-  $destino = if ($CadastroVoluntario) { '/c/instagram' } else { '/campanhas' }
+  $destino = if ($CadastroVoluntario) { '/c/instagram' } else { '/inicio' }
   if (!$NoBrowser) {
     Start-Process ($base+$destino)
   }

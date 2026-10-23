@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { contatoComConsentimento } from './contatos.mjs';
 
 const LIMITE_CAMPANHAS = 150;
 const LIMITE_DESTINATARIOS = 1500;
@@ -16,10 +17,7 @@ function textoSeguro(valor, maximo, minimo = 0) {
 }
 
 function confirmarContato(contato) {
-  return Boolean(contato && contato.status === 'ativo' &&
-    contato.consentimentoConfirmadoEm &&
-    contato.evidencia === 'checkbox-e-mensagem-iniciada-pelo-titular' &&
-    !contato.descadastroEm);
+  return contatoComConsentimento(contato);
 }
 function mascarar(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -205,5 +203,23 @@ export function iniciarCampanhas(dataDir, contatos, agora = () => new Date(), bl
     return { ignoradoEm:item.ignoradoEm };
   }
 
-  return { destinatarios, criar, listar, obter, prepararMensagem, registrar, ignorar };
+  function encerrarPendenciasContato(contatoId){
+    const dados=ler();
+    let encerrados=0;
+    for(const campanha of dados.campanhas){
+      for(const item of campanha.itens){
+        if(item.contatoId===contatoId&&item.status==='pendente'){
+          item.status='ignorado';
+          item.ignoradoEm=agora().toISOString();
+          item.motivoIgnorado='nova-autorizacao-exige-nova-campanha';
+          encerrados++;
+        }
+      }
+    }
+    if(encerrados)salvar(dados);
+    return {encerrados};
+  }
+
+  return { destinatarios, criar, listar, obter, prepararMensagem, registrar,
+    ignorar,encerrarPendenciasContato };
 }

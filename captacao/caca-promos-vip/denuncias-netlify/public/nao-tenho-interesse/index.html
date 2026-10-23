@@ -1,0 +1,30 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="theme-color" content="#101923">
+<title>Não tenho interesse | Caça Promos VIP</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#f1f7fb;background:#101923;color-scheme:dark}
+*{box-sizing:border-box}
+body{min-height:100vh;margin:0;padding:20px;display:grid;place-items:center;background:#101923}
+main{width:min(470px,100%);background:#192838;border:1px solid #405367;border-radius:17px;padding:28px}
+.brand{font-size:12px;font-weight:800;letter-spacing:.05em;color:#7fe1bc}
+h1{font-size:clamp(28px,5vw,35px);line-height:1.17;margin:18px 0}
+p{font-size:14px;line-height:1.65;color:#cfdee8}
+button{width:100%;font:inherit;border:0;border-radius:10px;background:#7fe1bc;color:#0b2b26;
+font-size:15px;font-weight:800;padding:15px 18px;margin-top:10px;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+button:focus-visible{outline:3px solid #f1f7fb;outline-offset:3px}
+#resultado{margin-top:18px;border:1px solid #488675;background:#203b37;border-radius:11px;
+padding:15px;line-height:1.6;font-size:14px;color:#e1f9f0}
+#resultado.erro{background:#4c3037;border-color:#b16c76;color:#ffe4e4}
+small{display:block;color:#a9bcc9;font-size:12px;line-height:1.6;margin-top:16px}
+</style><script src="/assets/recusar.js" defer></script></head>
+<body><main><div class="brand">CAÇA PROMOS VIP</div>
+<h1>Não tenho interesse</h1>
+<p>Tudo bem! Se não deseja receber novos convites para nosso grupo de ofertas, confirme sua preferência abaixo.</p>
+<p>Depois da confirmação, registraremos seu pedido de saída. Nosso sistema bloqueará novos convites para o número associado a esta mensagem quando sincronizar.</p>
+<button id="confirmarRecusa" type="button">Não quero receber novos convites</button>
+<div id="resultado" role="status" aria-live="polite" hidden></div>
+<small>Você não sairá de grupos dos quais já participa. Seu número não aparece nesta página.
+Este pedido não é uma denúncia ao WhatsApp.</small>
+</main></body></html>

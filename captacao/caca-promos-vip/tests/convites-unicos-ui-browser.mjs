@@ -12,7 +12,7 @@ const msg=[
   '🎁 Convite especial de promoções!',
   'Olá! Você autorizou receber nossos convites no WhatsApp.',
   'Venha conhecer um grupo gratuito de ofertas com descontos e cupons.',
-  'Para não receber mais convites, toque em Denunciar convite ou responda SAIR.',
+  'Para não receber mais convites, responda SAIR.',
 ].join('\n');
 
 test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número',async t=>{
@@ -51,16 +51,18 @@ test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número
   await page.waitForFunction(()=>document.querySelector('#singleText').value.length>40,
     {timeout:9000});
   assert.equal(await page.locator('#sendCloudBatch').isDisabled(),true);
-  assert.equal(await page.locator('#metaConnectionBadge').innerText(),'Aguardando número');
+  assert.equal(await page.locator('#metaConnectionBadge').textContent(),'Aguardando número');
   assert.equal(await page.locator('.phone-choice').count(),2);
 
   await page.locator('#singleText').fill(msg);
   await page.locator('#groupLink').fill('https://chat.whatsapp.com/GrupoFicticio456');
-  await page.locator('#templateName').fill('convite_ofertas_v1');
+  assert.equal(await page.locator('#templateName').inputValue(),'convite_ofertas_v1');
+  await page.locator('#messagePreview > summary').click();
   assert.equal(await page.locator('#singlePreview').innerText(),msg);
   await page.locator('#saveSingle').click();
   await page.waitForFunction(()=>document.querySelector('#singleSaveStatus')
     .textContent.includes('salvo em'));
+  await page.locator('#advancedMeta > summary').click();
   const request=page.waitForEvent('download');
   await page.locator('#downloadModel').click();
   const download=await request;
@@ -68,7 +70,7 @@ test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número
   assert.equal(content.category,'MARKETING');
   assert.equal(content.components[0].text,msg);
   assert.deepEqual(content.components[1].buttons.map(b=>b.text),[
-    'Entrar no grupo','Denunciar convite',
+    'Entrar no grupo','Não tenho interesse',
   ]);
   assert.equal(content.components[0].text.includes('{{'),false);
 
@@ -77,7 +79,7 @@ test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número
     buffer:Buffer.from('\ufeffnome;telefone\nPessoa Autorizada;11988887777\nPessoa Sem Optin;+55 (21) 99999-7777\nDUPLICADO;+55 11 98888-7777'),
   });
   await page.waitForFunction(()=>document.querySelector('#cloudEligible').textContent.startsWith('1'));
-  assert.equal(await page.locator('#cloudBlocked').innerText(),'1 fora da fila');
+  assert.equal(await page.locator('#cloudBlocked').textContent(),'1 fora da fila');
   await page.locator('#simulateSingle').click();
   await page.waitForFunction(()=>document.querySelector('#cloudPreviewNotice').textContent.includes('SIMULAÇÃO'));
   assert.match(await page.locator('#cloudPreviewNotice').innerText(),/Nenhum envio realizado/);
@@ -91,9 +93,10 @@ test('painel: uma mensagem para todos, dois botões, rascunho e fila sem número
   assert.equal(queue.filas[0].total,1);
 
   await page.reload({waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>document.querySelector('#singleText').value===
-    '🎁 Convite especial de promoções!\nOlá! Você autorizou receber nossos convites no WhatsApp.\nVenha conhecer um grupo gratuito de ofertas com descontos e cupons.\nPara não receber mais convites, toque em Denunciar convite ou responda SAIR.');
+  await page.waitForFunction(expected=>document.querySelector('#singleText').value===expected,
+    msg);
   assert.equal(await page.locator('#singleText').inputValue(),msg);
+  await page.locator('#advancedMeta > summary').click();
   assert.match(await page.locator('#cloudQueueList').innerText(),/1 pendentes/);
   await page.screenshot({path:'C:\\projeto01\\captacao\\caca-promos-vip\\dados\\previa-acer\\convite-unico-ui-qa.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});

@@ -120,7 +120,7 @@ test('envio real por lote é bloqueado sem confirmação ou sem template aprovad
       components:[
         {type:'BODY',text:MENSAGEM_PADRAO},
         {type:'BUTTONS',buttons:[{type:'QUICK_REPLY',text:'Entrar no grupo'},
-          {type:'QUICK_REPLY',text:'Denunciar convite'}]},
+          {type:'QUICK_REPLY',text:'Não tenho interesse'}]},
       ],
     }]})};
   };
@@ -147,7 +147,7 @@ test('modelo aprovado, chamada falsa à Meta, status de entrega e limite diário
         components:[
           {type:'BODY',text:MENSAGEM_PADRAO},
           {type:'BUTTONS',buttons:[{type:'QUICK_REPLY',text:'Entrar no grupo'},
-            {type:'QUICK_REPLY',text:'Denunciar convite'}]},
+            {type:'QUICK_REPLY',text:'Não tenho interesse'}]},
         ],
       }]})};
     }
