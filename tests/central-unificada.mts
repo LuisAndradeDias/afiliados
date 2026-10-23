@@ -44,3 +44,26 @@ test("Figma design tokens are exposed on local route and referenced by cockpit",
   assert.match(server, /"\/central\/assets\/central\.tokens\.css": "central\.tokens\.css"/);
   assert.match(css, /prefers-reduced-motion/);
 });
+
+test("redesign das ofertas preserva os controles e liga o CSS sem editar os robôs", async () => {
+  const [html, css, server] = await Promise.all([
+    file("src/painel/public/index.html"),
+    file("src/painel/public/ofertas-v2.css"),
+    file("src/painel/server.ts")
+  ]);
+  assert.match(html, /href="\/central\/assets\/ofertas-v2\.css"/);
+  assert.match(html, /href="\/central\/assets\/central\.tokens\.css"/);
+  assert.match(html, /class="ofertas-workspace-nav"/);
+  for (const id of [
+    "cycleToggleButton", "tempoMedioButton", "tempoCurtoButton",
+    "launchCard", "flowCard", "reviewCard", "instagramCard",
+    "mlConnect", "openWhatsappConnectionButton"
+  ]) {
+    assert.ok(html.includes('id="' + id + '"'), "Controle original ausente: " + id);
+  }
+  assert.match(html, /data-action="monitor-set"/);
+  assert.match(server, /"\/central\/assets\/ofertas-v2\.css": "ofertas-v2\.css"/);
+  assert.match(css, /--af-brand-primary/);
+  assert.match(css, /:focus-visible/);
+  assert.match(css, /prefers-reduced-motion/);
+});
