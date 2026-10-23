@@ -41,6 +41,8 @@ const scripts = new Map([
 const styles=new Map([
   ['/assets/painel-theme.css',readFileSync(join(sourceDir,'assets','painel-theme.css'),'utf8')],
   ['/assets/layout-clean.css',readFileSync(join(sourceDir,'assets','layout-clean.css'),'utf8')],
+  ['/assets/afiliados-v2.tokens.css',readFileSync(join(sourceDir,'assets','afiliados-v2.tokens.css'),'utf8')],
+  ['/assets/afiliados-v2.css',readFileSync(join(sourceDir,'assets','afiliados-v2.css'),'utf8')],
   ['/assets/envio-rapido.css',readFileSync(join(sourceDir,'assets','envio-rapido.css'),'utf8')],
 ]);
 const headersBase = {
@@ -328,12 +330,12 @@ export function criarPiloto({
       }
       if (['/inicio','/contatos','/denuncias','/respostas-botoes'].includes(pathname) && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
-          'Área administrativa disponível somente no ACER, via 127.0.0.1.');
+          'Área administrativa disponível somente neste computador, via 127.0.0.1.');
         return codigoHtml(res,200,aplicarLayoutClean(renderGestao(pathname==='/respostas-botoes'?'respostas':pathname.slice(1)),pathname==='/respostas-botoes'?'respostas':pathname.slice(1)));
       }
       if (pathname === '/enviar' && leitura) {
         if (!acessoCampanhasLocais(req))return codigoTexto(res,403,
-          'Envio guiado disponível somente no ACER, via 127.0.0.1.');
+          'Envio guiado disponível somente neste computador, via 127.0.0.1.');
         return codigoHtml(res,200,aplicarLayoutClean(renderEnvioRapido(convitesUnicos.configuracao()),'enviar'));
       }
       if (pathname === '/campanhas' && leitura) {

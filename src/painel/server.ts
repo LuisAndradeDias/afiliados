@@ -2045,6 +2045,41 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // Portal administrativo local, sem proxy de dados sensíveis ou automações.
+    if (req.method === "GET" && requestUrl.pathname === "/central") {
+      const html = await readFile(resolve(raiz, "src", "painel", "public", "central.html"), "utf8");
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "x-frame-options": "DENY" });
+      res.end(html);
+      return;
+    }
+
+    if (req.method === "GET" && requestUrl.pathname.startsWith("/central/assets/")) {
+      const assets: Record<string, string> = {
+        "/central/assets/central.css": "central.css",
+        "/central/assets/ofertas-v2.css": "ofertas-v2.css",
+        "/central/assets/central.tokens.css": "central.tokens.css",
+        "/central/assets/central.js": "central.js"
+      };
+      const assetName = assets[requestUrl.pathname];
+      if (!assetName) { json(res, 404, { ok: false, mensagem: "Recurso não encontrado." }); return; }
+      const content = await readFile(resolve(raiz, "src", "painel", "public", assetName), "utf8");
+      res.writeHead(200, {
+        "content-type": assetName.endsWith(".css") ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8",
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff"
+      });
+      res.end(content);
+      return;
+    }
+
+    // O painel anterior continua integralmente acessível neste caminho.
+    if (req.method === "GET" && requestUrl.pathname === "/ofertas") {
+      const html = await readFile(paginaPath, "utf8");
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(html);
+      return;
+    }
+
     if (req.method === "GET" && requestUrl.pathname === "/") {
       const html = await readFile(paginaPath, "utf8");
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });

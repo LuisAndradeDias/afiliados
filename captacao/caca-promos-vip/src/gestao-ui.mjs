@@ -38,7 +38,7 @@ function shell(pagina,conteudo){
     <span class="local-status" title="Acesso permitido somente neste computador"><i></i> Local</span>
   </div></header>
   <main id="main" class="container main-area">${conteudo}</main>
-  <footer class="container site-footer">Caça Promos VIP · Telefones e nomes ficam no ACER · O Netlify recebe somente identificadores assinados</footer>
+  <footer class="container site-footer">Caça Promos VIP · Telefones e nomes permanecem neste computador · O Netlify recebe somente identificadores assinados</footer>
   <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
   </body></html>`;
 }
