@@ -14,3 +14,7 @@ data/*.png
 data/*.gif
 data/*.signal
 data/mercadolivre-profile/
+
+# Private runtime logs/data and local Cloudflare tunnel binary
+/data/
+/tools/cloudflared/
