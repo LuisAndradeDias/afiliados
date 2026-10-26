@@ -63,3 +63,13 @@ Antes dos novos scripts, `node --test tests/instalacao-windows.test.mjs` falhou 
 - Registro local: `C:\\afiliados-v2-homologacao\\diagnosticos-local\\REGISTRO_MIGRACAO_ACER.txt`. Original `C:\\projeto01` permanece na branch anterior e commit `ce707cc`.
 
 **Ainda aberto:** revisão independente dos PRs, verificar sessão Chrome WhatsApp sem envio, OAuth Mercado Livre supervisionado, conciliação de eventuais tentativas incertas e autorização do corte do serviço. Não iniciar monitor automático antes dessas verificações.
+
+## Verificação do Mercado Livre e preservação de rollback
+
+- Uma renovação oficial de refresh token foi executada após mock RED→GREEN de coordenação (3/3 testes, sem credenciais reais), verificação de locks/processos e cópias protegidas pré-rotação.
+- Resultado: `RENOVADO_E_SINCRONIZADO`, ambos arquivos `.env` original/staging têm os mesmos access/refresh tokens e expiração; demais variáveis do legado inalteradas. Token novo válido por aproximadamente 6 h; backup local pós-rotação verificado e protegido.
+- A API real de usuário retornou HTTP 200. Busca segura de air fryer com token explícito, sem refresh e sem escrita, retornou 2 publicações e uma com desconto de pelo menos 20%. Nenhuma postagem WhatsApp.
+- Root cause do sintoma de zero ofertas: `products/search` retorna resultados, mas muitos `/products/{id}/items` devolvem 404 por não haver anúncios; o filtro local de 25% e uma categoria por rodada também reduzem as ofertas aprovadas. Testes também encontraram um HTTP 429 por excesso de consultas, exigindo respeito aos limites da API.
+- Ruling: não relaxar o filtro `MIN_DISCOUNT_PERCENT=25` sem pedido explícito do usuário; evitar ampliar automaticamente o número de consultas e causar novos 429. Custo: nem toda rodada terá oferta, mesmo com a API autenticada.
+- Ruling: o token rotativo foi sincronizado também no legado, já que deixar o antigo refresh na instalação de rollback o tornaria inútil. O snapshot anterior à rotação é histórico; usar sempre o pós-rotação para eventual restauração de credenciais.
+- O serviço Central foi reiniciado na porta 3030 com monitor e autoenvio desligados; a Captação na porta 3040 permaneceu online. PRs continuam sem merge.
