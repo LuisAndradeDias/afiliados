@@ -5,6 +5,14 @@ import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { normalizarTagAmazon, validarTagAmazon } from "./dominios/amazon-tag.js";
+import {
+  redirectMercadoLivreEhValido, credenciaisMercadoLivreConfiguradas,
+  criarUrlAutorizacaoMercadoLivre,
+  trocarCodigoMercadoLivre as trocarCodigoMercadoLivreNoDominio,
+  type TokenMercadoLivre
+} from "./dominios/mercadolivre-oauth.js";
+import { arquivoDoRobo as arquivoDo } from "./dominios/scripts-robo.js";
 import { responderRotaVisual } from "./rotas-visuais.js";
 import {
   cooldownHoras,
@@ -348,25 +356,6 @@ function registrar(origem: string, texto: string): void {
 }
 
 
-function normalizarTagAmazon(valor: string): string {
-  const recebido = valor.trim();
-  if (!recebido) return "";
-
-  try {
-    const url = new URL(recebido);
-    const tag = url.searchParams.get("tag");
-    if (tag) return tag.trim();
-  } catch {
-    // O usuário informou somente a tag.
-  }
-
-  return recebido;
-}
-
-function validarTagAmazon(tag: string): boolean {
-  return /^[A-Za-z0-9_-]{3,64}$/.test(tag);
-}
-
 async function salvarVariavelEnv(nome: string, valor: string): Promise<void> {
   const envPath = resolve(raiz, ".env");
   const atual = await readFile(envPath, "utf8").catch(() => "");
@@ -394,24 +383,13 @@ function redirectMercadoLivre(): string {
 }
 
 function redirectMercadoLivreValido(): boolean {
-  const valor = redirectMercadoLivre();
-  if (!valor) return false;
-
-  try {
-    const url = new URL(valor);
-    return (
-      url.protocol === "https:" &&
-      url.pathname === "/oauth/mercadolivre/callback"
-    );
-  } catch {
-    return false;
-  }
+  return redirectMercadoLivreEhValido(redirectMercadoLivre());
 }
 
 function appMercadoLivreConfigurada(): boolean {
-  return Boolean(
-    process.env.MERCADOLIVRE_CLIENT_ID?.trim() &&
-      process.env.MERCADOLIVRE_CLIENT_SECRET?.trim()
+  return credenciaisMercadoLivreConfiguradas(
+    process.env.MERCADOLIVRE_CLIENT_ID,
+    process.env.MERCADOLIVRE_CLIENT_SECRET
   );
 }
 
@@ -425,53 +403,23 @@ function urlAutorizacaoMercadoLivre(): string {
       "Configure um Redirect URI HTTPS válido terminando em /oauth/mercadolivre/callback."
     );
   }
-
+  // O estado segue sendo gerado no servidor após a verificação de credenciais.
   mercadoLivreOauthState = randomBytes(24).toString("hex");
-  const url = new URL("https://auth.mercadolivre.com.br/authorization");
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", redirectMercadoLivre());
-  url.searchParams.set("state", mercadoLivreOauthState);
-  return url.toString();
-}
-
-interface TokenMercadoLivre {
-  access_token: string;
-  refresh_token?: string;
-  expires_in?: number;
-  user_id?: number;
+  return criarUrlAutorizacaoMercadoLivre({
+    clientId,
+    clientSecret: process.env.MERCADOLIVRE_CLIENT_SECRET,
+    redirectUri: redirectMercadoLivre(),
+    state: mercadoLivreOauthState
+  });
 }
 
 async function trocarCodigoMercadoLivre(code: string): Promise<TokenMercadoLivre> {
-  const clientId = process.env.MERCADOLIVRE_CLIENT_ID?.trim();
-  const clientSecret = process.env.MERCADOLIVRE_CLIENT_SECRET?.trim();
-  if (!clientId || !clientSecret) {
-    throw new Error("Credenciais do aplicativo Mercado Livre não configuradas.");
-  }
-
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    client_id: clientId,
-    client_secret: clientSecret,
+  return trocarCodigoMercadoLivreNoDominio({
     code,
-    redirect_uri: redirectMercadoLivre()
+    clientId: process.env.MERCADOLIVRE_CLIENT_ID,
+    clientSecret: process.env.MERCADOLIVRE_CLIENT_SECRET,
+    redirectUri: redirectMercadoLivre()
   });
-
-  const resposta = await fetch("https://api.mercadolibre.com/oauth/token", {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/x-www-form-urlencoded"
-    },
-    body
-  });
-
-  const texto = await resposta.text();
-  if (!resposta.ok) {
-    throw new Error(`Mercado Livre OAuth HTTP ${resposta.status}: ${texto.slice(0, 300)}`);
-  }
-
-  return JSON.parse(texto) as TokenMercadoLivre;
 }
 
 async function salvarTokenMercadoLivre(token: TokenMercadoLivre): Promise<void> {
@@ -530,21 +478,6 @@ async function atualizarOfertaAtualComTag(tag: string): Promise<void> {
 
   await writeFile(pacotePath, JSON.stringify(pacote, null, 2), "utf8");
   if (novaMensagem) await writeFile(mensagemPath, novaMensagem, "utf8");
-}
-
-function arquivoDo(script: string): string {
-  const mapa: Record<string, string> = {
-    buscar: "src/robo/whatsapp-preview.ts",
-    login: "src/robo/whatsapp-login.ts",
-    preparar: "src/robo/whatsapp-preparar.ts",
-    "mercadolivre-login": "src/robo/mercadolivre-login.ts",
-    "mercadolivre-buscar": "src/robo/mercadolivre-preview.ts",
-    "mercadolivre-whatsapp": "src/robo/mercadolivre-whatsapp.ts",
-    automatico: "src/robo/automatico.ts"
-  };
-  const arquivo = mapa[script];
-  if (!arquivo) throw new Error(`Ação desconhecida: ${script}`);
-  return arquivo;
 }
 
 async function limparPreparacaoAtual(
