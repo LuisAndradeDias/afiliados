@@ -15,8 +15,7 @@ test('perda do Chrome após preparo ou tentativa é sempre incerta, não sucesso
 
 test('controlador informa ocupação enquanto processo não concluiu, sem confundir envio confirmado', () => {
   for (const fase of ['inativo','iniciando','abrindo','pronto','enviando','cancelando']) {
-    assert.equal(faseOcupadaWhatsapp(fase,true),
-      !['inativo'].includes(fase) || fase === 'inativo',
+    assert.equal(faseOcupadaWhatsapp(fase,true), true,
       fase + ' deve seguir ocupado quando o processo existe (compatibilidade legado)');
   }
   for (const fase of ['confirmado','cancelado','erro','incerto']) {
