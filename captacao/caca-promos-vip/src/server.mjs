@@ -6,6 +6,8 @@ import { carregarAtivos } from './http/ativos.mjs';
 import { headersBase, codigoHtml, codigoTexto, json } from './http/respostas.mjs';
 import { corpoJson, corpoAssinado } from './http/corpos.mjs';
 import { validarOrigem, extrairSessao } from './http/origem-sessao.mjs';
+import { consultarGestaoLocal } from './consultas/gestao.mjs';
+import { consultarCampanhasLocais } from './consultas/campanhas.mjs';
 import { iniciarAnaliticos, normalizarOrigem, autorizarChave } from './analytics.mjs';
 import { iniciarContatos } from './contatos.mjs';
 import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
@@ -340,30 +342,16 @@ export function criarPiloto({
         if (!acessoCampanhasLocais(req,method==='POST'))
           return json(res,403,{ok:false,mensagem:'Acesso permitido apenas no painel local.'});
         try{
-          if (pathname === '/api/local/gestao/contatos' && leitura)
-            return json(res,200,{ok:true,...gestaoContatos.listar({
-              filtro:endereco.searchParams.get('filtro')||'todos',
-              busca:endereco.searchParams.get('busca')||'',
-              pagina:Number(endereco.searchParams.get('pagina')||1),
-              limite:15,
-            })});
-          if (pathname === '/api/local/gestao/contato' && leitura)
-            return json(res,200,{ok:true,contato:gestaoContatos.detalhe(
-              endereco.searchParams.get('id'))});
-          if (pathname === '/api/local/gestao/resumo' && leitura){
-            const todas=convitesUnicos.listarFilas();
-            const eventos=denuncias.listar();
-            return json(res,200,{ok:true,contatos:gestaoContatos.resumo(),
-              filas:{total:todas.length,web:todas.filter(f=>f.modo==='web').length,
-                pendentes:todas.reduce((n,f)=>n+(f.pendentes||0),0)},
-              whatsapp:{fase:controleWhatsapp.estado().fase},
-              denuncias:eventos.filter(e=>e.motivo==='denuncia-convite').slice(0,5),
-              sincronizacao:sincronizacaoNetlify.estado()});
-          }
-          if (pathname === '/api/local/gestao/denuncias' && leitura)
-            return json(res,200,{ok:true,ocorrencias:denuncias.listar(),
-              resumo:denuncias.resumo(),sincronizacao:sincronizacaoNetlify.estado()});
-          if (pathname === '/api/local/gestao/contato/bloquear' && method==='POST'){
+          if (leitura) {
+             // Guardas Host/Origin/loopback acima; não expor leituras em outras origens.
+             const consulta = consultarGestaoLocal({
+               pathname, busca: endereco.searchParams,
+               gestaoContatos, convitesUnicos, denuncias,
+               controleWhatsapp, sincronizacaoNetlify
+             });
+             if (consulta) return json(res, consulta.status, consulta.body);
+           }
+           if (pathname === '/api/local/gestao/contato/bloquear' && method==='POST'){
             if(!limitar(req,'gestao-bloquear',25))
               return json(res,429,{ok:false,mensagem:'Limite de bloqueios atingido.'});
             const entrada=await corpoJson(req,1500);
@@ -407,17 +395,16 @@ export function criarPiloto({
           return json(res, 403, { ok: false,
             mensagem: 'Operação permitida somente neste computador e nesta página local.' });
         }
-        if (pathname === '/api/local/campanhas' && leitura) {
-          return json(res, 200, { ok: true, campanhas: campanhas.listar() });
+        if (leitura) {
+          const consulta = consultarCampanhasLocais({
+            pathname, busca: endereco.searchParams,
+            campanhas, convitesUnicos, denuncias, sincronizacaoNetlify,
+            contatoResumo: () => contatos.resumo(),
+            controleWhatsapp, conexaoWhatsapp, configMeta, resumoMeta
+          });
+          if (consulta) return json(res, consulta.status, consulta.body);
         }
-        if (pathname === '/api/local/campanhas/meta' && leitura) {
-          return json(res, 200, { ok:true, integracao:resumoMeta(configMeta),
-            denuncias:denuncias.resumo() });
-        }
-        if (pathname === '/api/local/campanhas/denuncias' && leitura) {
-          return json(res, 200, { ok:true, ocorrencias:denuncias.listar(),
-            sincronizacao:sincronizacaoNetlify.estado() });
-        }
+        // Rotas com limites de uso e chamadas externas continuam neste servidor.
         if (pathname === '/api/local/campanhas/rapido/contatos' && leitura) {
           if(!limitar(req,'rapido-busca',120))return json(res,429,
             {ok:false,mensagem:'Muitas consultas de contatos. Aguarde.'});
@@ -425,46 +412,12 @@ export function criarPiloto({
             termo:endereco.searchParams.get('busca'),
           })});
         }
-        if (pathname === '/api/local/campanhas/convite/modelo' && leitura) {
-          return json(res, 200, { ok:true, configuracao:convitesUnicos.configuracao(),
-            modeloMeta:convitesUnicos.templateParaMeta() });
-        }
-        if (pathname === '/api/local/campanhas/convite/filas' && leitura) {
-          return json(res, 200, { ok:true, filas:convitesUnicos.listarFilas() });
-        }
-        if (pathname === '/api/local/campanhas/convite/manual/estatisticas' && leitura) {
-          return json(res, 200, {ok:true,controle:convitesUnicos.estatisticasManual()});
-        }
-        if (pathname === '/api/local/campanhas/convite/whatsapp/estado' && leitura) {
-          return json(res, 200, {ok:true,estado:controleWhatsapp.estado()});
-        }
-        if (pathname === '/api/local/campanhas/convite/whatsapp/conexao/estado' && leitura) {
-          return json(res, 200, {ok:true,estado:conexaoWhatsapp.estado()});
-        }
-        if (pathname === '/api/local/campanhas/convite/fila' && leitura) {
-          try {return json(res, 200, {ok:true,
-            fila:convitesUnicos.detalhesFila(endereco.searchParams.get('id'))});}
-          catch(erro){return json(res,404,{ok:false,mensagem:erro.message});}
-        }
         if (pathname === '/api/local/campanhas/convite/validacao' && leitura) {
           if (!limitar(req,'meta-validacao',60))return json(res,429,
             {ok:false,mensagem:'Limite de verificacoes atingido.'});
           try {return json(res, 200, {ok:true,validacao:await convitesUnicos.conferirModelo()});}
           catch {return json(res, 502, {ok:false,
             mensagem:'Nao foi possivel verificar o modelo na Meta.'});}
-        }
-        if (pathname === '/api/local/campanhas/destinatarios' && leitura) {
-          return json(res, 200, { ok: true, destinatarios: campanhas.destinatarios() });
-        }
-        if (pathname === '/api/local/campanhas/configuracao' && leitura) {
-          const resumo = contatos.resumo();
-          return json(res, 200, { ok: true, remetente: resumo.remetente,
-            remetenteConfigurado: resumo.remetenteConfigurado });
-        }
-        if (pathname === '/api/local/campanhas/detalhe' && leitura) {
-          try {
-            return json(res, 200, { ok: true, campanha: campanhas.obter(endereco.searchParams.get('id')) });
-          } catch (erro) { return json(res, 404, { ok: false, mensagem: erro.message }); }
         }
         if (method !== 'POST') return json(res, 405, {
           ok: false, mensagem: 'Método não permitido para campanhas.' });
