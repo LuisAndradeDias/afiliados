@@ -1,0 +1,43 @@
+name: Afiliados 2.0 - Dominios etapa 4.2
+
+on:
+  push:
+    branches:
+      - refactor/dominios-v2-etapa42
+  pull_request:
+    branches:
+      - refactor/modulos-http-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dominios-etapa42-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  domains:
+    name: Contratos de dominio, seguranca e UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar dependencias de desenvolvimento
+        run: npm ci
+      - name: Testar dominios de Ofertas sem rede nem envios
+        run: npx tsx --test tests/painel-dominios.mts
+      - name: Testar consultas de Captação com dados temporarios
+        run: node --test captacao/caca-promos-vip/tests/consultas-dominios.test.mjs
+      - name: Validar tipos TypeScript
+        run: npm run typecheck
+      - name: Contratos HTTP da etapa anterior
+        run: npm run test:central-unificada && npx tsx --test tests/rotas-visuais.mts && node --test captacao/caca-promos-vip/tests/http-modulos.test.mjs
+      - name: Verificar integracoes e consentimento com dados simulados
+        run: npx tsx tests/mercadolivre-auth.mts && npx tsx tests/whatsapp-auto-send.mts && node --test captacao/caca-promos-vip/tests/campanhas-local.test.mjs captacao/caca-promos-vip/tests/consentimento.test.mjs
+      - name: Smoke visual sem contatos e sem envios
+        run: node captacao/caca-promos-vip/tests/afiliados-v2-visual.mjs
