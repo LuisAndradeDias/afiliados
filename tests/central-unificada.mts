@@ -23,9 +23,11 @@ test("portal central separates HTML, styles and scripts", async () => {
 
 test("portal maintains existing routes and forbids proxy of captação", async () => {
   const src = await file("src/painel/server.ts");
-  assert.match(src, /requestUrl\.pathname === "\/central"/);
-  assert.match(src, /requestUrl\.pathname === "\/ofertas"/);
-  assert.match(src, /requestUrl\.pathname === "\/"/);
+  const visual = await file("src/painel/rotas-visuais.ts");
+  assert.match(src, /responderRotaVisual\\(/);
+  assert.match(visual, /pathname\.pathname === "\/central"/);
+  assert.match(visual, /pathname === "\/ofertas"/);
+  assert.match(visual, /pathname === "\/"/);
   assert.match(src, /requestUrl\.pathname === "\/api\/status"/);
   assert.match(src, /requestUrl\.pathname === "\/api\/action"/);
   assert.doesNotMatch(src, /createProxyMiddleware|httpProxy\.createProxyServer/);
@@ -35,7 +37,7 @@ test("Figma design tokens are exposed on local route and referenced by cockpit",
   const [tokens, css, server] = await Promise.all([
     file("src/painel/public/central.tokens.css"),
     file("src/painel/public/central.css"),
-    file("src/painel/server.ts")
+    file("src/painel/rotas-visuais.ts")
   ]);
   for (const key of ["--af-surface-canvas", "--af-brand-primary", "--af-nav-background", "--af-text-default", "--af-touch-min"]) {
     assert.ok(tokens.includes(key), key);
@@ -49,7 +51,7 @@ test("redesign das ofertas preserva os controles e liga o CSS sem editar os rob�
   const [html, css, server] = await Promise.all([
     file("src/painel/public/index.html"),
     file("src/painel/public/ofertas-v2.css"),
-    file("src/painel/server.ts")
+    file("src/painel/rotas-visuais.ts")
   ]);
   assert.match(html, /href="\/central\/assets\/ofertas-v2\.css"/);
   assert.match(html, /href="\/central\/assets\/central\.tokens\.css"/);
