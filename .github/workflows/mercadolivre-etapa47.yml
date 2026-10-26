@@ -1,0 +1,57 @@
+name: Afiliados 2.0 - Mercado Livre descoberta segura etapa 4.7
+
+on:
+  push:
+    branches:
+      - fix/mercadolivre-descoberta-etapa47
+  pull_request:
+    branches:
+      - chore/instalacao-segura-windows-etapa46
+  workflow_dispatch:
+
+concurrency:
+  group: mercadolivre-etapa47-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  simulacao-sem-envios:
+    name: "Seguranca, testes de busca e consentimento (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            npm_cmd: npm
+          - os: windows-latest
+            npm_cmd: npm.cmd
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar sem scripts ou navegadores de producao
+        run: ${{ matrix.npm_cmd }} ci --ignore-scripts --no-audit --no-fund
+      - name: Auditoria de dependencias
+        run: ${{ matrix.npm_cmd }} audit --audit-level=high
+      - name: TypeScript
+        run: ${{ matrix.npm_cmd }} run typecheck
+      - name: Regressao 404, 429, ritmo, reputacao (somente fetch mockado)
+        run: node --import tsx --test tests/mercadolivre-resiliencia.mts
+      - name: Descoberta Mercado Livre existente (mock)
+        run: node --import tsx tests/mercadolivre-descoberta.mts
+      - name: OAuth Mercado Livre antigo (mock)
+        run: node --import tsx tests/mercadolivre-auth.mts
+      - name: Dominio do painel e timer intercalado
+        run: node --import tsx --test tests/monitor-agendamento.mts tests/painel-dominios.mts tests/rotas-visuais.mts
+      - name: Portal Central Unificada
+        run: ${{ matrix.npm_cmd }} run test:central-unificada
+      - name: Controle de WhatsApp incerto e consentimento
+        run: node --test captacao/caca-promos-vip/tests/estados-tentativa.test.mjs captacao/caca-promos-vip/tests/estados-worker.test.mjs captacao/caca-promos-vip/tests/whatsapp-incerto.test.mjs captacao/caca-promos-vip/tests/consentimento.test.mjs
