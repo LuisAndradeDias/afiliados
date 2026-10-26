@@ -32,7 +32,7 @@ jobs:
       - name: Testar dominios de Ofertas sem rede nem envios
         run: npx tsx --test tests/painel-dominios.mts
       - name: Testar consultas de Captação com dados temporarios
-        run: node --test captacao/caca-promos-vip/tests/consultas-dominios.test.mjs
+        run: node --test captacao/caca-promos-vip/tests/consultas-dominios.test.mjs captacao/caca-promos-vip/tests/consultas-campanhas.test.mjs
       - name: Validar tipos TypeScript
         run: npm run typecheck
       - name: Contratos HTTP da etapa anterior
