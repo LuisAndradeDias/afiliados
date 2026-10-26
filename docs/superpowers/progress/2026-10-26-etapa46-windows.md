@@ -48,3 +48,18 @@ Antes dos novos scripts, `node --test tests/instalacao-windows.test.mjs` falhou 
 - [ ] Criar backup local protegido no C:, validar integridade/restauracao no computador definitivo.
 - [ ] Testes reais sem envios de WhatsApp, Meli OAuth e extensao em navegador.
 - [ ] Aprovar deploy controlado e rollback antes de mudar a instalacao principal.
+
+## Atualização da implantação no ACER (confirmado pelo usuário)
+
+**Ruling:** o ACER é o computador definitivo, não uma máquina antiga a descartar. Abandona-se a exigência de conectar outro PC; mantém-se a instalação de produção original em `C:\\projeto01` como rollback. Custo: os testes de homologação do ACER passam a representar o hardware definitivo, mas a validação OAuth/WhatsApp real permanece necessária.
+
+- Novo clone somente de código em `C:\\afiliados-v2-fonte`, SHA `c329253e17d71b1d3aa523ad0e94d73776f4c4b8`, fonte limpa e sem dados.
+- Homologação criada em `C:\\afiliados-v2-homologacao` usando o script de preparo com `-Execute -InstallDependencies`; npm audit encontrou 0 vulnerabilidades.
+- Testes locais Windows no staging: 4/4 Central, 10/10 domínios/rotas, 21/21 consentimento/estados/filas; GET de Ofertas/Central HTTP 200 e APIs administrativas de Captação HTTP 200; requisições cross-site HTTP 403.
+- Backup exclusivamente C: em `C:\\BackupsAfiliados\\2026-10-26_antes-afiliados-v2`, ACL restrita, 2.834 arquivos em data + 114 em Captação, contagens e bytes correspondentes e hash da .env original igual.
+- Dados e perfis dos robôs duplicados somente localmente para a pasta de homologação, com ACL restrita. A cópia da .env foi desativada nos três modos de monitor/envio, sem alterar a original.
+- No teste com dados restaurados: Central e Captação retornaram 200; nenhum envio ou OAuth/refresh foi acionado; servidores temporários foram encerrados.
+- Configuração Mercado Livre: ID/segredo/refresh/access token presentes e callback HTTPS/path válido, **access token registrado expirado**. Não atualizar automaticamente refresh token, pois isso poderia invalidar o rollback.
+- Registro local: `C:\\afiliados-v2-homologacao\\diagnosticos-local\\REGISTRO_MIGRACAO_ACER.txt`. Original `C:\\projeto01` permanece na branch anterior e commit `ce707cc`.
+
+**Ainda aberto:** revisão independente dos PRs, verificar sessão Chrome WhatsApp sem envio, OAuth Mercado Livre supervisionado, conciliação de eventuais tentativas incertas e autorização do corte do serviço. Não iniciar monitor automático antes dessas verificações.
