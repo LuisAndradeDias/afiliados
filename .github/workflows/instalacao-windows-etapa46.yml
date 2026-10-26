@@ -1,0 +1,45 @@
+name: Afiliados 2.0 - Preparacao Windows etapa 4.6
+
+on:
+  push:
+    branches:
+      - chore/instalacao-segura-windows-etapa46
+  pull_request:
+    branches:
+      - fix/seguranca-zod-etapa45
+  workflow_dispatch:
+
+concurrency:
+  group: etapa46-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Instalacao isolada, sem credenciais nem processos reais
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar dependencias do lock sem scripts externos
+        run: npm.cmd ci --ignore-scripts --no-audit --no-fund
+      - name: Auditoria de dependencias
+        run: npm.cmd audit --audit-level=high
+      - name: Checagem TypeScript
+        run: npm.cmd run typecheck
+      - name: Testar launcher, diagnostico e staging no Windows
+        run: node --test tests/instalacao-windows.test.mjs
+      - name: Confirmar remocao da dependencia Zod
+        run: node --test tests/dependencias-seguranca.mts
+      - name: Testar contratos sem acessar WhatsApp ou Mercado Livre reais
+        run: node --import tsx --test tests/monitor-agendamento.mts tests/painel-dominios.mts
+      - name: Verificar rotas da Central Unificada
+        run: npm.cmd run test:central-unificada
