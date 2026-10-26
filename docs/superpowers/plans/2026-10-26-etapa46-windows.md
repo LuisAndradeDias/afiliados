@@ -56,8 +56,8 @@
 
 ## Bloqueios de implantação (nao resolvidos pela Etapa 4.6)
 
-- [ ] Conectar e identificar o PC novo na conta correta do Remote Desktop Commander.
+- [x] ACER confirmado pelo responsável como computador definitivo e conectado à conta 14 do Remote Desktop Commander.
 - [ ] Revisao independente dos PRs #38-#44 e integracao cuidadosa da base +58 commits com main.
-- [ ] Backup protegido e teste de restauracao no C: do computador definitivo.
-- [ ] Homologacao real, supervisionada, do painel, login WhatsApp e OAuth Meli sem enviar mensagens de teste.
+- [x] Backup protegido no C: do ACER, verificado por contagem/tamanho e SHA-256 de configuração; dados duplicados apenas em homologação. Teste completo de restauração operacional ainda pendente.
+- [ ] Homologar sessão real WhatsApp e OAuth Mercado Livre no ACER sem envios de teste; access token está expirado e o refresh não foi acionado.
 - [ ] Autorizacao explicita para publicar e trocar a instalacao em uso.
