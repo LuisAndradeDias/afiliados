@@ -6,6 +6,7 @@ import { carregarAtivos } from './http/ativos.mjs';
 import { headersBase, codigoHtml, codigoTexto, json } from './http/respostas.mjs';
 import { corpoJson, corpoAssinado } from './http/corpos.mjs';
 import { validarOrigem, extrairSessao } from './http/origem-sessao.mjs';
+import { consultarGestaoLocal } from './consultas/gestao.mjs';
 import { iniciarAnaliticos, normalizarOrigem, autorizarChave } from './analytics.mjs';
 import { iniciarContatos } from './contatos.mjs';
 import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
@@ -340,30 +341,16 @@ export function criarPiloto({
         if (!acessoCampanhasLocais(req,method==='POST'))
           return json(res,403,{ok:false,mensagem:'Acesso permitido apenas no painel local.'});
         try{
-          if (pathname === '/api/local/gestao/contatos' && leitura)
-            return json(res,200,{ok:true,...gestaoContatos.listar({
-              filtro:endereco.searchParams.get('filtro')||'todos',
-              busca:endereco.searchParams.get('busca')||'',
-              pagina:Number(endereco.searchParams.get('pagina')||1),
-              limite:15,
-            })});
-          if (pathname === '/api/local/gestao/contato' && leitura)
-            return json(res,200,{ok:true,contato:gestaoContatos.detalhe(
-              endereco.searchParams.get('id'))});
-          if (pathname === '/api/local/gestao/resumo' && leitura){
-            const todas=convitesUnicos.listarFilas();
-            const eventos=denuncias.listar();
-            return json(res,200,{ok:true,contatos:gestaoContatos.resumo(),
-              filas:{total:todas.length,web:todas.filter(f=>f.modo==='web').length,
-                pendentes:todas.reduce((n,f)=>n+(f.pendentes||0),0)},
-              whatsapp:{fase:controleWhatsapp.estado().fase},
-              denuncias:eventos.filter(e=>e.motivo==='denuncia-convite').slice(0,5),
-              sincronizacao:sincronizacaoNetlify.estado()});
-          }
-          if (pathname === '/api/local/gestao/denuncias' && leitura)
-            return json(res,200,{ok:true,ocorrencias:denuncias.listar(),
-              resumo:denuncias.resumo(),sincronizacao:sincronizacaoNetlify.estado()});
-          if (pathname === '/api/local/gestao/contato/bloquear' && method==='POST'){
+          if (leitura) {
+             // Guardas Host/Origin/loopback acima; não expor leituras em outras origens.
+             const consulta = consultarGestaoLocal({
+               pathname, busca: endereco.searchParams,
+               gestaoContatos, convitesUnicos, denuncias,
+               controleWhatsapp, sincronizacaoNetlify
+             });
+             if (consulta) return json(res, consulta.status, consulta.body);
+           }
+           if (pathname === '/api/local/gestao/contato/bloquear' && method==='POST'){
             if(!limitar(req,'gestao-bloquear',25))
               return json(res,429,{ok:false,mensagem:'Limite de bloqueios atingido.'});
             const entrada=await corpoJson(req,1500);
