@@ -13,6 +13,7 @@ import {
   type TokenMercadoLivre
 } from "./dominios/mercadolivre-oauth.js";
 import { arquivoDoRobo as arquivoDo } from "./dominios/scripts-robo.js";
+import { calcularAtrasoMonitor, criarTemporizadorExclusivo } from "./dominios/monitor-agendamento.js";
 import { responderRotaVisual } from "./rotas-visuais.js";
 import {
   cooldownHoras,
@@ -109,7 +110,9 @@ let monitorAlternadoAtivo =
   process.env.ALTERNATING_MONITOR_ENABLED === "true" ||
   process.env.MERCADOLIVRE_MONITOR_ENABLED === "true";
 let mercadoLivreMonitorAtivo = monitorAlternadoAtivo;
-let monitorAlternadoTimer: ReturnType<typeof setTimeout> | null = null;
+const monitorAlternadoTimer = criarTemporizadorExclusivo({
+  agendar: setTimeout, cancelar: clearTimeout
+});
 let mercadoLivreMonitorProximaBuscaEm = 0;
 let monitorAlternadoProximaPlataforma: PlataformaMonitor = "mercado-livre";
 let monitorAlternadoUltimaPlataforma: PlataformaMonitor | null = null;
@@ -150,10 +153,7 @@ function mercadoLivreMonitorBackoffMs(): number {
 }
 
 function cancelarAgendamentoMonitorAlternado(): void {
-  if (monitorAlternadoTimer) {
-    clearTimeout(monitorAlternadoTimer);
-    monitorAlternadoTimer = null;
-  }
+  monitorAlternadoTimer.desarmar();
   mercadoLivreMonitorProximaBuscaEm = 0;
 }
 
@@ -213,17 +213,20 @@ function agendarMonitorAlternado(
 
   // Todas as rotas de continuação passam por esta barreira, inclusive
   // retomadas de erro, duplicata, cancelamento e reinicialização.
-  const esperaRestante = Math.max(0, intervaloCalculado.proximaLiberacaoEm - Date.now());
-  const atraso = Math.max(500, atrasoMs, esperaRestante);
+  const { esperaRestanteMs: esperaRestante, atrasoMs: atraso, proximaBuscaEm } =
+    calcularAtrasoMonitor({
+      agoraEm: Date.now(),
+      atrasoSolicitadoMs: atrasoMs,
+      proximaLiberacaoEm: intervaloCalculado.proximaLiberacaoEm
+    });
   monitorAlternadoProximaPlataforma = plataforma;
-  mercadoLivreMonitorProximaBuscaEm = Date.now() + atraso;
+  mercadoLivreMonitorProximaBuscaEm = proximaBuscaEm;
 
   atualizarFluxoMercadoLivre("monitoring", esperaRestante > 0
     ? "Intervalo entre promoções ativo. Próxima consulta aguardando a liberação do envio."
     : mensagem);
 
-  monitorAlternadoTimer = setTimeout(() => {
-    monitorAlternadoTimer = null;
+  monitorAlternadoTimer.armar(() => {
     mercadoLivreMonitorProximaBuscaEm = 0;
     void executarTurnoMonitorAlternado(plataforma);
   }, atraso);
