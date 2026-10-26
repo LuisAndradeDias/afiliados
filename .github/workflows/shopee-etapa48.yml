@@ -1,0 +1,53 @@
+name: Afiliados 2.0 - Shopee integrada etapa 4.8
+
+on:
+  push:
+    branches:
+      - feat/shopee-painel-integrado-etapa48
+  pull_request:
+    branches:
+      - fix/mercadolivre-descoberta-etapa47
+  workflow_dispatch:
+
+concurrency:
+  group: shopee-etapa48-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  seguranca-e-regressoes:
+    name: Shopee local e motores existentes (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            npm_cmd: npm
+          - os: windows-latest
+            npm_cmd: npm.cmd
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar dependencias sem scripts externos
+        run: ${{ matrix.npm_cmd }} ci --ignore-scripts --no-audit --no-fund
+      - name: Auditoria
+        run: ${{ matrix.npm_cmd }} audit --audit-level=high
+      - name: TypeScript
+        run: ${{ matrix.npm_cmd }} run typecheck
+      - name: Shopee validar URLs, rascunhos, seguranca HTTP e UI
+        run: node --import tsx --test tests/shopee-rascunhos.mts tests/shopee-http.mts tests/shopee-ui.mts
+      - name: Contratos Amazon Meli e paineis
+        run: node --import tsx --test tests/monitor-agendamento.mts tests/painel-dominios.mts tests/rotas-visuais.mts tests/mercadolivre-resiliencia.mts
+      - name: Central Unificada
+        run: ${{ matrix.npm_cmd }} run test:central-unificada
+      - name: Captacao e seguranca de envios
+        run: node --test captacao/caca-promos-vip/tests/estados-tentativa.test.mjs captacao/caca-promos-vip/tests/estados-worker.test.mjs captacao/caca-promos-vip/tests/whatsapp-incerto.test.mjs captacao/caca-promos-vip/tests/consentimento.test.mjs

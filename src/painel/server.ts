@@ -15,6 +15,7 @@ import {
 import { arquivoDoRobo as arquivoDo } from "./dominios/scripts-robo.js";
 import { calcularAtrasoMonitor, criarTemporizadorExclusivo } from "./dominios/monitor-agendamento.js";
 import { responderRotaVisual } from "./rotas-visuais.js";
+import { responderRotaShopee } from "./shopee-http.js";
 import {
   cooldownHoras,
   contarBloqueadas,
@@ -1984,6 +1985,11 @@ const server = createServer(async (req, res) => {
     // A navegação HTTP é independente do motor e de credenciais.
     if (await responderRotaVisual({
       method: req.method, pathname: requestUrl.pathname, res, raiz
+    })) return;
+
+    // Rascunhos locais da Shopee: sem acesso ao motor, filas, tokens ou WhatsApp.
+    if (await responderRotaShopee({
+      req, res, pathname: requestUrl.pathname, raiz
     })) return;
 
     if (
