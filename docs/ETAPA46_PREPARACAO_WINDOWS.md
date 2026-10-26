@@ -1,10 +1,10 @@
 # Afiliados 2.0 — Etapa 4.6: preparacao de Windows com instalacao isolada
 
-Data: 2026-10-26. Base: PR #43 (seguranca). Status: preparacao testada em ACER; **nao instalada no PC novo**.
+Data: 2026-10-26. Base: PR #43 (seguranca). Status: homologação isolada instalada no ACER (destino definitivo confirmado), sem ativar robôs.
 
 ## Diagnostico do computador conectado
 
-Remote Desktop Commander conta 14: apenas **ACER** online, antigo Aspire E5-574. Conta 13: Luis, ACER e Andrade offline. Sem indicacao confiavel de qual deles e o computador novo. Nenhuma instalacao de producao pode ser feita ate reconectar e identificar o PC certo.
+O responsável confirmou que **o próprio ACER é a máquina definitiva** e que não existe computador novo. O dispositivo ACER está online na conta 14. A instalação de produção continua condicionada à revisão e à validação das sessões, não à conexão de outra máquina.
 
 A instalacao original em C:\projeto01 permanece intocada, com arquivos pessoais e perfis existentes. Sem PostgreSQL, sem Google Drive, sem Cloud API WhatsApp, sem envios.
 
@@ -16,7 +16,7 @@ A instalacao original em C:\projeto01 permanece intocada, com arquivos pessoais 
 - tests/instalacao-windows.test.mjs: verifica inicializador, preflight, dry-run, copia sem dados e recusa de sobrescrita.
 - .github/workflows/instalacao-windows-etapa46.yml: CI em Windows sem WhatsApp ou OAuth reais.
 
-## Comandos quando a maquina NOVA estiver conectada
+## Comandos no ACER, se for necessário preparar outra cópia
 
 Executar no Windows, em pasta **de codigo Git** da branch aprovada. As politicas do PowerShell do usuario nao devem ser alteradas globalmente.
 
@@ -44,12 +44,12 @@ Para uso real, o launcher normal deve ser aberto somente apos a validacao e a au
 
 ## Regras de privacidade, reversao e integracao
 
-- Backup de configuracoes e dados reais: somente apos confirmar o PC novo, em pasta protegida no C:, com verificacao de integridade e de restauracao; nunca incluir em GitHub ou Drive.
-- Sessao do WhatsApp e extensão Mercado Livre: configurar e homologar com o usuario presente. O clone de codigo nao transfere uma sessao.
+- Backup local já criado em C:\\BackupsAfiliados\\2026-10-26_antes-afiliados-v2, com ACL restrita, contagem e tamanho conferidos (2.948 arquivos) e hash SHA-256 da configuração verificado. Não enviar dados ao GitHub ou Drive. A validação de uma restauração completa em operação ainda é pendente.
+- Sessão WhatsApp e perfil Mercado Livre: uma cópia local dos perfis e da configuração já foi restaurada na homologação; isso não comprova login válido. Revalidar com o usuário presente, sem envios automáticos.
 - Portal localhost:3030, Central /central, Ofertas /ofertas; Captação/Campanhas localhost:3040 ou 3045 conforme o entrypoint. Nao iniciar processos duplicados ao migrar.
 - Antes de qualquer rollback, parar somente processos pertencentes a pasta da nova versao, preservar dados/filas e executar o inicializador da instalacao anterior. Nao apagar tentativa incerta nem historico.
 - A base do PR #38 tem 58 commits alem de main; a cadeia de PRs #38→#43 continua draft. PR desta etapa fica tambem em draft, sem merge.
-- Revisao independente, PC novo online e homologacao de Mercado Livre/WhatsApp real continuam pendentes.
+- Revisão independente, homologação de Mercado Livre/WhatsApp real e aprovação da ativação no ACER continuam pendentes.
 
 ## Critérios de aceite da preparacao
 
@@ -58,3 +58,15 @@ Para uso real, o launcher normal deve ser aberto somente apos a validacao e a au
 - Sem instalacao sobre C:\projeto01, sem alteracao de .env ou data.
 - CI do Windows aprovada antes da revisao.
 - **Isso nao constitui aprovacao para producao.**
+
+## Atualização operacional — ACER confirmado (26/10/2026)
+
+- Fonte de código: `C:\\afiliados-v2-fonte`, branch `chore/instalacao-segura-windows-etapa46`, commit `c329253e17d71b1d3aa523ad0e94d73776f4c4b8`.
+- Homologação: `C:\\afiliados-v2-homologacao`. npm ci, TypeScript e npm audit (0 vulnerabilidades) concluídos no Windows.
+- Backup: `C:\\BackupsAfiliados\\2026-10-26_antes-afiliados-v2`, ACL restrita; nenhum arquivo privado publicado no Git.
+- Configuração, contato/histórico e perfis foram copiados localmente à homologação, **sem modificar** `C:\\projeto01`.
+- Flags na instalação nova: `ALTERNATING_MONITOR_ENABLED=false`, `MERCADOLIVRE_MONITOR_ENABLED=false` e `WHATSAPP_AUTO_SEND_ENABLED=false`. Grupo previamente salvo foi preservado, sem exibir ou repetir seu nome.
+- Ofertas/Central e Captação/Campanhas verificadas via HTTP 200 com dados restaurados; bloqueio cross-site 403; processos de teste encerrados.
+- O vencimento registrado para o access token Mercado Livre já ocorreu; refresh token existe, mas **não foi renovado nesta etapa** para evitar invalidar o rollback. Login real do WhatsApp ainda não foi testado.
+- Relatório sem segredos disponível em `C:\\afiliados-v2-homologacao\\diagnosticos-local\\REGISTRO_MIGRACAO_ACER.txt`.
+- O corte definitivo e a ativação de automações **não** aconteceram. Nenhum serviço permanente ficou escutando 3030/3040/3045.
