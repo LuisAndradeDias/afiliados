@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { adquirirSessaoWhatsapp } from './whatsapp-sessao-lock.mjs';
+import { classificarFalhaWorker, faseOcupadaWhatsapp, podeCancelarWhatsapp } from './estados/whatsapp-worker.mjs';
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 
@@ -30,8 +31,7 @@ export function iniciarControleWhatsapp({
   }
 
   function estado() {
-    return {...ultimo,ocupado:Boolean(ativo &&
-      !['confirmado','cancelado','erro','incerto'].includes(ultimo.fase)),
+    return {...ultimo,ocupado:faseOcupadaWhatsapp(ultimo.fase,Boolean(ativo)),
       processoAtivo:Boolean(ativo)};
   }
 
@@ -116,7 +116,7 @@ export function iniciarControleWhatsapp({
         }
         break;
       case 'ERRO':
-        finalizarSessao(ref,(ref.tentouEnviar||ref.jaPreparou)?'incerto':'erro',
+        finalizarSessao(ref,classificarFalhaWorker(ref),
           (ref.tentouEnviar||ref.jaPreparou)
             ? 'O WhatsApp não confirmou o envio. Revise a conversa antes de tentar novamente.'
             : 'Não foi possível preparar ou conferir a conversa (código: '+
@@ -177,13 +177,13 @@ export function iniciarControleWhatsapp({
     });
     child.on('error',()=>{
       if(ativo===ref && !ref.finalizado) {
-        finalizarSessao(ref,(ref.tentouEnviar||ref.jaPreparou)?'incerto':'erro',
+        finalizarSessao(ref,classificarFalhaWorker(ref),
           'Chrome interrompido antes de confirmar o estado da conversa.');
       }
     });
     child.on('exit',()=>{
       if(ativo===ref && !ref.finalizado){
-        finalizarSessao(ref,(ref.tentouEnviar||ref.jaPreparou)?'incerto':'erro',
+        finalizarSessao(ref,classificarFalhaWorker(ref),
           (ref.tentouEnviar||ref.jaPreparou)
             ? 'O Chrome fechou antes de confirmar o resultado. Não repita automaticamente.'
             : 'O Chrome foi fechado ou não conseguiu abrir a conversa.');
@@ -227,7 +227,7 @@ export function iniciarControleWhatsapp({
       throw new Error('Confirme que a mensagem NÃO foi enviada antes de cancelar.');
     }
     if(!corresponde(campanhaId,contatoId) ||
-      !['iniciando','abrindo','pronto'].includes(ultimo.fase)){
+      !podeCancelarWhatsapp(ultimo.fase)){
       throw new Error('Não há preparação segura para cancelar.');
     }
     enviarComando(ativo.child,'CANCELAR');
