@@ -1,6 +1,6 @@
 # Etapa 4.6 — Windows Staging Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Construir preparacao portatil de instalacao Windows sem dados privados e sem tocar nos robos ate o novo computador estar online.
 
@@ -21,35 +21,43 @@
 
 **Files:** criar `tests/instalacao-windows.test.mjs`.
 
-- [ ] Criar worktree isolada C: a partir de `chore/instalacao-segura-windows-etapa46`; sem `.env` nem `data/`.
-- [ ] Escrever teste de caminho relativo e modo `--verificar` no `Abrir Painel.bat`; teste nao deve executar launcher original enquanto o guard nao existir.
-- [ ] Escrever teste preflight JSON seguro e preflight sem modificar repo.
-- [ ] Escrever testes dry-run de staging, execucao explicita em pasta temporaria, ausencia `.env/data/dados/.git/node_modules`, recusa de sobrescrita.
-- [ ] Executar e observar RED correto (modulos nao existem, launcher hardcoded).
+- [x] Criar worktree isolada C: a partir de `chore/instalacao-segura-windows-etapa46`; sem `.env` nem `data/`.
+- [x] Escrever teste de caminho relativo e modo `--verificar` no `Abrir Painel.bat`; teste nao deve executar launcher original enquanto o guard nao existir.
+- [x] Escrever teste preflight JSON seguro e preflight sem modificar repo.
+- [x] Escrever testes dry-run de staging, execucao explicita em pasta temporaria, ausencia `.env/data/dados/.git/node_modules`, recusa de sobrescrita.
+- [x] Executar e observar RED correto (modulos nao existem, launcher hardcoded).
 
 ### Task 2 — Launcher e preflight
 
 **Files:** modificar `Abrir Painel.bat`; criar `scripts/windows/preflight-afiliados.ps1`.
 
-- [ ] Implementar verificacao sem efeitos, caminho relativo e fallback do launcher existente, sem abrir Chrome durante `--verificar`.
-- [ ] Preflight identifica Node >=24, npm.cmd, Git, arquivos root, espaco livre C: e ocupacao de portas 3030/3040/3045 em modo read-only.
-- [ ] Rodar testes Windows, observar progresso RED→GREEN.
+- [x] Implementar verificacao sem efeitos, caminho relativo e fallback do launcher existente, sem abrir Chrome durante `--verificar`.
+- [x] Preflight identifica Node >=24, npm.cmd, Git, arquivos root, espaco livre C: e ocupacao de portas 3030/3040/3045 em modo read-only.
+- [x] Rodar testes Windows, observar progresso RED→GREEN.
 
 ### Task 3 — Staging seguro
 
 **Files:** criar `scripts/windows/preparar-homologacao.ps1`.
 
-- [ ] Bloquear destino existente, UNC, outra unidade que nao C:, caminho em projeto atual, e destinos que nao contenham homologacao/staging.
-- [ ] Validar checkout limpo e ausência de dados privados versionados, fonte git raiz; exigir `-Execute` para criar copia.
-- [ ] Exportar `git archive HEAD` para ZIP temporario em C:, expandir em destino vazio; remover ZIP temporario; verificar ausencia de dados/segredos.
-- [ ] Somente mediante `-Execute -InstallDependencies` executar `npm.cmd ci --ignore-scripts` com `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`.
-- [ ] Verificar testes com diretorio temporario, sem rodar qualquer painel.
+- [x] Bloquear destino existente, UNC, outra unidade que nao C:, caminho em projeto atual, e destinos que nao contenham homologacao/staging.
+- [x] Validar checkout limpo e ausência de dados privados versionados, fonte git raiz; exigir `-Execute` para criar copia.
+- [x] Exportar `git archive HEAD` para ZIP temporario em C:, expandir em destino vazio; remover ZIP temporario; verificar ausencia de dados/segredos.
+- [x] Somente mediante `-Execute -InstallDependencies` executar `npm.cmd ci --ignore-scripts` com `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`.
+- [x] Verificar testes com diretorio temporario, sem rodar qualquer painel.
 
 ### Task 4 — CI, documentacao, PR
 
 **Files:** criar `.github/workflows/instalacao-windows-etapa46.yml`, `docs/ETAPA46_PREPARACAO_WINDOWS.md`, ledger.
 
-- [ ] CI Windows testes de launcher/preflight/staging; CI de seguranca anterior permanece na heranca PR #43.
-- [ ] Auditar diff e comandos para evitar dados, token ou envio involuntario; conferir testes e ausencia de new .env.
-- [ ] Criar PR draft sobre `fix/seguranca-zod-etapa45` sem merge.
-- [ ] Documentar pending: conectar computador novo, backup local seguro, homologar WhatsApp e Meli, revisao independente e integrar base main.
+- [x] CI Windows testes de launcher/preflight/staging; CI de seguranca anterior permanece na heranca PR #43.
+- [x] Auditar diff e comandos para evitar dados, token ou envio involuntario; conferir testes e ausencia de new .env.
+- [x] Criar PR draft sobre `fix/seguranca-zod-etapa45` sem merge.
+- [x] Documentar pending: conectar computador novo, backup local seguro, homologar WhatsApp e Meli, revisao independente e integrar base main.
+
+## Bloqueios de implantação (nao resolvidos pela Etapa 4.6)
+
+- [ ] Conectar e identificar o PC novo na conta correta do Remote Desktop Commander.
+- [ ] Revisao independente dos PRs #38-#44 e integracao cuidadosa da base +58 commits com main.
+- [ ] Backup protegido e teste de restauracao no C: do computador definitivo.
+- [ ] Homologacao real, supervisionada, do painel, login WhatsApp e OAuth Meli sem enviar mensagens de teste.
+- [ ] Autorizacao explicita para publicar e trocar a instalacao em uso.
