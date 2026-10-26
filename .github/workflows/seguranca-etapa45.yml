@@ -1,0 +1,64 @@
+name: Afiliados 2.0 - Seguranca etapa 4.5
+
+on:
+  push:
+    branches:
+      - fix/seguranca-zod-etapa45
+  pull_request:
+    branches:
+      - chore/homologacao-windows-etapa44
+  workflow_dispatch:
+
+concurrency:
+  group: etapa45-seguranca-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  security-and-regression:
+    name: Audit, lockfile, tipos, consentimento e WhatsApp simulado
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar dependencias fixadas sem scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Bloquear vulnerabilidades altas e criticas
+        run: npm audit --omit=dev --audit-level=high
+      - name: Auditar tambem dependencias de desenvolvimento
+        run: npm audit --audit-level=high
+      - name: Provar ausencia de Zod sem uso
+        run: node --test tests/dependencias-seguranca.mts
+      - name: Compilar tipos TypeScript
+        run: npm run typecheck
+      - name: Contratos da central, timers, Amazon e Mercado Livre
+        run: |
+          node --import tsx --test tests/monitor-agendamento.mts tests/painel-dominios.mts tests/rotas-visuais.mts
+          npm run test:central-unificada
+      - name: Contratos de autenticacao Mercado Livre simulados
+        run: |
+          node --import tsx tests/mercadolivre-auth.mts
+          node --test tests/mercadolivre-oauth-bridge.test.mjs
+      - name: Decisoes de autoenvio WhatsApp (apenas funcoes puras)
+        run: node --import tsx tests/whatsapp-auto-send.mts
+      - name: Regressoes de seguranca e consentimento
+        run: |
+          node --test \
+            captacao/caca-promos-vip/tests/http-modulos.test.mjs \
+            captacao/caca-promos-vip/tests/consultas-dominios.test.mjs \
+            captacao/caca-promos-vip/tests/consultas-campanhas.test.mjs \
+            captacao/caca-promos-vip/tests/estados-tentativa.test.mjs \
+            captacao/caca-promos-vip/tests/estados-worker.test.mjs \
+            captacao/caca-promos-vip/tests/convites-web-manual.test.mjs \
+            captacao/caca-promos-vip/tests/whatsapp-incerto.test.mjs \
+            captacao/caca-promos-vip/tests/whatsapp-worker-supervisionado.test.mjs \
+            captacao/caca-promos-vip/tests/consentimento.test.mjs \
+            captacao/caca-promos-vip/tests/campanhas-local.test.mjs
