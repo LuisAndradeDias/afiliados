@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Readable } from "node:stream";
+import { request as httpRequest } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -82,10 +83,20 @@ test("HTTP: telas privadas seguem exigindo Host de loopback e Origin válido", a
   assert.match(page.headers.get("content-security-policy") ?? "", /script-src 'self'/);
   assert.match(await page.text(), /data-layout="clean"/);
 
-  const privateDenied = await fetch(app.base + "/api/local/gestao/contatos", {
-    headers: { Host: "localhost:3045" },
+  // fetch() pode sobrescrever Host. http.request envia o cabeçalho literal.
+  const privateStatus = await new Promise((resolve, reject) => {
+    const raw = httpRequest(app.base + "/api/local/gestao/contatos", {
+      method: "GET",
+      headers: { Host: "localhost:3045" },
+    }, response => {
+      response.resume();
+      response.on("end", () => resolve(response.statusCode));
+      response.on("error", reject);
+    });
+    raw.on("error", reject);
+    raw.end();
   });
-  assert.equal(privateDenied.status, 403);
+  assert.equal(privateStatus, 403, "Host adulterado deve ser bloqueado");
 
   const postDenied = await fetch(app.base + "/api/local/gestao/numero/diagnostico", {
     method: "POST",
