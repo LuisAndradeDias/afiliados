@@ -1,8 +1,11 @@
 import { createServer } from 'node:http';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
+import { carregarAtivos } from './http/ativos.mjs';
+import { headersBase, codigoHtml, codigoTexto, json } from './http/respostas.mjs';
+import { corpoJson, corpoAssinado } from './http/corpos.mjs';
+import { validarOrigem, extrairSessao } from './http/origem-sessao.mjs';
 import { iniciarAnaliticos, normalizarOrigem, autorizarChave } from './analytics.mjs';
 import { iniciarContatos } from './contatos.mjs';
 import { iniciarGrupos, validarOrigemGrupo } from './grupos.mjs';
@@ -27,54 +30,7 @@ import {lerConfigNetlify,iniciarSincronizacaoNetlify} from './netlify-denuncia-s
 
 const GROUP_URL = 'https://chat.whatsapp.com/CpMG7JTqP464hgJwf8ElFc';
 const sourceDir = dirname(fileURLToPath(import.meta.url));
-const planilhaModelo = readFileSync(join(sourceDir, '..', 'modelos', 'Modelo_Contatos_Autorizados.xlsx'));
-const scripts = new Map([
-  ['/assets/landing.js', readFileSync(join(sourceDir, 'assets', 'landing.js'), 'utf8')],
-  ['/assets/campanhas.js', readFileSync(join(sourceDir, 'assets', 'campanhas.js'), 'utf8')],
-  ['/assets/envio-rapido.js', readFileSync(join(sourceDir, 'assets', 'envio-rapido.js'), 'utf8')],
-  ['/assets/gestao.js', readFileSync(join(sourceDir, 'assets', 'gestao.js'), 'utf8')],
-  ['/assets/descadastro.js', readFileSync(join(sourceDir, 'assets', 'descadastro.js'), 'utf8')],
-  ['/assets/denuncia.js', readFileSync(join(sourceDir, 'assets', 'denuncia.js'), 'utf8')],
-  ['/assets/respostas-botoes.js', readFileSync(join(sourceDir, 'assets', 'respostas-botoes.js'), 'utf8')],
-  ['/assets/layout-clean.js', readFileSync(join(sourceDir, 'assets', 'layout-clean.js'), 'utf8')],
-]);
-const styles=new Map([
-  ['/assets/painel-theme.css',readFileSync(join(sourceDir,'assets','painel-theme.css'),'utf8')],
-  ['/assets/layout-clean.css',readFileSync(join(sourceDir,'assets','layout-clean.css'),'utf8')],
-  ['/assets/afiliados-v2.tokens.css',readFileSync(join(sourceDir,'assets','afiliados-v2.tokens.css'),'utf8')],
-  ['/assets/afiliados-v2.css',readFileSync(join(sourceDir,'assets','afiliados-v2.css'),'utf8')],
-  ['/assets/envio-rapido.css',readFileSync(join(sourceDir,'assets','envio-rapido.css'),'utf8')],
-]);
-const headersBase = {
-  'cache-control': 'no-store',
-  'x-content-type-options': 'nosniff',
-  'referrer-policy': 'no-referrer',
-  'x-frame-options': 'DENY',
-  'cross-origin-resource-policy': 'same-origin',
-};
-
-function codigoHtml(res, status, html) {
-  res.writeHead(status, {
-    ...headersBase,
-    'content-type': 'text/html; charset=utf-8',
-    'content-security-policy': "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
-  });
-  res.end(html);
-}
-
-function codigoTexto(res, status, texto, contentType = 'text/plain; charset=utf-8') {
-  res.writeHead(status, { ...headersBase, 'content-type': contentType });
-  res.end(texto);
-}
-
-function json(res, status, valor, extraHeaders = {}) {
-  res.writeHead(status, {
-    ...headersBase,
-    'content-type': 'application/json; charset=utf-8',
-    ...extraHeaders,
-  });
-  res.end(JSON.stringify(valor));
-}
+const { planilhaModelo, scripts, styles } = carregarAtivos(sourceDir);
 
 function convitesCsv(dados) {
   const linhas = ['origem;visitas;cliques;taxa_cliques_percentual'];
@@ -83,51 +39,6 @@ function convitesCsv(dados) {
     linhas.push(`${origem};${stats.visitas};${stats.cliques};${ratio}`);
   }
   return '\ufeff' + linhas.join('\r\n') + '\r\n';
-}
-
-async function corpoJson(req, limiteBytes = 4096) {
-  if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
-    throw new Error('Envie JSON com content-type application/json.');
-  }
-  let bytes = 0;
-  const chunks = [];
-  for await (const chunk of req) {
-    bytes += chunk.length;
-    if (bytes > limiteBytes) throw new Error('Dados acima do tamanho permitido.');
-    chunks.push(chunk);
-  }
-  const text = Buffer.concat(chunks).toString('utf8');
-  const data = JSON.parse(text || '{}');
-  if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error('JSON inválido.');
-  return data;
-}
-
-async function corpoAssinado(req, limiteBytes = 256_000) {
-  const partes=[];
-  let bytes=0;
-  for await (const pedaco of req) {
-    bytes += pedaco.length;
-    if (bytes > limiteBytes) throw new Error('Evento acima do limite permitido.');
-    partes.push(pedaco);
-  }
-  return Buffer.concat(partes);
-}
-
-function validarOrigem(req) {
-  const origem = req.headers.origin;
-  if (!origem) return true;
-  try {
-    const parsed = new URL(origem);
-    return parsed.host === req.headers.host && (parsed.protocol === 'http:' || parsed.protocol === 'https:');
-  } catch {
-    return false;
-  }
-}
-
-function extrairSessao(req) {
-  const cookies = String(req.headers.cookie || '').split(';').map(v => v.trim());
-  const item = cookies.find(v => /^cpv_admin=[0-9a-f]{64}$/.test(v));
-  return item ? item.slice('cpv_admin='.length) : '';
 }
 
 export function criarPiloto({

@@ -5,6 +5,7 @@ import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { responderRotaVisual } from "./rotas-visuais.js";
 import {
   cooldownHoras,
   contarBloqueadas,
@@ -28,7 +29,6 @@ import {
 } from "../afiliados/mercadolivre-cupons.js";
 
 const raiz = process.cwd();
-const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
 const ofertaMercadoLivrePath = resolve(raiz, "data", "ultima-oferta-mercadolivre.json");
@@ -2045,47 +2045,10 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    // Portal administrativo local, sem proxy de dados sensíveis ou automações.
-    if (req.method === "GET" && requestUrl.pathname === "/central") {
-      const html = await readFile(resolve(raiz, "src", "painel", "public", "central.html"), "utf8");
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "x-frame-options": "DENY" });
-      res.end(html);
-      return;
-    }
-
-    if (req.method === "GET" && requestUrl.pathname.startsWith("/central/assets/")) {
-      const assets: Record<string, string> = {
-        "/central/assets/central.css": "central.css",
-        "/central/assets/ofertas-v2.css": "ofertas-v2.css",
-        "/central/assets/central.tokens.css": "central.tokens.css",
-        "/central/assets/central.js": "central.js"
-      };
-      const assetName = assets[requestUrl.pathname];
-      if (!assetName) { json(res, 404, { ok: false, mensagem: "Recurso não encontrado." }); return; }
-      const content = await readFile(resolve(raiz, "src", "painel", "public", assetName), "utf8");
-      res.writeHead(200, {
-        "content-type": assetName.endsWith(".css") ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8",
-        "cache-control": "no-store",
-        "x-content-type-options": "nosniff"
-      });
-      res.end(content);
-      return;
-    }
-
-    // O painel anterior continua integralmente acessível neste caminho.
-    if (req.method === "GET" && requestUrl.pathname === "/ofertas") {
-      const html = await readFile(paginaPath, "utf8");
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(html);
-      return;
-    }
-
-    if (req.method === "GET" && requestUrl.pathname === "/") {
-      const html = await readFile(paginaPath, "utf8");
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(html);
-      return;
-    }
+    // A navegação HTTP é independente do motor e de credenciais.
+    if (await responderRotaVisual({
+      method: req.method, pathname: requestUrl.pathname, res, raiz
+    })) return;
 
     if (
       req.method === "POST" &&
