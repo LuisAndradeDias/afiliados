@@ -1,7 +1,10 @@
 import "dotenv/config";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { MercadoLivreApiFonte } from "../fontes/mercadolivre/api.js";
+import {
+  MercadoLivreApiFonte,
+  MercadoLivreLimiteRequisicoes
+} from "../fontes/mercadolivre/api.js";
 import { MercadoLivreReautorizacaoNecessaria } from "../afiliados/mercadolivre-token.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
@@ -79,6 +82,10 @@ for (const consulta of consultasUsadas) {
     if (error instanceof MercadoLivreReautorizacaoNecessaria) {
       console.error("MERCADOLIVRE_RECONNECT_REQUIRED: " + error.message);
       process.exit(3);
+    }
+    if (error instanceof MercadoLivreLimiteRequisicoes) {
+      console.error("MERCADOLIVRE_RATE_LIMIT: HTTP 429 limite de requisicoes; rodada interrompida sem novos acessos.");
+      process.exit(5);
     }
     throw error;
   }
