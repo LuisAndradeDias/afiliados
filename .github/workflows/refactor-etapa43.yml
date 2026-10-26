@@ -1,0 +1,47 @@
+name: Afiliados 2.0 - Estados e filas etapa 4.3
+
+on:
+  push:
+    branches:
+      - refactor/estados-filase-timers-v2-etapa43
+  pull_request:
+    branches:
+      - refactor/dominios-v2-etapa42
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etapa43-estados-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  safety:
+    name: Timers e WhatsApp simulados, sem envios
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar dependencias fixadas
+        run: npm ci
+      - name: Testar timer com callbacks canceladas e concorrencia
+        run: npx tsx --test tests/monitor-agendamento.mts
+      - name: Testar transicoes da fila Web supervisionada
+        run: node --test captacao/caca-promos-vip/tests/estados-tentativa.test.mjs
+      - name: Testar estados do worker sem abrir WhatsApp
+        run: node --test captacao/caca-promos-vip/tests/estados-worker.test.mjs
+      - name: Validar TypeScript
+        run: npm run typecheck
+      - name: Validar intervalos de publicacao e contratos de dominio
+        run: npx tsx tests/intervalos-envio.mts && npx tsx --test tests/painel-dominios.mts
+      - name: Testar opt-in e filas manual/supervisionada com dados temporarios
+        run: node --test captacao/caca-promos-vip/tests/convites-web-manual.test.mjs captacao/caca-promos-vip/tests/whatsapp-incerto.test.mjs captacao/caca-promos-vip/tests/consentimento.test.mjs
+      - name: Testar Chrome mockado, sem acesso a contatos reais
+        run: node --test captacao/caca-promos-vip/tests/whatsapp-worker-supervisionado.test.mjs
+      - name: Testar HTTP e UI isolados
+        run: npm run test:central-unificada && node --test captacao/caca-promos-vip/tests/consultas-dominios.test.mjs captacao/caca-promos-vip/tests/consultas-campanhas.test.mjs

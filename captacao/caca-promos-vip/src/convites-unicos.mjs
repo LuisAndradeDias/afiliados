@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { contatoComConsentimento } from './contatos.mjs';
+import { proximoStatusTentativaWeb } from './estados/tentativa-web.mjs';
 import {
   montarModeloMeta, montarConviteMeta, consultarModeloMeta,
   enviarConviteMeta, responderLinkMeta, validarTextoModelo,
@@ -475,7 +476,7 @@ export function iniciarConvitesUnicos({
     const item=fila?.itens.find(i=>i.contatoId===contatoId);
     if(!item)throw new Error('Contato não encontrado na fila supervisionada.');
     if(item.status==='aberto') {
-      item.status='incerto';
+      item.status=proximoStatusTentativaWeb(item.status,'reservar');
       item.solicitadoEm=agora().toISOString();
       salvarArquivo(arquivoFilas,dados);
     }
@@ -490,7 +491,7 @@ export function iniciarConvitesUnicos({
     if (convidadosManual(dados).has(contatoId)) {
       throw new Error('Convite já confirmado em outra fila.');
     }
-    item.status='enviado-manualmente';
+    item.status=proximoStatusTentativaWeb(item.status,'confirmar');
     item.confirmadoEm=agora().toISOString();
     item.tratadoEm=item.confirmadoEm;
     salvarArquivo(arquivoFilas,dados);
@@ -515,12 +516,13 @@ export function iniciarConvitesUnicos({
       if (convidadosManual(dados).has(contatoId)) {
         throw new Error('Convite já confirmado anteriormente.');
       }
-      item.status='enviado-manualmente';
+      item.status=proximoStatusTentativaWeb(item.status,'conciliar-enviado');
       item.confirmadoEm=agora().toISOString();
     } else {
       // Não libera diretamente o próximo disparo: apenas retorna à fila.
       // O contato ainda precisa de opt-in válido e deve passar pelo limite diário.
-      item.status=item.invalidadoPorReativacaoEm?'ignorado':'pendente';
+      item.status=proximoStatusTentativaWeb(item.status,'conciliar-nao-enviado',
+        {invalidada:Boolean(item.invalidadoPorReativacaoEm)});
     }
     item.conciliadoEm=agora().toISOString();
     item.tratadoEm=item.conciliadoEm;
