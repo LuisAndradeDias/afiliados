@@ -24,8 +24,8 @@ test("portal central separates HTML, styles and scripts", async () => {
 test("portal maintains existing routes and forbids proxy of captação", async () => {
   const src = await file("src/painel/server.ts");
   const visual = await file("src/painel/rotas-visuais.ts");
-  assert.match(src, /responderRotaVisual\\(/);
-  assert.match(visual, /pathname\.pathname === "\/central"/);
+  assert.ok(src.includes("responderRotaVisual({"));
+  assert.ok(visual.includes('pathname === "/central"'));
   assert.match(visual, /pathname === "\/ofertas"/);
   assert.match(visual, /pathname === "\/"/);
   assert.match(src, /requestUrl\.pathname === "\/api\/status"/);
