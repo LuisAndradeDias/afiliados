@@ -1,0 +1,45 @@
+name: Afiliados 2.0 - Refatoracao HTTP
+
+on:
+  push:
+    branches:
+      - refactor/modulos-http-v2
+  pull_request:
+    branches:
+      - refactor/unificar-paineis-v2
+  workflow_dispatch:
+
+concurrency:
+  group: refactor-http-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contratos:
+    name: Rotas, seguranca e regressao sem envio
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Validar tipagem
+        run: npm run typecheck
+      - name: Testes de rotas da Central Unificada
+        run: npm run test:central-unificada
+      - name: Testar isoladamente as rotas de Ofertas
+        run: npx tsx --test tests/rotas-visuais.mts
+      - name: Testar modulos HTTP e isolamento local da Captacao
+        run: node --test captacao/caca-promos-vip/tests/http-modulos.test.mjs
+      - name: Conferir contrato visual dos dois paineis
+        run: node --test captacao/caca-promos-vip/tests/afiliados-v2.test.mjs
+      - name: Regressao de consentimento e bloqueio
+        run: node --test captacao/caca-promos-vip/tests/consentimento.test.mjs captacao/caca-promos-vip/tests/campanhas-local.test.mjs
+      - name: Verificar rotas visuais no Chrome sem enviar mensagens
+        run: node captacao/caca-promos-vip/tests/afiliados-v2-visual.mjs
