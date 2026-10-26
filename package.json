@@ -35,8 +35,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.7",
-    "playwright": "^1.55.0",
-    "zod": "^3.24.2"
+    "playwright": "^1.55.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
