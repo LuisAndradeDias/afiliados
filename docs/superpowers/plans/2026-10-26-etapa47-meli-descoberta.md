@@ -1,6 +1,6 @@
 # Etapa 4.7 — Mercado Livre Discovery Optimization Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Evitar repeticao de catalogos 404 e consultas HTTP 429 no Mercado Livre preservando as regras editoriais de 25% e vendedor verde.
 
@@ -33,37 +33,44 @@
 
 **Files:** criar `tests/mercadolivre-resiliencia.mts`.
 
-- [ ] Worktree separado no C: a partir do SHA de PR #44, sem .env nem data.
-- [ ] Criar teste de segunda rodada que deve pular URL de catalogo que recebeu HTTP 404 na primeira, com cache temporario em `os.tmpdir()`.
-- [ ] Criar teste de propagacao HTTP 429 no endpoint de publicacoes e reputacao, sem retry da propria fonte e sem consultar produtos restantes.
-- [ ] Criar teste de ritmo entre duas instancias simultaneas.
-- [ ] Executar RED, documentar falhas observadas do codigo atual.
+- [x] Worktree separado no C: a partir do SHA de PR #44, sem .env nem data.
+- [x] Criar teste de segunda rodada que deve pular URL de catalogo que recebeu HTTP 404 na primeira, com cache temporario em `os.tmpdir()`.
+- [x] Criar teste de propagacao HTTP 429 no endpoint de publicacoes e reputacao, sem retry da propria fonte e sem consultar produtos restantes.
+- [x] Criar teste de ritmo entre duas instancias simultaneas.
+- [x] Executar RED, documentar falhas observadas do codigo atual.
 
 ### Task 2 — Cache 404 seguro
 
 **Files:** criar `src/fontes/mercadolivre/cache-catalogo-404.ts`, modificar `src/fontes/mercadolivre/api.ts`.
 
-- [ ] Criar helper `CacheCatalogo404` com `contem(id)`, `registrar(id)`, `persistir()`, arquivo configuravel em testes e padrao `data/mercadolivre-catalogo-404.json`.
-- [ ] TTL 30 min, limite 500, IDs com prefixo MLB, validar JSON e nao registrar resultados 200/erro/transiente.
-- [ ] Persistencia atomica com arquivo temporario e rename; falhas nao devem bloquear a busca.
-- [ ] Integrar em `buscar()`, salvar em `finally` inclusive quando limite interromper; logs agregados.
-- [ ] Adicionar testes de expiracao, arquivo corrompido e desconto/vendedor verde.
-- [ ] Executar GREEN e regressao de descoberta existente.
+- [x] Criar helper `CacheCatalogo404` com `contem(id)`, `registrar(id)`, `persistir()`, arquivo configuravel em testes e padrao `data/mercadolivre-catalogo-404.json`.
+- [x] TTL 30 min, limite 500, IDs com prefixo MLB, validar JSON e nao registrar resultados 200/erro/transiente.
+- [x] Persistencia atomica com arquivo temporario e rename; falhas nao devem bloquear a busca.
+- [x] Integrar em `buscar()`, salvar em `finally` inclusive quando limite interromper; logs agregados.
+- [x] Adicionar testes de expiracao, arquivo corrompido e desconto/vendedor verde.
+- [x] Executar GREEN e regressao de descoberta existente.
 
 ### Task 3 — Ritmo global e 429 fail-fast
 
 **Files:** criar/editar `src/fontes/mercadolivre/controle-requisicoes.ts`, `src/fontes/mercadolivre/api.ts`, `src/robo/mercadolivre-preview.ts`.
 
-- [ ] Substituir intervalo por instancia por reserva temporal compartilhada entre instancias, com piso 250ms.
-- [ ] Ao primeiro HTTP 429, lancar `MercadoLivreLimiteRequisicoes` (sem retry) e propagar de `buscarPublicacoes` e `carregarReputacoes`.
-- [ ] Em `mercadolivre-preview.ts`, registrar `HTTP 429: limite de requisicoes`, terminar com codigo 5 para o backoff do painel (existente), sem modificar OAuth.
-- [ ] Executar GREEN da suite de resiliencia, tipos e testes de auth/descoberta.
+- [x] Substituir intervalo por instancia por reserva temporal compartilhada entre instancias, com piso 250ms.
+- [x] Ao primeiro HTTP 429, lancar `MercadoLivreLimiteRequisicoes` (sem retry) e propagar de `buscarPublicacoes` e `carregarReputacoes`.
+- [x] Em `mercadolivre-preview.ts`, registrar `HTTP 429: limite de requisicoes`, terminar com codigo 5 para o backoff do painel (existente), sem modificar OAuth.
+- [x] Executar GREEN da suite de resiliencia, tipos e testes de auth/descoberta.
 
 ### Task 4 — CI, revisao e PR
 
 **Files:** criar `.github/workflows/mercadolivre-etapa47.yml` e `docs/ETAPA47_MELI_BUSCA_SEGURA.md`, ledger.
 
-- [ ] CI Linux/Windows com npm ci, TypeScript, audit, resiliencia mock, descoberta, OAuth mock, central, captura/consentimento.
-- [ ] Revisar diff para garantir apenas API/preview/helper/testes/docs/CI, sem `.env` ou dados.
-- [ ] Abrir draft PR #45 base `chore/instalacao-segura-windows-etapa46`, confirmar checks no SHA final.
-- [ ] Registrar que a instalacao atual no ACER nao foi modificada; nenhuma mensagem ou busca real.
+- [x] CI Linux/Windows com npm ci, TypeScript, audit, resiliencia mock, descoberta, OAuth mock, central, captura/consentimento.
+- [x] Revisar diff para garantir apenas API/preview/helper/testes/docs/CI, sem `.env` ou dados.
+- [x] Abrir draft PR #45 base `chore/instalacao-segura-windows-etapa46`, confirmar checks no SHA final.
+- [x] Registrar que a instalacao atual no ACER nao foi modificada; nenhuma mensagem ou busca real.
+
+## Pendencias externas antes de ativar na instalacao ACER
+
+- [ ] Obter revisao independente dos PRs empilhados #38–#45 e da integracao da base com main.
+- [ ] Fazer homologacao real somente leitura da busca do Meli, com limites conservadores e usuario supervisionando.
+- [ ] Planejar e autorizar atualizacao da instalacao `C:\\afiliados-v2-homologacao` com rollback e backup protegido.
+- [ ] Manter `ALTERNATING_MONITOR_ENABLED=false` e `WHATSAPP_AUTO_SEND_ENABLED=false` ate validar comportamento e consentimento.
