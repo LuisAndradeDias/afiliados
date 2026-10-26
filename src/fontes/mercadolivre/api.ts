@@ -1,5 +1,6 @@
 import type { Oferta } from "../types.js";
 import { descontoMinimoOferta } from "../../ofertas/qualidade.js";
+import { CacheCatalogo404 } from "./cache-catalogo-404.js";
 import {
   MercadoLivreReautorizacaoNecessaria,
   obterTokenMercadoLivreValido
@@ -47,6 +48,29 @@ interface UsuarioBulk {
   body?: UsuarioMercadoLivre;
 }
 
+let proximaRequisicaoGlobalEm = 0;
+
+async function aguardarRitmoCompartilhado(intervaloMs: number): Promise<void> {
+  const agora = Date.now();
+  const atraso = Math.max(0, proximaRequisicaoGlobalEm - agora);
+  proximaRequisicaoGlobalEm = agora + atraso + intervaloMs;
+  if (atraso > 0) {
+    await new Promise((resolve) => setTimeout(resolve, atraso));
+  }
+}
+
+export class MercadoLivreLimiteRequisicoes extends Error {
+  readonly code = "MERCADOLIVRE_LIMITE_REQUISICOES";
+
+  constructor() {
+    super(
+      "Mercado Livre API HTTP 429: limite de requisicoes; " +
+      "interrompendo esta rodada sem tentar novamente."
+    );
+    this.name = "MercadoLivreLimiteRequisicoes";
+  }
+}
+
 function desconto(
   atual: number,
   anterior?: number | null
@@ -68,7 +92,6 @@ function imagemProduto(produto: ProdutoBusca): string | undefined {
 export class MercadoLivreApiFonte {
   nome = "mercadolivre-api";
   private readonly reputacaoVerdePorVendedor = new Map<number, boolean>();
-  private ultimaRequisicaoEm = 0;
 
   private accessToken?: string;
   private readonly tokenInformadoManualmente: boolean;
@@ -85,10 +108,12 @@ export class MercadoLivreApiFonte {
   private async requisicao(
     url: URL | string
   ): Promise<Response> {
-    let resposta: Response | undefined;
+    const configurado = Number(
+      process.env.MERCADOLIVRE_REQUEST_INTERVAL_MS ?? 500
+    );
     const intervalo = Math.max(
       250,
-      Number(process.env.MERCADOLIVRE_REQUEST_INTERVAL_MS ?? 500)
+      Number.isFinite(configurado) ? configurado : 500
     );
 
     if (!this.tokenInformadoManualmente) {
@@ -96,22 +121,21 @@ export class MercadoLivreApiFonte {
     }
 
     let renovouApos401 = false;
-    for (let tentativa = 1; tentativa <= 4; tentativa += 1) {
-      const espera = Math.max(
-        0,
-        intervalo - (Date.now() - this.ultimaRequisicaoEm)
-      );
-      if (espera > 0) {
-        await new Promise((resolve) => setTimeout(resolve, espera));
-      }
-
-      this.ultimaRequisicaoEm = Date.now();
-      resposta = await fetch(url, {
+    for (let tentativa = 0; tentativa < 2; tentativa += 1) {
+      // Compartilhar o ritmo evita rajadas ao trocar de categoria na rodada.
+      await aguardarRitmoCompartilhado(intervalo);
+      const resposta = await fetch(url, {
         headers: {
           accept: "application/json",
           authorization: "Bearer " + this.accessToken
         }
       });
+
+      if (resposta.status === 429) {
+        // O painel ja impõe backoff ao detectar a mensagem HTTP 429.
+        // Não repetir esta requisição e não percorrer outros catálogos.
+        throw new MercadoLivreLimiteRequisicoes();
+      }
 
       if (resposta.status === 401) {
         if (renovouApos401 || this.tokenInformadoManualmente) {
@@ -119,28 +143,18 @@ export class MercadoLivreApiFonte {
             "A API recusou o token de acesso do Mercado Livre."
           );
         }
-
         this.accessToken = await obterTokenMercadoLivreValido({
           forcar: true,
           tokenRejeitado: this.accessToken
         });
         renovouApos401 = true;
-        tentativa -= 1;
         continue;
       }
 
-      if (resposta.status !== 429) return resposta;
-
-      if (tentativa < 4) {
-        const retryAfter = Number(resposta.headers.get("retry-after") ?? 0);
-        const atraso = retryAfter > 0
-          ? retryAfter * 1_000
-          : tentativa * 2_500;
-        await new Promise((resolve) => setTimeout(resolve, atraso));
-      }
+      return resposta;
     }
 
-    return resposta!;
+    throw new MercadoLivreReautorizacaoNecessaria();
   }
 
   private async getJson<T>(
@@ -167,11 +181,11 @@ export class MercadoLivreApiFonte {
 
   private async buscarPublicacoes(
     produtoId: string
-  ): Promise<PublicacaoCatalogo[]> {
+  ): Promise<PublicacaoCatalogo[] | null> {
     const resposta = await this.requisicao(
       `https://api.mercadolibre.com/products/${encodeURIComponent(produtoId)}/items`
     );
-    if (resposta.status === 404) return [];
+    if (resposta.status === 404) return null;
 
     if (!resposta.ok) {
       const corpo = await resposta.text().catch(() => "");
@@ -225,7 +239,10 @@ export class MercadoLivreApiFonte {
         );
       }
     } catch (error) {
-      if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
+      if (
+        error instanceof MercadoLivreReautorizacaoNecessaria ||
+        error instanceof MercadoLivreLimiteRequisicoes
+      ) throw error;
       const mensagem = error instanceof Error ? error.message : String(error);
       console.warn(
         `Mercado Livre: reputacao em lote indisponivel: ${mensagem}`
@@ -285,6 +302,12 @@ export class MercadoLivreApiFonte {
 
     const ofertas: Oferta[] = [];
     const produtosVistos = new Set<string>();
+    const cache404 = new CacheCatalogo404();
+    let catalogosConsultados = 0;
+    let ignoradosCache = 0;
+    let semPublicacoes404 = 0;
+    let vendedoresVerdes = 0;
+    let descontosMinimos = 0;
     const quantidade = Number(process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY ?? 10);
     const maximo = Number.isFinite(quantidade)
       ? Math.max(1, Math.min(16, Math.trunc(quantidade)))
@@ -301,92 +324,106 @@ export class MercadoLivreApiFonte {
       )
     );
 
-    for (let pagina = 0; pagina < paginas; pagina += 1) {
-      const url = new URL(
-        "https://api.mercadolibre.com/products/search"
-      );
-      url.searchParams.set("status", "active");
-      url.searchParams.set("site_id", "MLB");
-      url.searchParams.set("q", this.consulta);
-      url.searchParams.set("limit", String(this.limite));
-      url.searchParams.set("offset", String(pagina * this.limite));
+    try {
+      for (let pagina = 0; pagina < paginas; pagina += 1) {
+        const url = new URL(
+          "https://api.mercadolibre.com/products/search"
+        );
+        url.searchParams.set("status", "active");
+        url.searchParams.set("site_id", "MLB");
+        url.searchParams.set("q", this.consulta);
+        url.searchParams.set("limit", String(this.limite));
+        url.searchParams.set("offset", String(pagina * this.limite));
 
-      let dados: RespostaBuscaProdutos;
-      try {
-        dados = await this.getJson<RespostaBuscaProdutos>(url);
-      } catch (error) {
-        const mensagem = error instanceof Error ? error.message : String(error);
-        if (mensagem.includes("HTTP 429") && pagina > 0) {
-          console.warn(
-            `Mercado Livre: limite de requisicoes na pagina ${pagina + 1}; encerrando esta rodada.`
+        // HTTP 429 deve interromper a rodada inteira, inclusive em paginas
+        // posteriores: nao retornar uma amostra parcial como sucesso.
+        const dados = await this.getJson<RespostaBuscaProdutos>(url);
+
+        const produtos = dados.results ?? [];
+        if (produtos.length === 0) break;
+
+        if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
+          console.log(
+            `Mercado Livre catalogo: pagina=${pagina + 1}, produtos=${produtos.length}, total=${dados.paging?.total ?? "?"}`
           );
+        }
+
+        for (const produto of produtos) {
+          if (produto.status !== "active" || produtosVistos.has(produto.id)) {
+            continue;
+          }
+          produtosVistos.add(produto.id);
+
+          if (await cache404.contem(produto.id)) {
+            ignoradosCache += 1;
+            continue;
+          }
+          catalogosConsultados += 1;
+          let publicacoes: PublicacaoCatalogo[] | null;
+          try {
+            publicacoes = await this.buscarPublicacoes(produto.id);
+          } catch (error) {
+            if (
+              error instanceof MercadoLivreReautorizacaoNecessaria ||
+              error instanceof MercadoLivreLimiteRequisicoes
+            ) throw error;
+            const mensagem =
+              error instanceof Error ? error.message : String(error);
+            console.warn(
+              `Mercado Livre: pulando ${produto.id}: ${mensagem}`
+            );
+            continue;
+          }
+
+          if (publicacoes === null) {
+            semPublicacoes404 += 1;
+            await cache404.registrar404(produto.id);
+            continue;
+          }
+          const melhor = await this.melhorPublicacao(publicacoes);
+          if (!melhor) continue;
+          vendedoresVerdes += 1;
+
+          const anterior =
+            melhor.original_price && melhor.original_price > melhor.price
+              ? melhor.original_price
+              : undefined;
+
+          const percentualVerificado = desconto(melhor.price, anterior);
+          ofertas.push({
+            plataforma: "Mercado Livre",
+            produtoId: produto.id,
+            titulo: produto.name,
+            precoAtual: melhor.price,
+            precoAnterior: anterior,
+            descontoPercentual: percentualVerificado,
+            imagem: imagemProduto(produto),
+            urlProduto: urlProdutoCatalogo(produto.id),
+            categoria: this.consulta,
+            encontradoEm: new Date()
+          });
+
+          if ((percentualVerificado ?? 0) >= minimoVerificado) {
+            elegiveisPorDesconto++;
+            descontosMinimos += 1;
+          }
+          if (elegiveisPorDesconto >= maximo) return ofertas;
+        }
+
+        const total = dados.paging?.total;
+        if (typeof total === "number" && (pagina + 1) * this.limite >= total) {
           break;
         }
-        throw error;
       }
 
-      const produtos = dados.results ?? [];
-      if (produtos.length === 0) break;
-
-      if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
-        console.log(
-          `Mercado Livre catalogo: pagina=${pagina + 1}, produtos=${produtos.length}, total=${dados.paging?.total ?? "?"}`
-        );
-      }
-
-      for (const produto of produtos) {
-        if (produto.status !== "active" || produtosVistos.has(produto.id)) {
-          continue;
-        }
-        produtosVistos.add(produto.id);
-
-        let publicacoes: PublicacaoCatalogo[];
-        try {
-          publicacoes = await this.buscarPublicacoes(produto.id);
-        } catch (error) {
-          if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
-          const mensagem =
-            error instanceof Error ? error.message : String(error);
-          console.warn(
-            `Mercado Livre: pulando ${produto.id}: ${mensagem}`
-          );
-          continue;
-        }
-
-        const melhor = await this.melhorPublicacao(publicacoes);
-        if (!melhor) continue;
-
-        const anterior =
-          melhor.original_price && melhor.original_price > melhor.price
-            ? melhor.original_price
-            : undefined;
-
-        const percentualVerificado = desconto(melhor.price, anterior);
-        ofertas.push({
-          plataforma: "Mercado Livre",
-          produtoId: produto.id,
-          titulo: produto.name,
-          precoAtual: melhor.price,
-          precoAnterior: anterior,
-          descontoPercentual: percentualVerificado,
-          imagem: imagemProduto(produto),
-          urlProduto: urlProdutoCatalogo(produto.id),
-          categoria: this.consulta,
-          encontradoEm: new Date()
-        });
-
-        if ((percentualVerificado ?? 0) >= minimoVerificado) {
-          elegiveisPorDesconto++;
-        }
-        if (elegiveisPorDesconto >= maximo) return ofertas;
-      }
-
-      const total = dados.paging?.total;
-      if (typeof total === "number" && (pagina + 1) * this.limite >= total) {
-        break;
-      }
+      return ofertas;
+    } finally {
+      await cache404.persistir();
+      console.log(
+        `Mercado Livre catalogo: consultados=${catalogosConsultados}, ` +
+        `404=${semPublicacoes404}, cache404=${ignoradosCache}, ` +
+        `vendedores-verdes=${vendedoresVerdes}, descontos-minimos=${descontosMinimos}.`
+      );
     }
-
-    return ofertas;
   }
 }
