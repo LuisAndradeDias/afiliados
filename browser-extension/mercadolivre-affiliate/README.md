@@ -19,8 +19,8 @@ Ela não acessa cookies, tokens ou credenciais. O trabalho é feito pelo DOM vis
 3. Clique em **Carregar sem compactação**.
 4. Selecione:
    `C:\projeto02\browser-extension\mercadolivre-affiliate`
-5. Mantenha a extensão habilitada.
-6. Atualize o painel `http://localhost:3030`.
+5. Confira que a extensão nova aparece com o nome discreto **Conector 02**.
+6. Mantenha a extensão habilitada e atualize o painel `http://localhost:3030`.
 
 O painel passa a mostrar **Automação Meli conectada** após receber o ping da extensão. **Esse ping não comprova que o caminho no Chrome está correto nem que o Gerador de Links funcionou.**
 

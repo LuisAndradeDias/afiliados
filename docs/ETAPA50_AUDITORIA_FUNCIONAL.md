@@ -119,7 +119,7 @@ aprovados ate investigar o encerramento de recursos.
 [x] Erro de teste de variedade corrigido sem alterar .env real.
 [x] Advertencias do painel corrigidas na branch de desenvolvimento.
 [x] Configuracao WhatsApp e perfis preservados.
-[ ] Token Mercado Livre autenticado em consulta real (atual: HTTP 401).
+[x] Token Mercado Livre renovado e autenticado (GET do catálogo: HTTP 200).
 [ ] Extensao Meli registrada no Chrome usando C:\projeto02.
 [ ] Link Meli gerado e conferido pelo mecanismo oficial.
 [ ] Ofertas Amazon reais, precos, cupons e links conferidos.
@@ -145,3 +145,59 @@ nao deve ser ligada com base apenas nos testes simulados.
   arquivos com handles abertos; nao contar como suite totalmente aprovada.
 - Consulta real somente GET ao Mercado Livre: HTTP 401, nenhum dado
   de produto validado, nenhum token renovado.
+
+
+## Atualizacao operacional — renovacao real e hotfix discreto (27/10/2026)
+
+Este bloco SUPERA o diagnostico inicial de API HTTP 401 acima, que foi
+feito ANTES da renovacao. Nao altera a conclusao de que a Etapa 50
+ainda precisa de homologacao de links e WhatsApp.
+
+**Credenciais ML recuperadas**
+- Codigo de autenticacao em C:\projeto02 e branch Etapa 50 comparado;
+  mesma logica, com diferencas exclusivamente CRLF/LF.
+- Copia pre-rotacao da configuracao guardada com criptografia DPAPI
+  no diretorio protegido %LOCALAPPDATA%\Projeto04\reserva, validada
+  por SHA-256 de ida e volta. O refresh token antigo e de uso unico:
+  essa copia NAO deve ser restaurada automaticamente, pois invalidaria
+  a credencial nova.
+- Uma unica execucao de npm run mercadolivre:auth-check no ambiente
+  ativo renovou com sucesso o access token e refresh token, persistindo
+  ambos no .env atual. O lock foi removido normalmente. Nenhum valor
+  de token foi exibido, nem enviado ao Git.
+- Consulta oficial GET /products/search autenticada respondeu HTTP 200
+  com resultado e data de expiracao de aproximadamente seis horas.
+  Nenhum envio, link gerado, refresh adicional ou automonitoramento.
+- Na amostra real controlada de tres catalogos, houve dois retornos
+  de detalhes HTTP 404 e um HTTP 200 com dois anuncios com preco. Zero
+  precos anteriores comprovados, zero disponibilidades positivas
+  evidenciadas e zero vendedores verdes confirmados. Bulk de
+  reputacao respondeu HTTP 200. NAO representa oferta pronta.
+
+**Hotfix visual ja aplicado ao Acer**
+- O arquivo C:\projeto02\src\painel\public\index.html recebeu SOMENTE
+  os ajustes visuais da Etapa 50 para nao exibir token/heartbeat como
+  API e extensao comprovadamente prontas. Foram exatamente 5 linhas
+  inseridas e 4 removidas, confirmadas com git diff ignorando EOL.
+- Backup original do HTML guardado na reserva protegida com hash
+  verificado. Instalacao atomica com caminho de backup explicito,
+  testada e validada em GET / e /ofertas (HTTP 200 e mensagens novas).
+  A rota /central serve uma pagina diferente e nao verifica o
+  conteudo do HTML de ofertas. Nenhum servidor foi reiniciado.
+- A extensao localizada em C:\projeto02 agora possui manifest
+  discreto: nome "Conector 02", versao 0.4.1, mesma permissao, hosts
+  permitidos, scripts e worker da versao anterior. Backup preservado.
+  Os arquivos no disco foram atualizados; o Chrome Profile 10 AINDA
+  registra a extensao pelo caminho extinto C:\projeto01.
+  Necessario remover SOMENTE aquela extensao antiga e carregar a
+  pasta C:\projeto02\browser-extension\mercadolivre-affiliate
+  por chrome://extensions, sem apagar perfis/cookies nem editar
+  Secure Preferences manualmente.
+
+**Seguranca e liberacao**
+- Monitor Amazon/ML e WhatsApp autoenvio seguem desativados.
+- A integracao de link oficial via extensao ainda nao foi testada
+  com sessao real. Nenhum WhatsApp enviado e nenhum grupo alterado.
+- A Etapa 50 continua em draft, sem aprovar merge/deploy automatico.
+- Novos testes estaticos garantem que a extensao continue sem
+  referencias comerciais no nome visivel e sem ampliar permissoes.
