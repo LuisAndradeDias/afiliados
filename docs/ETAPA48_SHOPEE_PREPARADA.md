@@ -82,9 +82,18 @@ grupo de WhatsApp já configurado**. Nenhum segundo grupo, perfil ou sessão.
   novamente na CI Windows/Linux.
 - PR draft #46 empilhado sobre PR #45. Revisão independente antes de merge.
 
-## Implantação
+## Implantação controlada no ACER — 27/10/2026
 
-Somente instalar no painel 3030 após verificar o status do monitor e fazer
-backup protegido no disco C:. Substituir apenas arquivos da UI e o roteador
-local Shopee, preservar `C:\projeto01`, portas 3040/3045, .env, perfis,
-contatos, grupo e filas. Não iniciar automação.
+**Concluída somente na instalação de homologação:** `C:\afiliados-v2-homologacao`, porta 3030. Esta operação **não** foi um merge dos PRs empilhados nem ativou ofertas Shopee automáticas.
+
+O ACER havia reiniciado às 08h06 e as portas 3030/3040 estavam fechadas. Verificamos ausência de tarefas/sinais de envio, `.env` com as flags `ALTERNATING_MONITOR_ENABLED=false`, `MERCADOLIVRE_MONITOR_ENABLED=false` e `WHATSAPP_AUTO_SEND_ENABLED=false`. Antes da instalação, os seis arquivos existentes eram idênticos aos blobs do commit-base `037c507c21527305984b58ca229cf63489a574b9`.
+
+1. Backup local em `C:\BackupsAfiliados\2026-10-27_antes-etapa48_SHOPEE`, ACL protegida; seis originais verificados por SHA-256 e blob Git. Script de implantação e rollback `INSTALAR_ETAPA48_SEGURO.ps1` sintaticamente validado e guardado junto ao backup.
+2. Instalados somente onze arquivos da UI/rotas/rascunhos da Shopee com blobs exatos do commit `f6dd9d1eba7c35b16a0ffd307079bb050ce258e5` (seis substituídos, cinco novos). Sem cópia de `.env`, sessão Chrome, contatos ou histórico.
+3. `npm.cmd run typecheck` passou na própria instalação; Central, Ofertas, Shopee, CSS/JS e endpoints GET em localhost:3030 retornaram HTTP 200. `/api/shopee/status` confirma `conta=aguardando`, `apiAtiva=false`, `envioAutomatico=false` e grupo existente indicado apenas como destino futuro.
+4. Captação foi reiniciada em localhost:3040, usando seu diretório de dados existente, sem acionar o worker de WhatsApp. GET `/saude`, `/campanhas`, `/enviar` retornaram HTTP 200.
+5. Chrome/Playwright real diretamente em `http://127.0.0.1:3030/shopee`: desktop 1440px e mobile 390px, sem overflow/erros; cadastro de link fictício, listagem e exclusão com contador final zero; navegação Shopee na Central e Ofertas OK. Nenhuma mensagem enviada.
+
+**Rollback:** instruções e seis arquivos originais guardados no diretório protegido indicado acima. O rollback real não foi necessário; a verificação de hashes antecedeu a troca. Instalação antiga `C:\projeto01` preservada. Relatório de execução: `C:\afiliados-v2-homologacao\diagnosticos-local\DEPLOY_ETAPA48_SHOPEE.txt`.
+
+**Pendente:** revisão e integração segura da cadeia PRs #38–#46, aprovação da conta Shopee, liberação da Open API e integração futura da fila supervisonada com o **mesmo grupo**. Não instalar PostgreSQL, não usar Drive e não iniciar envios sem autorização.
