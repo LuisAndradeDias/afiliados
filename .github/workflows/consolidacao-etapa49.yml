@@ -1,0 +1,43 @@
+name: Afiliados 2.0 - Auditoria de consolidacao etapa 49
+
+on:
+  push:
+    branches:
+      - chore/consolidacao-seguranca-etapa49
+  pull_request:
+    branches:
+      - feat/shopee-painel-integrado-etapa48
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etapa49-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seguranca:
+    name: Windows - auditar sem contas, sessoes ou envios
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verificar auditoria e isolamento Git
+        run: node --test tests/auditoria-etapa49.test.mjs
+      - name: Instalar dependencias sem scripts externos
+        run: npm.cmd ci --ignore-scripts --no-audit --no-fund
+      - name: Validar inicializador e staging com pastas neutras
+        run: node --test tests/instalacao-windows.test.mjs
+      - name: Auditoria de dependencias
+        run: npm.cmd audit --audit-level=high
+      - name: Verificar TypeScript
+        run: npm.cmd run typecheck
+      - name: Regressao sem envio real
+        run: node --import tsx --test tests/monitor-agendamento.mts tests/painel-dominios.mts

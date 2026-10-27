@@ -1,5 +1,5 @@
 $ErrorActionPreference='Stop'
-$dados='C:\projeto01\captacao\caca-promos-vip\dados\previa-acer'
+$dados=Join-Path ((Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path) 'dados\previa-acer'
 $confFile=Join-Path $dados 'denuncias-netlify-config.json'
 if(!(Test-Path -LiteralPath $confFile)){throw 'Configuração local do Netlify não encontrada.'}
 $config=Get-Content -LiteralPath $confFile -Raw | ConvertFrom-Json

@@ -54,7 +54,7 @@ test("preflight returns safe read-only JSON without credentials", { skip: !onWin
 test("staging defaults to dry run and refuses to create a folder", { skip: !onWindows }, () => {
   assert.ok(existsSync(staging), "Safe staging PowerShell script must exist");
   const temp = mkdtempSync(join(tmpdir(), "cpv-stage-dry-"));
-  const dest = join(temp, "afiliados-v2-homologacao-teste");
+  const dest = join(temp, "projeto05-homologacao-teste");
   try {
     const r = powershell(staging, ["-SourceDir", repo, "-DestinationDir", dest]);
     assert.equal(r.status, 0, r.stderr || r.stdout);
@@ -70,7 +70,7 @@ test("explicit stage exports only Git-tracked files, never local profiles or sec
 }, () => {
   assert.ok(existsSync(staging));
   const tmp = mkdtempSync(join(tmpdir(), "cpv-stage-real-"));
-  const dest = join(tmp, "afiliados-v2-homologacao-teste");
+  const dest = join(tmp, "projeto05-homologacao-teste");
   try {
     const result = powershell(staging, ["-SourceDir", repo, "-DestinationDir", dest, "-Execute"]);
     assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -91,5 +91,15 @@ test("explicit stage exports only Git-tracked files, never local profiles or sec
     assert.equal(existsSync(join(repo, "homologacao-interna")), false);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("future staging uses neutral directories and protects current installations", {
+  skip: !onWindows,
+}, () => {
+  const source = readFileSync(staging, "utf8");
+  assert.ok(source.includes("DestinationDir = 'C:\\projeto05'"));
+  for (const path of ["C:\\projeto01", "C:\\projeto02", "C:\\projeto03", "C:\\projeto04"]) {
+    assert.ok(source.includes("'" + path + "'"), "must protect " + path);
   }
 });

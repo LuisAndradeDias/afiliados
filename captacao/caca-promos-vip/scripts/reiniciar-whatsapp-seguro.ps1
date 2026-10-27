@@ -64,7 +64,7 @@ try {
   $stdout=Join-Path $data ($stamp+'-envio-seguro.log')
   $stderr=Join-Path $data ($stamp+'-envio-seguro-erros.log')
   $node=(Get-Command node -ErrorAction Stop).Source
-  $servidor=Start-Process -FilePath $node -ArgumentList ('"'+$entry+'"') -WorkingDirectory 'C:\projeto01' -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+  $servidor=Start-Process -FilePath $node -ArgumentList ('"'+$entry+'"') -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
   $ok=$false
   for($i=0;$i -lt 60;$i++){
     Start-Sleep -Milliseconds 300
