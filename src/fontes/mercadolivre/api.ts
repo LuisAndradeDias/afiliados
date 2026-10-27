@@ -1,6 +1,8 @@
 import type { Oferta } from "../types.js";
 import { descontoMinimoOferta } from "../../ofertas/qualidade.js";
 import { CacheCatalogo404 } from "./cache-catalogo-404.js";
+import { catalogoComCompraConfirmada, publicacaoCandidataParaConfirmar,
+  type DetalheCatalogoDisponibilidade } from "./disponibilidade.js";
 import {
   MercadoLivreReautorizacaoNecessaria,
   obterTokenMercadoLivreValido
@@ -260,7 +262,7 @@ export class MercadoLivreApiFonte {
     publicacoes: PublicacaoCatalogo[]
   ): Promise<PublicacaoCatalogo | undefined> {
     const candidatas = publicacoes
-      .filter((item) => item.condition === "new" && item.price > 0)
+      .filter((item) => publicacaoCandidataParaConfirmar(item))
       .sort((a, b) => {
         const da = desconto(a.price, a.original_price) ?? 0;
         const db = desconto(b.price, b.original_price) ?? 0;
@@ -382,6 +384,24 @@ export class MercadoLivreApiFonte {
           }
           const melhor = await this.melhorPublicacao(publicacoes);
           if (!melhor) continue;
+
+          // A ficha "active" pode mostrar "produto indisponivel".
+          // Comprovar vendedor vencedor e estoque no catalogo antes da oferta.
+          let catalogo: DetalheCatalogoDisponibilidade;
+          try {
+            catalogo = await this.getJson<DetalheCatalogoDisponibilidade>(
+              "https://api.mercadolibre.com/products/" + encodeURIComponent(produto.id)
+            );
+          } catch (error) {
+            if (error instanceof MercadoLivreReautorizacaoNecessaria ||
+                error instanceof MercadoLivreLimiteRequisicoes) throw error;
+            console.warn("Mercado Livre: disponibilidade nao confirmada; ignorando catalogo.");
+            continue;
+          }
+          if (!catalogoComCompraConfirmada(produto.id, melhor, catalogo)) {
+            console.warn("Mercado Livre: catalogo sem compra/estoque confirmados; ignorando.");
+            continue;
+          }
           vendedoresVerdes += 1;
 
           const anterior =
@@ -393,6 +413,14 @@ export class MercadoLivreApiFonte {
           ofertas.push({
             plataforma: "Mercado Livre",
             produtoId: produto.id,
+            anuncioId: melhor.item_id,
+            vendedorId: melhor.seller_id,
+            estoqueDisponivel: Math.min(
+              melhor.available_quantity ?? catalogo.buy_box_winner!.available_quantity!,
+              catalogo.buy_box_winner!.available_quantity!
+            ),
+            disponibilidadeConfirmada: true,
+            disponibilidadeVerificadaEm: new Date().toISOString(),
             titulo: produto.name,
             precoAtual: melhor.price,
             precoAnterior: anterior,

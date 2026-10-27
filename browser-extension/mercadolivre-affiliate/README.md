@@ -36,3 +36,23 @@ A partir da versão 0.3.0, a extensão também observa blocos de cupom que estej
 Ela não envia o conteúdo geral da página, cookies, senhas ou tokens.
 
 Os cupons observados têm validade curta no cache do projeto e são revalidados antes da preparação no WhatsApp. Para carregar esta versão após um `git pull`, recarregue a extensão em `chrome://extensions/`.
+
+
+## Botao Gerar desabilitado mesmo com etiqueta selecionada
+
+Se a etiqueta ja esta selecionada no Gerador oficial e o botao
+**Gerar** continua cinza, nao crie outra etiqueta automaticamente.
+Primeiro verifique se a URL e de uma pagina individual de produto
+com anuncio ativo e elegivel. O codigo de catalogo /p/MLB...
+pode aparecer como ativo na API, mesmo quando o endpoint de
+anuncios /products/{id}/items responde HTTP 404.
+
+A versao **Conector 02 v0.4.2** reconhece os caminhos oficiais
+/p/MLB... e /MLB-12345-..._JM, mostra mensagens sem acentos
+corrompidos e nao indica que falta etiqueta quando nao ha prova.
+
+Apos atualizar os arquivos, acesse chrome://extensions e use
+**Recarregar** somente no cartao Conector 02. Isso nao apaga
+cookies ou sessoes. Depois teste manualmente uma URL copiada
+da pagina real do anuncio; nao ative monitoramento ou autoenvio
+antes de confirmar link oficial valido.

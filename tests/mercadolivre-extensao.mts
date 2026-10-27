@@ -4,15 +4,15 @@ import { readFile } from "node:fs/promises";
 
 const source=await readFile("browser-extension/mercadolivre-affiliate/content.js","utf8");
 const browser=await chromium.launch({channel:"chrome",headless:true});
-async function fixture(path,html){
+async function fixture(path,html,productUrl="https://www.mercadolivre.com.br/p/MLBTEST123"){
   const page=await browser.newPage();
   await page.route("https://www.mercadolivre.com.br"+path,route=>route.fulfill({
     status:200,contentType:"text/html; charset=utf-8",body:html
   }));
-  await page.addInitScript(()=>{
+  await page.addInitScript((productUrl)=>{
     window.__meliJobResult=null;
     window.__meliGetJobCalls=0;
-    const job={id:"TEST-JOB-123",urlProduto:"https://www.mercadolivre.com.br/p/MLBTEST123",status:"pending"};
+    const job={id:"TEST-JOB-123",urlProduto:productUrl,status:"pending"};
     Object.defineProperty(window,"chrome",{configurable:true,value:{runtime:{
       lastError:null,
       sendMessage(message,callback){
@@ -21,7 +21,7 @@ async function fixture(path,html){
         queueMicrotask(()=>callback({ok:true}));
       }
     }}});
-  });
+  },productUrl);
   await page.goto("https://www.mercadolivre.com.br"+path);
   await page.addScriptTag({content:source});
   return page;
@@ -56,6 +56,38 @@ try{
   await page2.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:15000});
   assert.equal((await page2.evaluate(()=>window.__meliJobResult)).link,"https://meli.la/TEST567");
   await page2.close();
+
+  // URL de anuncio individual: o gerador so habilita apos receber input.
+  const itemUrl="https://produto.mercadolivre.com.br/MLB-1234567890-fone-teste-_JM";
+  const itemPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <textarea aria-label="URL do produto" placeholder="Cole a URL do produto"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Etiqueta existente</option></select>
+    <button id="itemGerar" type="button" disabled>Gerar</button>
+    <div id="resultado"></div>
+    <script>
+      const field=document.querySelector("textarea");
+      const generate=document.querySelector("#itemGerar");
+      field.addEventListener("input",()=>{generate.disabled=!field.value.includes("/MLB-")});
+      generate.addEventListener("click",()=>{document.querySelector("#resultado").textContent="https://meli.la/ITEMLINK001"});
+    </script>
+  </body></html>`,itemUrl);
+  await itemPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:17000});
+  const itemResult=await itemPage.evaluate(()=>window.__meliJobResult);
+  assert.equal(itemResult.link,"https://meli.la/ITEMLINK001");
+  assert.equal(await itemPage.locator("textarea").inputValue(),itemUrl);
+  await itemPage.close();
+
+  // Etiqueta ja escolhida nao prova que o produto ou URL foi aceito.
+  const disabledPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <textarea aria-label="URL do produto" placeholder="Cole a URL do produto"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Etiqueta existente</option></select>
+    <button disabled>Gerar</button>
+  </body></html>`);
+  await disabledPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:12000});
+  const disabledResult=await disabledPage.evaluate(()=>window.__meliJobResult);
+  assert.match(disabledResult.error,/etiqueta pode estar correta/i);
+  assert.ok(!disabledResult.link);
+  await disabledPage.close();
 
   const page3=await fixture("/p/MLBTEST123",`<html><body><input type="text" placeholder="Buscar produtos">
     <button>Comprar agora</button></body></html>`);

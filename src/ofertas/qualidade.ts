@@ -1,4 +1,5 @@
 import type { Oferta } from "../fontes/types.js";
+import { disponibilidadeMercadoLivreRecente } from "../fontes/mercadolivre/disponibilidade.js";
 
 const PRODUTOS_PRIORITARIOS =
   /\b(?:smartphone|celular|iphone|galaxy|ipad|tablet|notebook|laptop|ultrabook|macbook|computador|desktop|pc\s*gamer|placa\s+de\s+video|processador|memoria\s+ram|ssd|pendrive|monitor|smart\s*tv|televisor|televisao|tv|fone(?:s)?|headphone|headset|earbuds|airpods|caixa\s+de\s+som|soundbar|home\s*theater|microfone|mouse|teclado|webcam|power\s*bank|carregador\s+por\s+inducao|console|playstation|xbox|nintendo|switch|controle\s+gamer|controle\s+sem\s+fio|roteador|repetidor\s+wifi|impressora|camera\s+digital|camera\s+wifi|camera\s+de\s+seguranca|smartwatch|smartband|relogio\s+inteligente|tomada\s+inteligente|smart\s+plug|lampada\s+(?:inteligente|smart)|echo|fire\s*tv|kindle|projetor|air\s*fryer|fritadeira\s+eletrica|cafeteira|aspirador|robo\s+aspirador|microondas|micro-ondas|geladeira|refrigerador|freezer|liquidificador|batedeira|maquina\s+de\s+lavar|lavadora|lava\s+e\s+seca|lava\s*loucas|fogao|cooktop|forno\s+eletrico|ventilador|climatizador|ar\s*condicionado|purificador\s+de\s+agua|ferro\s+de\s+passar|barbeador\s+eletrico|secador\s+de\s+cabelo)\b/i;
@@ -106,6 +107,10 @@ export function avaliarQualidadeOferta(
     prioritario,
     economiaReais
   });
+
+  if (!disponibilidadeMercadoLivreRecente(oferta)) {
+    return retorno(false, "disponibilidade ou estoque nao comprovados");
+  }
 
   if (!Number.isFinite(oferta.precoAtual) || oferta.precoAtual < minimoPreco) {
     return retorno(false, "preco muito baixo ou invalido");

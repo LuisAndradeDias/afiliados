@@ -3,6 +3,12 @@ export interface Oferta {
   produtoId: string;
   titulo: string;
   precoAtual: number;
+  // Mercado Livre: somente o vencedor compravel e com estoque confirmado.
+  anuncioId?: string;
+  vendedorId?: number;
+  estoqueDisponivel?: number;
+  disponibilidadeConfirmada?: boolean;
+  disponibilidadeVerificadaEm?: string;
   precoAnterior?: number;
   descontoPercentual?: number;
   cupom?: string;

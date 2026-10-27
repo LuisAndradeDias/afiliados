@@ -165,8 +165,8 @@
       .map(avaliar)
       .sort((a, b) => b.score - a.score)[0];
 
-    // Nunca escolhe um campo gen�rico s� porque � o �nico input da p�gina.
-    // O Gerador de Links precisa apresentar ind�cios claros de URL/link/produto.
+    // Nunca escolhe um campo gen\u00e9rico s\u00f3 porque \u00e9 o \u00fanico input da p\u00e1gina.
+    // O Gerador de Links precisa apresentar ind\u00edcios claros de URL/link/produto.
     return melhor && melhor.score >= 6 ? melhor.el : null;
   }
 
@@ -321,7 +321,7 @@
         .trim();
 
       if (
-        /v�lido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(
+        /v\u00e1lido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(
           bloco
         )
       ) {
@@ -349,7 +349,7 @@
   async function processar(job) {
     processando = true;
     jobAtual = job.id;
-    mostrarStatus("Automa��o Meli: preparando o Gerador de Links...");
+    mostrarStatus("Automa\u00e7\u00e3o Meli: preparando o Gerador de Links...");
 
     try {
       await enviar({ type: "startJob", id: job.id });
@@ -360,45 +360,49 @@
         const gerador = await esperar(localizarGerador, 12000);
         if (!gerador) {
           throw new Error(
-            "N�o encontrei o bot�o Gerador de Links. Abra a �rea de Afiliados e tente novamente."
+            "N\u00e3o encontrei o bot\u00e3o Gerador de Links. Abra a \u00e1rea de Afiliados e tente novamente."
           );
         }
 
         gerador.click();
-        mostrarStatus("Automa��o Meli: abrindo o Gerador de Links...");
+        mostrarStatus("Automa\u00e7\u00e3o Meli: abrindo o Gerador de Links...");
         campo = await esperar(localizarCampoUrl, 15000);
       }
 
       if (!campo) {
-        throw new Error("N�o encontrei o campo para colar a URL do produto.");
+        throw new Error("N\u00e3o encontrei o campo para colar a URL do produto.");
       }
 
       const url = new URL(job.urlProduto);
-      if (url.protocol !== "https:" ||
-          !/(^|\.)mercadolivre\.com(?:\.br)?$/.test(url.hostname) ||
-          !/^\/p\/[A-Za-z0-9_-]+/.test(url.pathname)) {
-        throw new Error("O produto informado n�o � uma p�gina de cat�logo autorizada.");
+      const hostMercadoLivre = /(^|\.)mercadolivre\.com(?:\.br)?$/.test(url.hostname);
+      // URLs oficiais de catalogo (/p/MLB...) e anuncios individuais
+      // (/MLB-12345-nome-_JM) podem ser aceitas pelo Gerador de Links.
+      const catalogo = /^\/p\/MLB[A-Za-z0-9_-]+\/?$/i.test(url.pathname);
+      const anuncio = /^\/MLB-\d+(?:-[^/?#]*)?\/?$/i.test(url.pathname);
+      if (url.protocol !== "https:" || url.username || url.password ||
+          url.port || !hostMercadoLivre || (!catalogo && !anuncio)) {
+        throw new Error("O produto informado n\u00e3o \u00e9 uma p\u00e1gina de cat\u00e1logo ou an\u00fancio autorizada.");
       }
       preencher(campo, job.urlProduto);
       campo.blur();
-      mostrarStatus("Automa��o Meli: URL preenchida. Localizando o Gerador...");
+      mostrarStatus("Automa\u00e7\u00e3o Meli: URL preenchida. Localizando o Gerador...");
 
       let botao = await esperar(() => localizarBotaoGerar(), 3500);
       if (!botao) {
         const etiquetaEscolhida = await escolherEtiquetaUnica();
         if (etiquetaEscolhida) {
-          mostrarStatus("Automa��o Meli: etiqueta padr�o selecionada. Gerando link...");
+          mostrarStatus("Automa\u00e7\u00e3o Meli: etiqueta padr\u00e3o selecionada. Gerando link...");
           botao = await esperar(() => localizarBotaoGerar(), 6000);
         }
       }
       if (!botao) {
         if (localizarBotaoGerar(true)) {
-          throw new Error("Bot�o Gerar desabilitado. Confira a etiqueta de afiliado e o formato de link na Central.");
+          throw new Error("Bot\u00e3o Gerar desabilitado. A etiqueta pode estar correta; confirme se a URL corresponde a um an\u00fancio eleg\u00edvel e foi aceita pelo portal.");
         }
-        throw new Error("A Central de Afiliados n�o mostrou o bot�o Criar/Gerar link. Abra o Gerador oficial.");
+        throw new Error("A Central de Afiliados n\u00e3o mostrou o bot\u00e3o Criar/Gerar link. Abra o Gerador oficial.");
       }
 
-      // Em execu��es consecutivas o resultado anterior pode continuar vis�vel.
+      // Em execu\u00e7\u00f5es consecutivas o resultado anterior pode continuar vis\u00edvel.
       // Guardamos os links existentes para nunca devolver o link da oferta anterior.
       const linksAntes = new Set(linksNaTela());
       botao.click();
@@ -416,7 +420,7 @@
 
       if (!link) {
         throw new Error(
-          "O Mercado Livre n�o exibiu um link oficial reconhec�vel ap�s gerar."
+          "O Mercado Livre n\u00e3o exibiu um link oficial reconhec\u00edvel ap\u00f3s gerar."
         );
       }
 
@@ -435,7 +439,7 @@
     } catch (error) {
       const mensagem =
         error instanceof Error ? error.message : String(error);
-      mostrarStatus("Automa��o Meli: " + mensagem, "erro");
+      mostrarStatus("Automa\u00e7\u00e3o Meli: " + mensagem, "erro");
       await enviar({
         type: "result",
         id: job.id,

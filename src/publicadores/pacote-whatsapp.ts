@@ -10,6 +10,11 @@ export interface PacoteWhatsapp {
   imagemUrl?: string;
   plataforma: string;
   produtoId: string;
+  anuncioId?: string;
+  vendedorId?: number;
+  estoqueDisponivel?: number;
+  disponibilidadeConfirmada?: boolean;
+  disponibilidadeVerificadaEm?: string;
   titulo: string;
   precoAtual: number;
   precoAnterior?: number;
@@ -38,6 +43,11 @@ export async function salvarPacoteWhatsapp(
     imagemUrl: oferta.imagem,
     plataforma: oferta.plataforma,
     produtoId: oferta.produtoId,
+    anuncioId: oferta.anuncioId,
+    vendedorId: oferta.vendedorId,
+    estoqueDisponivel: oferta.estoqueDisponivel,
+    disponibilidadeConfirmada: oferta.disponibilidadeConfirmada,
+    disponibilidadeVerificadaEm: oferta.disponibilidadeVerificadaEm,
     titulo: oferta.titulo,
     precoAtual: oferta.precoAtual,
     precoAnterior: oferta.precoAnterior,

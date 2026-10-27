@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Oferta } from "../fontes/types.js";
+import { disponibilidadeMercadoLivreRecente } from "../fontes/mercadolivre/disponibilidade.js";
 
 const CAMINHO_PADRAO = "data/ultima-oferta-mercadolivre.json";
 
@@ -87,6 +88,11 @@ export async function salvarLinkAfiliadoMercadoLivre(
 ): Promise<Oferta> {
   const link = normalizarLinkAfiliadoMercadoLivre(valor);
   const oferta = await lerOfertaMercadoLivre(caminho);
+  if (!disponibilidadeMercadoLivreRecente(oferta)) {
+    throw new Error(
+      "Mercado Livre: disponibilidade nao confirmada ou vencida. Busque outra oferta; link nao salvo."
+    );
+  }
   const atualizada: Oferta = {
     ...oferta,
     urlAfiliado: link

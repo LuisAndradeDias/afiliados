@@ -39,16 +39,65 @@ if($token.Length -lt 12){throw 'Access token invalid'}
 $headers=@{Authorization=('Bearer '+$token);Accept='application/json'}
 Write-Output 'PREFLIGHT=PASS; AUTO_ACTIONS=OFF; OFFER=ABSENT; EXTENSION_HEARTBEAT=PRESENT'
 try{
-  $response=Invoke-WebRequest -Method GET -Uri 'https://api.mercadolibre.com/products/search?status=active&site_id=MLB&q=fone%20bluetooth&limit=2&offset=0' -UseBasicParsing -Headers $headers -TimeoutSec 15 -MaximumRedirection 0 -ErrorAction Stop
+  $response=Invoke-WebRequest -Method GET -Uri 'https://api.mercadolibre.com/products/search?status=active&site_id=MLB&q=fone%20bluetooth&limit=8&offset=0' -UseBasicParsing -Headers $headers -TimeoutSec 15 -MaximumRedirection 0 -ErrorAction Stop
   if($response.StatusCode -ne 200){throw 'Catalog HTTP not 200'}
-  $products=@(($response.Content|ConvertFrom-Json).results | Where-Object { $_.id -match '^MLB[0-9]+$' -and $_.status -eq 'active' })
+  $products=@(($response.Content|ConvertFrom-Json).results | Where-Object { $_.id -match '^MLB[0-9]+$' -and $_.status -eq 'active' } | Select-Object -First 8)
   if($products.Count -eq 0){throw 'No active catalog product found'}
-  $catalogID=[string]$products[0].id
+  # Catalog status active does not prove a customer can buy. Require
+  # one new priced listing matching the winning item, with positive stock.
+  $checked=0
+  $winningItem=$null
+  $stock=0
+  foreach($candidate in $products){
+    $checked++
+    Start-Sleep -Milliseconds 900
+    try{
+      $details=Invoke-WebRequest -Method GET -UseBasicParsing -Headers $headers -TimeoutSec 12 -MaximumRedirection 0 -ErrorAction Stop -Uri ('https://api.mercadolibre.com/products/'+[Uri]::EscapeDataString([string]$candidate.id)+'/items')
+      $listings=@(($details.Content|ConvertFrom-Json).results | Where-Object {
+        $_.item_id -match '^MLB[0-9]+$' -and $_.price -gt 0 -and
+        $_.seller_id -gt 0 -and $_.condition -eq 'new'
+      })
+      if($details.StatusCode -ne 200 -or $listings.Count -eq 0){continue}
+      Start-Sleep -Milliseconds 900
+      $catalogResponse=Invoke-WebRequest -Method GET -UseBasicParsing -Headers $headers -TimeoutSec 12 -MaximumRedirection 0 -ErrorAction Stop -Uri ('https://api.mercadolibre.com/products/'+[Uri]::EscapeDataString([string]$candidate.id))
+      $catalog=$catalogResponse.Content | ConvertFrom-Json -ErrorAction Stop
+      $winner=$catalog.buy_box_winner
+      if($catalogResponse.StatusCode -ne 200 -or $catalog.id -ne $candidate.id -or
+        $catalog.status -ne 'active' -or -not $winner -or
+        $winner.available_quantity -le 0 -or $winner.price -le 0){continue}
+      foreach($listing in $listings){
+        if($listing.item_id -eq $winner.item_id -and
+          $listing.seller_id -eq $winner.seller_id -and
+          [math]::Abs($listing.price-$winner.price) -le 0.01 -and
+          ($null -eq $listing.available_quantity -or $listing.available_quantity -gt 0)){
+          $winningItem=$listing
+          $stock=[double]$winner.available_quantity
+          $catalogID=[string]$candidate.id
+          Write-Output ('TEST_CATALOG=VERIFIED_WINNER_AND_STOCK; CHECKED='+$checked)
+          break
+        }
+      }
+      if($catalogID){break}
+    }catch{
+      $code=0
+      if($_.Exception.Response){$code=[int]$_.Exception.Response.StatusCode}
+      if($code -eq 429){throw 'Rate limited; test aborted without retry'}
+      if($code -eq 401 -or $code -eq 403){throw 'Catalog availability authorization failed; test aborted'}
+    }
+  }
+  if(-not $catalogID -or -not $winningItem -or $stock -le 0){
+    throw 'No purchasable catalog with confirmed winning item and stock; refusing link test'
+  }
   $offer=[ordered]@{
     plataforma='Mercado Livre'
     produtoId=$catalogID
+    anuncioId=[string]$winningItem.item_id
+    vendedorId=[double]$winningItem.seller_id
+    estoqueDisponivel=$stock
+    disponibilidadeConfirmada=$true
+    disponibilidadeVerificadaEm=[DateTime]::UtcNow.ToString('o')
     titulo='TESTE TECNICO INTERNO - NAO PUBLICAR'
-    precoAtual=0
+    precoAtual=[double]$winningItem.price
     descontoPercentual=0
     categoria='teste tecnico da extensao'
     urlProduto=('https://www.mercadolivre.com.br/p/'+$catalogID)

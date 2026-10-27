@@ -19,6 +19,8 @@ assert.equal(descontoMinimoOferta({MIN_DISCOUNT_PERCENT:"25"} as NodeJS.ProcessE
 const exemplo = {
   plataforma:"Mercado Livre", produtoId:"MLB-TEST-QUALITY", titulo:"Smartphone Samsung",
   precoAtual:800,precoAnterior:1000,descontoPercentual:20,imagem:undefined,
+  anuncioId:"MLBTESTITEM",vendedorId:55,estoqueDisponivel:8,
+  disponibilidadeConfirmada:true,disponibilidadeVerificadaEm:new Date().toISOString(),
   urlProduto:"https://www.mercadolivre.com.br/p/MLBTESTQUALITY",encontradoEm:new Date(),
 };
 assert.equal(avaliarQualidadeOferta(exemplo,{} as NodeJS.ProcessEnv).elegivel,true);
@@ -55,6 +57,14 @@ globalThis.fetch = async (url,options) => {
       price:good?800:950,original_price:1000,condition:"new",
       available_quantity:8,
     }]}),{status:200});
+  }
+  if(dest.includes("/products/MLBTESTLOW") || dest.includes("/products/MLBTESTGOOD")){
+    const good=dest.includes("MLBTESTGOOD");
+    return new Response(JSON.stringify({
+      id:good?"MLBTESTGOOD":"MLBTESTLOW",status:"active",
+      buy_box_winner:{item_id:good?"MLB1234567":"MLB9876543",
+        seller_id:55,price:good?800:950,available_quantity:8}
+    }),{status:200});
   }
   if(dest.includes("/users/bulk?ids=")){
     return new Response(JSON.stringify([{

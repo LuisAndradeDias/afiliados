@@ -16,7 +16,7 @@ async function api(path, options = {}) {
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    data = { ok: false, mensagem: text || "Resposta inv�lida do painel." };
+    data = { ok: false, mensagem: text || "Resposta inv\u00e1lida do painel." };
   }
 
   if (!response.ok) {
@@ -66,8 +66,8 @@ async function cicloBackground() {
     await ping();
     await garantirAbaParaJob();
   } catch {
-    // Painel fechado, Chrome sem permiss�o ou rede indispon�vel.
-    // O pr�ximo ciclo tenta novamente.
+    // Painel fechado, Chrome sem permiss\u00e3o ou rede indispon\u00edvel.
+    // O pr\u00f3ximo ciclo tenta novamente.
   }
 }
 
@@ -94,7 +94,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const executar = async () => {
     if (!message || typeof message !== "object") {
-      return { ok: false, mensagem: "Mensagem inv�lida." };
+      return { ok: false, mensagem: "Mensagem inv\u00e1lida." };
     }
 
     if (message.type === "ping") {
@@ -135,7 +135,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       });
     }
 
-    return { ok: false, mensagem: "A��o desconhecida." };
+    return { ok: false, mensagem: "A\u00e7\u00e3o desconhecida." };
   };
 
   executar()

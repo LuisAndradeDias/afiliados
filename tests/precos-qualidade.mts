@@ -137,6 +137,9 @@ assert.equal(avaliarQualidadeOferta(suporteTV, cfg).elegivel, false);
 const cupomConfirmado = criarOferta({
   titulo: "Fone Bluetooth Sony",
   plataforma: "Mercado Livre",
+  anuncioId: "MLB123456", vendedorId: 101,
+  estoqueDisponivel: 2, disponibilidadeConfirmada: true,
+  disponibilidadeVerificadaEm: new Date().toISOString(),
   precoAtual: 150,
   precoAnterior: undefined,
   precoComCupomEstimado: 95,

@@ -61,8 +61,13 @@ test("404 is cached across search processes and expires after 30 minutes", async
     if (str.includes("/products/MLBTEST404/items")) { negatives++; return reply({}, 404); }
     if (str.includes("/products/MLBTESTOK/items")) return reply({ results: [{
       item_id: "MLBTESTITEM", seller_id: 10, price: 700,
-      original_price: 1000, condition: "new"
+      original_price: 1000, condition: "new", available_quantity: 7
     }] });
+    if (str.endsWith("/products/MLBTESTOK")) return reply({
+      id: "MLBTESTOK", status: "active",
+      buy_box_winner: { item_id: "MLBTESTITEM", seller_id: 10,
+        price: 700, available_quantity: 7 }
+    });
     if (str.includes("/users/bulk")) return greenSeller(10);
     throw new Error("Unexpected mocked URL path");
   }) as typeof fetch;
@@ -114,7 +119,7 @@ test("HTTP 429 during seller reputation also aborts rather than declaring non-gr
     if (str.includes("/products/search")) return products(["MLBRATESELLER"]);
     if (str.includes("/products/MLBRATESELLER/items")) return reply({ results: [{
       item_id: "MLB1", seller_id: 20, price: 50,
-      original_price: 100, condition: "new"
+      original_price: 100, condition: "new", available_quantity: 1
     }] });
     if (str.includes("/users/bulk")) {
       reputations++;

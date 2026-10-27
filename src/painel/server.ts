@@ -33,6 +33,9 @@ import {
   lerOfertaMercadoLivre,
   salvarLinkAfiliadoMercadoLivre
 } from "../afiliados/mercadolivre.js";
+import { disponibilidadeMercadoLivreRecente,
+  revalidarDisponibilidadeMercadoLivre
+} from "../fontes/mercadolivre/disponibilidade.js";
 import {
   registrarCuponsObservadosMercadoLivre,
   statusCuponsMercadoLivre
@@ -913,6 +916,12 @@ async function existe(path: string): Promise<boolean> {
 
 async function criarPedidoLinkMercadoLivre(): Promise<MercadoLivreLinkJob> {
   const oferta = await lerOfertaMercadoLivre();
+
+  // A extensao nao deve receber links de catalogos so aparentemente ativos.
+  if (!disponibilidadeMercadoLivreRecente(oferta)) {
+    throw new Error("Mercado Livre: estoque ou compra nao confirmados. Pedido de link bloqueado.");
+  }
+  await revalidarDisponibilidadeMercadoLivre(oferta);
 
   mercadoLivreLinkJob = {
     id: randomBytes(12).toString("hex"),

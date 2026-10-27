@@ -7,6 +7,7 @@ import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { revalidarCupomMercadoLivre } from "../afiliados/mercadolivre-cupons.js";
 import { descontoMinimoOferta, avaliarQualidadeOferta } from "../ofertas/qualidade.js";
+import { revalidarDisponibilidadeMercadoLivre } from "../fontes/mercadolivre/disponibilidade.js";
 
 let oferta = await lerOfertaMercadoLivre();
 
@@ -15,6 +16,16 @@ if (!oferta.urlAfiliado) {
     "Gere o link oficial do Mercado Livre, cole no painel e salve antes de preparar o WhatsApp."
   );
 }
+
+// A pagina pode continuar ativa no catalogo mesmo sem anuncio compravel.
+// Consultar estoque e vencedor oficial ANTES de gerar mensagem e pacote.
+const disponibilidade = await revalidarDisponibilidadeMercadoLivre(oferta);
+oferta = {
+  ...oferta,
+  estoqueDisponivel: disponibilidade.estoqueDisponivel,
+  disponibilidadeConfirmada: true,
+  disponibilidadeVerificadaEm: disponibilidade.verificadoEm
+};
 
 if (oferta.cupomCodigo) {
   const codigoAnterior = oferta.cupomCodigo;
@@ -65,6 +76,11 @@ if (!qualidade.elegivel) {
   throw new Error("Oferta reprovada antes do envio: " + qualidade.motivo +
     ". Nenhuma mensagem sera enviada.");
 }
+await writeFile(
+  "data/ultima-oferta-mercadolivre.json",
+  JSON.stringify(oferta, null, 2),
+  "utf8"
+);
 const mensagem = formatarOfertaWhatsapp(oferta);
 
 console.log("\n--- PREVIA WHATSAPP � MERCADO LIVRE ---\n");

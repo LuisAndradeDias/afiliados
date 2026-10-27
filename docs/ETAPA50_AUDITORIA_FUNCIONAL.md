@@ -255,3 +255,88 @@ para o Git e deixa o monitor pausado. Nao executar pelo CI.
 Resumo: EXTENSAO_INSTALADA=true; FLUXO_JOB_ATIVO=true;
 LINK_OFICIAL_CONFIRMADO=false; WHATSAPP_ENVIOS=0;
 ETAPA50_APROVADA=false.
+
+
+## Diagnostico por captura do Gerador de Links — 27/10/2026
+
+O usuario mostrou a tela https://www.mercadolivre.com.br/afiliados/linkbuilder#hub
+com campo preenchido com /p/MLB62255501, uma etiqueta existente
+JA SELECIONADA e botao Gerar desabilitado. A mensagem anterior de
+erro citava a etiqueta, mas isso nao demonstrava sua ausencia.
+
+Verificacoes oficiais somente GET, com autenticacao atual:
+- catalogo MLB62255501 respondeu HTTP 200, status active;
+- /products/MLB62255501/items respondeu HTTP 404;
+- outro catalogo (MLB52863150) respondeu /items HTTP 200 com dois
+  anuncios novos com preco. Nao foi comprovado que o portal aceite
+  aquele produto; isso requer teste controlado.
+- /items/MLB4558025475 respondeu HTTP 403 por politica da API,
+  portanto nao presumir URL canonica de anuncio a partir desse dado.
+- Mercado Livre orienta usar URL da pagina individual de produto,
+  nao paginas gerais ou de busca. Um catalogo ativo sem anuncios
+  consultaveis nao deve ser escolhido como referencia de teste.
+
+Correcoes na branch:
+- teste-link-controlado.ps1 agora valida /products/{id}/items
+  e so usa um catalogo com anuncio novo e preco; ignora HTTP 404,
+  interrompe HTTP 429/401/403 e nao envia mensagem.
+- content.js passou a aceitar tambem URLs individuais HTTPS
+  de anuncios /MLB-12345-..._JM do dominio oficial, mantendo
+  validacao restrita de protocolo, host, usuario, senha e porta.
+- 20 linhas corrompidas de background.js e content.js foram
+  reparadas com escapes Unicode; mensagens de erro no navegador
+  deixam de apresentar caracteres de substituicao U+FFFD.
+- Mensagem de botao Gerar desabilitado agora esclarece que a
+  etiqueta pode estar correta, e sugere verificar elegibilidade e URL.
+- Versao da extensao Conector 02 incrementada para 0.4.2.
+
+Importante: os arquivos no disco nao recarregam automaticamente
+a extensao ativa no navegador. Atualizar o codigo na instalacao
+e usar RECARREGAR no cartao Conector 02 em chrome://extensions
+sem remover sessao ou demais extensoes. Depois testar com
+uma URL real de anuncio individual e, somente se o usuario
+autorizar, repetir um probe controlado sem WhatsApp.
+
+Nenhum link oficial foi confirmado por causa desta captura.
+
+
+## Bloqueio de produto indisponivel em todas as etapas (27/10/2026)
+
+A captura enviada pelo proprietario mostra uma pagina de produto
+com a mensagem "Este produto esta indisponivel no momento".
+Uma pagina de catalogo em status=active nao prova que existe um
+anuncio compravel; nao aproveitar esse status para publicar.
+
+Implementacao segura (falha fechada):
+- Na busca: exige anuncio novo e com preco, vendedor de reputacao
+  aceita, /products/{id} ativo, buy_box_winner existente e com
+  available_quantity positivo, mesmo anuncio e vendedor vencedor,
+  e preco coerente. Sem essa evidencia, oferta descartada.
+- Na analise editorial: desconto nunca contorna disponibilidade
+  ausente, estoque zero ou verificacao mais antiga que 10 minutos.
+- Antes de solicitar link a extensao: consulta novamente a API.
+- Antes de montar mensagem do Mercado Livre: consulta novamente.
+- No processo WhatsApp: verifica antes de abrir a sessao e
+  novamente imediatamente antes da acao de envio. Falha/403/404/
+  429/timeout ou estoque desconhecido bloqueia.
+- No teste manual do link: nao usa apenas o primeiro catalogo
+  retornado. Verifica anuncio vencedor, preco e estoque; nao
+  exige gerar promocao para provar que o conector funciona.
+- O Mercado Livre pode ocultar available_quantity da lista
+  de anuncios de terceiros. A quantidade EXPLICITA na buy box
+  oficial pode suprir a quantidade ausente da lista, mas NUNCA
+  um zero declarado, um vencedor ausente ou uma API sem resposta.
+- Nao tratar a quantidade publica como estoque exato. A informacao
+  pode ser aproximada e mudar imediatamente; revalidacao reduz
+  o risco, mas nao garante o checkout de todo destinatario.
+
+Documentacao externa: API de competicao no catalogo
+(developers.mercadolivre.com.br/concorrencia-em-catalogo) e
+recursos de Itens e Buscas (developers.mercadolivre.com.br/pt_br/itens-e-buscas).
+
+Evidencia de teste: tests/mercadolivre-disponibilidade.mts e
+tests/mercadolivre-estoque-integracao.mts usam mocks. Exemplo:
+catalogo ativo com buy_box_winner=null ou estoque=0 nao gera
+oferta; catalogo com vencedor e estoque positivo pode prosseguir
+mesmo sem available_quantity no /items de terceiros. Teste
+sem token real, envio WhatsApp ou publicacao.

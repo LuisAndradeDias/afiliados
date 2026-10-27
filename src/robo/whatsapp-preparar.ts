@@ -24,6 +24,7 @@ import {
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
 import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
+import { revalidarDisponibilidadeMercadoLivre } from "../fontes/mercadolivre/disponibilidade.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -51,6 +52,11 @@ interface PacotePreparar {
   imagemUrl?: string;
   plataforma?: string;
   produtoId?: string;
+  anuncioId?: string;
+  vendedorId?: number;
+  estoqueDisponivel?: number;
+  disponibilidadeConfirmada?: boolean;
+  disponibilidadeVerificadaEm?: string;
   titulo?: string;
   precoAtual?: number;
   precoAnterior?: number;
@@ -75,6 +81,18 @@ if (!modoTeste) {
   })) {
     console.log("DUPLICADO_BLOQUEADO: oferta já enviada recentemente. Nenhum envio executado.");
     process.exit(4);
+  }
+  if (pacote.plataforma === "Mercado Livre") {
+    // O perfil do WhatsApp so abre apos uma consulta atual do estoque.
+    await revalidarDisponibilidadeMercadoLivre({
+      plataforma: "Mercado Livre",
+      produtoId: pacote.produtoId,
+      anuncioId: pacote.anuncioId,
+      vendedorId: pacote.vendedorId,
+      precoAtual: pacote.precoAtual ?? 0,
+      estoqueDisponivel: pacote.estoqueDisponivel,
+      disponibilidadeConfirmada: pacote.disponibilidadeConfirmada
+    });
   }
 }
 
@@ -394,6 +412,30 @@ async function aguardarFinalizacao(
         await context.close().catch(() => undefined);
         process.exitCode = 4;
         return;
+      }
+      // Protecao final no momento do clique fisico: o estoque pode ter
+      // acabado enquanto o usuario revisava a imagem ou a mensagem.
+      if (!modoTeste && pacote.plataforma === "Mercado Livre") {
+        try {
+          await revalidarDisponibilidadeMercadoLivre({
+            plataforma: "Mercado Livre",
+            produtoId: pacote.produtoId ?? "",
+            anuncioId: pacote.anuncioId,
+            vendedorId: pacote.vendedorId,
+            precoAtual: pacote.precoAtual ?? 0,
+            estoqueDisponivel: pacote.estoqueDisponivel,
+            disponibilidadeConfirmada: pacote.disponibilidadeConfirmada
+          });
+        } catch (erro) {
+          await rm(enviarSignalPath, { force: true });
+          console.error(
+            "PRODUTO_INDISPONIVEL_ENVIO_BLOQUEADO: " +
+              (erro instanceof Error ? erro.message : "Falha ao conferir estoque")
+          );
+          await context.close().catch(() => undefined);
+          process.exitCode = 6;
+          return;
+        }
       }
       autoEnvioTentado = true;
       const origemEnvio = enviarPorPainel ? "painel" : "automatico";

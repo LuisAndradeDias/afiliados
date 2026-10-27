@@ -28,6 +28,13 @@ test("probe exige estado pausado e remove oferta temporaria", () => {
   assert.match(text, /Test-Path \$whatsOffer/);
   assert.match(text, /function Validate-Paused/);
   assert.match(text, /FileMode\]::CreateNew/);
+  assert.match(text, /products\/search\?/);
+  assert.match(text, /products\/.+\/items/);
+  assert.match(text, /No purchasable catalog with confirmed winning item and stock/);
+  assert.match(text, /buy_box_winner/);
+  assert.match(text, /available_quantity -le 0/);
+  assert.match(text, /disponibilidadeConfirmada=\$true/);
+  assert.match(text, /anuncioId=\[string\]\$winningItem\.item_id/);
   assert.match(text, /etapa50TesteControlado/);
   assert.match(text, /Remove-Item -LiteralPath \$offerFile/);
   assert.match(text, /OFFICIAL_HTTPS_DOMAIN=VERIFIED/);
