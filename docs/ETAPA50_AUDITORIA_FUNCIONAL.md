@@ -201,3 +201,57 @@ ainda precisa de homologacao de links e WhatsApp.
 - A Etapa 50 continua em draft, sem aprovar merge/deploy automatico.
 - Novos testes estaticos garantem que a extensao continue sem
   referencias comerciais no nome visivel e sem ampliar permissoes.
+
+
+## Validacao do Conector 02 apos recadastro — 27/10/2026
+
+Confirmado em Secure Preferences do Chrome Profile 10: apenas uma
+extensao local de Mercado Livre, registrada no endereco
+C:\projeto02\browser-extension\mercadolivre-affiliate, manifest
+"Conector 02" v0.4.1. O antigo caminho C:\projeto01 nao foi
+encontrado. O heartbeat com o painel 3030 foi confirmado.
+
+Foram executados DOIS testes controlados de geracao de link, sem
+publicar produto, alterar campanhas ou ativar WhatsApp/monitor.
+Ambos usaram somente uma oferta temporaria com titulo explicito
+"TESTE TECNICO INTERNO - NAO PUBLICAR", categoria de laboratorio
+e preco/desconto zerados, criada exclusivamente se o arquivo
+ultima-oferta-mercadolivre.json nao existisse.
+
+- Tentativa 1: job permaneceu "pending" por 110 s, sem que a
+  extensao assumisse o pedido. O probe marcou erro e removeu a
+  oferta de teste. Sem envio ou link salvo.
+- Solicitada abertura da pagina oficial do portal de afiliados no
+  Chrome Profile 10. O painel 3030 foi reiniciado em estado pausado,
+  sem mexer na Captacao 3040, para limpar o job de teste antigo.
+- Tentativa 2: job mudou para "running" e a extensao iniciou
+  o gerador, comprovando o fluxo navegador -> painel. Falhou com
+  diagnostico de BOTAO GERAR DESABILITADO. O codigo sugere como
+  hipoteses a ausencia de etiqueta/tag selecionada ou URL que o
+  portal nao aceita; nenhuma delas foi confirmada individualmente.
+  A extensao tenta selecionar opcao padrao ou unica, mas nao escolhe
+  arbitrariamente entre varias etiquetas.
+- A oferta temporaria foi removida e os monitores, autoenvio e filas
+  permaneceram desligados e sem mensagens pendentes. O servidor 3030
+  foi novamente reiniciado em seguranca para apagar o job de erro;
+  Captacao 3040 manteve o mesmo processo. Nao ficou link afiliado
+  de teste gravado no runtime.
+
+Para concluir: no mesmo Chrome Profile 10, abrir o portal oficial
+do Mercado Livre/Afiliados, entrar no Gerador de Links, selecionar
+manualmente a etiqueta/tag correta e verificar que o botao Gerar
+fica habilitado para um produto elegivel. Nao criar/publicar campanha
+ou alterar contatos. Se o botao permanecer desabilitado, registrar
+apenas descricao da mensagem e captura recortada sem credenciais.
+Executar entao mais um teste SEM WhatsApp, com confirmacao humana.
+
+O script scripts/etapa50/teste-link-controlado.ps1 foi versionado
+para repetir essa verificacao de forma supervisionada. Requer o
+parametro EXPLICITO -ConfirmarTesteManual; sem ele, falha antes de
+ler a configuracao ou alterar arquivos. Em caso de teste com resultado
+terminal, remove a oferta temporaria, nao copia links/credenciais
+para o Git e deixa o monitor pausado. Nao executar pelo CI.
+
+Resumo: EXTENSAO_INSTALADA=true; FLUXO_JOB_ATIVO=true;
+LINK_OFICIAL_CONFIRMADO=false; WHATSAPP_ENVIOS=0;
+ETAPA50_APROVADA=false.

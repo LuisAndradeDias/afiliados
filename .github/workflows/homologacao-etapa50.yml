@@ -33,7 +33,7 @@ jobs:
       - name: Instalar pacotes sem iniciar browsers nem executar scripts
         run: npm.cmd ci --ignore-scripts --no-audit --no-fund
       - name: Testar diagnostico somente leitura
-        run: node --test tests/etapa50-diagnostico.test.mjs tests/etapa50-manifest-neutral.test.mjs
+        run: node --test tests/etapa50-diagnostico.test.mjs tests/etapa50-manifest-neutral.test.mjs tests/etapa50-link-controlado.test.mjs
       - name: Dominios de ofertas e OAuth simulados
         run: node --import tsx --test tests/mercadolivre-auth.mts tests/mercadolivre-descoberta.mts tests/mercadolivre-resiliencia.mts tests/variedade-ofertas.mts tests/amazon-preco-dom.mts tests/historico-antiduplicado.mts tests/whatsapp-grupo.mts tests/painel-dominios.mts
       - name: Interface simulada em Chrome headless, sem perfil do usuario
