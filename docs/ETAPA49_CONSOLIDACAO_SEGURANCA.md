@@ -146,6 +146,50 @@ incertas.
 - Arquivos de runtime da homologacao nao receberam patches; nenhuma
   porta, sessao, contato, historico ou fila foi alterada.
 
+## Atualizacao: nomes neutros das pastas no ACER (27/10/2026)
+
+Foi autorizada a permanencia da automacao no ACER, com pastas principais sem
+nomes comerciais ou descritivos do projeto:
+
+- C:\projeto01: copia antiga preservada, sem alteracoes.
+- C:\projeto02: instalacao de ofertas, Shopee e Captacao em uso (3030/3040).
+- C:\projeto03: backups locais, inclusive backup da mudanca de caminhos.
+- %LOCALAPPDATA%\Projeto04: desenvolvimento, Git e relatorios com ACL restrita.
+- C:\projeto05: proxima pasta opcional de homologacao, nao criada.
+
+A migracao da instalacao ativa foi feita apos validar estado pausado,
+desligar apenas os dois servidores locais e renomear a pasta no mesmo
+volume. Os hashes de configuracao, historico e perfil verificados nao
+mudaram. Os dois servidores foram reiniciados a partir de C:\projeto02,
+com monitores e autoenvio desligados, portas limitadas a loopback e
+todas as paginas basicas HTTP 200.
+
+O repositorio de desenvolvimento foi movido para o perfil local neutro.
+Sete worktrees vinculadas foram verificadas e reparadas com o comando
+oficial do Git. Nomes tecnicos internos aos fontes foram preservados
+para nao quebrar importacoes ou o historico Git.
+
+O diretório de backups foi renomeado sem copiar o conteudo; contagem de
+2.965 arquivos, tamanho total e hash de amostra foram conferidos. Os
+snapshots originais nao foram alterados. Scripts de rollback historicos
+podem mencionar os caminhos antigos; confirmar a localizacao real dos
+backups em C:\projeto03 antes de restaurar.
+
+Quatro arquivos operacionais com referencias antigas ou a instalacao
+legada foram ajustados para caminhos portateis/neutros, depois de criar
+copia integra com SHA256 em C:\projeto03\2026-10-27_renomeacao:
+- scripts/windows/preparar-homologacao.ps1 (C:\projeto05 e bloqueio dos
+  caminhos operacionais; ZIP temporario com prefixo neutro)
+- src/painel/public/index.html (pasta atual da extensao local Meli)
+- captacao/caca-promos-vip/scripts/reiniciar-whatsapp-seguro.ps1
+  (WorkingDirectory a partir do proprio script)
+- captacao/caca-promos-vip/scripts/ativar-recusa-netlify.ps1
+  (caminho de dados relativo ao modulo)
+
+Nao foram excluidas sessoes do Chrome, contatos, logs ou historico de
+WhatsApp. Nenhum envio real foi efetuado. A mudanca nao aprova a
+ativacao automatica ou a migracao do GitHub para a branch principal.
+
 ## Criterios de passagem para Etapa 50
 
 - [x] Inventario da instalacao e portas no ACER.

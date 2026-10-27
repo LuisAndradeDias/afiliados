@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [string]$SourceDir = (Join-Path $PSScriptRoot '..\..'),
-  [string]$DestinationDir = 'C:\afiliados-v2-homologacao',
+  [string]$DestinationDir = 'C:\projeto05',
   [switch]$Execute,
   [switch]$InstallDependencies
 )
@@ -23,14 +23,14 @@ if ($destination.Equals($source, $compare) -or
     $destination.StartsWith(($source + '\'), $compare)) {
   throw 'O destino nao pode sobrescrever nem ficar dentro do repositorio de origem.'
 }
-foreach ($protected in @('C:\projeto01', 'C:\PromocoesAfiliados')) {
+foreach ($protected in @('C:\projeto01', 'C:\projeto02', 'C:\projeto03', 'C:\projeto04', 'C:\PromocoesAfiliados')) {
   if ($destination.Equals($protected, $compare) -or
       $destination.StartsWith(($protected + '\'), $compare)) {
     throw 'Destino de instalacao operacional protegido.'
   }
 }
-if ($destination -notmatch '(?i)(homologacao|staging)') {
-  throw 'O destino deve identificar claramente uma pasta de homologacao/staging.'
+if ($destination -notmatch '(?i)(homologacao|staging)' -and $destination -notmatch '(?i)^C:\\projeto0[5-9]$') {
+  throw 'Destino deve ser uma pasta de teste, ou C:\projeto05 a C:\projeto09.'
 }
 if (Test-Path -LiteralPath $destination) {
   throw 'Destino ja existe. Nao sobrescreva uma instalacao ou homologacao.'
@@ -76,7 +76,7 @@ if (-not $Execute) {
   return
 }
 
-$archive = Join-Path $env:TEMP ('afiliados-staging-' + [guid]::NewGuid().ToString('N') + '.zip')
+$archive = Join-Path $env:TEMP ('projeto-staging-' + [guid]::NewGuid().ToString('N') + '.zip')
 try {
   & git.exe -C $source archive --format=zip "--output=$archive" HEAD
   if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar arquivo de codigo versionado.' }

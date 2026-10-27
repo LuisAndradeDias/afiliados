@@ -33,6 +33,8 @@ jobs:
         run: node --test tests/auditoria-etapa49.test.mjs
       - name: Instalar dependencias sem scripts externos
         run: npm.cmd ci --ignore-scripts --no-audit --no-fund
+      - name: Validar inicializador e staging com pastas neutras
+        run: node --test tests/instalacao-windows.test.mjs
       - name: Auditoria de dependencias
         run: npm.cmd audit --audit-level=high
       - name: Verificar TypeScript
