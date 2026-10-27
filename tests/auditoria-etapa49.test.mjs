@@ -119,5 +119,5 @@ test("default audit locations use neutral protected directory names", () => {
   const source = readFileSync(script, "utf8");
   assert.ok(source.includes("OperationalDir = 'C:\\projeto02'"));
   assert.ok(source.includes("LegacyDir = 'C:\\projeto01'"));
-  assert.ok(source.includes("BackupDir = 'C:\\projeto03'"));
+  assert.ok(source.includes("BackupDir = (Join-Path $env:LOCALAPPDATA 'Projeto04\\reserva')"));
 });

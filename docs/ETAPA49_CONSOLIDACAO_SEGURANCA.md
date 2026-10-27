@@ -204,3 +204,58 @@ ativacao automatica ou a migracao do GitHub para a branch principal.
 
 A Etapa 49 pode encerrar a implementacao do kit de consolidacao sem
 alegar que os quatro bloqueios acima estejam resolvidos.
+
+
+## Atualizacao final - retirada do projeto antigo do C: (27/10/2026)
+
+Por solicitacao do proprietario, a instalacao antiga C:\projeto01 foi
+confirmada como parte deste repositorio (Git remoto e commit iguais ao
+upstream) e foi eliminada. Seu codigo versionado ja esta no GitHub.
+
+Auditoria de preservacao anterior a retirada:
+- Dados do robo antigo: 2.834 de 2.834 arquivos identicos ao backup
+  por SHA-256, incluindo o perfil antigo do navegador.
+- Dados da Captacao antiga: 114 de 114 arquivos identicos ao backup por
+  SHA-256, sem expor contatos ou chaves na auditoria.
+- Tres arquivos experimentais nao versionados foram arquivados e
+  verificados por SHA-256; nao foram ativados.
+- O .env antigo tinha as mesmas 40 chaves do atual, mas a chave de
+  autoenvio WhatsApp divergia; a instalacao ATUAL conserva autoenvio
+  desligado. Credenciais nao foram exibidas ou sincronizadas.
+- Nao havia scripts, processos Node ou tarefas agendadas dependentes
+  da antiga pasta. Nenhum link simbolico/junction sob sua raiz.
+
+A antiga instalacao foi movida para uma pasta temporaria de isolamento.
+Os paineis em 3030 e 3040 continuaram respondendo HTTP 200. So entao
+a copia antiga de 88.646 arquivos (5.593.829.969 bytes) foi apagada.
+A limpeza concluiu com codigo zero e a pasta de isolamento deixou de existir.
+
+Os backups foram mantidos e movidos sem copiar bytes novamente do
+diretorio C:\projeto03 para %LOCALAPPDATA%\Projeto04\reserva, uma area
+oculta com ACL restrita a conta local, Administradores e SYSTEM.
+Contagem, tamanho e hashes amostrais foram verificados antes e depois.
+A raiz do C: ficou somente com C:\projeto02 como diretorio principal
+do projeto. A area oculta Projeto04 ainda mantem os codigos de
+desenvolvimento e backups; nao e uma segunda instalacao ativa.
+
+**Pendencia especifica do Chrome:** um perfil do Chrome continha
+registrada a extensao local Mercado Livre com caminho antigo
+C:\projeto01\browser-extension\mercadolivre-affiliate. O mesmo codigo
+da extensao ja existe em
+C:\projeto02\browser-extension\mercadolivre-affiliate.
+Nao foram editadas as Secure Preferences do Chrome durante a limpeza
+nem aberto navegador de automacao. Se a extensao deixar de funcionar,
+recarregar/reinstalar a versao descompactada apontando para o novo
+caminho, sem mudar dados ou API.
+
+Os scripts historicos de rollback nos backups podem conter caminhos
+anteriores, portanto o endereco atual dos backups deve ser utilizado.
+O auditor da Etapa 49 ainda exige a presenca do caminho legado para
+marcar localAclRestricted=true; com a instalacao velha removida,
+esse indicador vira falso mesmo que as ACLs das pastas remanescentes
+estejam restritas. Interpretar paths.legacy.exists=false e verificar
+individualmente installed/backup/configuration/whatsappProfile, sem
+considerar a remocao um erro de seguranca.
+
+Nenhuma automacao foi ligada, nenhum WhatsApp foi enviado, nenhum
+PostgreSQL foi instalado. O PR continua draft sem merge.

@@ -3,7 +3,7 @@ param(
   [string]$CodeDir = (Join-Path $PSScriptRoot '..\..'),
   [string]$OperationalDir = 'C:\projeto02',
   [string]$LegacyDir = 'C:\projeto01',
-  [string]$BackupDir = 'C:\projeto03',
+  [string]$BackupDir = (Join-Path $env:LOCALAPPDATA 'Projeto04\reserva'),
   [switch]$Json,
   [switch]$SkipComparison
 )
