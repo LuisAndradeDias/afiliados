@@ -340,3 +340,58 @@ catalogo ativo com buy_box_winner=null ou estoque=0 nao gera
 oferta; catalogo com vencedor e estoque positivo pode prosseguir
 mesmo sem available_quantity no /items de terceiros. Teste
 sem token real, envio WhatsApp ou publicacao.
+
+
+## Etapa 50 — teste manual desacoplado de ofertas (27/10/2026)
+
+**Causa do bloqueio funcional:** o teste anterior usava um item nao
+compravel. Depois da protecao de disponibilidade, o teste estrito
+consultou oito catalogos e nao encontrou nenhum vendedor vencedor
+com estoque positivo: cancelou-se antes de criar qualquer pedido.
+Uma consulta de amostragem por GET a nove catalogos ativos, em
+tres categorias, retornou HTTP 200 para todos, mas todos tinham
+buy_box_winner ausente. Isso NAO prova que todos estejam fora de
+estoque: apenas que a API nao forneceu a confirmacao necessaria.
+O recurso /products/MLB52863150/items deu dois anuncios com preco,
+mas /items/bulk devolveu status_code 403 para o detalhe individual.
+Consulta publica via navegador Playwright isolado (sem cookies)
+recebeu HTTP 403, sem acesso para comprovar botao de compra. Nenhuma
+tecnica de contorno de acesso foi utilizada.
+
+**Novo caminho tecnico preparado:** um modo independente de
+diagnostico do Gerador de Links do Mercado Livre, exclusivamente
+para URL manual de produto:
+- Acao local mercadolivre-link-diagnostico exige confirmacao literal
+  TESTE_LINK_SEM_ENVIO, URL HTTPS em hostname oficial e caminho de
+  produto validado, sem rastreadores, grupo, oferta ou arquivo de
+  mensagem existente; so funciona com extensao conectada e ciclo
+  pausado, monitor e autoenvio desativados.
+- O pedido usa o mesmo canal da extensao, mas recebe flag
+  diagnostico=true, visivel como mercadoLivreTesteLinkJob; a UI
+  nao mostra o teste como link promocional salvo.
+- Callback da extensao apenas reconhece meli.la ou /sec HTTPS.
+  **Nao grava** arquivo de ofertas, link, mensagem nem inicia qualquer
+  fluxo WhatsApp. Um link reconhecido nao prova destino nem estoque.
+- Limpeza de estado via acao mercadolivre-link-diagnostico-limpar
+  com confirmacao. Pedido pendente tem expiracao de dois minutos.
+- A acao e negada para origens HTTP externas ao painel local.
+- Script manual em scripts/etapa50/diagnosticar-url-manual.ps1
+  exige -ConfirmarTesteManual e -UrlProduto; verifica estado antes,
+  acompanha resultado e remove apenas o proprio job. Sem esses
+  parametros, recusa antes de acessar o painel.
+- A operacao normal de busca, aprovacao, links e WhatsApp continua
+  exigindo buy_box_winner e estoque e nao usa esse modo diagnostico
+  como criterio de produto publicavel.
+
+**Testes:** unitarios verificam rejeicao de URL de terceiro e
+estado inseguro. Integracao local isolada em porta separada e sem
+credenciais/sessao reais simula heartbeat, job, callback com URL
+sintetica e limpeza; verifica que nao existe nenhum arquivo de
+oferta nem WhatsApp. Nao houve geracao real de link nesta etapa.
+
+**Pendencia pratica:** obter uma URL individual de produto
+comprovadamente compravel (botao Adicionar ao carrinho ou Comprar
+ativo no Chrome Profile 10) e, apos consentimento do usuario,
+executar UM teste manual de link sem WhatsApp. Recarregar o
+Conector 02 se o codigo do content script ainda estiver antigo.
+Nao usar um produto da captura que aparece indisponivel.
