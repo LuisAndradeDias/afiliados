@@ -145,7 +145,8 @@ assert.equal(
 const template = await readFile(".env.example", "utf8");
 assert.match(template, /^MIN_OFFER_PRICE_BRL=49$/m);
 assert.match(template, /^MIN_OFFER_SAVINGS_BRL=20$/m);
-assert.match(template, /^MERCADOLIVRE_QUERIES_PER_RUN=2$/m);
+// O modelo da Etapa 47 padroniza 3 consultas; cada instalacao pode reduzir via .env.
+assert.match(template, /^MERCADOLIVRE_QUERIES_PER_RUN=3$/m);
 assert.match(template, /^MERCADOLIVRE_EXTRA_IF_LOW_SHARE=true$/m);
 for (const palavra of ["fone bluetooth", "headset gamer", "mouse sem fio", "caixa de som bluetooth", "smartwatch"]) {
   assert.ok(template.includes(palavra), "Busca ausente: " + palavra);

@@ -1,0 +1,44 @@
+name: Afiliados 2.0 - Homologacao segura etapa 50
+
+on:
+  push:
+    branches:
+      - feat/etapa50-homologacao-segura
+  pull_request:
+    branches:
+      - chore/consolidacao-seguranca-etapa49
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etapa50-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulacoes:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      NODE_ENV: test
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      WA_META_ENABLE_SENDING: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Instalar pacotes sem iniciar browsers nem executar scripts
+        run: npm.cmd ci --ignore-scripts --no-audit --no-fund
+      - name: Testar diagnostico somente leitura
+        run: node --test tests/etapa50-diagnostico.test.mjs
+      - name: Dominios de ofertas e OAuth simulados
+        run: node --import tsx --test tests/mercadolivre-auth.mts tests/mercadolivre-descoberta.mts tests/mercadolivre-resiliencia.mts tests/variedade-ofertas.mts tests/amazon-preco-dom.mts tests/historico-antiduplicado.mts tests/whatsapp-grupo.mts tests/painel-dominios.mts
+      - name: Interface simulada em Chrome headless, sem perfil do usuario
+        run: node --import tsx tests/painel-operacional.mts
+      - name: TypeScript
+        run: npm.cmd run typecheck
+      - name: Dependencias
+        run: npm.cmd audit --audit-level=high

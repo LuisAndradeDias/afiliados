@@ -1607,13 +1607,13 @@
         setDot("amazonDot", s.afiliadoConfigurado ? "ok" : "warn");
 
         $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? (s.mercadoLivreExtensionConectada ? "API + extensão prontas" : "API conectada · extensão offline")
+          ? (s.mercadoLivreExtensionConectada ? "Token salvo · extensão respondeu" : "Token salvo · extensão sem sinal")
           : "Configuração pendente";
         setDot(
           "meliDot",
-          s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada ? "ok" : "warn"
+          s.mercadoLivreApiConfigurada && s.mercadoLivreLinkJob?.status === "done" ? "ok" : "warn"
         );
-        $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "API conectada" : "API pendente";
+        $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "Token salvo (acesso não verificado)" : "API pendente";
 
         const cycleButton = $("cycleToggleButton");
         const cycleBadge = $("cycleBadge");
@@ -1820,7 +1820,8 @@
               "Automação conectada · falha anterior: " + (mlJob.mensagem || "erro não informado");
             mlAutomationStatus.classList.add("warn-box");
           } else {
-            mlAutomationStatus.textContent = "Automação Meli conectada e pronta.";
+            mlAutomationStatus.textContent = "Extensão respondeu ao painel. Confira o caminho no Chrome e teste o link antes de ativar o monitor.";
+            mlAutomationStatus.classList.add("warn-box");
           }
         } else {
           mlAutomationStatus.textContent =

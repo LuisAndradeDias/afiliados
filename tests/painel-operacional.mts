@@ -107,6 +107,14 @@ try {
     "Atividade pausada não foi renderizada corretamente."
   );
   assert(
+    (await page.locator("#mercadoLivreStatus").innerText()).includes("Token salvo"),
+    "Token configurado não é prova de API Mercado Livre autorizada."
+  );
+  assert(
+    (await page.locator("#mlAutomationStatus").textContent())?.includes("Confira o caminho"),
+    "Um ping da extensão não pode ser apresentado como link pronto."
+  );
+  assert(
     (await page.locator("#tempoMedioButton").getAttribute("aria-pressed")) === "true",
     "Tempo médio deve aparecer selecionado por padrão."
   );

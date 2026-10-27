@@ -18,11 +18,13 @@ Ela não acessa cookies, tokens ou credenciais. O trabalho é feito pelo DOM vis
 2. Ative **Modo do desenvolvedor**.
 3. Clique em **Carregar sem compactação**.
 4. Selecione:
-   `C:\projeto01\browser-extension\mercadolivre-affiliate`
+   `C:\projeto02\browser-extension\mercadolivre-affiliate`
 5. Mantenha a extensão habilitada.
 6. Atualize o painel `http://localhost:3030`.
 
-O painel passa a mostrar **Automação Meli conectada**.
+O painel passa a mostrar **Automação Meli conectada** após receber o ping da extensão. **Esse ping não comprova que o caminho no Chrome está correto nem que o Gerador de Links funcionou.**
+
+Se o Chrome ainda mostrar uma extensão carregada de `C:\projeto01`, remova **somente a extensão local Meli antiga** e carregue novamente a pasta de `C:\projeto02` indicada acima. Faça isso no mesmo perfil do Chrome onde usa o Mercado Livre, sem excluir o perfil do navegador. Não altere manualmente o arquivo `Secure Preferences` nem apague cookies ou sessões.
 
 Se o Mercado Livre alterar o layout do Portal, o fluxo manual continua disponível como fallback.
 
