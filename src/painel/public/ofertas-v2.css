@@ -203,3 +203,12 @@ details.toolbox > summary:focus-visible, .intervalo-opcao:focus-visible, input:f
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior: auto!important; animation-duration: .01ms!important; transition-duration: .01ms!important; }
 }
+
+/* Shopee ganha status visual próprio. Ciclo automatico permanece Amazon + Meli. */
+@media(min-width:951px){.health{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.shopee-health-dot{background:#ed8a37;box-shadow:0 0 0 4px #ffecdc}
+.shopee-health-item{border-color:#f2dbca}
+.shopee-health-item .health-copy strong a{color:#b45b20;text-decoration:none;font-weight:780}
+.shopee-health-item .health-copy strong a:hover{text-decoration:underline}
+@media(max-width:950px){.health{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:570px){.health{grid-template-columns:1fr}}

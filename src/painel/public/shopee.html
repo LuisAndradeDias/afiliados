@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#172333">
+  <title>Shopee | Caça Promos VIP</title>
+  <link rel="stylesheet" href="/central/assets/central.css">
+  <link rel="stylesheet" href="/central/assets/shopee.css">
+  <script src="/central/assets/shopee.js" defer></script>
+</head>
+<body>
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Menu principal">
+      <div class="brand">
+        <span class="logo">CP</span>
+        <span><strong>CAÇA PROMOS VIP</strong><small>Plataforma unificada</small></span>
+      </div>
+      <div class="nav-title">PLATAFORMA</div>
+      <nav class="nav" aria-label="Navegação entre módulos">
+        <a href="/central">⌂ &nbsp; Visão geral</a>
+        <a href="/ofertas">◈ &nbsp; Central de Ofertas</a>
+        <a href="/shopee" aria-current="page"><span class="shopee-nav-icon">S</span> Shopee</a>
+      </nav>
+      <div class="nav-title">OPERACIONAL</div>
+      <nav class="nav">
+        <a href="/ofertas#reviewCard">▣ &nbsp; Revisão de ofertas</a>
+        <a href="/central">▥ &nbsp; Contatos e campanhas</a>
+      </nav>
+      <div class="side-foot">
+        <b>Seu grupo continua único</b><br>
+        A Shopee será integrada ao mesmo WhatsApp quando os envios forem autorizados.
+        Nenhuma campanha é disparada nesta tela.
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="top">
+        <div class="top-left">
+          <button id="menuBtn" class="mobile-bar" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+          <span class="breadcrumb">Caça Promos VIP &nbsp; / &nbsp; <b>Shopee</b></span>
+        </div>
+        <span class="shopee-top-status"><span class="shopee-pulse"></span> Preparando integração</span>
+      </header>
+      <main class="main shopee-main">
+        <section class="shopee-hero" aria-labelledby="shopeeHeading">
+          <div class="shopee-hero-copy">
+            <span class="shopee-eyebrow">TERCEIRA PLATAFORMA · MESMA CENTRAL</span>
+            <div class="shopee-title-row">
+              <span class="shopee-brand-symbol" aria-hidden="true">S</span>
+              <div>
+                <h1 id="shopeeHeading">Shopee pronta para começar.</h1>
+                <p>Amazon, Mercado Livre e Shopee organizados no mesmo lugar. Prepare os links de afiliado agora; a busca automática será liberada depois da aprovação da conta e da API.</p>
+              </div>
+            </div>
+            <div class="shopee-hero-actions">
+              <a class="btn shopee-primary" href="https://affiliate.shopee.com.br/" target="_blank" rel="noopener noreferrer">Portal de Afiliados Shopee ↗</a>
+              <a class="btn" href="/ofertas">Ver Ofertas</a>
+            </div>
+          </div>
+          <div class="shopee-hero-aside" aria-label="Status da integração">
+            <span class="shopee-aside-label">SITUAÇÃO DA CONTA</span>
+            <strong id="shopeeConnection">Aguardando sua conta</strong>
+            <p>Você não precisa cadastrar outro grupo de WhatsApp.</p>
+            <span class="shopee-waiting">◷ &nbsp; API ainda não conectada</span>
+          </div>
+        </section>
+
+        <section class="shopee-stats" aria-label="Visão geral da Shopee">
+          <article class="panel shopee-stat">
+            <span>Conta Shopee</span>
+            <strong id="shopeeAccountStat">Aguardando</strong>
+            <small>O cadastro será feito no portal oficial</small>
+          </article>
+          <article class="panel shopee-stat">
+            <span>Links em rascunho</span>
+            <strong id="shopeeDraftCount">0</strong>
+            <small>Armazenados apenas neste computador</small>
+          </article>
+          <article class="panel shopee-stat">
+            <span>Destino das promoções</span>
+            <strong>Mesmo grupo</strong>
+            <small>Envio da Shopee ainda não habilitado</small>
+          </article>
+        </section>
+
+        <div class="shopee-columns">
+          <section class="panel shopee-form-panel" aria-labelledby="shopeeFormTitle">
+            <div class="shopee-panel-heading">
+              <div>
+                <span class="shopee-kicker">PREPARAÇÃO MANUAL</span>
+                <h2 id="shopeeFormTitle">Cadastrar link de afiliado</h2>
+              </div>
+              <span class="shopee-mini-tag">Sem envios</span>
+            </div>
+            <p>Depois de gerar seu link no portal da Shopee, cadastre-o aqui. Ele ficará salvo como rascunho, sem entrar automaticamente na fila do WhatsApp.</p>
+            <form id="shopeeForm" novalidate>
+              <label for="shopeeTitulo">Nome do produto <span aria-hidden="true">*</span></label>
+              <input id="shopeeTitulo" name="titulo" type="text" maxlength="120" minlength="3" autocomplete="off" placeholder="Ex.: Fone Bluetooth sem fio" required>
+              <label for="shopeeUrl">Link gerado no portal de Afiliados <span aria-hidden="true">*</span></label>
+              <input id="shopeeUrl" name="url" type="url" maxlength="2048" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://s.shopee.com.br/..." required>
+              <div class="shopee-input-help">Use o link já convertido pela Shopee. Colar uma URL comum não garante comissão.</div>
+              <label for="shopeePreco">Preço atual (opcional)</label>
+              <div class="shopee-price-input"><span>R$</span><input id="shopeePreco" name="preco" type="text" maxlength="10" inputmode="decimal" placeholder="149,90" autocomplete="off"></div>
+              <label class="shopee-check">
+                <input id="shopeeConfirmado" name="confirmado" type="checkbox" required>
+                <span>Confirmo que gerei esse link pela minha conta de afiliado Shopee.</span>
+              </label>
+              <button class="btn shopee-primary shopee-save" type="submit" id="shopeeSave">Salvar rascunho</button>
+              <p id="shopeeFeedback" role="status" aria-live="polite" class="shopee-feedback" hidden></p>
+            </form>
+          </section>
+
+          <aside class="panel shopee-guide" aria-labelledby="shopeeGuideTitle">
+            <span class="shopee-kicker">PASSO A PASSO</span>
+            <h2 id="shopeeGuideTitle">Sua conta, quando estiver pronta</h2>
+            <ol class="shopee-steps">
+              <li><span>01</span><div><strong>Crie sua conta</strong><p>Entre no Programa de Criadores e Afiliados da Shopee e aguarde a aprovação.</p></div></li>
+              <li><span>02</span><div><strong>Gere seus links</strong><p>Use a função de conversão no portal. Você pode incluir Sub_id para acompanhar campanhas.</p></div></li>
+              <li><span>03</span><div><strong>Salve os primeiros produtos</strong><p>Cadastre os links aqui; ficam separados até sua revisão.</p></div></li>
+              <li><span>04</span><div><strong>Conecte a API oficial</strong><p>Quando a Shopee liberar App ID e Secret, habilitaremos a busca, os preços e os links oficiais.</p></div></li>
+            </ol>
+            <div class="shopee-guide-footer">
+              <span class="shopee-kicker">BUSCA AUTOMÁTICA</span>
+              <button type="button" class="btn shopee-disabled" disabled aria-disabled="true">Aguardando acesso à API</button>
+              <small>Nenhuma credencial foi cadastrada nem há busca simulada de produtos.</small>
+            </div>
+          </aside>
+        </div>
+
+        <section class="panel shopee-drafts" aria-labelledby="shopeeDraftsTitle">
+          <div class="shopee-panel-heading">
+            <div><span class="shopee-kicker">SEU CATÁLOGO</span><h2 id="shopeeDraftsTitle">Links preparados</h2></div>
+            <span class="shopee-draft-indicator">Rascunhos locais</span>
+          </div>
+          <p class="shopee-drafts-hint">Os itens ficam aqui para organizar sua futura operação. Somente você pode copiar ou excluir; nenhum será enviado automaticamente.</p>
+          <div id="shopeeDrafts" class="shopee-drafts-list" aria-live="polite">
+            <div class="shopee-empty">Carregando seus rascunhos...</div>
+          </div>
+        </section>
+        <p class="shopee-disclaimer">Shopee em preparação · Mesmo grupo de WhatsApp quando habilitado · Sem envios nem comissões presumidas · Dados locais no ACER.</p>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

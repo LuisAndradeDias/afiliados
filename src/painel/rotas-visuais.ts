@@ -14,6 +14,8 @@ const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/ofertas-v2.css": "ofertas-v2.css",
   "/central/assets/central.tokens.css": "central.tokens.css",
   "/central/assets/central.js": "central.js",
+  "/central/assets/shopee.css": "shopee.css",
+  "/central/assets/shopee.js": "shopee.js",
 });
 
 type RotaVisual = {
@@ -29,6 +31,18 @@ export async function responderRotaVisual({
 }: RotaVisual): Promise<boolean> {
   if (method !== "GET") return false;
   const publicDir = resolve(raiz, "src", "painel", "public");
+
+  if (pathname === "/shopee") {
+    const html = await readFile(resolve(publicDir, "shopee.html"), "utf8");
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+    });
+    res.end(html);
+    return true;
+  }
 
   if (pathname === "/central") {
     const html = await readFile(resolve(publicDir, "central.html"), "utf8");

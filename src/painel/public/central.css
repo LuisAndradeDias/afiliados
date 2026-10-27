@@ -7,3 +7,12 @@
 .eyebrow { color:var(--af-brand-primary); }
 ::selection { background:var(--af-brand-soft); color:var(--af-text-default); }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
+
+/* Shopee integrada — quarto modulo do painel, sem ativar automacao. */
+@media(min-width:1151px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.shopee-central-module{border-color:#f0dccb;background:linear-gradient(150deg,#fff 70%,#fff7ee)}
+.shopee-central-module .symbol.shopee-symbol{background:#fff1e5;color:#d36d1d;font-weight:900;font-size:23px}
+.btn.shopee-btn{border-color:#f5c9a5;background:#fff7f0;color:#a85019}
+.shopee-nav-mark{background:#ed842c;color:#fff;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:900}
+.shopee-new-tag{font-size:9px;letter-spacing:.08em;color:#ffd5a8;margin-left:auto}
+@media(min-width:1151px) and (max-width:1440px){.module{padding:19px}.module h2{font-size:17px}}
