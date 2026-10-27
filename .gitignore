@@ -18,3 +18,21 @@ data/mercadolivre-profile/
 # Private runtime logs/data and local Cloudflare tunnel binary
 /data/
 /tools/cloudflared/
+
+# Etapa 49: defense in depth for secrets and local runtime artifacts.
+# Gitignore only protects untracked files; audit Git history separately.
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+/diagnosticos-local/
+/captacao/caca-promos-vip/dados/
