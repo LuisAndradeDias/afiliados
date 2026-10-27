@@ -114,3 +114,10 @@ test("gitignore rejects sensitive local artifacts but keeps public examples", ()
     assert.equal(r.status, 1, "safe template must remain tracked: " + path);
   }
 });
+
+test("default audit locations use neutral protected directory names", () => {
+  const source = readFileSync(script, "utf8");
+  assert.ok(source.includes("OperationalDir = 'C:\\projeto02'"));
+  assert.ok(source.includes("LegacyDir = 'C:\\projeto01'"));
+  assert.ok(source.includes("BackupDir = 'C:\\projeto03'"));
+});

@@ -1,9 +1,9 @@
 [CmdletBinding()]
 param(
   [string]$CodeDir = (Join-Path $PSScriptRoot '..\..'),
-  [string]$OperationalDir = 'C:\afiliados-v2-homologacao',
+  [string]$OperationalDir = 'C:\projeto02',
   [string]$LegacyDir = 'C:\projeto01',
-  [string]$BackupDir = 'C:\BackupsAfiliados',
+  [string]$BackupDir = 'C:\projeto03',
   [switch]$Json,
   [switch]$SkipComparison
 )
