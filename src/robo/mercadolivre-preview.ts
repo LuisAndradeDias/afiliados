@@ -8,6 +8,7 @@ import {
 import { MercadoLivreReautorizacaoNecessaria } from "../afiliados/mercadolivre-token.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
+import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 import { avaliarQualidadeOferta, descontoMinimoOferta } from "../ofertas/qualidade.js";
 import { consultasMercadoLivre } from "../fontes/mercadolivre/busca-config.js";
 import { filtroHistoricoOfertas, ultimasOfertasEnviadas } from "../ofertas/historico.js";
@@ -100,12 +101,12 @@ for (const consulta of consultasUsadas) {
     const atual = porProduto.get(oferta.produtoId);
     if (
       !atual ||
-      (oferta.descontoEfetivoPercentual ??
-        oferta.descontoPercentual ??
-        0) >
-        (atual.descontoEfetivoPercentual ??
-          atual.descontoPercentual ??
-          0)
+      (avaliarCupomParaDivulgacao(oferta).podeAnunciar
+        ? (oferta.descontoEfetivoPercentual ?? oferta.descontoPercentual ?? 0)
+        : (oferta.descontoPercentual ?? 0)) >
+        (avaliarCupomParaDivulgacao(atual).podeAnunciar
+          ? (atual.descontoEfetivoPercentual ?? atual.descontoPercentual ?? 0)
+          : (atual.descontoPercentual ?? 0))
     ) {
       porProduto.set(oferta.produtoId, oferta);
     }

@@ -25,6 +25,7 @@ import {
 } from "./whatsapp-auto-send.js";
 import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
 import { revalidarDisponibilidadeMercadoLivre } from "../fontes/mercadolivre/disponibilidade.js";
+import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -62,11 +63,43 @@ interface PacotePreparar {
   precoAnterior?: number;
   descontoPercentual?: number;
   descontoEfetivoPercentual?: number;
+  cupomCodigo?: string;
+  cupomValidacao?: "catalogo-oficial-estimado" | "produto-confirmado";
+  cupomValidoAte?: string;
+  cupomConfirmadoEm?: string;
+  cupomProdutoIdConfirmado?: string;
+  cupomAnuncioIdConfirmado?: string;
+  cupomFonteConfirmacao?: "checkout";
+  precoComCupomEstimado?: number;
 }
 
 const pacote: PacotePreparar = await readFile(pacotePath, "utf8")
   .then((texto) => JSON.parse(texto) as PacotePreparar)
   .catch(() => ({}));
+
+function cupomDoPacoteAptoParaEnvio(): boolean {
+  // A mesma regra protege Amazon, Mercado Livre e a futura Shopee.
+  const temCupom = Boolean(pacote.cupomCodigo) ||
+    /🎟️\s*Cupom\s*:/i.test(mensagem);
+  if (!temCupom) return true;
+  return avaliarCupomParaDivulgacao({
+    produtoId: pacote.produtoId ?? "",
+    anuncioId: pacote.anuncioId,
+    precoAtual: pacote.precoAtual ?? 0,
+    cupomCodigo: pacote.cupomCodigo,
+    cupomValidacao: pacote.cupomValidacao,
+    cupomValidoAte: pacote.cupomValidoAte,
+    cupomConfirmadoEm: pacote.cupomConfirmadoEm,
+    cupomProdutoIdConfirmado: pacote.cupomProdutoIdConfirmado,
+    cupomAnuncioIdConfirmado: pacote.cupomAnuncioIdConfirmado,
+    cupomFonteConfirmacao: pacote.cupomFonteConfirmacao,
+    precoComCupomEstimado: pacote.precoComCupomEstimado
+  }).podeAnunciar;
+}
+
+if (!modoTeste && !cupomDoPacoteAptoParaEnvio()) {
+  throw new Error("CUPOM_SEM_COMPROVACAO: mensagem bloqueada antes de abrir o WhatsApp. Refaca a oferta sem cupom ou confirme-o no checkout.");
+}
 
 // Reconfere o histórico antes de abrir o navegador: um produto com outro
 // ASIN/código de anúncio não pode ser republicado só por isso.
@@ -436,6 +469,15 @@ async function aguardarFinalizacao(
           process.exitCode = 6;
           return;
         }
+      }
+      // A revisao pode durar mais que os 10 minutos de validade da prova.
+      // Nunca clicar Enviar com um cupom que venceu durante a espera.
+      if (!modoTeste && !cupomDoPacoteAptoParaEnvio()) {
+        await rm(enviarSignalPath, { force: true });
+        console.error("CUPOM_CONFIRMADO_EXPIRADO_ENVIO_BLOQUEADO: revise a mensagem, nenhum envio executado.");
+        await context.close().catch(() => undefined);
+        process.exitCode = 7;
+        return;
       }
       autoEnvioTentado = true;
       const origemEnvio = enviarPorPainel ? "painel" : "automatico";

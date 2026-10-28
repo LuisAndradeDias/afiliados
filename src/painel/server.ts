@@ -45,6 +45,8 @@ import {
   registrarCuponsObservadosMercadoLivre,
   statusCuponsMercadoLivre
 } from "../afiliados/mercadolivre-cupons.js";
+import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
+import { auditarDestinoLinkMercadoLivre } from "../afiliados/mercadolivre-destino.js";
 
 const raiz = process.cwd();
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
@@ -97,6 +99,10 @@ interface MercadoLivreLinkJob {
   mensagem?: string;
   /** Apenas memoria: nao e oferta, nao persiste link nem prepara WhatsApp. */
   diagnostico?: boolean;
+  verificarDestino?: boolean;
+  destinoStatus?: "nao-verificado" | "verificando" | "confirmado" | "inconclusivo" | "divergente";
+  destinoMotivo?: string;
+  atribuicaoComprovada?: false;
 }
 
 let mercadoLivreLinkJob: MercadoLivreLinkJob | null = null;
@@ -462,7 +468,16 @@ interface PacotePainel {
   descontoPercentual?: number;
   comissaoEstimadaPercentual?: number;
   scoreOferta?: number;
+  produtoId?: string;
+  anuncioId?: string;
+  precoAtual?: number;
   cupomCodigo?: string;
+  cupomValidacao?: "catalogo-oficial-estimado" | "produto-confirmado";
+  cupomValidoAte?: string;
+  cupomConfirmadoEm?: string;
+  cupomProdutoIdConfirmado?: string;
+  cupomAnuncioIdConfirmado?: string;
+  cupomFonteConfirmacao?: "checkout";
   cupomPercentual?: number;
   cupomValor?: number;
   cupomCompraMinima?: number;
@@ -1187,6 +1202,19 @@ async function estado() {
     })
     .catch(() => ({}));
 
+  const cupomPacote = avaliarCupomParaDivulgacao({
+    produtoId: pacote.produtoId ?? "",
+    anuncioId: pacote.anuncioId,
+    precoAtual: pacote.precoAtual ?? 0,
+    cupomCodigo: pacote.cupomCodigo,
+    cupomValidacao: pacote.cupomValidacao,
+    cupomValidoAte: pacote.cupomValidoAte,
+    cupomConfirmadoEm: pacote.cupomConfirmadoEm,
+    cupomProdutoIdConfirmado: pacote.cupomProdutoIdConfirmado,
+    cupomAnuncioIdConfirmado: pacote.cupomAnuncioIdConfirmado,
+    cupomFonteConfirmacao: pacote.cupomFonteConfirmacao,
+    precoComCupomEstimado: pacote.precoComCupomEstimado
+  });
   const plataformaPacoteAtual = plataformaDoValor(pacote.plataforma);
   const ofertaPreparada = Boolean(mensagem.trim() && plataformaPacoteAtual);
   const whatsappEmExecucao = processos.has("preparar");
@@ -1304,14 +1332,15 @@ async function estado() {
     categoriaAtual: pacote.categoria ?? "",
     comissaoAtual: pacote.comissaoEstimadaPercentual ?? 0,
     scoreAtual: pacote.scoreOferta ?? 0,
-    cupomAtual: pacote.cupomCodigo ?? "",
-    cupomPercentualAtual: pacote.cupomPercentual ?? 0,
-    cupomValorAtual: pacote.cupomValor ?? 0,
-    precoComCupomEstimado: pacote.precoComCupomEstimado ?? 0,
-    descontoEfetivoAtual:
-      pacote.descontoEfetivoPercentual ??
-      pacote.descontoPercentual ??
-      0,
+    cupomAtual: cupomPacote.podeAnunciar ? (pacote.cupomCodigo ?? "") : "",
+    cupomSituacao: cupomPacote.situacao,
+    cupomPercentualAtual: cupomPacote.podeAnunciar ? (pacote.cupomPercentual ?? 0) : 0,
+    cupomValorAtual: cupomPacote.podeAnunciar ? (pacote.cupomValor ?? 0) : 0,
+    precoComCupomEstimado:
+      cupomPacote.podeAnunciar ? (pacote.precoComCupomEstimado ?? 0) : 0,
+    descontoEfetivoAtual: cupomPacote.podeAnunciar
+      ? (pacote.descontoEfetivoPercentual ?? pacote.descontoPercentual ?? 0)
+      : (pacote.descontoPercentual ?? 0),
     mercadoLivreCuponsTotal: statusCupons.total,
     mercadoLivreCuponsAtivos: statusCupons.ativos,
     mercadoLivreCuponsAtualizadosEm: statusCupons.coletadoEm ?? "",
@@ -1676,7 +1705,10 @@ async function executarAcao(
         urlProduto: produto.urlProduto,
         criadoEm: new Date().toISOString(),
         status: "pending",
-        diagnostico: true
+        diagnostico: true,
+        verificarDestino: dados.verificarDestino === true,
+        destinoStatus: "nao-verificado",
+        atribuicaoComprovada: false
       };
       registrar("mercadolivre-link",
         "Teste tecnico manual de link solicitado; nenhum produto sera publicado.");
@@ -2213,13 +2245,15 @@ const server = createServer(async (req, res) => {
 
       try {
         if (mercadoLivreLinkJob.diagnostico) {
-          // Apenas reconhece o formato do link oficial. Nao grava arquivo,
-          // nao aprova estoque e nunca aciona o envio do WhatsApp.
+          // O resultado fica apenas em memoria; nao e oferta nem publica WhatsApp.
           normalizarLinkAfiliadoMercadoLivre(link);
+          const job = mercadoLivreLinkJob;
           mercadoLivreLinkJob = {
-            ...mercadoLivreLinkJob,
+            ...job,
             status: "done",
-            mensagem: "URL oficial reconhecida no teste; destino e disponibilidade nao homologados."
+            destinoStatus: job.verificarDestino ? "verificando" : "nao-verificado",
+            atribuicaoComprovada: false,
+            mensagem: "URL oficial reconhecida; atribuicao e disponibilidade nao homologadas."
           };
           registrar("mercadolivre-link",
             "Teste tecnico concluido sem salvar oferta, link ou mensagem.");
@@ -2227,6 +2261,31 @@ const server = createServer(async (req, res) => {
             ok: true,
             mensagem: "Conector respondeu com uma URL oficial. Nenhuma promocao foi criada."
           });
+          if (job.verificarDestino) {
+            // Somente HEAD publico em hosts oficiais, com redirects manuais.
+            // O link nao e armazenado nem repassado ao painel.
+            void auditarDestinoLinkMercadoLivre(link, job.produtoId)
+              .then((verificacao) => {
+                if (mercadoLivreLinkJob?.id !== job.id ||
+                    !mercadoLivreLinkJob.diagnostico) return;
+                mercadoLivreLinkJob = {
+                  ...mercadoLivreLinkJob,
+                  destinoStatus: verificacao.estado,
+                  destinoMotivo: verificacao.motivo,
+                  atribuicaoComprovada: false
+                };
+              })
+              .catch(() => {
+                if (mercadoLivreLinkJob?.id !== job.id ||
+                    !mercadoLivreLinkJob.diagnostico) return;
+                mercadoLivreLinkJob = {
+                  ...mercadoLivreLinkJob,
+                  destinoStatus: "inconclusivo",
+                  destinoMotivo: "nao foi possivel consultar o redirecionamento",
+                  atribuicaoComprovada: false
+                };
+              });
+          }
           return;
         }
         const oferta = await salvarLinkAfiliadoMercadoLivre(link);

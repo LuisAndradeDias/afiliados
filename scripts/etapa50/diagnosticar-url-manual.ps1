@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$UrlProduto,[switch]$ConfirmarTesteManual)
+param([string]$UrlProduto,[switch]$ConfirmarTesteManual,[switch]$VerificarDestino)
 $ErrorActionPreference='Stop'
 
 # Nunca executar por engano nem a partir de agendador.
@@ -18,7 +18,10 @@ function Read-State {
 }
 function Post-Action([string]$action,[string]$product=''){
   $body=@{action=$action;confirmacao=$confirmacao}
-  if($product){$body.urlProduto=$product}
+  if($product){
+    $body.urlProduto=$product
+    $body.verificarDestino=$VerificarDestino.IsPresent
+  }
   return Invoke-RestMethod -Uri ($base+'/api/action') -Method POST -ContentType 'application/json' -Headers @{Origin=$base} -Body ($body|ConvertTo-Json -Compress) -TimeoutSec 8
 }
 $state=Read-State
@@ -73,7 +76,20 @@ try {
     Write-Output ('TECHNICAL_LINK_RESULT=FAILED CATEGORY='+$category)
   }else{
     Write-Output 'TECHNICAL_LINK_RESULT=OFFICIAL_URL_RECOGNIZED'
-    Write-Output 'DESTINATION_CHECKED=false STOCK_CHECKED=false OFFER_SAVED=false WHATSAPP_SENT=false'
+    if($VerificarDestino){
+      $destino='verificando'
+      for($i=0;$i -lt 12;$i++){
+        $atual=Read-State
+        $destino=[string]$atual.mercadoLivreTesteLinkJob.destinoStatus
+        if($destino -ne 'verificando'){break}
+        Start-Sleep -Seconds 1
+      }
+      Write-Output ('DESTINATION_STATUS='+$destino)
+      Write-Output 'AFFILIATE_ATTRIBUTION_PROVEN=false'
+    }else{
+      Write-Output 'DESTINATION_STATUS=NOT_CHECKED'
+    }
+    Write-Output 'STOCK_CHECKED=false OFFER_SAVED=false WHATSAPP_SENT=false'
   }
 }finally{
   if($jobId){

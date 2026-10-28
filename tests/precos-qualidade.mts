@@ -145,7 +145,12 @@ const cupomConfirmado = criarOferta({
   precoComCupomEstimado: 95,
   descontoEfetivoPercentual: 37,
   descontoPercentual: undefined,
-  cupomValidacao: "produto-confirmado"
+  cupomCodigo: "PROVA123",
+  cupomValidacao: "produto-confirmado",
+  cupomConfirmadoEm: new Date().toISOString(),
+  cupomProdutoIdConfirmado: "TESTE",
+  cupomAnuncioIdConfirmado: "MLB123456",
+  cupomFonteConfirmacao: "checkout"
 });
 assert.equal(avaliarQualidadeOferta(cupomConfirmado, cfg).elegivel, true);
 assert.equal(

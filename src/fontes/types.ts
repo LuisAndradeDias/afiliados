@@ -18,7 +18,12 @@ export interface Oferta {
   cupomCompraMinima?: number;
   cupomDescontoMaximo?: number;
   cupomValidoAte?: string;
+  cupomColetadoEm?: string;
   cupomValidacao?: "catalogo-oficial-estimado" | "produto-confirmado";
+  cupomConfirmadoEm?: string;
+  cupomProdutoIdConfirmado?: string;
+  cupomAnuncioIdConfirmado?: string;
+  cupomFonteConfirmacao?: "checkout";
   precoComCupomEstimado?: number;
   descontoEfetivoPercentual?: number;
   imagem?: string;

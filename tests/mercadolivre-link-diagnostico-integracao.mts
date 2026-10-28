@@ -112,7 +112,9 @@ test("link tecnico de uma URL manual nunca vira promocao ou WhatsApp", {
     const status=await (await fetch(base+"/api/status")).json() as Record<string,any>;
     assert.equal(status.mercadoLivreLinkJob,null);
     assert.equal(status.mercadoLivreTesteLinkJob?.status,"done");
-    assert.match(status.mercadoLivreTesteLinkJob?.mensagem||"",/nao homologados/);
+    assert.match(status.mercadoLivreTesteLinkJob?.mensagem||"",/nao homologad[oa]s/);
+    assert.equal(status.mercadoLivreTesteLinkJob?.atribuicaoComprovada,false);
+    assert.equal(status.mercadoLivreTesteLinkJob?.destinoStatus,"nao-verificado");
     const cleared=await request(base+"/api/action",{
       action:"mercadolivre-link-diagnostico-limpar",
       confirmacao:"TESTE_LINK_SEM_ENVIO"

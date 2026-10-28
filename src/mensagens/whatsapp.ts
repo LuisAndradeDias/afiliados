@@ -1,4 +1,5 @@
 import type { Oferta } from "../fontes/types.js";
+import { removerCupomNaoConfirmado } from "../ofertas/cupons-politica.js";
 
 function moedaBR(valor: number): string {
   return valor.toLocaleString("pt-BR", {
@@ -68,7 +69,7 @@ export function formatarOfertaWhatsapp(oferta: Oferta): string {
     oferta.descontoPercentual
       ? `🔥 *${oferta.descontoPercentual}% OFF*`
       : undefined,
-    ...linhasCupom(oferta),
+    ...linhasCupom(removerCupomNaoConfirmado(oferta)),
     "",
     "🛒 Comprar:",
     oferta.urlAfiliado ?? oferta.urlProduto,

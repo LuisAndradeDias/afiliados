@@ -1,19 +1,19 @@
 import type { Oferta } from "../fontes/types.js";
 import { bonusComissao } from "./comissoes-amazon.js";
 import { economiaRealOferta, produtoPrioritario } from "./qualidade.js";
+import { avaliarCupomParaDivulgacao } from "./cupons-politica.js";
 
 export function calcularScorePromocao(oferta: Oferta): number {
-  const desconto =
-    oferta.descontoEfetivoPercentual ??
-    oferta.descontoPercentual ??
-    0;
+  const desconto = avaliarCupomParaDivulgacao(oferta).podeAnunciar
+    ? (oferta.descontoEfetivoPercentual ?? oferta.descontoPercentual ?? 0)
+    : (oferta.descontoPercentual ?? 0);
   const economia = economiaRealOferta(oferta);
   let score = 0;
 
   if (desconto >= 20) score += 20;
   if (desconto >= 30) score += 15;
   if (desconto >= 40) score += 15;
-  if (oferta.cupom) score += 6;
+  if (avaliarCupomParaDivulgacao(oferta).podeAnunciar) score += 6;
   if (oferta.precoAnterior && economia > 0) score += 10;
   if (economia >= 35) score += 7;
   if (economia >= 70) score += 8;
