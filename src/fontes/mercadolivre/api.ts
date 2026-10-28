@@ -1,7 +1,7 @@
 import type { Oferta } from "../types.js";
 import { descontoMinimoOferta } from "../../ofertas/qualidade.js";
 import { CacheCatalogo404 } from "./cache-catalogo-404.js";
-import { catalogoComCompraConfirmada, publicacaoCandidataParaConfirmar,
+import { centavosBRL, selecionarPublicacaoVencedora,
   type DetalheCatalogoDisponibilidade } from "./disponibilidade.js";
 import {
   MercadoLivreReautorizacaoNecessaria,
@@ -29,6 +29,7 @@ interface PublicacaoCatalogo {
   seller_id: number;
   price: number;
   original_price?: number | null;
+  currency_id?: string;
   condition?: string;
   available_quantity?: number | null;
 }
@@ -78,7 +79,8 @@ function desconto(
   anterior?: number | null
 ): number | undefined {
   if (!anterior || anterior <= atual) return undefined;
-  return Math.round(((anterior - atual) / anterior) * 100);
+  // Nunca arredondar o percentual para cima: evitar prometer desconto maior.
+  return Math.floor(((anterior - atual) / anterior) * 100 + 1e-8);
 }
 
 function urlProdutoCatalogo(id: string): string {
@@ -258,38 +260,28 @@ export class MercadoLivreApiFonte {
     }
   }
 
-  private async melhorPublicacao(
-    publicacoes: PublicacaoCatalogo[]
+  private async publicacaoVencedoraVerificada(
+    produtoId: string,
+    publicacoes: PublicacaoCatalogo[],
+    catalogo: DetalheCatalogoDisponibilidade
   ): Promise<PublicacaoCatalogo | undefined> {
-    const candidatas = publicacoes
-      .filter((item) => publicacaoCandidataParaConfirmar(item))
-      .sort((a, b) => {
-        const da = desconto(a.price, a.original_price) ?? 0;
-        const db = desconto(b.price, b.original_price) ?? 0;
-        return db - da || a.price - b.price;
-      });
+    // Priorizar o anuncio que a pagina /p/ abre de fato. Um concorrente
+    // mais barato ou com maior OFF nao e o vendedor do link do catalogo.
+    const selecionada = selecionarPublicacaoVencedora(produtoId, publicacoes, catalogo);
+    if (!selecionada?.item_id || typeof selecionada.seller_id !== "number" ||
+        typeof selecionada.price !== "number") return undefined;
+    const vencedora: PublicacaoCatalogo = {
+      ...selecionada,
+      item_id: selecionada.item_id,
+      seller_id: selecionada.seller_id,
+      price: selecionada.price
+    };
 
-    if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
-      console.log(
-        `Mercado Livre publicacoes: total=${publicacoes.length}, novas=${candidatas.length}`
-      );
-    }
-
-    const maximoVendedores = Math.max(
-      1,
-      Math.min(
-        20,
-        Number(process.env.MERCADOLIVRE_SELLER_CHECKS_PER_PRODUCT ?? 20)
-      )
-    );
-    const consideradas = candidatas.slice(0, maximoVendedores);
-    await this.carregarReputacoes(
-      consideradas.map((item) => item.seller_id)
-    );
-
-    return consideradas.find(
-      (item) => this.reputacaoVerdePorVendedor.get(item.seller_id) === true
-    );
+    // Reputacao so do vencedor, jamais de um concorrente exibido na lista.
+    await this.carregarReputacoes([vencedora.seller_id]);
+    return this.reputacaoVerdePorVendedor.get(vencedora.seller_id) === true
+      ? vencedora
+      : undefined;
   }
 
   async buscar(): Promise<Oferta[]> {
@@ -382,11 +374,8 @@ export class MercadoLivreApiFonte {
             await cache404.registrar404(produto.id);
             continue;
           }
-          const melhor = await this.melhorPublicacao(publicacoes);
-          if (!melhor) continue;
-
           // A ficha "active" pode mostrar "produto indisponivel".
-          // Comprovar vendedor vencedor e estoque no catalogo antes da oferta.
+          // Consultar o vencedor do catalogo antes de escolher anuncio/preco.
           let catalogo: DetalheCatalogoDisponibilidade;
           try {
             catalogo = await this.getJson<DetalheCatalogoDisponibilidade>(
@@ -398,14 +387,19 @@ export class MercadoLivreApiFonte {
             console.warn("Mercado Livre: disponibilidade nao confirmada; ignorando catalogo.");
             continue;
           }
-          if (!catalogoComCompraConfirmada(produto.id, melhor, catalogo)) {
-            console.warn("Mercado Livre: catalogo sem compra/estoque confirmados; ignorando.");
+          const melhor = await this.publicacaoVencedoraVerificada(
+            produto.id, publicacoes, catalogo
+          );
+          if (!melhor) {
+            console.warn("Mercado Livre: anuncio vencedor, preco ou estoque nao comprovados; ignorando.");
             continue;
           }
           vendedoresVerdes += 1;
 
           const anterior =
-            melhor.original_price && melhor.original_price > melhor.price
+            typeof melhor.original_price === "number" &&
+            centavosBRL(melhor.original_price) !== undefined &&
+            melhor.original_price > melhor.price
               ? melhor.original_price
               : undefined;
 
@@ -423,6 +417,11 @@ export class MercadoLivreApiFonte {
             disponibilidadeVerificadaEm: new Date().toISOString(),
             titulo: produto.name,
             precoAtual: melhor.price,
+            // Preco ligado ao vendedor e item vencedor; a API nao comprova
+            // se o valor exige Pix/cartao/beneficio de conta.
+            precoFonte: "catalogo-vencedor-api",
+            precoCondicaoPagamento: "nao-verificada",
+            precoVerificadoEm: new Date().toISOString(),
             precoAnterior: anterior,
             descontoPercentual: percentualVerificado,
             imagem: imagemProduto(produto),

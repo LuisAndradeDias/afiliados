@@ -9,6 +9,11 @@ export interface Oferta {
   estoqueDisponivel?: number;
   disponibilidadeConfirmada?: boolean;
   disponibilidadeVerificadaEm?: string;
+  // Mercado Livre: preco referenciado ao anuncio vencedor, nunca a outro
+  // vendedor. Nao presume condicoes de Pix ou parcelamento a partir da API.
+  precoFonte?: "catalogo-vencedor-api";
+  precoVerificadoEm?: string;
+  precoCondicaoPagamento?: "nao-verificada";
   precoAnterior?: number;
   descontoPercentual?: number;
   cupom?: string;

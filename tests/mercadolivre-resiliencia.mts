@@ -121,6 +121,10 @@ test("HTTP 429 during seller reputation also aborts rather than declaring non-gr
       item_id: "MLB1", seller_id: 20, price: 50,
       original_price: 100, condition: "new", available_quantity: 1
     }] });
+    if (str.endsWith("/products/MLBRATESELLER")) return reply({
+      id:"MLBRATESELLER", status:"active",
+      buy_box_winner:{item_id:"MLB1",seller_id:20,price:50,available_quantity:1}
+    });
     if (str.includes("/users/bulk")) {
       reputations++;
       if (reputations === 1) return reply({ error: "too_many_requests" }, 429);
