@@ -18,7 +18,7 @@ function permitido(url: URL): boolean {
   const host = url.hostname.toLowerCase();
   return url.protocol === "https:" && !url.username &&
     !url.password && !url.port &&
-    (host === "meli.la" || host.endsWith(".meli.la") ||
+    (host === "meli.la" ||
       host === "mercadolivre.com.br" ||
       host.endsWith(".mercadolivre.com.br") ||
       host === "mercadolivre.com" ||

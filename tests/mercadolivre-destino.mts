@@ -31,6 +31,7 @@ test("catalogo divergente, host externo e protocolo nao HTTPS nunca sao consulta
   const cases=[
     "https://www.mercadolivre.com.br/qualquer-produto/p/MLB99999999",
     "https://phishing.example/roubo",
+    "https://nao-oficial.meli.la/p/MLB38053317",
     "http://www.mercadolivre.com.br/p/MLB38053317"
   ];
   for(const url of cases){
