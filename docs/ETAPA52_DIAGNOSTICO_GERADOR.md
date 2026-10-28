@@ -65,3 +65,25 @@ Documentacao oficial:
 https://www.mercadolivre.com.br/l/afiliados-primeiros-passos
 https://www.mercadolivre.com.br/l/boas-praticas-links
 https://www.mercadolivre.com.br/l/checklist
+
+## 28/10/2026 — Erro ao recarregar Conector 02
+
+Captura do usuario: `Uncaught (in promise) Error: Extension context
+invalidated` em `content.js:65`, chamada `chrome.runtime.sendMessage`
+na aba `/afiliados/linkbuilder#hub` apos clicar Recarregar na extensao.
+
+Causa compativel: o content script anterior permanece na aba, mas
+o Chrome invalida o runtime do script ao recarregar o pacote.
+Nao demonstra problema de autenticacao ou da API Mercado Livre.
+
+Correcao v0.4.5: verifica `chrome.runtime.id`, envolve chamadas e
+callbacks de `sendMessage` em try/catch, trata Promise rejeitada,
+interrompe o temporizador do content script antigo e nao prossegue
+no job apos invalidacao. Simulacoes cobrem erro sincronico,
+erro no callback, rejeicao da Promise e runtime sem ID;
+sem mensagens ao backend nem envios WhatsApp.
+
+O usuario precisa atualizar a aba do Gerador (`Ctrl+R`) depois
+de recarregar a extensao; erros historicos permanecem na tela do
+Chrome ate limpeza manual. Nao editar arquivos internos do Chrome.
+Ainda faltam teste real do gerador e homologacao de atribuicao.

@@ -14,6 +14,7 @@ async function fixture(path,html,productUrl="https://www.mercadolivre.com.br/p/M
     window.__meliGetJobCalls=0;
     const job={id:"TEST-JOB-123",urlProduto:productUrl,status:"pending"};
     Object.defineProperty(window,"chrome",{configurable:true,value:{runtime:{
+      id:"EXTENSION_FIXTURE",
       lastError:null,
       sendMessage(message,callback){
         if(message.type==="getJob"){window.__meliGetJobCalls++;queueMicrotask(()=>callback({ok:true,job}));return;}
@@ -157,5 +158,45 @@ try{
   assert.equal(await page3.evaluate(()=>window.__meliGetJobCalls),0);
   assert.equal(await page3.evaluate(()=>window.__meliJobResult),null);
   await page3.close();
+
+  // Recarregar o Conector invalida scripts injetados antes do reload.
+  // Em todos os casos a aba antiga deve interromper mensagens e polling,
+  // sem excecao nao tratada e sem acionar jobs ou enviar dados.
+  async function verificarContextoInvalidado(tipo:string) {
+    const page=await browser.newPage();
+    const pageErrors:string[]=[];
+    page.on("pageerror",error=>pageErrors.push(error.message));
+    await page.route("https://www.mercadolivre.com.br/afiliados/linkbuilder",route=>
+      route.fulfill({status:200,contentType:"text/html",body:"<html><body><p>Teste isolado</p></body></html>"})
+    );
+    await page.addInitScript((modo)=>{
+      window.__meliInvalidCalls=0;
+      Object.defineProperty(window,"chrome",{configurable:true,value:{runtime:{
+        id:modo==="sem-id"?undefined:"EXTENSION_FIXTURE",
+        get lastError(){
+          if(modo==="callback") throw new Error("Extension context invalidated.");
+          return null;
+        },
+        sendMessage(_message,callback){
+          window.__meliInvalidCalls++;
+          if(modo==="sincrono") throw new Error("Extension context invalidated.");
+          if(modo==="promessa") return Promise.reject(new Error("Extension context invalidated."));
+          if(modo==="callback") queueMicrotask(()=>callback(undefined));
+        }
+      }}});
+    },tipo);
+    await page.goto("https://www.mercadolivre.com.br/afiliados/linkbuilder");
+    await page.addScriptTag({content:source});
+    await page.waitForTimeout(2250);
+    const calls=await page.evaluate(()=>window.__meliInvalidCalls);
+    assert.equal(calls,tipo==="sem-id"?0:1,"O contexto antigo deve parar no primeiro erro");
+    assert.deepEqual(pageErrors,[],"Nao pode gerar erros JS nao tratados");
+    await page.close();
+  }
+
+  for(const tipo of ["sincrono","callback","promessa","sem-id"]) {
+    await verificarContextoInvalidado(tipo);
+  }
+  console.log("mercadolivre-extensao: reload invalido tratado, polling interrompido OK");
   console.log("mercadolivre-extensao: links oficiais simulados, etiqueta unica e aba segura OK");
 }finally{await browser.close();}

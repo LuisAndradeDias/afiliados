@@ -92,3 +92,20 @@ um bloqueio: nenhum clique forcado, requisicao extra ou selecao arbitraria
 de etiqueta. Depois de homologar e implantar o codigo, recarregar
 manualmente apenas Conector 02 em chrome://extensions/ para ativar
 a versao e testar no mesmo perfil com o usuario.
+
+## Chrome: Extension context invalidated (Conector 02 v0.4.5)
+
+Ao clicar **Recarregar** no cartao do Conector 02, qualquer aba antiga
+do Mercado Livre ainda possui o content script do contexto anterior.
+O Chrome invalida `chrome.runtime.sendMessage` desse script; um erro
+historico em `chrome://extensions` nao significa falha na Central.
+
+A correcao v0.4.5 intercepta invalidações sincrônicas, de callback e
+da Promise do Chrome e interrompe o polling do contexto obsoleto,
+sem novas chamadas ao servidor ou envios. Nenhuma permissao adicional.
+
+**Para usar o novo script:** recarregar a extensao e atualizar com
+`Ctrl+R` cada aba aberta do Mercado Livre, inclusive o Gerador de Links.
+Fechar a janela Erros nao recarrega scripts, e usar Remover tudo apenas
+limpa o historico; nao modifica o codigo. Nao mexer em perfis, cookies,
+sessao ou Secure Preferences.

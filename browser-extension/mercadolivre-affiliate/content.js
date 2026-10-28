@@ -60,18 +60,76 @@
     box.textContent = texto;
   }
 
+  // Ao recarregar a extensao, scripts ja injetados permanecem na aba,
+  // mas perdem acesso ao runtime anterior. Parar o polling nesse contexto
+  // evita erros repetidos e nunca tenta restaurar uma sessao sozinho.
+  let intervaloCiclo = null;
+  let contextoInvalido = false;
+  const MENSAGEM_CONTEXTO = "Conector atualizado. Recarregue esta aba do Mercado Livre.";
+
+  function mensagemDoErro(error) {
+    return error && typeof error.message === "string"
+      ? error.message
+      : String(error ?? "");
+  }
+
+  function erroDeContexto(error) {
+    return /extension context invalidated|context invalidated/i.test(mensagemDoErro(error));
+  }
+
+  function interromperContextoAntigo() {
+    contextoInvalido = true;
+    if (intervaloCiclo !== null) {
+      clearInterval(intervaloCiclo);
+      intervaloCiclo = null;
+    }
+  }
+
   function enviar(message) {
+    if (contextoInvalido) {
+      return Promise.resolve({ ok: false, mensagem: MENSAGEM_CONTEXTO });
+    }
+
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage(message, (response) => {
-        if (chrome.runtime.lastError) {
-          resolve({
-            ok: false,
-            mensagem: chrome.runtime.lastError.message
-          });
+      const erroSeguro = (error) => {
+        if (erroDeContexto(error)) {
+          interromperContextoAntigo();
+          return { ok: false, mensagem: MENSAGEM_CONTEXTO };
+        }
+        return {
+          ok: false,
+          mensagem: mensagemDoErro(error) || "Falha no Conector."
+        };
+      };
+
+      try {
+        if (typeof chrome === "undefined" || !chrome.runtime?.id) {
+          interromperContextoAntigo();
+          resolve({ ok: false, mensagem: MENSAGEM_CONTEXTO });
           return;
         }
-        resolve(response || { ok: false, mensagem: "Sem resposta." });
-      });
+
+        const respostaPendente = chrome.runtime.sendMessage(message, (response) => {
+          try {
+            const erro = chrome.runtime.lastError;
+            if (erro) {
+              resolve(erroSeguro(erro));
+              return;
+            }
+            resolve(response || { ok: false, mensagem: "Sem resposta." });
+          } catch (error) {
+            resolve(erroSeguro(error));
+          }
+        });
+
+        // Chrome MV3 pode fornecer uma Promise mesmo usando callback.
+        // A rejeicao nao pode ficar sem tratamento apos reload da extensao.
+        if (respostaPendente && typeof respostaPendente.catch === "function") {
+          respostaPendente.catch((error) => resolve(erroSeguro(error)));
+        }
+      } catch (error) {
+        resolve(erroSeguro(error));
+      }
     });
   }
 
@@ -391,7 +449,11 @@
     mostrarStatus("Automa\u00e7\u00e3o Meli: preparando o Gerador de Links...");
 
     try {
-      await enviar({ type: "startJob", id: job.id });
+      const inicio = await enviar({ type: "startJob", id: job.id });
+      if (!inicio?.ok) {
+        if (contextoInvalido) return;
+        throw new Error(inicio?.mensagem || "Nao foi possivel iniciar o gerador.");
+      }
 
       let campo = localizarCampoUrl();
 
@@ -483,6 +545,7 @@
         : "Link oficial gerado e salvo no painel.", "ok");
       await new Promise((resolve) => setTimeout(resolve, 3500));
     } catch (error) {
+      if (contextoInvalido) return;
       const mensagem =
         error instanceof Error ? error.message : String(error);
       mostrarStatus("Automa\u00e7\u00e3o Meli: " + mensagem, "erro");
@@ -502,13 +565,16 @@
   }
 
   async function ciclo() {
+    if (contextoInvalido) return;
     await enviar({ type: "ping" });
+    if (contextoInvalido) return;
     await observarCupons();
 
     // Outras abas Mercado Livre nao podem disputar um link pendente.
-    if (processando || !paginaAfiliados()) return;
+    if (contextoInvalido || processando || !paginaAfiliados()) return;
 
     const resposta = await enviar({ type: "getJob" });
+    if (contextoInvalido) return;
     const job = resposta?.job;
 
     if (
@@ -518,10 +584,19 @@
       job.id !== jobAtual &&
       (job.status === "pending" || job.status === "running")
     ) {
-      processar(job);
+      void processar(job).catch((error) => {
+        if (erroDeContexto(error)) interromperContextoAntigo();
+      });
     }
   }
 
-  ciclo();
-  setInterval(ciclo, POLL_MS);
+  function cicloSeguro() {
+    if (contextoInvalido) return;
+    void ciclo().catch((error) => {
+      if (erroDeContexto(error)) interromperContextoAntigo();
+    });
+  }
+
+  cicloSeguro();
+  if (!contextoInvalido) intervaloCiclo = setInterval(cicloSeguro, POLL_MS);
 })();
