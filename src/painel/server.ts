@@ -47,6 +47,7 @@ import {
 } from "../afiliados/mercadolivre-cupons.js";
 import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 import { auditarDestinoLinkMercadoLivre } from "../afiliados/mercadolivre-destino.js";
+import { auditarDestinoLinkMercadoLivreNavegador } from "../afiliados/mercadolivre-destino-navegador.js";
 
 const raiz = process.cwd();
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
@@ -100,6 +101,8 @@ interface MercadoLivreLinkJob {
   /** Apenas memoria: nao e oferta, nao persiste link nem prepara WhatsApp. */
   diagnostico?: boolean;
   verificarDestino?: boolean;
+  /** Apenas em diagnostico manual, Chrome novo sem perfil nem cookies. */
+  verificarDestinoNavegador?: boolean;
   destinoStatus?: "nao-verificado" | "verificando" | "confirmado" | "inconclusivo" | "divergente";
   destinoMotivo?: string;
   atribuicaoComprovada?: false;
@@ -1674,6 +1677,10 @@ async function executarAcao(
     if (dados.confirmacao !== "TESTE_LINK_SEM_ENVIO") {
       return { ok: false, mensagem: "Confirmacao manual de teste ausente." };
     }
+    if (dados.verificarDestino === true &&
+        dados.verificarDestinoNavegador === true) {
+      return { ok: false, mensagem: "Escolha apenas um modo de verificacao de destino." };
+    }
     const seguro = permitirTesteTecnicoLink({
       pausado:
         !mercadoLivreFluxoAutomatico &&
@@ -1707,6 +1714,7 @@ async function executarAcao(
         status: "pending",
         diagnostico: true,
         verificarDestino: dados.verificarDestino === true,
+        verificarDestinoNavegador: dados.verificarDestinoNavegador === true,
         destinoStatus: "nao-verificado",
         atribuicaoComprovada: false
       };
@@ -2251,7 +2259,8 @@ const server = createServer(async (req, res) => {
           mercadoLivreLinkJob = {
             ...job,
             status: "done",
-            destinoStatus: job.verificarDestino ? "verificando" : "nao-verificado",
+            destinoStatus: job.verificarDestino || job.verificarDestinoNavegador
+              ? "verificando" : "nao-verificado",
             atribuicaoComprovada: false,
             mensagem: "URL oficial reconhecida; atribuicao e disponibilidade nao homologadas."
           };
@@ -2261,10 +2270,15 @@ const server = createServer(async (req, res) => {
             ok: true,
             mensagem: "Conector respondeu com uma URL oficial. Nenhuma promocao foi criada."
           });
-          if (job.verificarDestino) {
-            // Somente HEAD publico em hosts oficiais, com redirects manuais.
-            // O link nao e armazenado nem repassado ao painel.
-            void auditarDestinoLinkMercadoLivre(link, job.produtoId)
+          if (job.verificarDestino || job.verificarDestinoNavegador) {
+            // Ambos os validadores recebem a URL apenas nesta chamada
+            // efemera, antes de ela sair do escopo. Nunca salvar no job.
+            // O modo navegador exige confirmacao manual e executa Chrome
+            // isolado, sem perfil/cookies nem acesso a checkout.
+            const auditoria = job.verificarDestinoNavegador
+              ? auditarDestinoLinkMercadoLivreNavegador(link, job.produtoId)
+              : auditarDestinoLinkMercadoLivre(link, job.produtoId);
+            void auditoria
               .then((verificacao) => {
                 if (mercadoLivreLinkJob?.id !== job.id ||
                     !mercadoLivreLinkJob.diagnostico) return;

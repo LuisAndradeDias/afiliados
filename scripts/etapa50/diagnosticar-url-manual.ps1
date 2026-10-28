@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$UrlProduto,[switch]$ConfirmarTesteManual,[switch]$VerificarDestino)
+param([string]$UrlProduto,[switch]$ConfirmarTesteManual,[switch]$VerificarDestino,[switch]$VerificarDestinoNavegador)
 $ErrorActionPreference='Stop'
 
 # Nunca executar por engano nem a partir de agendador.
@@ -8,6 +8,9 @@ if(-not $ConfirmarTesteManual -or [string]::IsNullOrWhiteSpace($UrlProduto)){
   exit 3
 }
 
+if($VerificarDestino -and $VerificarDestinoNavegador){
+  throw 'TEST_NOT_STARTED: escolha somente uma auditoria de destino'
+}
 $base='http://127.0.0.1:3030'
 $confirmacao='TESTE_LINK_SEM_ENVIO'
 $jobId=''
@@ -21,6 +24,7 @@ function Post-Action([string]$action,[string]$product=''){
   if($product){
     $body.urlProduto=$product
     $body.verificarDestino=$VerificarDestino.IsPresent
+    $body.verificarDestinoNavegador=$VerificarDestinoNavegador.IsPresent
   }
   return Invoke-RestMethod -Uri ($base+'/api/action') -Method POST -ContentType 'application/json' -Headers @{Origin=$base} -Body ($body|ConvertTo-Json -Compress) -TimeoutSec 8
 }
@@ -76,9 +80,9 @@ try {
     Write-Output ('TECHNICAL_LINK_RESULT=FAILED CATEGORY='+$category)
   }else{
     Write-Output 'TECHNICAL_LINK_RESULT=OFFICIAL_URL_RECOGNIZED'
-    if($VerificarDestino){
+    if($VerificarDestino -or $VerificarDestinoNavegador){
       $destino='verificando'
-      # HEAD e GET podem consumir tempo por salto; nao relatar pendente prematuramente.
+      # HEAD/GET ou navegador isolado podem demorar. Nao concluir antes do resultado.
       for($i=0;$i -lt 28;$i++){
         $atual=Read-State
         $destino=[string]$atual.mercadoLivreTesteLinkJob.destinoStatus
@@ -86,7 +90,8 @@ try {
         Start-Sleep -Seconds 1
       }
       $reason=[string]$atual.mercadoLivreTesteLinkJob.destinoMotivo
-      $reasonCode=switch($reason){
+      # O resultado do navegador ja e um enum tecnico sem URLs ou rastreio.
+      $reasonCode=if($reason -match '^NAVEGADOR_[A-Z_]+$'){$reason}else{switch($reason){
         'redirecionamento identificou o mesmo catalogo' {'CATALOG_MATCH'}
         'redirecionamento identificou catalogo diferente' {'CATALOG_MISMATCH'}
         'redirecionamento para dominio nao permitido' {'UNAPPROVED_DOMAIN'}
@@ -95,7 +100,7 @@ try {
         'redirecionamento ciclico' {'REDIRECT_LOOP'}
         'limite de redirecionamentos atingido' {'TOO_MANY_REDIRECTS'}
         default {'OTHER_OR_PENDING'}
-      }
+      }}
       Write-Output ('DESTINATION_STATUS='+$destino)
       Write-Output ('DESTINATION_REASON_CODE='+$reasonCode)
       Write-Output 'AFFILIATE_ATTRIBUTION_PROVEN=false'

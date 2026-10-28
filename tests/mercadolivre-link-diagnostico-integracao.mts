@@ -128,6 +128,37 @@ test("link tecnico de uma URL manual nunca vira promocao ou WhatsApp", {
     assert.equal(after.mercadoLivreMonitorAtivo,false);
     assert.equal(after.monitorAlternadoAtivo,false);
 
+    // O novo modo navegador so pode existir dentro do job tecnico manual.
+    // Nao executamos navegador externo nem link real neste teste isolado.
+    const mixedModes=await request(base+"/api/action",{
+      action:"mercadolivre-link-diagnostico",
+      confirmacao:"TESTE_LINK_SEM_ENVIO",
+      urlProduto:"https://www.mercadolivre.com.br/p/MLB123456",
+      verificarDestinoNavegador:true,
+      verificarDestino:true
+    });
+    assert.equal(mixedModes.code,409);
+    const requestedBrowser=await request(base+"/api/action",{
+      action:"mercadolivre-link-diagnostico",
+      confirmacao:"TESTE_LINK_SEM_ENVIO",
+      urlProduto:"https://www.mercadolivre.com.br/p/MLB123456",
+      verificarDestinoNavegador:true
+    });
+    assert.equal(requestedBrowser.code,200);
+    const browserState=await (await fetch(base+"/api/status")).json() as Record<string,any>;
+    assert.equal(browserState.mercadoLivreTesteLinkJob?.diagnostico,true);
+    assert.equal(browserState.mercadoLivreTesteLinkJob?.verificarDestinoNavegador,true);
+    assert.equal(browserState.mercadoLivreTesteLinkJob?.verificarDestino,false);
+    assert.equal(browserState.mercadoLivreTesteLinkJob?.status,"pending");
+    const clearedBrowser=await request(base+"/api/action",{
+      action:"mercadolivre-link-diagnostico-limpar",
+      confirmacao:"TESTE_LINK_SEM_ENVIO"
+    });
+    assert.equal(clearedBrowser.code,200);
+    const statusBrowserClean=await (await fetch(base+"/api/status")).json() as Record<string,any>;
+    assert.equal(statusBrowserClean.mercadoLivreTesteLinkJob,null);
+    assert.equal(statusBrowserClean.mercadoLivreLinkJob,null);
+
     const fileNames=await (await import("node:fs/promises")).readdir(join(tmp,"data"));
     assert.equal(fileNames.some(name=>/ultima-oferta|whatsapp|mensagem/i.test(name)),false,
       "No offers/messages/session artifacts may be written by technical test");

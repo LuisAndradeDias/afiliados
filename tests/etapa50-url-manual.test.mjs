@@ -21,7 +21,9 @@ test("teste manual recusa URL sem confirmacao e nao entra em contato com painel"
 
 test("script nao oferece envio de mensagem e limpa somente seu proprio teste",async()=>{
   const txt=await readFile(script,"utf8");
-  assert.match(txt,/param\(\[string\]\$UrlProduto,\[switch\]\$ConfirmarTesteManual,\[switch\]\$VerificarDestino\)/);
+  assert.match(txt,/param\(\[string\]\$UrlProduto,\[switch\]\$ConfirmarTesteManual,\[switch\]\$VerificarDestino,\[switch\]\$VerificarDestinoNavegador\)/);
+  assert.match(txt,/verificarDestinoNavegador=\$VerificarDestinoNavegador\.IsPresent/);
+  assert.match(txt,/NAVEGADOR_\[A-Z_\]/);
   assert.match(txt,/AFFILIATE_ATTRIBUTION_PROVEN=false/);
   assert.match(txt,/WHATSAPP_SENT=false/);
   assert.match(txt,/mercadolivre-link-diagnostico-limpar/);
