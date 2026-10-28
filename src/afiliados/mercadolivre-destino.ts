@@ -66,7 +66,8 @@ export async function auditarDestinoLinkMercadoLivre(
     }
     vistos.add(url.toString());
 
-    const catalogo = url.pathname.match(/(?:^|\/)p\/(MLB\d+)(?:\/|$)/i);
+    // Aceita somente uma rota de produto, nunca /checkout/.../p/ID.
+    const catalogo = url.pathname.match(/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)+\/)?p\/(MLB\d+)\/?$/i);
     if (catalogo) {
       return resultado(
         catalogo[1].toUpperCase() === produtoId.toUpperCase() ?
@@ -81,31 +82,44 @@ export async function auditarDestinoLinkMercadoLivre(
       return resultado("inconclusivo", "limite de redirecionamentos atingido", saltos);
     }
 
-    let response: Response;
-    try {
-      response = await fetcher(url.toString(),{
-        method:"HEAD",
-        redirect:"manual",
-        credentials:"omit",
-        cache:"no-store",
-        signal:AbortSignal.timeout(timeoutMs)
-      });
-    }catch{
-      return resultado("inconclusivo", "site nao permitiu validar redirecionamento", saltos);
+    // HEAD pode ser recusado por encurtadores. Um GET publico e permitido
+    // apenas como fallback, sem cookies e sem ler conteudo HTML ou executar JS.
+    // Todos os saltos passam novamente pelo filtro de dominios antes do acesso.
+    let proxima: URL | undefined;
+    for (const method of ["HEAD", "GET"] as const) {
+      let response: Response;
+      try {
+        response = await fetcher(url.toString(), {
+          method,
+          redirect: "manual",
+          credentials: "omit",
+          cache: "no-store",
+          signal: AbortSignal.timeout(timeoutMs)
+        });
+      } catch {
+        if (method === "HEAD") continue;
+        return resultado("inconclusivo", "site nao permitiu validar redirecionamento", saltos);
+      }
+      await response.body?.cancel().catch(() => undefined);
+      if (![301, 302, 303, 307, 308].includes(response.status)) {
+        if (method === "HEAD") continue;
+        return resultado("inconclusivo", "destino nao foi exposto por redirecionamento", saltos);
+      }
+      const location = response.headers.get("location");
+      if (!location || location.length > 2500) {
+        return resultado("inconclusivo", "resposta sem endereco de destino valido", saltos);
+      }
+      try {
+        proxima = new URL(location, url);
+      } catch {
+        return resultado("inconclusivo", "endereco de destino invalido", saltos);
+      }
+      break;
     }
-    await response.body?.cancel().catch(()=>undefined);
-    if (![301,302,303,307,308].includes(response.status)) {
-      return resultado("inconclusivo", "destino nao foi exposto por redirecionamento", saltos);
+    if (!proxima) {
+      return resultado("inconclusivo", "redirecionamento nao resolvido", saltos);
     }
-    const location = response.headers.get("location");
-    if (!location || location.length > 2500) {
-      return resultado("inconclusivo", "resposta sem endereco de destino valido", saltos);
-    }
-    try {
-      url = new URL(location,url);
-    } catch {
-      return resultado("inconclusivo", "endereco de destino invalido", saltos);
-    }
+    url = proxima;
   }
   return resultado("inconclusivo", "redirecionamento nao resolvido", maxSaltos);
 }

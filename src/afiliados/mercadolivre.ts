@@ -21,7 +21,7 @@ function hostMercadoLivre(hostname: string): boolean {
 
 function hostMeli(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return host === "meli.la" || host.endsWith(".meli.la");
+  return host === "meli.la";
 }
 
 export function normalizarLinkAfiliadoMercadoLivre(valor: string): string {
@@ -37,8 +37,8 @@ export function normalizarLinkAfiliadoMercadoLivre(valor: string): string {
     throw new Error("O link informado não é uma URL válida.");
   }
 
-  if (url.protocol !== "https:") {
-    throw new Error("Use somente links HTTPS gerados pelo Mercado Livre.");
+  if (url.protocol !== "https:" || url.username || url.password || url.port) {
+    throw new Error("Use somente links HTTPS oficiais, sem credenciais ou portas adicionais.");
   }
 
   const encurtado = hostMeli(url.hostname);

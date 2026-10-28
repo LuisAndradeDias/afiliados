@@ -29,3 +29,33 @@ O projeto já contém os módulos src/afiliados/mercadolivre-cupons.ts e src/ofe
 - Tratar um desconto estimado como estimativa interna, não como promessa ao cliente.
 
 Testes iniciais: tests/etapa51-cupons-politica.mts, quatro cenários unitários sem rede nem WhatsApp.
+
+
+## 28/10/2026 — ensaio real controlado e reforco incremental
+
+Foi executado no ACER o script `scripts/etapa50/diagnosticar-url-manual.ps1`
+com `-ConfirmarTesteManual -VerificarDestino`, usando somente o catalogo
+MLB38053317. Todos os criterios de preflight foram satisfeitos.
+A extensao respondeu `pending -> running -> done` e gerou uma URL com
+formato oficial. O verificador retornou `destinoStatus=inconclusivo`;
+a atribuicao de afiliado permanece NAO COMPROVADA.
+O script removeu seu proprio job temporario. Nao houve oferta salva,
+envio de WhatsApp, compra, ou ativacao dos monitores.
+
+**Sem evidencia de destino real, a Etapa 51 NAO esta homologada.**
+
+A branch de desenvolvimento recebeu reforcos para a proxima auditoria:
+- Aceitar o encurtador `meli.la` no host exato, e rejeitar credenciais,
+  portas nao padrao e host semelhante na normalizacao inicial do link.
+- Validar apenas rotas de catalogo /p/MLB no caminho final esperado,
+  evitando confundir rotas artificiais /checkout/.../p/ com produto.
+- Quando HEAD nao revela redirect, tentar um GET publico estritamente
+  limitado aos hosts autorizados, sem cookies, sem seguir automaticamente
+  o redirect, sem ler HTML e sem executar scripts.
+- Retornar inconclusivo diante de opacidade, timeout ou bloqueio.
+- Informar a categoria estatica do motivo no script diagnostico,
+  mantendo URL gerada, query de afiliado e parametros de rastreio fora dos logs.
+
+Estes reforcos ainda precisam de prova real apos atualizacao supervisionada
+da instalacao principal. Unitarios com fetch simulado nao provam redirecionamento
+real nem comissao. O diagnostico de cupons segue independente.

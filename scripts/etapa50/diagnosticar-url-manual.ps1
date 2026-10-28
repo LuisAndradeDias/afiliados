@@ -78,13 +78,26 @@ try {
     Write-Output 'TECHNICAL_LINK_RESULT=OFFICIAL_URL_RECOGNIZED'
     if($VerificarDestino){
       $destino='verificando'
-      for($i=0;$i -lt 12;$i++){
+      # HEAD e GET podem consumir tempo por salto; nao relatar pendente prematuramente.
+      for($i=0;$i -lt 28;$i++){
         $atual=Read-State
         $destino=[string]$atual.mercadoLivreTesteLinkJob.destinoStatus
         if($destino -ne 'verificando'){break}
         Start-Sleep -Seconds 1
       }
+      $reason=[string]$atual.mercadoLivreTesteLinkJob.destinoMotivo
+      $reasonCode=switch($reason){
+        'redirecionamento identificou o mesmo catalogo' {'CATALOG_MATCH'}
+        'redirecionamento identificou catalogo diferente' {'CATALOG_MISMATCH'}
+        'redirecionamento para dominio nao permitido' {'UNAPPROVED_DOMAIN'}
+        'site nao permitiu validar redirecionamento' {'NETWORK_OR_ACCESS_BLOCKED'}
+        'destino nao foi exposto por redirecionamento' {'NO_HTTP_REDIRECT'}
+        'redirecionamento ciclico' {'REDIRECT_LOOP'}
+        'limite de redirecionamentos atingido' {'TOO_MANY_REDIRECTS'}
+        default {'OTHER_OR_PENDING'}
+      }
       Write-Output ('DESTINATION_STATUS='+$destino)
+      Write-Output ('DESTINATION_REASON_CODE='+$reasonCode)
       Write-Output 'AFFILIATE_ATTRIBUTION_PROVEN=false'
     }else{
       Write-Output 'DESTINATION_STATUS=NOT_CHECKED'

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { auditarDestinoLinkMercadoLivre } from "../src/afiliados/mercadolivre-destino.js";
+import { normalizarLinkAfiliadoMercadoLivre } from "../src/afiliados/mercadolivre.js";
 
 const short="https://meli.la/ABCD1234";
 const target="MLB38053317";
@@ -72,4 +73,74 @@ test("shortlink sem produto identificavel nao comprova atribuição",async()=>{
   });
   assert.equal(result.estado,"inconclusivo");
   assert.equal(result.atribuicaoComprovada,false);
+});
+
+
+test("normalizador bloqueia subdominios meli, credenciais e portas adicionais",()=>{
+  assert.equal(normalizarLinkAfiliadoMercadoLivre(short),short);
+  assert.equal(normalizarLinkAfiliadoMercadoLivre("https://www.mercadolivre.com.br/sec/oficial"),
+    "https://www.mercadolivre.com.br/sec/oficial");
+  for(const bad of [
+    "https://outro.meli.la/XYZ",
+    "https://user:pass@meli.la/XYZ",
+    "https://meli.la:8443/XYZ",
+    "http://meli.la/XYZ",
+    "https://www.mercadolivre.com.br.evil.test/sec/oficial",
+    "https://user:pass@www.mercadolivre.com.br/sec/oficial",
+    "https://www.mercadolivre.com.br:8080/sec/oficial"
+  ]){
+    assert.throws(()=>normalizarLinkAfiliadoMercadoLivre(bad),Error,bad);
+  }
+});
+
+test("HEAD recusado pode cair em GET manual sem cookies e confirmar apenas o destino",async()=>{
+  const calls: string[]=[];
+  const result=await auditarDestinoLinkMercadoLivre(short,target,{
+    fetcher:(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      calls.push(String(init?.method));
+      assert.equal(String(input),short);
+      assert.equal(init?.redirect,"manual");
+      assert.equal(init?.credentials,"omit");
+      assert.equal(init?.cache,"no-store");
+      if(init?.method==="HEAD") return new Response(null,{status:405});
+      return redirect("https://www.mercadolivre.com.br/produto-exemplo/p/MLB38053317");
+    }) as typeof fetch
+  });
+  assert.deepEqual(calls,["HEAD","GET"]);
+  assert.equal(result.estado,"confirmado");
+  assert.equal(result.atribuicaoComprovada,false);
+  assert.ok(!JSON.stringify(result).includes(short));
+});
+
+test("GET nao confirma sem redirect e nunca consulta host desconhecido",async()=>{
+  const calls:string[]=[];
+  const result=await auditarDestinoLinkMercadoLivre(short,target,{
+    fetcher:(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      calls.push(String(input)+":"+String(init?.method));
+      if(init?.method==="HEAD") return new Response(null,{status:403});
+      return redirect("https://malicioso.example/p/MLB38053317");
+    }) as typeof fetch
+  });
+  assert.deepEqual(calls,[short+":HEAD",short+":GET"]);
+  assert.equal(result.estado,"divergente");
+  assert.equal(result.atribuicaoComprovada,false);
+  const inconclusivo=await auditarDestinoLinkMercadoLivre(short,target,{
+    fetcher:(async()=>new Response(null,{status:200})) as typeof fetch
+  });
+  assert.equal(inconclusivo.estado,"inconclusivo");
+});
+
+test("rota artificial contendo /p/ nao e confundida com produto final",async()=>{
+  const calls:string[]=[];
+  const falso="https://www.mercadolivre.com.br/checkout/p/MLB38053317";
+  const result=await auditarDestinoLinkMercadoLivre(short,target,{
+    fetcher:(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      calls.push(String(input)+":"+String(init?.method));
+      if(String(input)===short) return redirect(falso);
+      return new Response(null,{status:200});
+    }) as typeof fetch
+  });
+  assert.equal(result.estado,"inconclusivo");
+  assert.equal(result.atribuicaoComprovada,false);
+  assert.deepEqual(calls,[short+":HEAD",falso+":HEAD",falso+":GET"]);
 });
