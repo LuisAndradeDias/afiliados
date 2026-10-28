@@ -20,6 +20,7 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
   process.exitCode = 2;
 } else {
   let motivo = "NAO_INICIADO";
+  let criteriosCatalogo: Record<string, boolean> | undefined;
   try {
     const estadoResponse = await fetch("http://127.0.0.1:3030/api/status", {
       method: "GET", signal: AbortSignal.timeout(4_000)
@@ -83,6 +84,20 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
       throw new Error("STOP_JSON");
     }
     const vencedor = catalogo.buy_box_winner;
+    criteriosCatalogo = {
+      idCatalogoCorrespondente: catalogo.id === produtoId,
+      catalogoAtivo: catalogo.status === "active",
+      vencedorPresente: Boolean(vencedor),
+      idAnuncioPresente: /^MLB[0-9]{5,}$/.test(vencedor?.item_id ?? ""),
+      vendedorIdentificado: Number.isSafeInteger(vencedor?.seller_id) &&
+        (vencedor?.seller_id ?? 0) > 0,
+      precoCatalogoValido: centavosBRL(vencedor?.price) !== undefined,
+      estoqueInteiroPositivo: Number.isSafeInteger(vencedor?.available_quantity) &&
+        (vencedor?.available_quantity ?? 0) > 0,
+      condicaoNovo: vencedor?.condition === "new",
+      moedaBRLOuNaoInformada: vencedor?.currency_id == null ||
+        vencedor.currency_id === "BRL"
+    };
     const item = {
       item_id:vencedor?.item_id,
       seller_id:vencedor?.seller_id,
@@ -92,7 +107,11 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
       available_quantity:vencedor?.available_quantity,
       status:"active"
     };
-    if (!vencedor || !catalogoComCompraConfirmada(produtoId,item,catalogo) ||
+    if (!vencedor) {
+      motivo = "CATALOGO_ATIVO_SEM_VENCEDOR_OFICIAL";
+      throw new Error("STOP_WINNER");
+    }
+    if (!catalogoComCompraConfirmada(produtoId,item,catalogo) ||
         centavosBRL(item.price) === undefined) {
       motivo = "VENCEDOR_PRECO_OU_ESTOQUE_NAO_CONFIRMADO";
       throw new Error("STOP_INCOMPLETE");
@@ -130,6 +149,7 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
       catalogoProdutoCorrespondente:false,
       situacaoPrecoCanal:"inconclusivo",
       motivo,
+      criteriosCatalogo,
       modalidadePagamentoConfirmada:false,
       cupomAplicavelConfirmado:false,
       atribuicaoComprovada:false

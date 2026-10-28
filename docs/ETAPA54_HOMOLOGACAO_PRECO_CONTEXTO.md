@@ -91,3 +91,33 @@ um custo aceito temporariamente para evitar divulgar preço errado.
 Não habilitar autoenvio/monitores, nem mesclar o PR em rascunho
 sem homologar a condição de pagamento em exemplos reais e a
 atribuição comercial pelos relatórios oficiais.
+
+## Diagnostico real supervisionado (28/10/2026)
+
+Produto testado: `MLB38053317`, ja confirmado visualmente
+pelo usuario no navegador autorizado.
+
+- Central 3030 pausada e Captação 3040 saudavel; envios e
+  monitores desligados.
+- Realizado GET autorizado em `/products/MLB38053317`.
+- API retornou `id` correspondente, `status=active`,
+  mas `buy_box_winner` nulo/ausente.
+- Critérios verdadeiros: id de catálogo correspondente e ativo.
+  Critérios falsos: vencedor presente, seller_id do vencedor,
+  item_id, estoque e preço do vencedor confirmados.
+- **Resultado:** `CATALOGO_ATIVO_SEM_VENCEDOR_OFICIAL`.
+  Essa situação não significa necessariamente estoque zero.
+- Sem vencedor, o sistema **não** invocou `sale_price`;
+  não fabricou seller_id, valor, modalidade Pix/cartão nem cupom.
+- A API de catálogo pode divergir da apresentação do frontend,
+  inclusive por regras de localização, tempo e contexto.
+  Essa divergência não libera envio automaticamente.
+- O diagnóstico refinado reporta apenas booleans e reason codes,
+  sem ID de vendedor, token, cookie ou link de afiliado.
+- No teste real não houve compra, mensagem ou publicação.
+
+Para concluir a homologação deste caso, buscar evidência
+oficial do anúncio/vendedor vencedor no mesmo contexto e instante.
+Se `buy_box_winner` continuar ausente, classificar como
+**pendente de revisão**, não como estoque esgotado, e não enviar.
+Não usar outro anúncio da lista apenas por ser mais barato.

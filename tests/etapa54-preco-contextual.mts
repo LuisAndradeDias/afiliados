@@ -252,3 +252,32 @@ test("guarda de preco conecta todas as etapas de preparacao e clique",async()=>{
   assert.match(preparar,/if \(!modoTeste && pacote.plataforma === "Mercado Livre"\)/);
   assert.match(preparar,/if \(enviarPorPainel \|\| enviarAutomaticamente\)/);
 });
+
+test("catalogo ativo sem buy box nunca habilita auditoria de preco nem envio",async()=>{
+  let chamadasCatalogo=0;
+  let chamadasPreco=0;
+  const fake:AuditoriaMock=async(url)=>{
+    const path=new URL(String(url)).pathname;
+    if(path.startsWith("/products/")){
+      chamadasCatalogo++;
+      return response({id:produtoId,status:"active",buy_box_winner:null});
+    }
+    chamadasPreco++;
+    throw new Error("NAO_PODE_CONSULTAR_PRECO_SEM_VENCEDOR");
+  };
+  await assert.rejects(
+    revalidarEstoqueEPrecoMercadoLivre(oferta,opts(fake as typeof fetch)),
+    /PRODUTO_INDISPONIVEL/
+  );
+  assert.equal(chamadasCatalogo,1);
+  assert.equal(chamadasPreco,0);
+});
+test("diagnostico de catalogo registra falta de vencedor sem dados pessoais",async()=>{
+  const codigo=await readFile("src/robo/mercadolivre-preco-diagnostico.ts","utf8");
+  assert.match(codigo,/CATALOGO_ATIVO_SEM_VENCEDOR_OFICIAL/);
+  assert.match(codigo,/criteriosCatalogo/);
+  assert.match(codigo,/if \(!vencedor\) \{/);
+  assert.match(codigo,/seller_id:vencedor\?\.seller_id/);
+  assert.match(codigo,/modalidadePagamentoConfirmada:false/);
+  assert.doesNotMatch(codigo,/console\.log\(token\)|console\.log\(vencedor\)/);
+});
