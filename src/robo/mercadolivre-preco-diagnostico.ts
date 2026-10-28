@@ -6,10 +6,15 @@ import {
   type DetalheCatalogoDisponibilidade
 } from "../fontes/mercadolivre/disponibilidade.js";
 import { auditarPrecoContextualMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
+import { investigarCatalogoSemVencedor,
+  type InvestigacaoCatalogoSemVencedor
+} from "../fontes/mercadolivre/investigacao-sem-vencedor.js";
 
 /**
- * Etapa 54: diagnostico manual SOMENTE LEITURA.
- * Um GET /products/{id} + no maximo um GET /items/{winner}/sale_price.
+ * Etapas 54 e 55: diagnostico manual SOMENTE LEITURA.
+ * Um GET /products/{id} e UMA de duas alternativas, nunca ambas:
+ * - sem buy box: GET /products/{id}/items (classificacao, sem vendedor);
+ * - com buy box: GET /items/{winner}/sale_price (preco do canal).
  * Nao gera links de afiliado, nao coleta cookies, nao abre WhatsApp.
  * Imprime somente preco, estado e codigo sanitizado: sem token, seller ID
  * nem URL de afiliado. Requer Central pausada.
@@ -21,6 +26,7 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
 } else {
   let motivo = "NAO_INICIADO";
   let criteriosCatalogo: Record<string, boolean> | undefined;
+  let investigacaoSemVencedor: InvestigacaoCatalogoSemVencedor | undefined;
   try {
     const estadoResponse = await fetch("http://127.0.0.1:3030/api/status", {
       method: "GET", signal: AbortSignal.timeout(4_000)
@@ -108,7 +114,17 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
       status:"active"
     };
     if (!vencedor) {
-      motivo = "CATALOGO_ATIVO_SEM_VENCEDOR_OFICIAL";
+      if (catalogo.id === produtoId && catalogo.status === "active") {
+        // Somente uma leitura adicional para distinguir listagem vazia,
+        // listagem sem vencedor e erro de permissao. NUNCA escolher
+        // candidato da lista como se fosse buy_box_winner.
+        investigacaoSemVencedor = await investigarCatalogoSemVencedor(
+          produtoId, catalogo, token
+        );
+        motivo = "CATALOGO_ATIVO_SEM_VENCEDOR_OFICIAL";
+      } else {
+        motivo = "CATALOGO_NAO_ATIVO_OU_ID_DIVERGENTE";
+      }
       throw new Error("STOP_WINNER");
     }
     if (!catalogoComCompraConfirmada(produtoId,item,catalogo) ||
@@ -146,10 +162,13 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
     if (audit.situacao !== "coerente") process.exitCode = 2;
   } catch {
     console.log(JSON.stringify({
-      catalogoProdutoCorrespondente:false,
+      catalogoProdutoCorrespondente:criteriosCatalogo?.idCatalogoCorrespondente === true,
+      catalogoAtivo:criteriosCatalogo?.catalogoAtivo === true,
+      vencedorConfirmado:false,
       situacaoPrecoCanal:"inconclusivo",
       motivo,
       criteriosCatalogo,
+      investigacaoSemVencedor,
       modalidadePagamentoConfirmada:false,
       cupomAplicavelConfirmado:false,
       atribuicaoComprovada:false

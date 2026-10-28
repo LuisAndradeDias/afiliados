@@ -302,6 +302,7 @@ export class MercadoLivreApiFonte {
     let semPublicacoes404 = 0;
     let vendedoresVerdes = 0;
     let descontosMinimos = 0;
+    let catalogosAtivosSemVencedor = 0;
     const quantidade = Number(process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY ?? 10);
     const maximo = Number.isFinite(quantidade)
       ? Math.max(1, Math.min(16, Math.trunc(quantidade)))
@@ -387,6 +388,14 @@ export class MercadoLivreApiFonte {
             console.warn("Mercado Livre: disponibilidade nao confirmada; ignorando catalogo.");
             continue;
           }
+          // Catalogo ativo sem buy box nao equivale a estoque zero.
+          // Registrar apenas contador de revisao, nunca selecionar
+          // arbitrariamente uma publicacao a partir do preco da lista.
+          if (catalogo.id === produto.id && catalogo.status === "active" &&
+              !catalogo.buy_box_winner) {
+            catalogosAtivosSemVencedor += 1;
+            continue;
+          }
           const melhor = await this.publicacaoVencedoraVerificada(
             produto.id, publicacoes, catalogo
           );
@@ -449,7 +458,8 @@ export class MercadoLivreApiFonte {
       console.log(
         `Mercado Livre catalogo: consultados=${catalogosConsultados}, ` +
         `404=${semPublicacoes404}, cache404=${ignoradosCache}, ` +
-        `vendedores-verdes=${vendedoresVerdes}, descontos-minimos=${descontosMinimos}.`
+        `vendedores-verdes=${vendedoresVerdes}, descontos-minimos=${descontosMinimos}, ` +
+        `catalogos-ativos-sem-vencedor=${catalogosAtivosSemVencedor}.`
       );
     }
   }
