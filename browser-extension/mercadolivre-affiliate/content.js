@@ -245,6 +245,8 @@
   }
 
   function preencher(el, valor) {
+    // Alguns formularios validam somente campos focados ao receber input.
+    el.focus();
     const proto =
       el instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype
@@ -256,7 +258,6 @@
 
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
-    el.focus();
   }
 
   function linksNaTela() {
@@ -377,7 +378,8 @@
       const hostMercadoLivre = /(^|\.)mercadolivre\.com(?:\.br)?$/.test(url.hostname);
       // URLs oficiais de catalogo (/p/MLB...) e anuncios individuais
       // (/MLB-12345-nome-_JM) podem ser aceitas pelo Gerador de Links.
-      const catalogo = /^\/p\/MLB[A-Za-z0-9_-]+\/?$/i.test(url.pathname);
+      // Preserva o slug completo do produto, necessario em alguns geradores.
+      const catalogo = /^\/(?:(?=[^/]{1,200}\/)[a-z0-9]+(?:-[a-z0-9]+)+\/)?p\/MLB\d+\/?$/i.test(url.pathname);
       const anuncio = /^\/MLB-\d+(?:-[^/?#]*)?\/?$/i.test(url.pathname);
       if (url.protocol !== "https:" || url.username || url.password ||
           url.port || !hostMercadoLivre || (!catalogo && !anuncio)) {
@@ -434,7 +436,9 @@
         throw new Error(resposta?.mensagem || "O painel recusou o link gerado.");
       }
 
-      mostrarStatus("Link oficial gerado e salvo no painel.", "ok");
+      mostrarStatus(job.diagnostico
+        ? "Link oficial reconhecido no teste, sem salvar ou publicar."
+        : "Link oficial gerado e salvo no painel.", "ok");
       await new Promise((resolve) => setTimeout(resolve, 3500));
     } catch (error) {
       const mensagem =

@@ -42,13 +42,18 @@ export function validarUrlProdutoTesteMercadoLivre(valor: string): {
     throw new Error("Aceitamos apenas enderecos HTTPS oficiais de produtos do Mercado Livre.");
   }
 
-  const catalogo = url.pathname.match(/(?:^|\/)p\/(MLB\d+)\/?$/i);
+  // Preserva a URL completa do produto copiada do navegador.
+  // O gerador pode validar o caminho com titulo, nao apenas /p/MLB...
+  // Removemos somente query e hash de recomendacoes/rastreadores.
+  const catalogo = url.pathname.match(
+    /^\/(?:(?=[^/]{1,200}\/)[a-z0-9]+(?:-[a-z0-9]+)+\/)?p\/(MLB\d+)\/?$/i
+  );
   if (catalogo) {
     const id = catalogo[1].toUpperCase();
     return {
       produtoId: id,
-      // A extensao recebe sempre a forma canonica que ela valida.
-      urlProduto: "https://www.mercadolivre.com.br/p/" + id
+      urlProduto: "https://www.mercadolivre.com.br" +
+        url.pathname.replace(/\/$/, "")
     };
   }
 

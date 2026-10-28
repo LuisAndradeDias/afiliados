@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const source=await readFile("browser-extension/mercadolivre-affiliate/content.js","utf8");
 const browser=await chromium.launch({channel:"chrome",headless:true});
-async function fixture(path,html,productUrl="https://www.mercadolivre.com.br/p/MLBTEST123"){
+async function fixture(path,html,productUrl="https://www.mercadolivre.com.br/p/MLB123456"){
   const page=await browser.newPage();
   await page.route("https://www.mercadolivre.com.br"+path,route=>route.fulfill({
     status:200,contentType:"text/html; charset=utf-8",body:html
@@ -43,7 +43,7 @@ try{
   assert.ok(!result.error,"Simulacao nao deve reportar erro.");
   assert.equal(result.link,"https://meli.la/TEST123");
   assert.equal(await page.locator("select").inputValue(),"padrao");
-  assert.equal(await page.locator("textarea").inputValue(),"https://www.mercadolivre.com.br/p/MLBTEST123");
+  assert.equal(await page.locator("textarea").inputValue(),"https://www.mercadolivre.com.br/p/MLB123456");
   await page.close();
 
   const page2=await fixture("/afiliados",`<html><body>
@@ -76,6 +76,31 @@ try{
   assert.equal(itemResult.link,"https://meli.la/ITEMLINK001");
   assert.equal(await itemPage.locator("textarea").inputValue(),itemUrl);
   await itemPage.close();
+
+  // URL integral como copiada da pagina real: slug nao deve ser descartado.
+  const fullUrl="https://www.mercadolivre.com.br/parafusadeira-e-furadeira-impacto-the-black-tools-tb-21pw-38-cor-amarelo-frequencia-5060-hz/p/MLB38053317";
+  const fullPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <textarea aria-label="Insira 1 ou mais URLs de produtos"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Etiqueta existente</option></select>
+    <button id="fullGerar" disabled>Gerar</button>
+    <div id="fullResult"></div>
+    <script>
+      const target=document.querySelector("textarea");
+      const button=document.querySelector("#fullGerar");
+      target.addEventListener("input",()=>{
+        button.disabled=!target.value.includes("/parafusadeira-e-furadeira-impacto-")
+          || !target.value.endsWith("/p/MLB38053317");
+      });
+      button.addEventListener("click",()=>{
+        document.querySelector("#fullResult").textContent="https://meli.la/FAKE_FULL_URL_TEST";
+      });
+    </script>
+  </body></html>`,fullUrl);
+  await fullPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:18000});
+  const fullResult=await fullPage.evaluate(()=>window.__meliJobResult);
+  assert.equal(fullResult.link,"https://meli.la/FAKE_FULL_URL_TEST");
+  assert.equal(await fullPage.locator("textarea").inputValue(),fullUrl);
+  await fullPage.close();
 
   // Etiqueta ja escolhida nao prova que o produto ou URL foi aceito.
   const disabledPage=await fixture("/afiliados/linkbuilder",`<html><body>

@@ -395,3 +395,42 @@ ativo no Chrome Profile 10) e, apos consentimento do usuario,
 executar UM teste manual de link sem WhatsApp. Recarregar o
 Conector 02 se o codigo do content script ainda estiver antigo.
 Nao usar um produto da captura que aparece indisponivel.
+
+## Etapa 50 — URL completa de produto na extensao (28/10/2026)
+
+O usuario forneceu screenshot de produto compravel no Chrome Profile 10:
+catalogo MLB38053317, parafusadeira The Black Tools. Na captura,
+o portal exibe botao Comprar agora habilitado, estoque disponivel
+e preco no Pix; essa comprovacao visual NAO substitui a verificacao
+de compra/estoque para publicar uma oferta, nem confirma que o
+anuncio seja elegivel para o programa de afiliados.
+
+Foi identificado que o modo manual de diagnostico transformava
+a URL real com slug
+  /parafusadeira-e-furadeira-impacto-the-black-tools-.../p/MLB38053317
+em
+  /p/MLB38053317
+antes de entregá-la ao linkbuilder. O guia oficial do Mercado Livre
+orienta usar a URL copiada da pagina individual do produto;
+a reducao podia fazer o gerador rejeitar o endereco.
+
+Hotfix v0.4.3: o validador da Central preserva o slug de um produto
+com dominio oficial e retira so query/hash (tracking), rejeitando
+caminhos extras/suspeitos e mantendo limite de comprimento.
+A extensao aceita esse caminho completo e foca o input antes dos
+eventos de preenchimento. O status de diagnostico aprovado diz
+explicitamente que o link NAO foi salvo/publicado, para evitar
+promessas incorretas.
+
+A validacao por simulacao reproduziu URL longa com botao Gerar
+habilitado apenas apos input, etiqueta pre-selecionada e resposta
+ficticia meli.la; os testes de URL malformada, dominio externo,
+mensagem e WhatsApp continuaram aprovados. Nenhuma compra,
+sessao WhatsApp ou promocao publicada.
+
+A causa da falha real ainda NAO foi comprovada. Depois de
+recarregar Conector 02 v0.4.3, realizar no maximo um teste
+manual protegido com a URL real e os monitores desligados.
+Se o portal recusar, conferir manualmente se a mesma URL
+colada pelo usuario habilita o botao. Isso separa falha do
+preenchimento automatico de possivel restricao do afiliado.

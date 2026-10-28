@@ -56,3 +56,19 @@ Apos atualizar os arquivos, acesse chrome://extensions e use
 cookies ou sessoes. Depois teste manualmente uma URL copiada
 da pagina real do anuncio; nao ative monitoramento ou autoenvio
 antes de confirmar link oficial valido.
+
+## Ajuste de URLs de produtos completos (Conector 02 v0.4.3)
+
+No teste tecnico, preservar o caminho completo que aparece na
+barra do navegador, por exemplo:
+https://www.mercadolivre.com.br/parafusadeira-e-furadeira-impacto-the-black-tools-tb-21pw-38-cor-amarelo-frequencia-5060-hz/p/MLB38053317
+
+Os parametros e fragmentos de rastreamento sao retirados, mas
+o nome no caminho nao deve ser removido para o Gerador de Links.
+O modo manual nao cria ofertas, nao altera etiquetas e nao publica
+links no WhatsApp. Um eventual link tecnico gerado nao e uma
+aprovacao para divulgacao.
+
+Apos atualizar os arquivos, abra chrome://extensions, clique em
+Recarregar no cartao Conector 02, e mantenha o mesmo perfil logado.
+Acoes futuras devem continuar exigindo validacao real de estoque.
