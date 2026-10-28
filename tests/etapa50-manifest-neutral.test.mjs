@@ -8,7 +8,7 @@ test("extensao Mercado Livre usa identidade discreta sem ampliar permissoes", as
 
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.name, "Conector 02");
-  assert.equal(manifest.version, "0.4.3");
+  assert.equal(manifest.version, "0.4.4");
   assert.doesNotMatch(manifest.name + " " + manifest.description, /afiliad|ca.a promo|captacao/i);
 
   assert.deepEqual(manifest.permissions, ["alarms", "tabs"]);

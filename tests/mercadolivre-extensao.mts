@@ -111,8 +111,45 @@ try{
   await disabledPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:12000});
   const disabledResult=await disabledPage.evaluate(()=>window.__meliJobResult);
   assert.match(disabledResult.error,/etiqueta pode estar correta/i);
+  assert.match(disabledResult.error,/URL_PRESERVADA/);
+  assert.match(disabledResult.error,/ETIQUETA_SELECIONADA/);
+  assert.match(disabledResult.error,/BOTAO_DISABLED/);
+  assert.ok(!disabledResult.error.includes("https://"),"Diagnostico nao revela URL do usuario");
   assert.ok(!disabledResult.link);
   await disabledPage.close();
+
+  // O proprio portal pode descartar o valor apos input e mostrar um erro.
+  // Nunca copiar o texto do aviso nem a URL do produto para o diagnostico.
+  const rejectedPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <form><textarea aria-label="URL do produto"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Principal</option></select>
+    <button disabled>Gerar</button>
+    <span role="alert">AVISO PRIVADO: dado da conta 12345</span>
+    </form>
+    <script>document.querySelector("textarea").addEventListener("input",ev=>{
+      ev.target.value="";
+    });</script>
+  </body></html>`);
+  await rejectedPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:12000});
+  const rejectedResult=await rejectedPage.evaluate(()=>window.__meliJobResult);
+  assert.match(rejectedResult.error,/URL_DIVERGENTE/);
+  assert.match(rejectedResult.error,/ALERTA_VISIVEL/);
+  assert.match(rejectedResult.error,/ETIQUETA_SELECIONADA/);
+  assert.ok(!rejectedResult.error.includes("12345"));
+  assert.ok(!rejectedResult.error.includes("https://"));
+  await rejectedPage.close();
+
+  // Botao aria-disabled e diferente de atributo disabled nativo.
+  const ariaPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <input type="url" aria-label="URL do produto">
+    <button aria-disabled="true">Gerar</button>
+  </body></html>`);
+  await ariaPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:12000});
+  const ariaResult=await ariaPage.evaluate(()=>window.__meliJobResult);
+  assert.match(ariaResult.error,/BOTAO_ARIA_DISABLED/);
+  assert.match(ariaResult.error,/ETIQUETA_NAO_DETECTADA/);
+  assert.ok(!ariaResult.error.includes("https://"));
+  await ariaPage.close();
 
   const page3=await fixture("/p/MLBTEST123",`<html><body><input type="text" placeholder="Buscar produtos">
     <button>Comprar agora</button></body></html>`);

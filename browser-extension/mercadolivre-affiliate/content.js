@@ -347,6 +347,44 @@
     });
   }
 
+  // Evidencias tecnicas de DOM, nunca valores, URLs, etiquetas ou textos
+  // do usuario. Nao clica, nao envia rede, nao altera a pagina.
+  function diagnosticarGeradorDesabilitado(campo, urlEsperada) {
+    const formulario = campo?.closest("form, dialog, [role='dialog'], section, article") || document;
+    const selects = [...formulario.querySelectorAll("select")].filter(visivel);
+    let etiqueta = "ETIQUETA_NAO_DETECTADA";
+    for (const el of selects) {
+      const contexto = normalizar([
+        el.getAttribute("aria-label"),
+        el.getAttribute("name"),
+        el.closest("label")?.textContent?.slice(0, 120)
+      ].filter(Boolean).join(" "));
+      if (!/(etiqueta|tag)/.test(contexto)) continue;
+      const selecionada = el.selectedOptions?.[0];
+      const textoOpcao = normalizar(selecionada?.textContent);
+      etiqueta = el.value && !selecionada?.disabled &&
+        !/selecion|escolh|criar|nova etiqueta/.test(textoOpcao)
+        ? "ETIQUETA_SELECIONADA"
+        : "ETIQUETA_PENDENTE";
+      break;
+    }
+    const botao = localizarBotaoGerar(true);
+    const bloqueio = botao?.matches(":disabled") ? "BOTAO_DISABLED"
+      : botao?.getAttribute("aria-disabled") === "true" ? "BOTAO_ARIA_DISABLED"
+      : "BOTAO_SEM_SINAL_NATIVO";
+    const alerta = [...formulario.querySelectorAll('[role="alert"], [aria-invalid="true"]')]
+      .some((el) => visivel(el));
+    const campoInvalido = campo instanceof HTMLInputElement && !campo.checkValidity();
+    return [
+      campo?.value === urlEsperada ? "URL_PRESERVADA" : "URL_DIVERGENTE",
+      campo?.disabled || campo?.readOnly ? "CAMPO_BLOQUEADO" : "CAMPO_EDITAVEL",
+      campoInvalido ? "VALIDACAO_NATIVA_INVALIDA" : "VALIDACAO_NATIVA_SEM_ERRO",
+      etiqueta,
+      bloqueio,
+      alerta ? "ALERTA_VISIVEL" : "SEM_ALERTA_VISIVEL"
+    ].join(";");
+  }
+
   async function processar(job) {
     processando = true;
     jobAtual = job.id;
@@ -399,7 +437,11 @@
       }
       if (!botao) {
         if (localizarBotaoGerar(true)) {
-          throw new Error("Bot\u00e3o Gerar desabilitado. A etiqueta pode estar correta; confirme se a URL corresponde a um an\u00fancio eleg\u00edvel e foi aceita pelo portal.");
+          const diagnostico = diagnosticarGeradorDesabilitado(campo, job.urlProduto);
+          throw new Error(
+            "Bot\u00e3o Gerar desabilitado. A etiqueta pode estar correta; " +
+            "confirme a elegibilidade no portal. Diagnostico seguro: " + diagnostico
+          );
         }
         throw new Error("A Central de Afiliados n\u00e3o mostrou o bot\u00e3o Criar/Gerar link. Abra o Gerador oficial.");
       }

@@ -72,3 +72,23 @@ aprovacao para divulgacao.
 Apos atualizar os arquivos, abra chrome://extensions, clique em
 Recarregar no cartao Conector 02, e mantenha o mesmo perfil logado.
 Acoes futuras devem continuar exigindo validacao real de estoque.
+
+## Diagnostico seguro de formulario (Conector 02 v0.4.4, somente branch)
+
+Quando o portal mantiver **Gerar** desabilitado, o Conector identifica
+somente estados tecnicos, nunca imprime URL, etiqueta, texto de alerta,
+tokens ou dados da conta. O erro pode listar, por exemplo:
+
+- URL_PRESERVADA / URL_DIVERGENTE: o campo ainda corresponde a URL pedida
+- CAMPO_EDITAVEL / CAMPO_BLOQUEADO: input habilitado ou bloqueado
+- VALIDACAO_NATIVA_SEM_ERRO / VALIDACAO_NATIVA_INVALIDA
+- ETIQUETA_SELECIONADA / ETIQUETA_PENDENTE / ETIQUETA_NAO_DETECTADA
+- BOTAO_DISABLED / BOTAO_ARIA_DISABLED / BOTAO_SEM_SINAL_NATIVO
+- ALERTA_VISIVEL / SEM_ALERTA_VISIVEL: indicador, nunca texto do alerta
+
+Esses indicadores sao apenas observacoes do DOM; nao comprovam
+elegibilidade comercial, link de afiliado nem comissao. Nao contornam
+um bloqueio: nenhum clique forcado, requisicao extra ou selecao arbitraria
+de etiqueta. Depois de homologar e implantar o codigo, recarregar
+manualmente apenas Conector 02 em chrome://extensions/ para ativar
+a versao e testar no mesmo perfil com o usuario.
