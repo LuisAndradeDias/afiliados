@@ -7,7 +7,7 @@ import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { revalidarCupomMercadoLivre } from "../afiliados/mercadolivre-cupons.js";
 import { descontoMinimoOferta, avaliarQualidadeOferta } from "../ofertas/qualidade.js";
-import { revalidarDisponibilidadeMercadoLivre } from "../fontes/mercadolivre/disponibilidade.js";
+import { revalidarEstoqueEPrecoMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
 import {
   avaliarCupomParaDivulgacao,
   removerCupomNaoConfirmado
@@ -23,12 +23,14 @@ if (!oferta.urlAfiliado) {
 
 // A pagina pode continuar ativa no catalogo mesmo sem anuncio compravel.
 // Consultar estoque e vencedor oficial ANTES de gerar mensagem e pacote.
-const disponibilidade = await revalidarDisponibilidadeMercadoLivre(oferta);
+const disponibilidade = await revalidarEstoqueEPrecoMercadoLivre(oferta);
 oferta = {
   ...oferta,
   estoqueDisponivel: disponibilidade.estoqueDisponivel,
   disponibilidadeConfirmada: true,
-  disponibilidadeVerificadaEm: disponibilidade.verificadoEm
+  disponibilidadeVerificadaEm: disponibilidade.verificadoEm,
+  precoContextoStatus: "coerente",
+  precoContextoVerificadoEm: disponibilidade.precoMercadoLivreConfirmadoEm
 };
 
 if (oferta.cupomCodigo) {

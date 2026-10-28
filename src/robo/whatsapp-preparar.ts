@@ -24,7 +24,7 @@ import {
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
 import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
-import { revalidarDisponibilidadeMercadoLivre } from "../fontes/mercadolivre/disponibilidade.js";
+import { revalidarEstoqueEPrecoMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
 import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
@@ -117,7 +117,7 @@ if (!modoTeste) {
   }
   if (pacote.plataforma === "Mercado Livre") {
     // O perfil do WhatsApp so abre apos uma consulta atual do estoque.
-    await revalidarDisponibilidadeMercadoLivre({
+    await revalidarEstoqueEPrecoMercadoLivre({
       plataforma: "Mercado Livre",
       produtoId: pacote.produtoId,
       anuncioId: pacote.anuncioId,
@@ -450,7 +450,7 @@ async function aguardarFinalizacao(
       // acabado enquanto o usuario revisava a imagem ou a mensagem.
       if (!modoTeste && pacote.plataforma === "Mercado Livre") {
         try {
-          await revalidarDisponibilidadeMercadoLivre({
+          await revalidarEstoqueEPrecoMercadoLivre({
             plataforma: "Mercado Livre",
             produtoId: pacote.produtoId ?? "",
             anuncioId: pacote.anuncioId,
@@ -461,10 +461,11 @@ async function aguardarFinalizacao(
           });
         } catch (erro) {
           await rm(enviarSignalPath, { force: true });
-          console.error(
-            "PRODUTO_INDISPONIVEL_ENVIO_BLOQUEADO: " +
-              (erro instanceof Error ? erro.message : "Falha ao conferir estoque")
-          );
+          const motivo = erro instanceof Error ? erro.message : "Falha de revalidacao";
+          const codigo = motivo.startsWith("PRECO_CONTEXTUAL_NAO_CONFIRMADO:")
+            ? "PRECO_CONTEXTUAL_ENVIO_BLOQUEADO"
+            : "PRODUTO_INDISPONIVEL_ENVIO_BLOQUEADO";
+          console.error(codigo + ": " + motivo);
           await context.close().catch(() => undefined);
           process.exitCode = 6;
           return;

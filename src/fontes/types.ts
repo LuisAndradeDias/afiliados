@@ -14,6 +14,9 @@ export interface Oferta {
   precoFonte?: "catalogo-vencedor-api";
   precoVerificadoEm?: string;
   precoCondicaoPagamento?: "nao-verificada";
+  // "Coerente" confirma somente o canal marketplace, nao Pix/cartao.
+  precoContextoStatus?: "coerente";
+  precoContextoVerificadoEm?: string;
   precoAnterior?: number;
   descontoPercentual?: number;
   cupom?: string;
