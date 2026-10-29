@@ -26,6 +26,7 @@ import {
 import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
 import { revalidarEstoqueEPrecoMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
 import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
+import { consultarElegibilidadeCanalWhatsapp } from "../canais/elegibilidade.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -77,6 +78,18 @@ const pacote: PacotePreparar = await readFile(pacotePath, "utf8")
   .then((texto) => JSON.parse(texto) as PacotePreparar)
   .catch(() => ({}));
 
+async function canalHomologadoParaEnvio(): Promise<boolean> {
+  const decisao = await consultarElegibilidadeCanalWhatsapp({
+    grupo: nomeGrupo ?? "",
+    plataforma: pacote.plataforma
+  });
+  if (!decisao.podePublicar) {
+    console.error(`CANAL_NAO_HOMOLOGADO: ${decisao.codigo} — ${decisao.motivo}`);
+    return false;
+  }
+  return true;
+}
+
 function cupomDoPacoteAptoParaEnvio(): boolean {
   // A mesma regra protege Amazon, Mercado Livre e a futura Shopee.
   const temCupom = Boolean(pacote.cupomCodigo) ||
@@ -114,6 +127,10 @@ if (!modoTeste) {
   })) {
     console.log("DUPLICADO_BLOQUEADO: oferta já enviada recentemente. Nenhum envio executado.");
     process.exit(4);
+  }
+  // Antes de chamadas externas ou abertura do Chrome, validar o destino.
+  if (!(await canalHomologadoParaEnvio())) {
+    process.exit(8);
   }
   if (pacote.plataforma === "Mercado Livre") {
     // O perfil do WhatsApp so abre apos uma consulta atual do estoque.
@@ -433,6 +450,13 @@ async function aguardarFinalizacao(
     );
 
     if (enviarPorPainel || enviarAutomaticamente) {
+      // A elegibilidade pode ter sido revogada durante a revisao.
+      if (!modoTeste && !(await canalHomologadoParaEnvio())) {
+        await rm(enviarSignalPath, { force: true });
+        await context.close().catch(() => undefined);
+        process.exitCode = 8;
+        return;
+      }
       // Última proteção antes do clique físico: nenhuma oferta já enviada
       // pode ser publicada novamente, mesmo se o histórico mudou durante a revisão.
       if (pacote.produtoId && pacote.titulo &&

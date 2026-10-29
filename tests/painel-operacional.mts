@@ -11,6 +11,11 @@ const html = await readFile("src/painel/public/index.html", "utf8");
 const base = {
   grupo: "Ofertas",
   grupoConfigurado: true,
+  // Fixture visual: elegibilidade apenas simulada, sem cadastro operacional.
+  canalElegibilidade: {
+    estado: "elegivel", codigo: "CANAL_HOMOLOGADO",
+    motivo: "Fixture homologada", podePublicar: true
+  },
   afiliadoConfigurado: true,
   afiliadoTag: "topoutlet05-20",
   sessaoWhatsapp: true,
@@ -246,6 +251,34 @@ try {
   assert(
     !(await page.locator("#sendNowButton").isVisible()),
     "Enviar não pode aparecer se a janela do WhatsApp não está pronta."
+  );
+
+  // Etapa 57: oferta presente, grupo salvo e regra pendente nunca mostram envio livre.
+  state = {
+    ...base,
+    operacaoEstado: "offer-pending",
+    operacaoPlataforma: "mercado-livre",
+    ofertaPreparada: true,
+    ofertaPlataformaAtual: "mercado-livre",
+    mensagem: "OFERTA FICTICIA SEM ENVIO",
+    canalElegibilidade: {
+      estado: "pendente-verificacao", codigo: "CANAL_NAO_HOMOLOGADO",
+      motivo: "Cadastro pendente para esta plataforma", podePublicar: false
+    }
+  };
+  await page.waitForTimeout(1_700);
+  assert(
+    (await page.locator("#cycleWhatsapp").innerText()) === "Canal não homologado",
+    "O estado comercial deve ser compreensível no ciclo."
+  );
+  assert(
+    (await page.locator("#whatsappSetupHint").innerText()).includes("Envio bloqueado"),
+    "O painel deve explicar por que o canal está bloqueado."
+  );
+  assert(
+    (await page.locator("#reopenWhatsappButton").isDisabled()) &&
+    !(await page.locator("#sendNowButton").isVisible()),
+    "Oferta de canal não homologado não permite abrir nem enviar."
   );
 
   // A migração para o PC novo começa sem grupo; a oferta deve ser

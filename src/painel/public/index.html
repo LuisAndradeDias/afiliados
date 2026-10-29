@@ -1593,7 +1593,9 @@
           ? "Autoenvio ativo: quando a oferta ficar pronta, o mouse clicará uma vez após " + Math.round((s.whatsappAutoEnvioAtrasoMs || 1500) / 1000) + " s. Sem repetição se a confirmação falhar."
           : "Autoenvio pausado: é necessário confirmar o envio no WhatsApp ou no painel.";
         $("whatsappSetupHint").textContent = s.grupoConfigurado
-          ? "Grupo salvo. Confira a sessão do WhatsApp. Se abriu pela opção de login, feche essa janela após conectar antes de reabrir a promoção."
+          ? (ofertaPreparada && !s.canalElegibilidade?.podePublicar
+              ? "Envio bloqueado: " + (s.canalElegibilidade?.motivo || "canal sem homologação") + " O grupo foi preservado; revise as regras comerciais antes de publicar."
+              : "Grupo salvo. A elegibilidade comercial depende do marketplace e deve estar homologada antes de enviar.")
           : "Salve o nome exato do grupo. O perfil do painel é diferente do Chrome comum; se abrir para conectar, feche a janela depois do login.";
 
         $("sessao").textContent = s.sessaoWhatsapp
@@ -1711,7 +1713,10 @@
             : "consulta em andamento";
         }
 
-        if (revisaoPronta) {
+        if (s.grupoConfigurado && ofertaPreparada && !s.canalElegibilidade?.podePublicar) {
+          $("cycleWhatsapp").textContent = "Canal não homologado";
+          $("cycleWhatsappDetail").textContent = s.canalElegibilidade?.motivo || "Envio bloqueado até a revisão comercial.";
+        } else if (revisaoPronta) {
           $("cycleWhatsapp").textContent = "Pronto para enviar";
           $("cycleWhatsappDetail").textContent =
             `Grupo ${s.grupo || "não configurado"} · revisão aberta`;
@@ -2043,10 +2048,12 @@
         $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
         $("logs").scrollTop = $("logs").scrollHeight;
 
+        const elegibilidadeBloqueada = ofertaPreparada && !s.canalElegibilidade?.podePublicar;
         reopenWhatsappButton.style.display =
           mensagem && !preparando ? "" : "none";
+        reopenWhatsappButton.disabled = elegibilidadeBloqueada || whatsappOcupado;
         sendNowButton.style.display =
-          mensagem && revisaoPronta ? "" : "none";
+          mensagem && revisaoPronta && !elegibilidadeBloqueada ? "" : "none";
         discardOfferButton.style.display =
           mensagem ? "" : "none";
 
@@ -2056,7 +2063,7 @@
         } else {
           sendNowButton.textContent = "📤 Enviar pelo painel";
           sendNextButton.style.display =
-            mensagem && revisaoPronta ? "" : "none";
+            mensagem && revisaoPronta && !elegibilidadeBloqueada ? "" : "none";
           sendNextButton.textContent = origemMl
             ? "📤 Enviar + próxima ML"
             : "📤 Enviar + próxima Amazon";
@@ -2073,15 +2080,18 @@
           } else if (acao === "preparar") {
             b.disabled =
               whatsappOcupado ||
-              !ofertaPreparada;
+              !ofertaPreparada ||
+              elegibilidadeBloqueada;
           } else if (acao === "preparar-send") {
             b.disabled =
               !revisaoPronta ||
-              s.whatsappEnvioPendente;
+              s.whatsappEnvioPendente ||
+              elegibilidadeBloqueada;
           } else if (acao === "preparar-send-next") {
             b.disabled =
               !revisaoPronta ||
               s.whatsappEnvioPendente ||
+              elegibilidadeBloqueada ||
               (origemMl && !s.mercadoLivreExtensionConectada);
           } else if (acao === "preparar-cancel") {
             b.disabled =

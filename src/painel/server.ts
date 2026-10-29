@@ -48,6 +48,7 @@ import {
 import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 import { auditarDestinoLinkMercadoLivre } from "../afiliados/mercadolivre-destino.js";
 import { auditarDestinoLinkMercadoLivreNavegador } from "../afiliados/mercadolivre-destino-navegador.js";
+import { consultarElegibilidadeCanalWhatsapp } from "../canais/elegibilidade.js";
 
 const raiz = process.cwd();
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
@@ -703,6 +704,16 @@ function iniciar(
       return;
     }
 
+    if (codigo === 8) {
+      // Bloqueio comercial nao descarta a oferta nem presume envio.
+      mercadoLivreFluxoAutomatico = false;
+      if (monitorAlternadoAtivo) await definirMonitorMercadoLivreAtivo(false);
+      atualizarFluxoMercadoLivre("idle",
+        "CANAL_NAO_HOMOLOGADO: a oferta foi preservada e o envio foi bloqueado. Verifique as regras e a autorizacao do destino.");
+      registrar("governanca", "Canal sem homologacao. Nenhum envio executado pelo preparador.");
+      return;
+    }
+
     if (codigo !== 0) {
       mercadoLivreFluxoAutomatico = false;
 
@@ -1220,6 +1231,10 @@ async function estado() {
   });
   const plataformaPacoteAtual = plataformaDoValor(pacote.plataforma);
   const ofertaPreparada = Boolean(mensagem.trim() && plataformaPacoteAtual);
+  const canalElegibilidade = await consultarElegibilidadeCanalWhatsapp({
+    grupo: process.env.WHATSAPP_GROUP_NAME?.trim() ?? "",
+    plataforma: pacote.plataforma
+  });
   const whatsappEmExecucao = processos.has("preparar");
   const operacaoPlataforma: PlataformaMonitor | null =
     whatsappEmExecucao || finalizacaoWhatsappAtual
@@ -1267,6 +1282,7 @@ async function estado() {
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME?.trim() || "Não configurado",
     grupoConfigurado: Boolean(process.env.WHATSAPP_GROUP_NAME?.trim()),
+    canalElegibilidade,
     whatsappAutoEnvioAtivo: process.env.WHATSAPP_AUTO_SEND_ENABLED === "true",
     whatsappAutoEnvioAtrasoMs: Number(process.env.WHATSAPP_AUTO_SEND_DELAY_MS ?? "1500"),
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
@@ -1940,6 +1956,21 @@ async function executarAcao(
         ok: false,
         mensagem:
           "A extensão Meli precisa estar conectada para carregar a próxima oferta automaticamente."
+      };
+    }
+
+    // Uma acao manual do painel nunca substitui a homologacao comercial.
+    const pacoteCanal = await readFile(pacotePath, "utf8")
+      .then((texto) => JSON.parse(texto) as { plataforma?: string })
+      .catch(() => ({} as { plataforma?: string }));
+    const elegibilidade = await consultarElegibilidadeCanalWhatsapp({
+      grupo: process.env.WHATSAPP_GROUP_NAME?.trim() ?? "",
+      plataforma: pacoteCanal.plataforma
+    });
+    if (!elegibilidade.podePublicar) {
+      return {
+        ok: false,
+        mensagem: `Envio bloqueado (${elegibilidade.codigo}): ${elegibilidade.motivo}`
       };
     }
 

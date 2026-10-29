@@ -38,6 +38,8 @@ jobs:
         run: node --import tsx --test tests/mercadolivre-auth.mts tests/mercadolivre-descoberta.mts tests/mercadolivre-resiliencia.mts tests/mercadolivre-disponibilidade.mts tests/mercadolivre-estoque-integracao.mts tests/etapa53-preco-vendedor-estoque.mts tests/etapa54-preco-contextual.mts tests/etapa55-investigacao-sem-vencedor.mts tests/etapa56-anuncio-direto.mts tests/mercadolivre-link-diagnostico.mts tests/mercadolivre-link-diagnostico-integracao.mts tests/variedade-ofertas.mts tests/amazon-preco-dom.mts tests/historico-antiduplicado.mts tests/whatsapp-grupo.mts tests/painel-dominios.mts
       - name: Cupons e destinos oficiais — politicas e seguranca, sem envios
         run: node --import tsx --test tests/cupons-politica.mts tests/cupons-whatsapp-seguro.mts tests/etapa51-cupons-politica.mts tests/mercadolivre-destino.mts tests/mercadolivre-destino-navegador.mts tests/precos-qualidade.mts
+      - name: Governanca de canais e elegibilidade comercial - etapa 57, sem envios
+        run: node --import tsx --test tests/etapa57-canais.mts
       - name: Interface simulada em Chrome headless, sem perfil do usuario
         run: node --import tsx tests/painel-operacional.mts
       - name: Conector 02 em Chrome headless com formularios ficticios
