@@ -113,6 +113,29 @@ test("vendedor, catalogo, permalink, condicao e valores insuficientes nao provam
   }
 });
 
+test("permalink oficial de outro anuncio nao valida identidade nem consulta preco",async()=>{
+  for(const permalink of [
+    "https://produto.mercadolivre.com.br/MLB-9999999999-anuncio-diferente-_JM",
+    "https://produto.mercadolivre.com.br:8443/MLB-3771505959-parafusadeira-_JM",
+    "https://produto.mercadolivre.com.br/checkout/MLB-3771505959-parafusadeira"
+  ]){
+    let requests=0;
+    const mock:Mock=async()=>{
+      requests++;
+      return res({...item,permalink});
+    };
+    const got=await auditarAnuncioDiretoMercadoLivre(
+      produtoId,anuncioId,"TOKEN_FICTICIO",options(mock as typeof fetch)
+    );
+    assert.equal(requests,1,"Nao consultar preco antes de validar o permalink: "+permalink);
+    assert.equal(got.situacao,"anuncio_divergente",permalink);
+    assert.equal(got.motivo,"ANUNCIO_LINK_NAO_OFICIAL",permalink);
+    assert.equal(got.linkDiretoOficial,false,permalink);
+    assert.equal(got.atribuicaoComprovada,false);
+    assert.equal(got.envioPermitido,false);
+  }
+});
+
 test("estoque declarado positivo so e observado e nao equivale a buybox",async()=>{
   const got=await auditarAnuncioDiretoMercadoLivre(
     produtoId,anuncioId,"TESTE",{

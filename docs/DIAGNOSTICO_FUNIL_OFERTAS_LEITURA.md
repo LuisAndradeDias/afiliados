@@ -60,3 +60,16 @@ Teste de regressão: `tests/mercadolivre-descoberta.mts`; o teste foi observado 
 - Workflow do GitHub com os controles visual e operacional simulados.
 
 Antes de qualquer atualização ao vivo, executar backup por SHA-256, garantir estado ocioso, homologação comercial e rollback.
+
+## Etapa seguinte — consistência entre oferta e link oficial (29/10/2026)
+
+Auditoria de domínio e destino foi reforçada de modo fail-closed, sem requisição adicional:
+
+- A auditoria somente leitura de anúncio individual `/items/MLB...` compara agora o ID publicado no permalink oficial com o próprio `anuncioId`. Link de outro anúncio, rota de compra disfarçada ou porta não padrão recebe `ANUNCIO_LINK_NAO_OFICIAL`, e a consulta de preço contextual não prossegue.
+- A ficha de Revisão compara o produto `/p/MLB...` ou anúncio direto `/MLB-...` do Mercado Livre com os IDs da oferta. Para a Amazon, compara o ASIN de `/dp/ASIN` ou `/gp/product/ASIN` com o `produtoId` registrado.
+- Identidades explicitamente divergentes recebem `LINK_DESTINO_DIVERGENTE`, `estado=divergente` e ficha bloqueada. URL com porta não padrão recebe `LINK_NAO_VALIDADO`.
+- Links abreviados de programas oficiais podem permanecer com `LINK_FORMATO_RECONHECIDO` quando somente o formato for conhecido. **Isso não comprova destino, comissão, estoque, condições de pagamento nem afiliação.** O campo `podePublicar` do painel de revisão continua sempre `false`.
+
+Os cenários foram reproduzidos primeiro como testes falhando e somente então corrigidos. Testes: `tests/etapa56-anuncio-direto.mts` e `tests/etapa58-revisao.mts`.
+
+**Limite:** sem dados oficiais de atribuição/comissão e sem homologação do canal, não tentar liberar envio. Estas correções aperfeiçoam a interpretação das evidências, não fabricam evidências.

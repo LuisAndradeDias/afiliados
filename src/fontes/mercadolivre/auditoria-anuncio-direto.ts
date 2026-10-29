@@ -79,14 +79,15 @@ function estoqueDeclarado(v:unknown):EstoqueObservado {
   if (v === 0) return "declarado_zero";
   return positivoInteiro(v) ? "declarado_positivo" : "valor_invalido";
 }
-function permalinkOficial(permalink:unknown):boolean {
+function permalinkOficial(permalink:unknown, anuncioId:string):boolean {
   if(typeof permalink !== "string" || permalink.length > 2048) return false;
   try {
     const url = new URL(permalink);
-    return url.protocol === "https:" &&
+    const anuncioNaRota = /^\/MLB-(\d{5,})(?:-[a-z0-9_-]+)?\/?$/i.exec(url.pathname);
+    return url.protocol === "https:" && !url.port &&
       (url.hostname === "mercadolivre.com.br" ||
        url.hostname.endsWith(".mercadolivre.com.br")) &&
-      /MLB[-][0-9]{5,}/i.test(url.pathname) &&
+      anuncioNaRota?.[1] === anuncioId.replace(/^MLB/i,"") &&
       !url.username && !url.password;
   } catch { return false; }
 }
@@ -146,7 +147,7 @@ export async function auditarAnuncioDiretoMercadoLivre(
   const anuncioAtivo=item.status==="active";
   const condicaoNovoConfirmada=item.condition==="new";
   const vendedorIdentificado=positivoInteiro(item.seller_id);
-  const linkDiretoOficial=permalinkOficial(item.permalink);
+  const linkDiretoOficial=permalinkOficial(item.permalink,anuncioId);
   const estoque=estoqueDeclarado(item.available_quantity);
   const cents=centavosBRL(item.price);
   const precoDoAnuncio=cents===undefined?undefined:cents/100;

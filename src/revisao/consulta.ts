@@ -86,7 +86,7 @@ function linkOficialAparente(v: unknown, plataforma: string): boolean {
   if (typeof v !== "string" || v.length > 2048) return false;
   try {
     const url = new URL(v);
-    if (url.protocol !== "https:" || url.username || url.password) return false;
+    if (url.protocol !== "https:" || url.username || url.password || url.port) return false;
     if (url.pathname === "/" || !url.pathname) return false;
     const host = url.hostname.toLowerCase();
     const dominio = (d: string) => host === d || host.endsWith("." + d);
@@ -101,6 +101,45 @@ function linkOficialAparente(v: unknown, plataforma: string): boolean {
     }
   } catch { return false; }
   return false;
+}
+
+/** Detecta ID explicitamente diferente no permalink oficial, sem fazer rede
+ * ou assumir que URL reconhecida comprova afiliacao/comissao. */
+function linkDestinoDivergente(
+  valor: unknown, plataforma: string, produtoId: string, anuncioId: string
+): boolean {
+  if (typeof valor !== "string" || valor.length > 2048) return false;
+  try {
+    const url = new URL(valor);
+    if (url.protocol !== "https:" || url.username || url.password || url.port) {
+      return false;
+    }
+    const host = url.hostname.toLowerCase();
+    if (plataforma === "Amazon") {
+      if (host !== "amazon.com.br" && !host.endsWith(".amazon.com.br")) {
+        return false;
+      }
+      const direto = /^\/(?:[a-z0-9-]{1,150}\/)?dp\/([a-z0-9]{10})(?:\/|$)/i
+        .exec(url.pathname);
+      const legado = /^\/gp\/product\/([a-z0-9]{10})(?:\/|$)/i
+        .exec(url.pathname);
+      const asin = direto?.[1] ?? legado?.[1];
+      return Boolean(asin && asin.toUpperCase() !== produtoId.toUpperCase());
+    }
+    if (plataforma !== "Mercado Livre" ||
+        (host !== "mercadolivre.com.br" &&
+        !host.endsWith(".mercadolivre.com.br") &&
+        host !== "mercadolibre.com" &&
+        !host.endsWith(".mercadolibre.com"))) return false;
+
+    const catalogo = /^\/(?:[a-z0-9]+(?:-[a-z0-9]+)+\/)?p\/(MLB\d+)\/?$/i
+      .exec(url.pathname);
+    if (catalogo) return catalogo[1].toUpperCase() !== produtoId.toUpperCase();
+
+    const anuncio = /^\/MLB-(\d+)(?:-[a-z0-9_-]+)?\/?$/i.exec(url.pathname);
+    if (!anuncio || !anuncioId) return false;
+    return "MLB" + anuncio[1] !== anuncioId.toUpperCase();
+  } catch { return false; }
 }
 
 function adicionar(
@@ -203,11 +242,17 @@ export function criarFichaRevisao(
   }
 
   const formato = linkOficialAparente(dado.urlAfiliado, plataforma);
-  adicionar(evidencias, "link", formato ? "registrada" : "pendente",
-    formato ? "LINK_FORMATO_RECONHECIDO" : "LINK_NAO_VALIDADO",
-    formato
-      ? "Domínio identificado. Destino e atribuição ainda não foram comprovados."
-      : "Falta link de afiliado HTTPS com domínio reconhecido.");
+  const destinoDivergente = formato &&
+    linkDestinoDivergente(dado.urlAfiliado, plataforma, produtoId, anuncioId);
+  adicionar(evidencias, "link",
+    destinoDivergente ? "divergente" : formato ? "registrada" : "pendente",
+    destinoDivergente ? "LINK_DESTINO_DIVERGENTE" :
+      formato ? "LINK_FORMATO_RECONHECIDO" : "LINK_NAO_VALIDADO",
+    destinoDivergente
+      ? "O ID presente no link oficial não corresponde ao produto ou anúncio da ficha."
+      : formato
+        ? "Domínio identificado. Destino e atribuição ainda não foram comprovados."
+        : "Falta link de afiliado HTTPS com domínio reconhecido.");
   adicionar(evidencias, "atribuicao", "pendente", "ATRIBUICAO_INCONCLUSIVA",
     "Nenhum relatório oficial de comissão foi vinculado a esta ficha.");
   adicionar(evidencias, "canal", canal.podePublicar ? "registrada" : "pendente",

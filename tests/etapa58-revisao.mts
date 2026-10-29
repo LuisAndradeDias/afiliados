@@ -121,6 +121,56 @@ test("preços desatualizados, divergentes ou malformados não são prova", () =>
     "PRECO_SEM_VALOR_VALIDO");
 });
 
+test("revisao aponta link de produto ou anuncio divergente, sem expor URL",()=>{
+  for(const [url,tipo] of [
+    ["https://www.mercadolivre.com.br/p/MLB99999999","catalogo"],
+    ["https://produto.mercadolivre.com.br/MLB-9999999999-outra-oferta-_JM","anuncio"]
+  ] as const){
+    const ficha=montar({...oferta(),urlAfiliado:url},canalHomologado);
+    assert.ok(ficha);
+    const evid=ficha.evidencias.find(e=>e.criterio==="link");
+    assert.equal(evid?.estado,"divergente",tipo);
+    assert.equal(evid?.codigo,"LINK_DESTINO_DIVERGENTE",tipo);
+    assert.equal(ficha.decisao.estado,"bloqueada",tipo);
+    assert.equal(ficha.decisao.podePublicar,false);
+    assert.doesNotMatch(JSON.stringify(ficha),/MLB99999999|MLB-9999999999/);
+  }
+  const coerente=montar({
+    ...oferta(),
+    urlAfiliado:"https://www.mercadolivre.com.br/mini-ferramenta/p/MLB38053317"
+  },canalHomologado);
+  assert.equal(coerente?.evidencias.find(e=>e.criterio==="link")?.codigo,
+    "LINK_FORMATO_RECONHECIDO");
+  assert.equal(coerente?.decisao.podePublicar,false,
+    "Identidade correta de URL nao comprova atribuicao nem libera envio");
+});
+
+test("ASIN de outro produto Amazon e porta nao padrao nao sao links reconhecidos",()=>{
+  const base={
+    ...oferta(),plataforma:"Amazon Brasil",produtoId:"B0AAAAAAA1",
+    anuncioId:undefined,
+    urlAfiliado:"https://www.amazon.com.br/dp/B0BBBBBBB2?tag=teste-20"
+  };
+  const outro=montar(base,canalHomologado);
+  assert.equal(outro?.evidencias.find(e=>e.criterio==="link")?.codigo,
+    "LINK_DESTINO_DIVERGENTE");
+  assert.equal(outro?.decisao.estado,"bloqueada");
+  assert.equal(outro?.decisao.podePublicar,false);
+  assert.doesNotMatch(JSON.stringify(outro),/B0BBBBBBB2|teste-20/);
+  const mesmo=montar({...base,
+    urlAfiliado:"https://www.amazon.com.br/dp/B0AAAAAAA1?tag=teste-20"
+  },canalHomologado);
+  assert.equal(mesmo?.evidencias.find(e=>e.criterio==="link")?.codigo,
+    "LINK_FORMATO_RECONHECIDO");
+  assert.equal(mesmo?.decisao.podePublicar,false);
+  const porta=montar({...oferta(),
+    urlAfiliado:"https://www.mercadolivre.com.br:8443/p/MLB38053317"
+  },canalHomologado);
+  assert.equal(porta?.evidencias.find(e=>e.criterio==="link")?.codigo,
+    "LINK_NAO_VALIDADO");
+  assert.equal(porta?.decisao.estado,"bloqueada");
+});
+
 test("cupom antigo e URL falsa não liberam a oferta", () => {
   const ficha = montar({
     ...oferta(), cupomConfirmadoEm: "2026-10-29T11:20:00.000Z",
