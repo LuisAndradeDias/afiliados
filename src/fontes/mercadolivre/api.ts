@@ -311,13 +311,13 @@ export class MercadoLivreApiFonte {
     // Antes, os primeiros 5 an�ncios sem desconto impediam a busca de avan�ar.
     const minimoVerificado = descontoMinimoOferta();
     let elegiveisPorDesconto = 0;
-    const paginas = Math.max(
-      1,
-      Math.min(
-        5,
-        Number(process.env.MERCADOLIVRE_SEARCH_PAGES_PER_QUERY ?? 3)
-      )
+    const paginasConfiguradas = Number(
+      process.env.MERCADOLIVRE_SEARCH_PAGES_PER_QUERY ?? 3
     );
+    // NaN pode fazer o for executar zero vezes: usar o padrao seguro.
+    const paginas = Number.isFinite(paginasConfiguradas)
+      ? Math.max(1, Math.min(5, Math.trunc(paginasConfiguradas)))
+      : 3;
 
     try {
       for (let pagina = 0; pagina < paginas; pagina += 1) {

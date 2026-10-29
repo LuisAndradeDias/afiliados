@@ -78,6 +78,15 @@ try{
   assert.equal(ofertas.length,2,"O primeiro an�ncio abaixo de 20% n�o deve encerrar a busca.");
   assert.ok(ofertas.some(o=>o.descontoPercentual===20));
   assert.ok(requests >=4);
+  // Um valor digitado incorretamente no .env nao pode zerar todas as buscas.
+  process.env.MERCADOLIVRE_SEARCH_PAGES_PER_QUERY = "nao-e-numero";
+  const buscaComConfiguracaoInvalida = await new MercadoLivreApiFonte(
+    "smartphone", 10, "mock-token"
+  ).buscar();
+  assert.ok(
+    buscaComConfiguracaoInvalida.some(o => o.descontoPercentual === 20),
+    "Configuracao de paginas invalida deve usar padrao seguro, nunca retornar zero silenciosamente."
+  );
 }finally{
   globalThis.fetch=fetchReal;
   if(antigo===undefined)delete process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY;
