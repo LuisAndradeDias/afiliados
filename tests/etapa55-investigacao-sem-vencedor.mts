@@ -191,5 +191,6 @@ test("descoberta periodica contabiliza buy box ausente sem criar oferta",async()
   assert.match(source,/catalogosAtivosSemVencedor\s*\+=\s*1/);
   assert.match(source,/!catalogo\.buy_box_winner/);
   assert.match(source,/catalogos-ativos-sem-vencedor=/);
-  assert.match(source,/if \(catalogo\.id === produto\.id && catalogo\.status === "active"/);
+  // A prova comportamental de que nao ha requisicao de itens sem vencedor
+  // esta em mercadolivre-vencedor-sem-lista.mts, independentemente da ordem do if.
 });

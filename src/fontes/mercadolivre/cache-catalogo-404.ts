@@ -10,7 +10,9 @@ function catalogoValido(id: string): boolean {
 }
 
 /**
- * Guarda apenas IDs publicos cujo endpoint /products/{id}/items retornou 404.
+ * Guarda apenas IDs publicos cujo endpoint /products/{id} retornou 404.
+ * Um 404 em /products/{id}/items nao invalida o vencedor do catalogo.
+ * Versao 2 descarta caches antigos que confundiam os dois endpoints.
  * Jamais armazena dados de usuarios, tokens, precos ou resultados 429/403.
  */
 export class CacheCatalogo404 {
@@ -40,7 +42,7 @@ export class CacheCatalogo404 {
         versao?: unknown;
         entries?: Record<string, unknown>;
       };
-      if (dados?.versao !== 1 || !dados.entries ||
+      if (dados?.versao !== 2 || !dados.entries ||
           typeof dados.entries !== "object" || Array.isArray(dados.entries)) {
         return;
       }
@@ -84,7 +86,7 @@ export class CacheCatalogo404 {
     try {
       await mkdir(dirname(this.arquivo), { recursive: true });
       await writeFile(arquivoTemp, JSON.stringify({
-        versao: 1,
+        versao: 2,
         entries: Object.fromEntries(recentes)
       }), { encoding: "utf8", mode: 0o600 });
       await rename(arquivoTemp, this.arquivo);

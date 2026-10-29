@@ -644,6 +644,11 @@
     .send-actions { display: grid; gap: 9px; }
     .send-actions button { width: 100%; }
     .send-note { color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .discovery-notice {
+      display: none; margin-top: 12px; padding: 12px 14px;
+      background: #f1f7fc; border: 1px solid #c6d9ed; color: #263e60;
+      border-radius: 10px; font-size: 12px; line-height: 1.6;
+    }
 
     details.toolbox {
       background: var(--surface);
@@ -1043,6 +1048,7 @@
           </div>
         </article>
       </div>
+      <div id="mlDiscoveryNotice" class="discovery-notice" role="status" aria-live="polite"></div>
     </section>
 
     <section id="flowCard" class="card flow-card visible section">
@@ -1512,6 +1518,40 @@
       if (estado) el.classList.add(estado);
     }
 
+    function resumoUltimaBuscaMercadoLivre(s) {
+      const logs = Array.isArray(s.logs) ? s.logs.filter(x => typeof x === "string") : [];
+      let inicio = -1;
+      for (let i = 0; i < logs.length; i++) {
+        if (logs[i].includes("[mercadolivre-buscar] Iniciado.")) inicio = i;
+      }
+      if (inicio < 0) return "";
+      const rodada = logs.slice(inicio);
+      // Codigo 2 e uma rodada concluida sem oferta elegivel, nao erro de API.
+      if (!rodada.some(x =>
+          x.includes("[mercadolivre-buscar] Finalizado com código 2."))) return "";
+      const linhaFinal = rodada.find(x =>
+        /Mercado Livre: \d+ candidatos com vendedor verificado, \d+ elegiveis/.test(x));
+      if (!linhaFinal) return "";
+      const dados = linhaFinal.match(/Mercado Livre: (\d+) candidatos com vendedor verificado, (\d+) elegiveis com minimo real de (\d+)%/);
+      if (!dados) return "";
+      let respostas404 = 0;
+      for (const log of rodada) {
+        const etapa = log.match(/Mercado Livre catalogo: consultados=(\d+), [^\r\n]*/);
+        if (!etapa) continue;
+        // Compatibilidade com versoes antigas e com os novos contadores separados.
+        const match404 = etapa[0].match(/(?:publicacoes-404|404)=(\d+)/);
+        if (match404) respostas404 += Number(match404[1]);
+      }
+      return "Última rodada do Mercado Livre: nenhuma oferta elegível. " +
+        dados[1] + " candidatos com vendedor confirmado; " + dados[2] +
+        " atingiram o mínimo verificado de " + dados[3] + "%." +
+        (respostas404 > 0
+          ? " " + respostas404 + " respostas 404 na lista de publicações do catálogo. " +
+            "Isso não significa que o produto inteiro não exista."
+          : " Os preços e cupons não atingiram os filtros desta rodada.") +
+        " Nenhum desconto ou cupom é presumido.";
+    }
+
     function renderFluxoMeli(s) {
       const estado = s.operacaoEstado || "paused";
       const plataforma = s.operacaoPlataforma || s.ofertaPlataformaAtual || null;
@@ -1563,13 +1603,22 @@
       };
 
       const faltaGrupo = estado === "offer-pending" && !s.grupoConfigurado;
-      $("flowTitle").textContent = faltaGrupo
-        ? "Oferta salva · configure o grupo do WhatsApp"
-        : titulos[estado] || "Atividade do ciclo";
-      $("flowDescription").textContent = faltaGrupo
-        ? "O preparador não abriu o WhatsApp porque o destino não estava configurado. Salve o nome exato do grupo no cartão Destino; a promoção foi preservada."
-        : detalhes[estado] || "";
-      $("flowBadge").textContent = badges[estado] || "Processando";
+      const canalBloqueado = estado === "offer-pending" &&
+        s.ofertaPreparada && s.canalElegibilidade?.podePublicar === false;
+      $("flowTitle").textContent = canalBloqueado
+        ? "Oferta salva · publicação bloqueada até homologação"
+        : faltaGrupo
+          ? "Oferta salva · configure o grupo do WhatsApp"
+          : titulos[estado] || "Atividade do ciclo";
+      $("flowDescription").textContent = canalBloqueado
+        ? "O WhatsApp pode estar conectado, mas o envio não pode ser preparado: " +
+          (s.canalElegibilidade?.motivo || "o canal precisa ser homologado.") +
+          " A oferta foi preservada. Use Conectar somente para verificar a sessão, sem envio."
+        : faltaGrupo
+          ? "O preparador não abriu o WhatsApp porque o destino não estava configurado. Salve o nome exato do grupo no cartão Destino; a promoção foi preservada."
+          : detalhes[estado] || "";
+      $("flowBadge").textContent = canalBloqueado
+        ? "Canal pendente" : badges[estado] || "Processando";
 
       $("stepSearchText").textContent =
         plataforma === "amazon"
@@ -1794,7 +1843,9 @@
           preparing: "Montando imagem e mensagem para o grupo.",
           review: "O ciclo aguarda você enviar a oferta.",
           sending: "Aguardando confirmação real do WhatsApp.",
-          "offer-pending": "Use Reabrir no WhatsApp para continuar.",
+          "offer-pending": !s.canalElegibilidade?.podePublicar
+            ? "Envio suspenso até a homologação do canal. A sessão pode ser verificada sem publicar."
+            : "Use Reabrir no WhatsApp para continuar.",
           error: s.mercadoLivreFluxoMensagem || "Consulte os logs."
         };
         $("cycleNowDetail").textContent = aguardandoIntervalo && estado === "scheduled"
@@ -2024,7 +2075,12 @@
           $("mensagem").textContent = mensagem;
           $("reviewOrigin").textContent = nomePlataforma(ofertaPlataforma);
 
-          if (revisaoPronta) {
+          if (ofertaPreparada && s.canalElegibilidade?.podePublicar === false) {
+            $("reviewSubtitle").textContent =
+              "Oferta preservada. A publicação aguarda homologação do canal de destino.";
+            $("reviewWhatsappState").textContent =
+              "A conta do WhatsApp pode estar conectada, mas não há cadastro comercial homologado para esta oferta. A abertura da mensagem para envio permanece bloqueada. Verifique a sessão pelo botão Conectar, sem envio.";
+          } else if (revisaoPronta) {
             $("reviewSubtitle").textContent =
               "O WhatsApp está aberto com esta oferta. Revise a mensagem e confirme o envio.";
             $("reviewWhatsappState").textContent =
@@ -2153,11 +2209,20 @@
 
         $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
         $("logs").scrollTop = $("logs").scrollHeight;
+        const resumoBuscaMeli = resumoUltimaBuscaMercadoLivre(s);
+        $("mlDiscoveryNotice").textContent = resumoBuscaMeli;
+        $("mlDiscoveryNotice").style.display = resumoBuscaMeli ? "block" : "none";
 
         const elegibilidadeBloqueada = ofertaPreparada && !s.canalElegibilidade?.podePublicar;
         reopenWhatsappButton.style.display =
           mensagem && !preparando ? "" : "none";
         reopenWhatsappButton.disabled = elegibilidadeBloqueada || whatsappOcupado;
+        reopenWhatsappButton.textContent = elegibilidadeBloqueada
+          ? "Canal não homologado · envio bloqueado"
+          : "↗ Reabrir no WhatsApp";
+        reopenWhatsappButton.title = elegibilidadeBloqueada
+          ? "Envio impedido até cadastro e revisão das regras do canal. Use Conectar para testar o login sem envio."
+          : "Reabrir a oferta quando houver permissão comercial.";
         sendNowButton.style.display =
           mensagem && revisaoPronta && !elegibilidadeBloqueada ? "" : "none";
         discardOfferButton.style.display =

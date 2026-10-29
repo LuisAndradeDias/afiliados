@@ -73,3 +73,20 @@ Auditoria de domínio e destino foi reforçada de modo fail-closed, sem requisi�
 Os cenários foram reproduzidos primeiro como testes falhando e somente então corrigidos. Testes: `tests/etapa56-anuncio-direto.mts` e `tests/etapa58-revisao.mts`.
 
 **Limite:** sem dados oficiais de atribuição/comissão e sem homologação do canal, não tentar liberar envio. Estas correções aperfeiçoam a interpretação das evidências, não fabricam evidências.
+
+
+## Investigação 29/10/2026 — Mercado Livre sem candidatos e WhatsApp sem janela
+
+**Achado na Central:** a rodada de Mercado Livre consultou duas categorias de catálogo. Cada uma teve aproximadamente 60 consultas, com 59 respostas HTTP 404 do recurso de publicações `/products/{id}/items`. Nenhum anúncio com vendedor comprovado passou ao filtro de desconto mínimo de 25%. O código de saída **2** indica ausência de oferta elegível, não uma falha de login nem autorização da API.
+
+**Correção de causa:** verificar primeiro o catálogo oficial `GET /products/{id}` e o campo `buy_box_winner`; somente pesquisar publicações se existir vencedor ativo. Caso a listagem de publicações retorne 404, consultar **exclusivamente** o anúncio vencedor `GET /items/{item_id}` quando os dados do catálogo por si não comprovarem vendedor, condição, preço e estoque. O desconto só pode ser calculado a partir do preço anterior confiável do mesmo item. Divergências, estoque desconhecido e reputação não verde continuam bloqueados. O limite global de requisições, o respeito ao HTTP 429 e a validação de tokens foram mantidos. A versão 2 do cache 404 invalida registros antigos construídos a partir do recurso de listagem, evitando esconder catálogos ativos por engano.
+
+Documentação pública do fornecedor: `https://developers.mercadolivre.com.br/buscador-de-produtos` e `https://developers.mercadolivre.com.br/pt_br/imoveis-gerenciamento-de-perguntas-e-contatos/concorrencia-em-catalogo`. Esta alteração não assegura a existência de promoções com desconto real >=25%; ela evita perder um vencedor por erro em um recurso auxiliar.
+
+**WhatsApp:** a sessão havia sido autenticada visualmente pelo Chrome do projeto; a preparação posterior foi recusada pelo código `CANAL_NAO_HOMOLOGADO` com código de saída 8. A separação entre autenticação da sessão e autorização comercial do destino permanece obrigatória. O painel agora informa explicitamente o bloqueio, mantém visível a ação `Conectar/verificar sessão` **sem envio** e não recomenda clicar em `Reabrir oferta` enquanto o canal não estiver homologado.
+
+**Antes de homologar um canal, conferir as evidências reais**, sem criar registros fictícios: plataforma específica, confirmação de que o destino está autorizado e elegível segundo as regras, declaração no programa, origem oficial da regra, revisão formal, validade temporal e unicidade do registro. A homologação não pode ser inferida pelo fato de o WhatsApp estar logado.
+
+Testes de regressão: `tests/mercadolivre-vencedor-sem-lista.mts`, `tests/mercadolivre-resiliencia.mts`, `tests/painel-operacional.mts` e validações anteriores de disponibilidade, preço, reputação e canal.
+
+**Não habilitar disparos automáticos para medir se a busca funciona.** Testar a descoberta com dados simulados e, quando a instalação estiver ociosa, testar apenas leitura GET limitada da API.

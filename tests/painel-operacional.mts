@@ -158,6 +158,46 @@ try {
   state = { ...base };
   await page.waitForTimeout(1700);
 
+  state = {
+    ...base,
+    grupoConfigurado:true,
+    canalElegibilidade:{
+      estado:"pendente-verificacao", codigo:"CANAL_NAO_HOMOLOGADO",
+      motivo:"Nenhum cadastro de canais homologados foi encontrado.",
+      podePublicar:false
+    },
+    operacaoEstado:"offer-pending",
+    ofertaPlataformaAtual:"amazon",
+    ofertaPreparada:true,
+    mensagem:"TESTE DE OFERTA NAO ENVIAR",
+    logs:[
+      "[16:50:54] [mercadolivre-buscar] Iniciado.",
+      "[16:51:30] [mercadolivre-buscar] Mercado Livre catalogo: consultados=60, 404=59, cache404=0, vendedores-verdes=0, descontos-minimos=0, catalogos-ativos-sem-vencedor=1.",
+      "[16:52:05] [mercadolivre-buscar] Mercado Livre catalogo: consultados=60, 404=59, cache404=0, vendedores-verdes=0, descontos-minimos=0, catalogos-ativos-sem-vencedor=1.",
+      "[16:52:05] [mercadolivre-buscar] Mercado Livre: 0 candidatos com vendedor verificado, 0 elegiveis com minimo real de 25% (cupons ativos considerados: 0).",
+      "[16:52:05] [mercadolivre-buscar] Finalizado com código 2."
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#mlDiscoveryNotice").innerText()).includes("118 respostas 404"),
+    "A falta de ofertas no ML deve mostrar o motivo tecnico sem chamar de falha de login."
+  );
+  assert(
+    (await page.locator("#reviewSubtitle").innerText()).includes("homologação"),
+    "Oferta bloqueada por canal deve exibir motivo em vez de recomendar reabrir."
+  );
+  assert(
+    (await page.locator("#flowTitle").innerText()).includes("bloqueada"),
+    "Atividade atual nao pode sugerir que apenas falta abrir o WhatsApp."
+  );
+  assert(await page.locator("#reopenWhatsappButton").isDisabled(),
+    "Sem homologacao o preparador permanece bloqueado.");
+  assert(await page.locator("#openWhatsappConnectionButton").isEnabled(),
+    "Verificar sessao sem envio continua permitido.");
+  state = { ...base };
+  await page.waitForTimeout(1700);
+
   assert(
     (await page.locator("#cycleToggleButton").innerText()).includes("Iniciar"),
     "Estado pausado deveria exibir Iniciar ciclo."

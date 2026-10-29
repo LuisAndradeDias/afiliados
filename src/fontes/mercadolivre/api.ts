@@ -32,6 +32,19 @@ interface PublicacaoCatalogo {
   currency_id?: string;
   condition?: string;
   available_quantity?: number | null;
+  status?: string;
+}
+
+interface DetalheAnuncioVencedor {
+  id?: string;
+  seller_id?: number;
+  price?: number;
+  original_price?: number | null;
+  condition?: string;
+  status?: string;
+  available_quantity?: number | null;
+  currency_id?: string;
+  catalog_product_id?: string | null;
 }
 
 interface RespostaCompeticao {
@@ -207,6 +220,43 @@ export class MercadoLivreApiFonte {
     return dados.results ?? [];
   }
 
+  private async buscarDetalheCatalogo(
+    produtoId: string
+  ): Promise<DetalheCatalogoDisponibilidade | null> {
+    const resp = await this.requisicao(
+      "https://api.mercadolibre.com/products/" + encodeURIComponent(produtoId)
+    );
+    if (resp.status === 404) return null;
+    if (!resp.ok) throw new Error("Mercado Livre detalhe de catalogo HTTP " + resp.status);
+    return (await resp.json()) as DetalheCatalogoDisponibilidade;
+  }
+
+  private async buscarAnuncioVencedorDireto(
+    produtoId: string, itemId: string
+  ): Promise<PublicacaoCatalogo | null> {
+    // O ID do vendedor vem do buy_box_winner oficial, nao da busca por texto.
+    if (!/^MLB[0-9]{5,}$/.test(itemId)) return null;
+    const resp = await this.requisicao(
+      "https://api.mercadolibre.com/items/" + encodeURIComponent(itemId)
+    );
+    if (resp.status === 404) return null;
+    if (!resp.ok) throw new Error("Mercado Livre detalhe de anuncio HTTP " + resp.status);
+    const item = (await resp.json()) as DetalheAnuncioVencedor;
+    if (item.id !== itemId ||
+        (item.catalog_product_id != null &&
+          item.catalog_product_id !== produtoId)) return null;
+    return {
+      item_id: itemId,
+      seller_id: item.seller_id ?? 0,
+      price: item.price ?? 0,
+      original_price: item.original_price,
+      available_quantity: item.available_quantity,
+      currency_id: item.currency_id,
+      condition: item.condition,
+      status: item.status
+    };
+  }
+
   private async carregarReputacoes(
     sellerIds: number[]
   ): Promise<void> {
@@ -300,6 +350,7 @@ export class MercadoLivreApiFonte {
     let catalogosConsultados = 0;
     let ignoradosCache = 0;
     let semPublicacoes404 = 0;
+    let semCatalogos404 = 0;
     let vendedoresVerdes = 0;
     let descontosMinimos = 0;
     let catalogosAtivosSemVencedor = 0;
@@ -354,46 +405,50 @@ export class MercadoLivreApiFonte {
             continue;
           }
           catalogosConsultados += 1;
-          let publicacoes: PublicacaoCatalogo[] | null;
+          // A busca retorna fichas sugeridas, nem sempre compraveis. Primeiro
+          // confirmar buy_box_winner no recurso oficial do produto; nao consultar
+          // competicao de paginas sem vencedor.
+          let catalogo: DetalheCatalogoDisponibilidade | null;
           try {
-            publicacoes = await this.buscarPublicacoes(produto.id);
-          } catch (error) {
-            if (
-              error instanceof MercadoLivreReautorizacaoNecessaria ||
-              error instanceof MercadoLivreLimiteRequisicoes
-            ) throw error;
-            const mensagem =
-              error instanceof Error ? error.message : String(error);
-            console.warn(
-              `Mercado Livre: pulando ${produto.id}: ${mensagem}`
-            );
-            continue;
-          }
-
-          if (publicacoes === null) {
-            semPublicacoes404 += 1;
-            await cache404.registrar404(produto.id);
-            continue;
-          }
-          // A ficha "active" pode mostrar "produto indisponivel".
-          // Consultar o vencedor do catalogo antes de escolher anuncio/preco.
-          let catalogo: DetalheCatalogoDisponibilidade;
-          try {
-            catalogo = await this.getJson<DetalheCatalogoDisponibilidade>(
-              "https://api.mercadolibre.com/products/" + encodeURIComponent(produto.id)
-            );
+            catalogo = await this.buscarDetalheCatalogo(produto.id);
           } catch (error) {
             if (error instanceof MercadoLivreReautorizacaoNecessaria ||
                 error instanceof MercadoLivreLimiteRequisicoes) throw error;
-            console.warn("Mercado Livre: disponibilidade nao confirmada; ignorando catalogo.");
+            console.warn("Mercado Livre: detalhe de catalogo indisponivel; ignorando.");
             continue;
           }
-          // Catalogo ativo sem buy box nao equivale a estoque zero.
-          // Registrar apenas contador de revisao, nunca selecionar
-          // arbitrariamente uma publicacao a partir do preco da lista.
-          if (catalogo.id === produto.id && catalogo.status === "active" &&
-              !catalogo.buy_box_winner) {
+          if (catalogo === null) {
+            semCatalogos404 += 1;
+            await cache404.registrar404(produto.id);
+            continue;
+          }
+          if (catalogo.id !== produto.id || catalogo.status !== "active") {
+            continue;
+          }
+          if (!catalogo.buy_box_winner?.item_id) {
             catalogosAtivosSemVencedor += 1;
+            continue;
+          }
+
+          let publicacoes: PublicacaoCatalogo[];
+          try {
+            const listadas = await this.buscarPublicacoes(produto.id);
+            if (listadas === null) semPublicacoes404 += 1;
+            publicacoes = listadas ?? [];
+
+            // Um 404 em /items NAO significa que /products/{id} ou seu
+            // vencedor nao existe. Verificar o anuncio vencedor individual,
+            // sem aceitar qualquer outro vendedor ou preco concorrente.
+            if (!selecionarPublicacaoVencedora(produto.id, publicacoes, catalogo)) {
+              const direto = await this.buscarAnuncioVencedorDireto(
+                produto.id, catalogo.buy_box_winner.item_id
+              );
+              if (direto) publicacoes.push(direto);
+            }
+          } catch (error) {
+            if (error instanceof MercadoLivreReautorizacaoNecessaria ||
+                error instanceof MercadoLivreLimiteRequisicoes) throw error;
+            console.warn("Mercado Livre: anuncio vencedor indisponivel; ignorando.");
             continue;
           }
           const melhor = await this.publicacaoVencedoraVerificada(
@@ -457,7 +512,7 @@ export class MercadoLivreApiFonte {
       await cache404.persistir();
       console.log(
         `Mercado Livre catalogo: consultados=${catalogosConsultados}, ` +
-        `404=${semPublicacoes404}, cache404=${ignoradosCache}, ` +
+        `detalhe-404=${semCatalogos404}, publicacoes-404=${semPublicacoes404}, cache404=${ignoradosCache}, ` +
         `vendedores-verdes=${vendedoresVerdes}, descontos-minimos=${descontosMinimos}, ` +
         `catalogos-ativos-sem-vencedor=${catalogosAtivosSemVencedor}.`
       );

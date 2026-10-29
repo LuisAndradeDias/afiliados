@@ -35,7 +35,7 @@ jobs:
       - name: Testar diagnostico somente leitura
         run: node --test tests/etapa50-diagnostico.test.mjs tests/etapa50-manifest-neutral.test.mjs tests/etapa50-link-controlado.test.mjs tests/etapa50-url-manual.test.mjs
       - name: Dominios de ofertas e OAuth simulados
-        run: node --import tsx --test tests/mercadolivre-auth.mts tests/mercadolivre-descoberta.mts tests/mercadolivre-resiliencia.mts tests/mercadolivre-disponibilidade.mts tests/mercadolivre-estoque-integracao.mts tests/etapa53-preco-vendedor-estoque.mts tests/etapa54-preco-contextual.mts tests/etapa55-investigacao-sem-vencedor.mts tests/etapa56-anuncio-direto.mts tests/mercadolivre-link-diagnostico.mts tests/mercadolivre-link-diagnostico-integracao.mts tests/variedade-ofertas.mts tests/amazon-preco-dom.mts tests/historico-antiduplicado.mts tests/whatsapp-grupo.mts tests/painel-dominios.mts
+        run: node --import tsx --test tests/mercadolivre-auth.mts tests/mercadolivre-descoberta.mts tests/mercadolivre-resiliencia.mts tests/mercadolivre-vencedor-sem-lista.mts tests/mercadolivre-disponibilidade.mts tests/mercadolivre-estoque-integracao.mts tests/etapa53-preco-vendedor-estoque.mts tests/etapa54-preco-contextual.mts tests/etapa55-investigacao-sem-vencedor.mts tests/etapa56-anuncio-direto.mts tests/mercadolivre-link-diagnostico.mts tests/mercadolivre-link-diagnostico-integracao.mts tests/variedade-ofertas.mts tests/amazon-preco-dom.mts tests/historico-antiduplicado.mts tests/whatsapp-grupo.mts tests/painel-dominios.mts
       - name: Diagnostico agregado de ofertas - GET local simulado, sem dados sensiveis
         run: node --import tsx --test tests/auditoria-funil-ofertas.mts
       - name: Cupons e destinos oficiais — politicas e seguranca, sem envios
