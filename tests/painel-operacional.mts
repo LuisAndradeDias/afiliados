@@ -103,6 +103,61 @@ try {
     waitUntil: "networkidle"
   });
 
+  // Uma pasta Chrome existente nao comprova que a conta esta autenticada.
+  assert(
+    !(await page.locator("#whatsappDot").getAttribute("class"))?.includes("ok"),
+    "Perfil salvo sem verificacao nao pode ter indicador verde."
+  );
+  state = {
+    ...base,
+    executando: ["login"],
+    logs: [
+      "[16:17:00] [login] Iniciado.",
+      "[16:17:02] [login] WHATSAPP_CONEXAO:AGUARDANDO_PAREAMENTO"
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+      .includes("Aguardando"),
+    "O usuario deve enxergar status persistente enquanto pareia."
+  );
+  state = {
+    ...base,
+    executando: ["login"],
+    logs: [
+      "[16:17:00] [login] Iniciado.",
+      "[16:17:02] [login] WHATSAPP_CONEXAO:AGUARDANDO_PAREAMENTO",
+      "[16:17:04] [login] WHATSAPP_CONEXAO:CONECTADO"
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+      .includes("Conectado"),
+    "So apos evidencia do WhatsApp o painel deve confirmar o login."
+  );
+  state = {
+    ...base,
+    logs: [
+      "[16:17:00] [login] Iniciado.",
+      "[16:17:02] [login] WHATSAPP_CONEXAO:FALHA_NAVEGACAO",
+      "[16:17:02] [login] Finalizado com código 1."
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+      .includes("Falha"),
+    "Fechamento abrupto nao deve parecer login concluido."
+  );
+  assert(
+    !(await page.locator("#whatsappDot").getAttribute("class"))?.includes("ok"),
+    "Falha de conexao deve manter indicador nao conectado."
+  );
+  state = { ...base };
+  await page.waitForTimeout(1700);
+
   assert(
     (await page.locator("#cycleToggleButton").innerText()).includes("Iniciar"),
     "Estado pausado deveria exibir Iniciar ciclo."

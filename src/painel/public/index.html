@@ -633,6 +633,14 @@
     .whatsapp-group-controls input { width: 100%; min-width: 150px; flex: 1 1 175px; min-height: 48px; font-size: 15px; }
     .whatsapp-group-controls button { flex: 1 1 auto; min-height: 47px; font-size: 14px; }
     #openWhatsappConnectionButton { display: block; width: 100%; margin-top: 12px; min-height: 44px; font-size: 14px; }
+    .whatsapp-connection-feedback {
+      margin-top: 8px; padding: 10px 12px; border-radius: 9px;
+      border: 1px solid #cfe3df; background: #f1f8f5;
+      color: #225445; font-size: 12px; line-height: 1.5;
+    }
+    .whatsapp-connection-feedback.is-error {
+      color: #912d25; background: #fff4f2; border-color: #efd0cb;
+    }
     .send-actions { display: grid; gap: 9px; }
     .send-actions button { width: 100%; }
     .send-note { color: var(--muted); font-size: 11px; line-height: 1.45; }
@@ -1109,6 +1117,7 @@
             </details>
             <span id="whatsappSetupHint" class="group-hint">O grupo deve ser escolhido antes de preparar a oferta. Nenhuma mensagem será enviada ao configurar.</span>
             <button id="openWhatsappConnectionButton" class="secondary" type="button" data-action="login">Abrir WhatsApp do painel / verificar sessão</button>
+            <div id="whatsappConnectionDetails" class="whatsapp-connection-feedback" role="status" aria-live="polite">Sessão ainda não verificada. Clique para abrir o Chrome do projeto.</div>
           </div>
           <div class="send-actions">
             <button id="reopenWhatsappButton" class="primary" data-action="preparar" style="display:none">↗ Reabrir no WhatsApp</button>
@@ -1260,6 +1269,7 @@
               <h3>WhatsApp</h3>
               <p>Login e sessão persistente usados para preparar as mensagens no grupo configurado.</p>
               <button style="width:100%" class="secondary" data-action="login">🔐 Conectar / renovar login</button>
+              <div id="whatsappSettingsConnectionDetails" class="whatsapp-connection-feedback" role="status" aria-live="polite">Aguardando uma verificação de sessão.</div>
               <button style="width:100%;margin-top:8px" class="secondary" data-action="preparar">🖼️ Reabrir oferta atual</button>
             </div>
 
@@ -1351,6 +1361,102 @@
       }
     }
 
+
+    // O perfil do Chrome no disco nao equivale a autenticacao no WhatsApp.
+    // Estes marcadores sao emitidos pelo processo de login (sem QR nem dados pessoais).
+    function resumoConexaoWhatsapp(s) {
+      const todos = Array.isArray(s.logs)
+        ? s.logs.filter(linha => typeof linha === "string" && linha.includes("[login]"))
+        : [];
+      let inicio = -1;
+      for (let i = 0; i < todos.length; i++) {
+        if (todos[i].includes("[login] Iniciado.")) inicio = i;
+      }
+      const tentativa = inicio >= 0 ? todos.slice(inicio + 1) : [];
+      const eventos = tentativa.map(linha =>
+        linha.match(/WHATSAPP_CONEXAO:([A-Z_]+)/)?.[1]).filter(Boolean);
+      const evento = eventos.length ? eventos[eventos.length - 1] : "";
+      const emAndamento = Array.isArray(s.executando) && s.executando.includes("login");
+      const houveFalha = tentativa.some(linha =>
+        /\[login\] Finalizado com código (?!0\.)/.test(linha));
+
+      if (evento === "CONECTADO" && emAndamento) {
+        return {
+          titulo: "WhatsApp conectado nesta verificação",
+          detalhe: "Conectado ao WhatsApp Web no Chrome do projeto. Nenhuma mensagem foi enviada. Feche a janela quando terminar.",
+          conectado: true, erro: false
+        };
+      }
+      if (evento === "VERIFICADO_ANTES_FECHAMENTO" ||
+          (evento === "CONECTADO" && !emAndamento)) {
+        return {
+          titulo: "Sessão verificada anteriormente",
+          detalhe: "O WhatsApp foi autenticado na última abertura. O acesso atual ainda precisa ser conferido novamente antes de qualquer envio.",
+          conectado: false, erro: false
+        };
+      }
+      if (evento === "AGUARDANDO_QR") {
+        return {
+          titulo: "Aguardando QR Code",
+          detalhe: "No celular, abra WhatsApp > Aparelhos conectados > Conectar um aparelho e escaneie o QR exibido no Chrome do projeto.",
+          conectado: false, erro: false
+        };
+      }
+      if (evento === "AGUARDANDO_PAREAMENTO" || evento === "JANELA_ABERTA") {
+        return {
+          titulo: "Aguardando autenticação",
+          detalhe: "O Chrome do projeto está aberto. Confira o QR Code ou a tela de vinculação; aguarde a confirmação antes de fechar.",
+          conectado: false, erro: false
+        };
+      }
+      if (evento === "ABRINDO" || (emAndamento && !evento)) {
+        return {
+          titulo: "Abrindo WhatsApp Web...",
+          detalhe: "O Chrome do projeto está iniciando. A conexão ainda não foi verificada.",
+          conectado: false, erro: false
+        };
+      }
+      if (evento === "PERFIL_OCUPADO") {
+        return {
+          titulo: "Falha: perfil em uso",
+          detalhe: "Feche apenas outra janela do WhatsApp aberta pelo projeto e tente novamente. Seu perfil não será apagado.",
+          conectado: false, erro: true
+        };
+      }
+      if (evento === "JANELA_FECHADA" || evento === "ENCERRADO_SEM_VERIFICACAO") {
+        return {
+          titulo: "Falha: conexão não confirmada",
+          detalhe: "A janela foi fechada antes do login ser comprovado. Abra novamente e aguarde aparecer a confirmação de conexão.",
+          conectado: false, erro: true
+        };
+      }
+      if (evento === "FALHA_NAVEGACAO" || houveFalha) {
+        return {
+          titulo: "Falha ao carregar WhatsApp Web",
+          detalhe: "O Chrome não concluiu a conexão. Verifique a internet e se a janela do projeto está aberta; tente novamente.",
+          conectado: false, erro: true
+        };
+      }
+      return {
+        titulo: s.sessaoWhatsapp ? "Perfil salvo — login não verificado" : "WhatsApp não configurado",
+        detalhe: "Clique em Conectar para verificar sua conta no Chrome do projeto. A pasta de perfil, sozinha, não comprova login.",
+        conectado: false, erro: false
+      };
+    }
+
+    function mostrarConexaoWhatsapp(s) {
+      const resultado = resumoConexaoWhatsapp(s);
+      const texto = resultado.titulo + ". " + resultado.detalhe;
+      for (const id of ["whatsappConnectionDetails", "whatsappSettingsConnectionDetails"]) {
+        const el = $(id);
+        if (!el) continue;
+        if (el.textContent !== texto) el.textContent = texto;
+        el.classList.toggle("is-error", resultado.erro);
+      }
+      $("sessao").textContent = resultado.titulo;
+      setDot("whatsappDot", resultado.conectado ? "ok" : "warn");
+      return resultado;
+    }
 
     async function copiarInstagram(campo) {
       const pacote = estadoAtual.instagramConteudo || {};
@@ -1601,10 +1707,7 @@
               : "Grupo salvo. A elegibilidade comercial depende do marketplace e deve estar homologada antes de enviar.")
           : "Salve o nome exato do grupo. O perfil do painel é diferente do Chrome comum; se abrir para conectar, feche a janela depois do login.";
 
-        $("sessao").textContent = s.sessaoWhatsapp
-          ? "Perfil salvo (login não verificado) · " + (s.grupo || "grupo não definido")
-          : "Perfil não configurado";
-        setDot("whatsappDot", s.sessaoWhatsapp ? "ok" : "warn");
+        mostrarConexaoWhatsapp(s);
 
         $("afiliado").textContent = s.afiliadoConfigurado
           ? "Conectada · " + s.afiliadoTag
@@ -2167,7 +2270,9 @@
           body: JSON.stringify({ action: nome, ...extras })
         });
         const data = await resposta.json();
-        toast(data.mensagem, data.ok ? "ok" : "warn");
+        toast(nome === "login" && data.ok
+          ? "Abrindo o Chrome do projeto. Acompanhe o estado da conexão junto ao botão."
+          : data.mensagem, data.ok ? "ok" : "warn");
       } catch {
         toast("Falha ao executar a ação.", "bad");
       }

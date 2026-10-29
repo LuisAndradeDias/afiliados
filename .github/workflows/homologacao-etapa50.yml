@@ -56,6 +56,8 @@ jobs:
         run: node --import tsx tests/ux-lovable-visual.mts
       - name: UX Unificada v2 - aprovado visual, links e controles reais em 3 resolucoes
         run: node --import tsx tests/ux-unificada-v2.mts
+      - name: Conexao WhatsApp - detectar QR, autenticacao e fechamento sem mensagens
+        run: node --import tsx --test tests/whatsapp-login-estado.mts
       - name: Interface simulada em Chrome headless, sem perfil do usuario
         run: node --import tsx tests/painel-operacional.mts
       - name: Conector 02 em Chrome headless com formularios ficticios
