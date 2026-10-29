@@ -1,4 +1,5 @@
 import type { Oferta } from "../fontes/types.js";
+import { removerCupomNaoConfirmado } from "../ofertas/cupons-politica.js";
 
 function moedaBR(valor: number): string {
   return valor.toLocaleString("pt-BR", {
@@ -56,24 +57,33 @@ function cabecalho(oferta: Oferta): string {
 }
 
 export function formatarOfertaWhatsapp(oferta: Oferta): string {
+  const ehMercadoLivre = oferta.plataforma.trim().toLowerCase() === "mercado livre";
   const linhas = [
     cabecalho(oferta),
     "",
     `*${oferta.titulo}*`,
     "",
     oferta.precoAnterior
-      ? `De ~${moedaBR(oferta.precoAnterior)}~`
+      ? ehMercadoLivre
+        ? `Referência anunciada: ~${moedaBR(oferta.precoAnterior)}~`
+        : `De ~${moedaBR(oferta.precoAnterior)}~`
       : undefined,
-    `💰 Por *${moedaBR(oferta.precoAtual)}*`,
+    ehMercadoLivre
+      ? `💰 Preço informado no catálogo: *${moedaBR(oferta.precoAtual)}*`
+      : `💰 Por *${moedaBR(oferta.precoAtual)}*`,
     oferta.descontoPercentual
-      ? `🔥 *${oferta.descontoPercentual}% OFF*`
+      ? ehMercadoLivre
+        ? `🏷️ Desconto anunciado: *${oferta.descontoPercentual}% OFF*`
+        : `🔥 *${oferta.descontoPercentual}% OFF*`
       : undefined,
-    ...linhasCupom(oferta),
+    ...linhasCupom(removerCupomNaoConfirmado(oferta)),
     "",
     "🛒 Comprar:",
     oferta.urlAfiliado ?? oferta.urlProduto,
     "",
-    "⚠️ Preço e disponibilidade podem mudar."
+    ehMercadoLivre
+      ? "⚠️ Confira vendedor, estoque e valor final no link. Preço pode depender de Pix, cartão ou benefícios da conta."
+      : "⚠️ Preço e disponibilidade podem mudar."
   ];
 
   return linhas.filter((linha) => linha !== undefined).join("\n");

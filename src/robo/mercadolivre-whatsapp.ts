@@ -7,6 +7,11 @@ import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { revalidarCupomMercadoLivre } from "../afiliados/mercadolivre-cupons.js";
 import { descontoMinimoOferta, avaliarQualidadeOferta } from "../ofertas/qualidade.js";
+import { revalidarEstoqueEPrecoMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
+import {
+  avaliarCupomParaDivulgacao,
+  removerCupomNaoConfirmado
+} from "../ofertas/cupons-politica.js";
 
 let oferta = await lerOfertaMercadoLivre();
 
@@ -16,19 +21,24 @@ if (!oferta.urlAfiliado) {
   );
 }
 
+// A pagina pode continuar ativa no catalogo mesmo sem anuncio compravel.
+// Consultar estoque e vencedor oficial ANTES de gerar mensagem e pacote.
+const disponibilidade = await revalidarEstoqueEPrecoMercadoLivre(oferta);
+oferta = {
+  ...oferta,
+  estoqueDisponivel: disponibilidade.estoqueDisponivel,
+  disponibilidadeConfirmada: true,
+  disponibilidadeVerificadaEm: disponibilidade.verificadoEm,
+  precoContextoStatus: "coerente",
+  precoContextoVerificadoEm: disponibilidade.precoMercadoLivreConfirmadoEm
+};
+
 if (oferta.cupomCodigo) {
   const codigoAnterior = oferta.cupomCodigo;
   oferta = await revalidarCupomMercadoLivre(oferta);
-  if (oferta.cupomCodigo && oferta.cupomValidacao !== "produto-confirmado") {
-    console.warn("Cupom publico nao confirmado para este produto; o codigo nao sera publicado.");
-    oferta = {
-      ...oferta,
-      cupom: undefined, cupomCodigo: undefined, cupomPercentual: undefined,
-      cupomValor: undefined, cupomCompraMinima: undefined,
-      cupomDescontoMaximo: undefined, cupomValidoAte: undefined,
-      cupomValidacao: undefined, precoComCupomEstimado: undefined,
-      descontoEfetivoPercentual: oferta.descontoPercentual ?? 0
-    };
+  if (oferta.cupomCodigo && !avaliarCupomParaDivulgacao(oferta).podeAnunciar) {
+    console.warn("Cupom sem prova recente no checkout para este produto: codigo e preco com cupom retirados da mensagem.");
+    oferta = removerCupomNaoConfirmado(oferta);
   }
 
   if (oferta.cupomCodigo) {
@@ -65,6 +75,11 @@ if (!qualidade.elegivel) {
   throw new Error("Oferta reprovada antes do envio: " + qualidade.motivo +
     ". Nenhuma mensagem sera enviada.");
 }
+await writeFile(
+  "data/ultima-oferta-mercadolivre.json",
+  JSON.stringify(oferta, null, 2),
+  "utf8"
+);
 const mensagem = formatarOfertaWhatsapp(oferta);
 
 console.log("\n--- PREVIA WHATSAPP � MERCADO LIVRE ---\n");

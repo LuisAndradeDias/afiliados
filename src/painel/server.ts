@@ -31,12 +31,25 @@ import {
 } from "../ofertas/intervalos-envio.js";
 import {
   lerOfertaMercadoLivre,
+  normalizarLinkAfiliadoMercadoLivre,
   salvarLinkAfiliadoMercadoLivre
 } from "../afiliados/mercadolivre.js";
+import {
+  permitirTesteTecnicoLink,
+  validarUrlProdutoTesteMercadoLivre
+} from "./dominios/mercadolivre-link-diagnostico.js";
+import { disponibilidadeMercadoLivreRecente,
+  revalidarDisponibilidadeMercadoLivre
+} from "../fontes/mercadolivre/disponibilidade.js";
 import {
   registrarCuponsObservadosMercadoLivre,
   statusCuponsMercadoLivre
 } from "../afiliados/mercadolivre-cupons.js";
+import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
+import { auditarDestinoLinkMercadoLivre } from "../afiliados/mercadolivre-destino.js";
+import { auditarDestinoLinkMercadoLivreNavegador } from "../afiliados/mercadolivre-destino-navegador.js";
+import { consultarElegibilidadeCanalWhatsapp } from "../canais/elegibilidade.js";
+import { consultarPainelRevisao } from "../revisao/consulta.js";
 
 const raiz = process.cwd();
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
@@ -87,6 +100,14 @@ interface MercadoLivreLinkJob {
   criadoEm: string;
   status: MercadoLivreLinkJobStatus;
   mensagem?: string;
+  /** Apenas memoria: nao e oferta, nao persiste link nem prepara WhatsApp. */
+  diagnostico?: boolean;
+  verificarDestino?: boolean;
+  /** Apenas em diagnostico manual, Chrome novo sem perfil nem cookies. */
+  verificarDestinoNavegador?: boolean;
+  destinoStatus?: "nao-verificado" | "verificando" | "confirmado" | "inconclusivo" | "divergente";
+  destinoMotivo?: string;
+  atribuicaoComprovada?: false;
 }
 
 let mercadoLivreLinkJob: MercadoLivreLinkJob | null = null;
@@ -452,7 +473,16 @@ interface PacotePainel {
   descontoPercentual?: number;
   comissaoEstimadaPercentual?: number;
   scoreOferta?: number;
+  produtoId?: string;
+  anuncioId?: string;
+  precoAtual?: number;
   cupomCodigo?: string;
+  cupomValidacao?: "catalogo-oficial-estimado" | "produto-confirmado";
+  cupomValidoAte?: string;
+  cupomConfirmadoEm?: string;
+  cupomProdutoIdConfirmado?: string;
+  cupomAnuncioIdConfirmado?: string;
+  cupomFonteConfirmacao?: "checkout";
   cupomPercentual?: number;
   cupomValor?: number;
   cupomCompraMinima?: number;
@@ -672,6 +702,16 @@ function iniciar(
           "Oferta repetida ignorada. Seguindo para a próxima categoria."
         );
       }
+      return;
+    }
+
+    if (codigo === 8) {
+      // Bloqueio comercial nao descarta a oferta nem presume envio.
+      mercadoLivreFluxoAutomatico = false;
+      if (monitorAlternadoAtivo) await definirMonitorMercadoLivreAtivo(false);
+      atualizarFluxoMercadoLivre("idle",
+        "CANAL_NAO_HOMOLOGADO: a oferta foi preservada e o envio foi bloqueado. Verifique as regras e a autorizacao do destino.");
+      registrar("governanca", "Canal sem homologacao. Nenhum envio executado pelo preparador.");
       return;
     }
 
@@ -913,6 +953,12 @@ async function existe(path: string): Promise<boolean> {
 
 async function criarPedidoLinkMercadoLivre(): Promise<MercadoLivreLinkJob> {
   const oferta = await lerOfertaMercadoLivre();
+
+  // A extensao nao deve receber links de catalogos so aparentemente ativos.
+  if (!disponibilidadeMercadoLivreRecente(oferta)) {
+    throw new Error("Mercado Livre: estoque ou compra nao confirmados. Pedido de link bloqueado.");
+  }
+  await revalidarDisponibilidadeMercadoLivre(oferta);
 
   mercadoLivreLinkJob = {
     id: randomBytes(12).toString("hex"),
@@ -1171,8 +1217,25 @@ async function estado() {
     })
     .catch(() => ({}));
 
+  const cupomPacote = avaliarCupomParaDivulgacao({
+    produtoId: pacote.produtoId ?? "",
+    anuncioId: pacote.anuncioId,
+    precoAtual: pacote.precoAtual ?? 0,
+    cupomCodigo: pacote.cupomCodigo,
+    cupomValidacao: pacote.cupomValidacao,
+    cupomValidoAte: pacote.cupomValidoAte,
+    cupomConfirmadoEm: pacote.cupomConfirmadoEm,
+    cupomProdutoIdConfirmado: pacote.cupomProdutoIdConfirmado,
+    cupomAnuncioIdConfirmado: pacote.cupomAnuncioIdConfirmado,
+    cupomFonteConfirmacao: pacote.cupomFonteConfirmacao,
+    precoComCupomEstimado: pacote.precoComCupomEstimado
+  });
   const plataformaPacoteAtual = plataformaDoValor(pacote.plataforma);
   const ofertaPreparada = Boolean(mensagem.trim() && plataformaPacoteAtual);
+  const canalElegibilidade = await consultarElegibilidadeCanalWhatsapp({
+    grupo: process.env.WHATSAPP_GROUP_NAME?.trim() ?? "",
+    plataforma: pacote.plataforma
+  });
   const whatsappEmExecucao = processos.has("preparar");
   const operacaoPlataforma: PlataformaMonitor | null =
     whatsappEmExecucao || finalizacaoWhatsappAtual
@@ -1220,6 +1283,7 @@ async function estado() {
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME?.trim() || "Não configurado",
     grupoConfigurado: Boolean(process.env.WHATSAPP_GROUP_NAME?.trim()),
+    canalElegibilidade,
     whatsappAutoEnvioAtivo: process.env.WHATSAPP_AUTO_SEND_ENABLED === "true",
     whatsappAutoEnvioAtrasoMs: Number(process.env.WHATSAPP_AUTO_SEND_DELAY_MS ?? "1500"),
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
@@ -1237,7 +1301,9 @@ async function estado() {
     mercadoLivreRedirectUri: redirectMercadoLivre(),
     mercadoLivreOferta: ofertaMercadoLivre,
     mercadoLivreExtensionConectada: mercadoLivreExtensionConectada(),
-    mercadoLivreLinkJob,
+    // Testes tecnicos nao devem aparecer como promocoes com link salvo.
+    mercadoLivreLinkJob: mercadoLivreLinkJob?.diagnostico ? null : mercadoLivreLinkJob,
+    mercadoLivreTesteLinkJob: mercadoLivreLinkJob?.diagnostico ? mercadoLivreLinkJob : null,
     mercadoLivreFluxoAutomatico,
     mercadoLivreFluxoEtapa,
     mercadoLivreFluxoMensagem,
@@ -1286,14 +1352,15 @@ async function estado() {
     categoriaAtual: pacote.categoria ?? "",
     comissaoAtual: pacote.comissaoEstimadaPercentual ?? 0,
     scoreAtual: pacote.scoreOferta ?? 0,
-    cupomAtual: pacote.cupomCodigo ?? "",
-    cupomPercentualAtual: pacote.cupomPercentual ?? 0,
-    cupomValorAtual: pacote.cupomValor ?? 0,
-    precoComCupomEstimado: pacote.precoComCupomEstimado ?? 0,
-    descontoEfetivoAtual:
-      pacote.descontoEfetivoPercentual ??
-      pacote.descontoPercentual ??
-      0,
+    cupomAtual: cupomPacote.podeAnunciar ? (pacote.cupomCodigo ?? "") : "",
+    cupomSituacao: cupomPacote.situacao,
+    cupomPercentualAtual: cupomPacote.podeAnunciar ? (pacote.cupomPercentual ?? 0) : 0,
+    cupomValorAtual: cupomPacote.podeAnunciar ? (pacote.cupomValor ?? 0) : 0,
+    precoComCupomEstimado:
+      cupomPacote.podeAnunciar ? (pacote.precoComCupomEstimado ?? 0) : 0,
+    descontoEfetivoAtual: cupomPacote.podeAnunciar
+      ? (pacote.descontoEfetivoPercentual ?? pacote.descontoPercentual ?? 0)
+      : (pacote.descontoPercentual ?? 0),
     mercadoLivreCuponsTotal: statusCupons.total,
     mercadoLivreCuponsAtivos: statusCupons.ativos,
     mercadoLivreCuponsAtualizadosEm: statusCupons.coletadoEm ?? "",
@@ -1621,6 +1688,77 @@ async function executarAcao(
     };
   }
 
+  if (acao === "mercadolivre-link-diagnostico") {
+    // Teste tecnico estritamente manual; nunca confundir com uma oferta
+    // elegivel nem iniciar mensagens, publicacao ou monitoramento.
+    if (dados.confirmacao !== "TESTE_LINK_SEM_ENVIO") {
+      return { ok: false, mensagem: "Confirmacao manual de teste ausente." };
+    }
+    if (dados.verificarDestino === true &&
+        dados.verificarDestinoNavegador === true) {
+      return { ok: false, mensagem: "Escolha apenas um modo de verificacao de destino." };
+    }
+    const seguro = permitirTesteTecnicoLink({
+      pausado:
+        !mercadoLivreFluxoAutomatico &&
+        !whatsappAutoEnvioEmAndamento &&
+        !whatsappRevisaoPronta &&
+        processos.size === 0,
+      semEnvioAutomatico: process.env.WHATSAPP_AUTO_SEND_ENABLED !== "true",
+      semMonitoramento: !monitorAlternadoAtivo && !mercadoLivreMonitorAtivo,
+      semWhatsappEmExecucao:
+        !whatsappOcupado() &&
+        !(await existe(mensagemPath)) &&
+        !(await existe(pacotePath)),
+      semPedidoAnterior:
+        !mercadoLivreLinkJob && !(await existe(ofertaMercadoLivrePath)),
+      extensaoConectada: mercadoLivreExtensionConectada()
+    });
+    if (!seguro) {
+      return {
+        ok: false,
+        mensagem: "Teste recusado: sistema ocupado, promocao pendente, extensao offline ou automacao ativa."
+      };
+    }
+    try {
+      const produto = validarUrlProdutoTesteMercadoLivre(String(dados.urlProduto ?? ""));
+      mercadoLivreFluxoAutomatico = false;
+      mercadoLivreLinkJob = {
+        id: randomBytes(12).toString("hex"),
+        produtoId: produto.produtoId,
+        urlProduto: produto.urlProduto,
+        criadoEm: new Date().toISOString(),
+        status: "pending",
+        diagnostico: true,
+        verificarDestino: dados.verificarDestino === true,
+        verificarDestinoNavegador: dados.verificarDestinoNavegador === true,
+        destinoStatus: "nao-verificado",
+        atribuicaoComprovada: false
+      };
+      registrar("mercadolivre-link",
+        "Teste tecnico manual de link solicitado; nenhum produto sera publicado.");
+      return {
+        ok: true,
+        mensagem: "Teste manual iniciado. O link sera validado sem salvar oferta nem abrir o WhatsApp."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        mensagem: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  if (acao === "mercadolivre-link-diagnostico-limpar") {
+    if (dados.confirmacao !== "TESTE_LINK_SEM_ENVIO" ||
+        !mercadoLivreLinkJob?.diagnostico) {
+      return { ok: false, mensagem: "Nenhum teste tecnico autorizado para limpar." };
+    }
+    mercadoLivreLinkJob = null;
+    registrar("mercadolivre-link", "Estado temporario do teste tecnico descartado.");
+    return { ok: true, mensagem: "Teste tecnico limpo sem alterar ofertas ou WhatsApp." };
+  }
+
   if (acao === "mercadolivre-link-auto") {
     mercadoLivreFluxoAutomatico = false;
 
@@ -1819,6 +1957,21 @@ async function executarAcao(
         ok: false,
         mensagem:
           "A extensão Meli precisa estar conectada para carregar a próxima oferta automaticamente."
+      };
+    }
+
+    // Uma acao manual do painel nunca substitui a homologacao comercial.
+    const pacoteCanal = await readFile(pacotePath, "utf8")
+      .then((texto) => JSON.parse(texto) as { plataforma?: string })
+      .catch(() => ({} as { plataforma?: string }));
+    const elegibilidade = await consultarElegibilidadeCanalWhatsapp({
+      grupo: process.env.WHATSAPP_GROUP_NAME?.trim() ?? "",
+      plataforma: pacoteCanal.plataforma
+    });
+    if (!elegibilidade.podePublicar) {
+      return {
+        ok: false,
+        mensagem: `Envio bloqueado (${elegibilidade.codigo}): ${elegibilidade.motivo}`
       };
     }
 
@@ -2036,6 +2189,15 @@ const server = createServer(async (req, res) => {
       requestUrl.pathname === "/api/mercadolivre/link-job"
     ) {
       mercadoLivreExtensionLastSeen = Date.now();
+      if (mercadoLivreLinkJob?.diagnostico &&
+          ["pending", "running"].includes(mercadoLivreLinkJob.status) &&
+          Date.now() - Date.parse(mercadoLivreLinkJob.criadoEm) > 120_000) {
+        mercadoLivreLinkJob = {
+          ...mercadoLivreLinkJob,
+          status: "error",
+          mensagem: "Teste tecnico expirou sem link. Nada foi publicado."
+        };
+      }
       json(res, 200, {
         ok: true,
         job:
@@ -2122,6 +2284,56 @@ const server = createServer(async (req, res) => {
       }
 
       try {
+        if (mercadoLivreLinkJob.diagnostico) {
+          // O resultado fica apenas em memoria; nao e oferta nem publica WhatsApp.
+          normalizarLinkAfiliadoMercadoLivre(link);
+          const job = mercadoLivreLinkJob;
+          mercadoLivreLinkJob = {
+            ...job,
+            status: "done",
+            destinoStatus: job.verificarDestino || job.verificarDestinoNavegador
+              ? "verificando" : "nao-verificado",
+            atribuicaoComprovada: false,
+            mensagem: "URL oficial reconhecida; atribuicao e disponibilidade nao homologadas."
+          };
+          registrar("mercadolivre-link",
+            "Teste tecnico concluido sem salvar oferta, link ou mensagem.");
+          json(res, 200, {
+            ok: true,
+            mensagem: "Conector respondeu com uma URL oficial. Nenhuma promocao foi criada."
+          });
+          if (job.verificarDestino || job.verificarDestinoNavegador) {
+            // Ambos os validadores recebem a URL apenas nesta chamada
+            // efemera, antes de ela sair do escopo. Nunca salvar no job.
+            // O modo navegador exige confirmacao manual e executa Chrome
+            // isolado, sem perfil/cookies nem acesso a checkout.
+            const auditoria = job.verificarDestinoNavegador
+              ? auditarDestinoLinkMercadoLivreNavegador(link, job.produtoId)
+              : auditarDestinoLinkMercadoLivre(link, job.produtoId);
+            void auditoria
+              .then((verificacao) => {
+                if (mercadoLivreLinkJob?.id !== job.id ||
+                    !mercadoLivreLinkJob.diagnostico) return;
+                mercadoLivreLinkJob = {
+                  ...mercadoLivreLinkJob,
+                  destinoStatus: verificacao.estado,
+                  destinoMotivo: verificacao.motivo,
+                  atribuicaoComprovada: false
+                };
+              })
+              .catch(() => {
+                if (mercadoLivreLinkJob?.id !== job.id ||
+                    !mercadoLivreLinkJob.diagnostico) return;
+                mercadoLivreLinkJob = {
+                  ...mercadoLivreLinkJob,
+                  destinoStatus: "inconclusivo",
+                  destinoMotivo: "nao foi possivel consultar o redirecionamento",
+                  atribuicaoComprovada: false
+                };
+              });
+          }
+          return;
+        }
         const oferta = await salvarLinkAfiliadoMercadoLivre(link);
         mercadoLivreLinkJob = {
           ...mercadoLivreLinkJob,
@@ -2187,6 +2399,16 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && requestUrl.pathname === "/api/revisao") {
+      res.setHeader("cache-control", "no-store");
+      res.setHeader("x-content-type-options", "nosniff");
+      json(res, 200, await consultarPainelRevisao({
+        raiz,
+        grupo: process.env.WHATSAPP_GROUP_NAME?.trim() ?? ""
+      }));
+      return;
+    }
+
     if (req.method === "GET" && requestUrl.pathname === "/api/status") {
       json(res, 200, await estado());
       return;
@@ -2194,8 +2416,20 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && requestUrl.pathname === "/api/action") {
       const corpo = await lerJson(req);
+      const acaoSolicitada = String(corpo.action ?? "");
+      if (acaoSolicitada.startsWith("mercadolivre-link-diagnostico")) {
+        const origem = req.headers.origin;
+        if (origem && origem !== "http://127.0.0.1:" + porta &&
+            origem !== "http://localhost:" + porta) {
+          json(res, 403, {
+            ok: false,
+            mensagem: "Teste tecnico aceito apenas na Central local."
+          });
+          return;
+        }
+      }
       const resultado = await executarAcao(
-        String(corpo.action ?? ""),
+        acaoSolicitada,
         corpo as Record<string, unknown>
       );
       json(res, resultado.ok ? 200 : 409, resultado);

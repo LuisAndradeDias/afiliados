@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Oferta } from "../fontes/types.js";
+import { disponibilidadeMercadoLivreRecente } from "../fontes/mercadolivre/disponibilidade.js";
 
 const CAMINHO_PADRAO = "data/ultima-oferta-mercadolivre.json";
 
@@ -20,7 +21,7 @@ function hostMercadoLivre(hostname: string): boolean {
 
 function hostMeli(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return host === "meli.la" || host.endsWith(".meli.la");
+  return host === "meli.la";
 }
 
 export function normalizarLinkAfiliadoMercadoLivre(valor: string): string {
@@ -36,8 +37,8 @@ export function normalizarLinkAfiliadoMercadoLivre(valor: string): string {
     throw new Error("O link informado não é uma URL válida.");
   }
 
-  if (url.protocol !== "https:") {
-    throw new Error("Use somente links HTTPS gerados pelo Mercado Livre.");
+  if (url.protocol !== "https:" || url.username || url.password || url.port) {
+    throw new Error("Use somente links HTTPS oficiais, sem credenciais ou portas adicionais.");
   }
 
   const encurtado = hostMeli(url.hostname);
@@ -87,6 +88,11 @@ export async function salvarLinkAfiliadoMercadoLivre(
 ): Promise<Oferta> {
   const link = normalizarLinkAfiliadoMercadoLivre(valor);
   const oferta = await lerOfertaMercadoLivre(caminho);
+  if (!disponibilidadeMercadoLivreRecente(oferta)) {
+    throw new Error(
+      "Mercado Livre: disponibilidade nao confirmada ou vencida. Busque outra oferta; link nao salvo."
+    );
+  }
   const atualizada: Oferta = {
     ...oferta,
     urlAfiliado: link

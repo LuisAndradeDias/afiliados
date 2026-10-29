@@ -11,6 +11,11 @@ const html = await readFile("src/painel/public/index.html", "utf8");
 const base = {
   grupo: "Ofertas",
   grupoConfigurado: true,
+  // Fixture visual: elegibilidade apenas simulada, sem cadastro operacional.
+  canalElegibilidade: {
+    estado: "elegivel", codigo: "CANAL_HOMOLOGADO",
+    motivo: "Fixture homologada", podePublicar: true
+  },
   afiliadoConfigurado: true,
   afiliadoTag: "topoutlet05-20",
   sessaoWhatsapp: true,
@@ -98,6 +103,101 @@ try {
     waitUntil: "networkidle"
   });
 
+  // Uma pasta Chrome existente nao comprova que a conta esta autenticada.
+  assert(
+    !(await page.locator("#whatsappDot").getAttribute("class"))?.includes("ok"),
+    "Perfil salvo sem verificacao nao pode ter indicador verde."
+  );
+  state = {
+    ...base,
+    executando: ["login"],
+    logs: [
+      "[16:17:00] [login] Iniciado.",
+      "[16:17:02] [login] WHATSAPP_CONEXAO:AGUARDANDO_PAREAMENTO"
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+      .includes("Aguardando"),
+    "O usuario deve enxergar status persistente enquanto pareia."
+  );
+  state = {
+    ...base,
+    executando: ["login"],
+    logs: [
+      "[16:17:00] [login] Iniciado.",
+      "[16:17:02] [login] WHATSAPP_CONEXAO:AGUARDANDO_PAREAMENTO",
+      "[16:17:04] [login] WHATSAPP_CONEXAO:CONECTADO"
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+      .includes("Conectado"),
+    "So apos evidencia do WhatsApp o painel deve confirmar o login."
+  );
+  state = {
+    ...base,
+    logs: [
+      "[16:17:00] [login] Iniciado.",
+      "[16:17:02] [login] WHATSAPP_CONEXAO:FALHA_NAVEGACAO",
+      "[16:17:02] [login] Finalizado com código 1."
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+      .includes("Falha"),
+    "Fechamento abrupto nao deve parecer login concluido."
+  );
+  assert(
+    !(await page.locator("#whatsappDot").getAttribute("class"))?.includes("ok"),
+    "Falha de conexao deve manter indicador nao conectado."
+  );
+  state = { ...base };
+  await page.waitForTimeout(1700);
+
+  state = {
+    ...base,
+    grupoConfigurado:true,
+    canalElegibilidade:{
+      estado:"pendente-verificacao", codigo:"CANAL_NAO_HOMOLOGADO",
+      motivo:"Nenhum cadastro de canais homologados foi encontrado.",
+      podePublicar:false
+    },
+    operacaoEstado:"offer-pending",
+    ofertaPlataformaAtual:"amazon",
+    ofertaPreparada:true,
+    mensagem:"TESTE DE OFERTA NAO ENVIAR",
+    logs:[
+      "[16:50:54] [mercadolivre-buscar] Iniciado.",
+      "[16:51:30] [mercadolivre-buscar] Mercado Livre catalogo: consultados=60, 404=59, cache404=0, vendedores-verdes=0, descontos-minimos=0, catalogos-ativos-sem-vencedor=1.",
+      "[16:52:05] [mercadolivre-buscar] Mercado Livre catalogo: consultados=60, 404=59, cache404=0, vendedores-verdes=0, descontos-minimos=0, catalogos-ativos-sem-vencedor=1.",
+      "[16:52:05] [mercadolivre-buscar] Mercado Livre: 0 candidatos com vendedor verificado, 0 elegiveis com minimo real de 25% (cupons ativos considerados: 0).",
+      "[16:52:05] [mercadolivre-buscar] Finalizado com código 2."
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#mlDiscoveryNotice").innerText()).includes("118 respostas 404"),
+    "A falta de ofertas no ML deve mostrar o motivo tecnico sem chamar de falha de login."
+  );
+  assert(
+    (await page.locator("#reviewSubtitle").innerText()).includes("homologação"),
+    "Oferta bloqueada por canal deve exibir motivo em vez de recomendar reabrir."
+  );
+  assert(
+    (await page.locator("#flowTitle").innerText()).includes("bloqueada"),
+    "Atividade atual nao pode sugerir que apenas falta abrir o WhatsApp."
+  );
+  assert(await page.locator("#reopenWhatsappButton").isDisabled(),
+    "Sem homologacao o preparador permanece bloqueado.");
+  assert(await page.locator("#openWhatsappConnectionButton").isEnabled(),
+    "Verificar sessao sem envio continua permitido.");
+  state = { ...base };
+  await page.waitForTimeout(1700);
+
   assert(
     (await page.locator("#cycleToggleButton").innerText()).includes("Iniciar"),
     "Estado pausado deveria exibir Iniciar ciclo."
@@ -105,6 +205,14 @@ try {
   assert(
     (await page.locator("#flowTitle").innerText()) === "Ciclo automático pausado",
     "Atividade pausada não foi renderizada corretamente."
+  );
+  assert(
+    (await page.locator("#mercadoLivreStatus").innerText()).includes("Token salvo"),
+    "Token configurado não é prova de API Mercado Livre autorizada."
+  );
+  assert(
+    (await page.locator("#mlAutomationStatus").textContent())?.includes("Confira o caminho"),
+    "Um ping da extensão não pode ser apresentado como link pronto."
   );
   assert(
     (await page.locator("#tempoMedioButton").getAttribute("aria-pressed")) === "true",
@@ -238,6 +346,34 @@ try {
   assert(
     !(await page.locator("#sendNowButton").isVisible()),
     "Enviar não pode aparecer se a janela do WhatsApp não está pronta."
+  );
+
+  // Etapa 57: oferta presente, grupo salvo e regra pendente nunca mostram envio livre.
+  state = {
+    ...base,
+    operacaoEstado: "offer-pending",
+    operacaoPlataforma: "mercado-livre",
+    ofertaPreparada: true,
+    ofertaPlataformaAtual: "mercado-livre",
+    mensagem: "OFERTA FICTICIA SEM ENVIO",
+    canalElegibilidade: {
+      estado: "pendente-verificacao", codigo: "CANAL_NAO_HOMOLOGADO",
+      motivo: "Cadastro pendente para esta plataforma", podePublicar: false
+    }
+  };
+  await page.waitForTimeout(1_700);
+  assert(
+    (await page.locator("#cycleWhatsapp").innerText()) === "Canal não homologado",
+    "O estado comercial deve ser compreensível no ciclo."
+  );
+  assert(
+    (await page.locator("#whatsappSetupHint").innerText()).includes("Envio bloqueado"),
+    "O painel deve explicar por que o canal está bloqueado."
+  );
+  assert(
+    (await page.locator("#reopenWhatsappButton").isDisabled()) &&
+    !(await page.locator("#sendNowButton").isVisible()),
+    "Oferta de canal não homologado não permite abrir nem enviar."
   );
 
   // A migração para o PC novo começa sem grupo; a oferta deve ser

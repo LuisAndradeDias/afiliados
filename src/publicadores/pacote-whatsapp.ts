@@ -10,6 +10,11 @@ export interface PacoteWhatsapp {
   imagemUrl?: string;
   plataforma: string;
   produtoId: string;
+  anuncioId?: string;
+  vendedorId?: number;
+  estoqueDisponivel?: number;
+  disponibilidadeConfirmada?: boolean;
+  disponibilidadeVerificadaEm?: string;
   titulo: string;
   precoAtual: number;
   precoAnterior?: number;
@@ -22,6 +27,12 @@ export interface PacoteWhatsapp {
   cupomValor?: number;
   cupomCompraMinima?: number;
   cupomDescontoMaximo?: number;
+  cupomValidoAte?: string;
+  cupomValidacao?: Oferta["cupomValidacao"];
+  cupomConfirmadoEm?: string;
+  cupomProdutoIdConfirmado?: string;
+  cupomAnuncioIdConfirmado?: string;
+  cupomFonteConfirmacao?: Oferta["cupomFonteConfirmacao"];
   precoComCupomEstimado?: number;
   descontoEfetivoPercentual?: number;
   urlProduto: string;
@@ -38,6 +49,11 @@ export async function salvarPacoteWhatsapp(
     imagemUrl: oferta.imagem,
     plataforma: oferta.plataforma,
     produtoId: oferta.produtoId,
+    anuncioId: oferta.anuncioId,
+    vendedorId: oferta.vendedorId,
+    estoqueDisponivel: oferta.estoqueDisponivel,
+    disponibilidadeConfirmada: oferta.disponibilidadeConfirmada,
+    disponibilidadeVerificadaEm: oferta.disponibilidadeVerificadaEm,
     titulo: oferta.titulo,
     precoAtual: oferta.precoAtual,
     precoAnterior: oferta.precoAnterior,
@@ -50,6 +66,12 @@ export async function salvarPacoteWhatsapp(
     cupomValor: oferta.cupomValor,
     cupomCompraMinima: oferta.cupomCompraMinima,
     cupomDescontoMaximo: oferta.cupomDescontoMaximo,
+    cupomValidoAte: oferta.cupomValidoAte,
+    cupomValidacao: oferta.cupomValidacao,
+    cupomConfirmadoEm: oferta.cupomConfirmadoEm,
+    cupomProdutoIdConfirmado: oferta.cupomProdutoIdConfirmado,
+    cupomAnuncioIdConfirmado: oferta.cupomAnuncioIdConfirmado,
+    cupomFonteConfirmacao: oferta.cupomFonteConfirmacao,
     precoComCupomEstimado: oferta.precoComCupomEstimado,
     descontoEfetivoPercentual: oferta.descontoEfetivoPercentual,
     urlProduto: oferta.urlProduto,

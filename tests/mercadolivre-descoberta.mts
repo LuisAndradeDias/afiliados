@@ -19,6 +19,8 @@ assert.equal(descontoMinimoOferta({MIN_DISCOUNT_PERCENT:"25"} as NodeJS.ProcessE
 const exemplo = {
   plataforma:"Mercado Livre", produtoId:"MLB-TEST-QUALITY", titulo:"Smartphone Samsung",
   precoAtual:800,precoAnterior:1000,descontoPercentual:20,imagem:undefined,
+  anuncioId:"MLBTESTITEM",vendedorId:55,estoqueDisponivel:8,
+  disponibilidadeConfirmada:true,disponibilidadeVerificadaEm:new Date().toISOString(),
   urlProduto:"https://www.mercadolivre.com.br/p/MLBTESTQUALITY",encontradoEm:new Date(),
 };
 assert.equal(avaliarQualidadeOferta(exemplo,{} as NodeJS.ProcessEnv).elegivel,true);
@@ -56,6 +58,14 @@ globalThis.fetch = async (url,options) => {
       available_quantity:8,
     }]}),{status:200});
   }
+  if(dest.includes("/products/MLBTESTLOW") || dest.includes("/products/MLBTESTGOOD")){
+    const good=dest.includes("MLBTESTGOOD");
+    return new Response(JSON.stringify({
+      id:good?"MLBTESTGOOD":"MLBTESTLOW",status:"active",
+      buy_box_winner:{item_id:good?"MLB1234567":"MLB9876543",
+        seller_id:55,price:good?800:950,available_quantity:8}
+    }),{status:200});
+  }
   if(dest.includes("/users/bulk?ids=")){
     return new Response(JSON.stringify([{
       status_code:200,body:{id:55,seller_reputation:{level_id:"5_green"}},
@@ -68,6 +78,15 @@ try{
   assert.equal(ofertas.length,2,"O primeiro an�ncio abaixo de 20% n�o deve encerrar a busca.");
   assert.ok(ofertas.some(o=>o.descontoPercentual===20));
   assert.ok(requests >=4);
+  // Um valor digitado incorretamente no .env nao pode zerar todas as buscas.
+  process.env.MERCADOLIVRE_SEARCH_PAGES_PER_QUERY = "nao-e-numero";
+  const buscaComConfiguracaoInvalida = await new MercadoLivreApiFonte(
+    "smartphone", 10, "mock-token"
+  ).buscar();
+  assert.ok(
+    buscaComConfiguracaoInvalida.some(o => o.descontoPercentual === 20),
+    "Configuracao de paginas invalida deve usar padrao seguro, nunca retornar zero silenciosamente."
+  );
 }finally{
   globalThis.fetch=fetchReal;
   if(antigo===undefined)delete process.env.MERCADOLIVRE_MAX_OFFERS_PER_QUERY;

@@ -60,18 +60,76 @@
     box.textContent = texto;
   }
 
+  // Ao recarregar a extensao, scripts ja injetados permanecem na aba,
+  // mas perdem acesso ao runtime anterior. Parar o polling nesse contexto
+  // evita erros repetidos e nunca tenta restaurar uma sessao sozinho.
+  let intervaloCiclo = null;
+  let contextoInvalido = false;
+  const MENSAGEM_CONTEXTO = "Conector atualizado. Recarregue esta aba do Mercado Livre.";
+
+  function mensagemDoErro(error) {
+    return error && typeof error.message === "string"
+      ? error.message
+      : String(error ?? "");
+  }
+
+  function erroDeContexto(error) {
+    return /extension context invalidated|context invalidated/i.test(mensagemDoErro(error));
+  }
+
+  function interromperContextoAntigo() {
+    contextoInvalido = true;
+    if (intervaloCiclo !== null) {
+      clearInterval(intervaloCiclo);
+      intervaloCiclo = null;
+    }
+  }
+
   function enviar(message) {
+    if (contextoInvalido) {
+      return Promise.resolve({ ok: false, mensagem: MENSAGEM_CONTEXTO });
+    }
+
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage(message, (response) => {
-        if (chrome.runtime.lastError) {
-          resolve({
-            ok: false,
-            mensagem: chrome.runtime.lastError.message
-          });
+      const erroSeguro = (error) => {
+        if (erroDeContexto(error)) {
+          interromperContextoAntigo();
+          return { ok: false, mensagem: MENSAGEM_CONTEXTO };
+        }
+        return {
+          ok: false,
+          mensagem: mensagemDoErro(error) || "Falha no Conector."
+        };
+      };
+
+      try {
+        if (typeof chrome === "undefined" || !chrome.runtime?.id) {
+          interromperContextoAntigo();
+          resolve({ ok: false, mensagem: MENSAGEM_CONTEXTO });
           return;
         }
-        resolve(response || { ok: false, mensagem: "Sem resposta." });
-      });
+
+        const respostaPendente = chrome.runtime.sendMessage(message, (response) => {
+          try {
+            const erro = chrome.runtime.lastError;
+            if (erro) {
+              resolve(erroSeguro(erro));
+              return;
+            }
+            resolve(response || { ok: false, mensagem: "Sem resposta." });
+          } catch (error) {
+            resolve(erroSeguro(error));
+          }
+        });
+
+        // Chrome MV3 pode fornecer uma Promise mesmo usando callback.
+        // A rejeicao nao pode ficar sem tratamento apos reload da extensao.
+        if (respostaPendente && typeof respostaPendente.catch === "function") {
+          respostaPendente.catch((error) => resolve(erroSeguro(error)));
+        }
+      } catch (error) {
+        resolve(erroSeguro(error));
+      }
     });
   }
 
@@ -165,8 +223,8 @@
       .map(avaliar)
       .sort((a, b) => b.score - a.score)[0];
 
-    // Nunca escolhe um campo gen�rico s� porque � o �nico input da p�gina.
-    // O Gerador de Links precisa apresentar ind�cios claros de URL/link/produto.
+    // Nunca escolhe um campo gen\u00e9rico s\u00f3 porque \u00e9 o \u00fanico input da p\u00e1gina.
+    // O Gerador de Links precisa apresentar ind\u00edcios claros de URL/link/produto.
     return melhor && melhor.score >= 6 ? melhor.el : null;
   }
 
@@ -245,6 +303,8 @@
   }
 
   function preencher(el, valor) {
+    // Alguns formularios validam somente campos focados ao receber input.
+    el.focus();
     const proto =
       el instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype
@@ -256,7 +316,6 @@
 
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
-    el.focus();
   }
 
   function linksNaTela() {
@@ -321,7 +380,7 @@
         .trim();
 
       if (
-        /v�lido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(
+        /v\u00e1lido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(
           bloco
         )
       ) {
@@ -346,13 +405,55 @@
     });
   }
 
+  // Evidencias tecnicas de DOM, nunca valores, URLs, etiquetas ou textos
+  // do usuario. Nao clica, nao envia rede, nao altera a pagina.
+  function diagnosticarGeradorDesabilitado(campo, urlEsperada) {
+    const formulario = campo?.closest("form, dialog, [role='dialog'], section, article") || document;
+    const selects = [...formulario.querySelectorAll("select")].filter(visivel);
+    let etiqueta = "ETIQUETA_NAO_DETECTADA";
+    for (const el of selects) {
+      const contexto = normalizar([
+        el.getAttribute("aria-label"),
+        el.getAttribute("name"),
+        el.closest("label")?.textContent?.slice(0, 120)
+      ].filter(Boolean).join(" "));
+      if (!/(etiqueta|tag)/.test(contexto)) continue;
+      const selecionada = el.selectedOptions?.[0];
+      const textoOpcao = normalizar(selecionada?.textContent);
+      etiqueta = el.value && !selecionada?.disabled &&
+        !/selecion|escolh|criar|nova etiqueta/.test(textoOpcao)
+        ? "ETIQUETA_SELECIONADA"
+        : "ETIQUETA_PENDENTE";
+      break;
+    }
+    const botao = localizarBotaoGerar(true);
+    const bloqueio = botao?.matches(":disabled") ? "BOTAO_DISABLED"
+      : botao?.getAttribute("aria-disabled") === "true" ? "BOTAO_ARIA_DISABLED"
+      : "BOTAO_SEM_SINAL_NATIVO";
+    const alerta = [...formulario.querySelectorAll('[role="alert"], [aria-invalid="true"]')]
+      .some((el) => visivel(el));
+    const campoInvalido = campo instanceof HTMLInputElement && !campo.checkValidity();
+    return [
+      campo?.value === urlEsperada ? "URL_PRESERVADA" : "URL_DIVERGENTE",
+      campo?.disabled || campo?.readOnly ? "CAMPO_BLOQUEADO" : "CAMPO_EDITAVEL",
+      campoInvalido ? "VALIDACAO_NATIVA_INVALIDA" : "VALIDACAO_NATIVA_SEM_ERRO",
+      etiqueta,
+      bloqueio,
+      alerta ? "ALERTA_VISIVEL" : "SEM_ALERTA_VISIVEL"
+    ].join(";");
+  }
+
   async function processar(job) {
     processando = true;
     jobAtual = job.id;
-    mostrarStatus("Automa��o Meli: preparando o Gerador de Links...");
+    mostrarStatus("Automa\u00e7\u00e3o Meli: preparando o Gerador de Links...");
 
     try {
-      await enviar({ type: "startJob", id: job.id });
+      const inicio = await enviar({ type: "startJob", id: job.id });
+      if (!inicio?.ok) {
+        if (contextoInvalido) return;
+        throw new Error(inicio?.mensagem || "Nao foi possivel iniciar o gerador.");
+      }
 
       let campo = localizarCampoUrl();
 
@@ -360,45 +461,54 @@
         const gerador = await esperar(localizarGerador, 12000);
         if (!gerador) {
           throw new Error(
-            "N�o encontrei o bot�o Gerador de Links. Abra a �rea de Afiliados e tente novamente."
+            "N\u00e3o encontrei o bot\u00e3o Gerador de Links. Abra a \u00e1rea de Afiliados e tente novamente."
           );
         }
 
         gerador.click();
-        mostrarStatus("Automa��o Meli: abrindo o Gerador de Links...");
+        mostrarStatus("Automa\u00e7\u00e3o Meli: abrindo o Gerador de Links...");
         campo = await esperar(localizarCampoUrl, 15000);
       }
 
       if (!campo) {
-        throw new Error("N�o encontrei o campo para colar a URL do produto.");
+        throw new Error("N\u00e3o encontrei o campo para colar a URL do produto.");
       }
 
       const url = new URL(job.urlProduto);
-      if (url.protocol !== "https:" ||
-          !/(^|\.)mercadolivre\.com(?:\.br)?$/.test(url.hostname) ||
-          !/^\/p\/[A-Za-z0-9_-]+/.test(url.pathname)) {
-        throw new Error("O produto informado n�o � uma p�gina de cat�logo autorizada.");
+      const hostMercadoLivre = /(^|\.)mercadolivre\.com(?:\.br)?$/.test(url.hostname);
+      // URLs oficiais de catalogo (/p/MLB...) e anuncios individuais
+      // (/MLB-12345-nome-_JM) podem ser aceitas pelo Gerador de Links.
+      // Preserva o slug completo do produto, necessario em alguns geradores.
+      const catalogo = /^\/(?:(?=[^/]{1,200}\/)[a-z0-9]+(?:-[a-z0-9]+)+\/)?p\/MLB\d+\/?$/i.test(url.pathname);
+      const anuncio = /^\/MLB-\d+(?:-[^/?#]*)?\/?$/i.test(url.pathname);
+      if (url.protocol !== "https:" || url.username || url.password ||
+          url.port || !hostMercadoLivre || (!catalogo && !anuncio)) {
+        throw new Error("O produto informado n\u00e3o \u00e9 uma p\u00e1gina de cat\u00e1logo ou an\u00fancio autorizada.");
       }
       preencher(campo, job.urlProduto);
       campo.blur();
-      mostrarStatus("Automa��o Meli: URL preenchida. Localizando o Gerador...");
+      mostrarStatus("Automa\u00e7\u00e3o Meli: URL preenchida. Localizando o Gerador...");
 
       let botao = await esperar(() => localizarBotaoGerar(), 3500);
       if (!botao) {
         const etiquetaEscolhida = await escolherEtiquetaUnica();
         if (etiquetaEscolhida) {
-          mostrarStatus("Automa��o Meli: etiqueta padr�o selecionada. Gerando link...");
+          mostrarStatus("Automa\u00e7\u00e3o Meli: etiqueta padr\u00e3o selecionada. Gerando link...");
           botao = await esperar(() => localizarBotaoGerar(), 6000);
         }
       }
       if (!botao) {
         if (localizarBotaoGerar(true)) {
-          throw new Error("Bot�o Gerar desabilitado. Confira a etiqueta de afiliado e o formato de link na Central.");
+          const diagnostico = diagnosticarGeradorDesabilitado(campo, job.urlProduto);
+          throw new Error(
+            "Bot\u00e3o Gerar desabilitado. A etiqueta pode estar correta; " +
+            "confirme a elegibilidade no portal. Diagnostico seguro: " + diagnostico
+          );
         }
-        throw new Error("A Central de Afiliados n�o mostrou o bot�o Criar/Gerar link. Abra o Gerador oficial.");
+        throw new Error("A Central de Afiliados n\u00e3o mostrou o bot\u00e3o Criar/Gerar link. Abra o Gerador oficial.");
       }
 
-      // Em execu��es consecutivas o resultado anterior pode continuar vis�vel.
+      // Em execu\u00e7\u00f5es consecutivas o resultado anterior pode continuar vis\u00edvel.
       // Guardamos os links existentes para nunca devolver o link da oferta anterior.
       const linksAntes = new Set(linksNaTela());
       botao.click();
@@ -416,7 +526,7 @@
 
       if (!link) {
         throw new Error(
-          "O Mercado Livre n�o exibiu um link oficial reconhec�vel ap�s gerar."
+          "O Mercado Livre n\u00e3o exibiu um link oficial reconhec\u00edvel ap\u00f3s gerar."
         );
       }
 
@@ -430,12 +540,15 @@
         throw new Error(resposta?.mensagem || "O painel recusou o link gerado.");
       }
 
-      mostrarStatus("Link oficial gerado e salvo no painel.", "ok");
+      mostrarStatus(job.diagnostico
+        ? "Link oficial reconhecido no teste, sem salvar ou publicar."
+        : "Link oficial gerado e salvo no painel.", "ok");
       await new Promise((resolve) => setTimeout(resolve, 3500));
     } catch (error) {
+      if (contextoInvalido) return;
       const mensagem =
         error instanceof Error ? error.message : String(error);
-      mostrarStatus("Automa��o Meli: " + mensagem, "erro");
+      mostrarStatus("Automa\u00e7\u00e3o Meli: " + mensagem, "erro");
       await enviar({
         type: "result",
         id: job.id,
@@ -452,13 +565,16 @@
   }
 
   async function ciclo() {
+    if (contextoInvalido) return;
     await enviar({ type: "ping" });
+    if (contextoInvalido) return;
     await observarCupons();
 
     // Outras abas Mercado Livre nao podem disputar um link pendente.
-    if (processando || !paginaAfiliados()) return;
+    if (contextoInvalido || processando || !paginaAfiliados()) return;
 
     const resposta = await enviar({ type: "getJob" });
+    if (contextoInvalido) return;
     const job = resposta?.job;
 
     if (
@@ -468,10 +584,19 @@
       job.id !== jobAtual &&
       (job.status === "pending" || job.status === "running")
     ) {
-      processar(job);
+      void processar(job).catch((error) => {
+        if (erroDeContexto(error)) interromperContextoAntigo();
+      });
     }
   }
 
-  ciclo();
-  setInterval(ciclo, POLL_MS);
+  function cicloSeguro() {
+    if (contextoInvalido) return;
+    void ciclo().catch((error) => {
+      if (erroDeContexto(error)) interromperContextoAntigo();
+    });
+  }
+
+  cicloSeguro();
+  if (!contextoInvalido) intervaloCiclo = setInterval(cicloSeguro, POLL_MS);
 })();

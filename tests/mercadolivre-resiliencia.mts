@@ -58,11 +58,19 @@ test("404 is cached across search processes and expires after 30 minutes", async
   const mock = (async (url: URL | string) => {
     const str = String(url);
     if (str.includes("/products/search")) return products(["MLBTEST404", "MLBTESTOK"]);
-    if (str.includes("/products/MLBTEST404/items")) { negatives++; return reply({}, 404); }
+    if (str.endsWith("/products/MLBTEST404")) {
+      negatives++;
+      return reply({},404);
+    }
     if (str.includes("/products/MLBTESTOK/items")) return reply({ results: [{
       item_id: "MLBTESTITEM", seller_id: 10, price: 700,
-      original_price: 1000, condition: "new"
+      original_price: 1000, condition: "new", available_quantity: 7
     }] });
+    if (str.endsWith("/products/MLBTESTOK")) return reply({
+      id: "MLBTESTOK", status: "active",
+      buy_box_winner: { item_id: "MLBTESTITEM", seller_id: 10,
+        price: 700, available_quantity: 7 }
+    });
     if (str.includes("/users/bulk")) return greenSeller(10);
     throw new Error("Unexpected mocked URL path");
   }) as typeof fetch;
@@ -90,6 +98,11 @@ test("HTTP 429 on catalog item aborts this round immediately without retry", asy
   await mocked((async (url: URL | string) => {
     const str = String(url);
     if (str.includes("/products/search")) return products(["MLBRATELIMIT", "MLBNEXT"]);
+    if (str.endsWith("/products/MLBRATELIMIT")) return reply({
+      id:"MLBRATELIMIT",status:"active",
+      buy_box_winner:{item_id:"MLB1234567890",seller_id:20,price:50,
+        available_quantity:1,currency_id:"BRL"}
+    });
     if (str.includes("/products/MLBRATELIMIT/items")) {
       itemRequests++;
       if (itemRequests === 1) return reply({ error: "too_many_requests" }, 429);
@@ -114,8 +127,12 @@ test("HTTP 429 during seller reputation also aborts rather than declaring non-gr
     if (str.includes("/products/search")) return products(["MLBRATESELLER"]);
     if (str.includes("/products/MLBRATESELLER/items")) return reply({ results: [{
       item_id: "MLB1", seller_id: 20, price: 50,
-      original_price: 100, condition: "new"
+      original_price: 100, condition: "new", available_quantity: 1
     }] });
+    if (str.endsWith("/products/MLBRATESELLER")) return reply({
+      id:"MLBRATESELLER", status:"active",
+      buy_box_winner:{item_id:"MLB1",seller_id:20,price:50,available_quantity:1}
+    });
     if (str.includes("/users/bulk")) {
       reputations++;
       if (reputations === 1) return reply({ error: "too_many_requests" }, 429);
@@ -178,10 +195,16 @@ test("HTTP 200 with zero listings is not treated as an explicit catalog 404", as
   await mocked((async (url: URL | string) => {
     const str = String(url);
     if (str.includes("/products/search")) return products(["MLBEMPTY"]);
+    if (str.endsWith("/products/MLBEMPTY")) return reply({
+      id:"MLBEMPTY",status:"active",
+      buy_box_winner:{item_id:"MLB101010101",seller_id:44,
+        price:190,available_quantity:1,currency_id:"BRL"}
+    });
     if (str.includes("/products/MLBEMPTY/items")) {
       emptyFetches++;
       return reply({ results: [] });
     }
+    if (str.endsWith("/items/MLB101010101")) return reply({},404);
     throw new Error("Unexpected request");
   }) as typeof fetch, async () => {
     await new MercadoLivreApiFonte("teste", 10, "mock-token").buscar();
@@ -195,7 +218,7 @@ test("unwritable 404 cache does not block the API search", async () => {
   await mocked((async (url: URL | string) => {
     const str = String(url);
     if (str.includes("/products/search")) return products(["MLBNOPUBLICATION"]);
-    if (str.includes("/products/MLBNOPUBLICATION/items")) {
+    if (str.endsWith("/products/MLBNOPUBLICATION")) {
       requested++;
       return reply({}, 404);
     }
@@ -214,6 +237,11 @@ test("corrupted cache is ignored; non-green sellers never pass", async () => {
   await mocked((async (url: URL | string) => {
     const str = String(url);
     if (str.includes("/products/search")) return products(["MLBUNTRUSTED"]);
+    if (str.endsWith("/products/MLBUNTRUSTED")) return reply({
+      id:"MLBUNTRUSTED",status:"active",
+      buy_box_winner:{item_id:"MLBNOTGREEN",seller_id:90,
+        price:50,available_quantity:1,currency_id:"BRL"}
+    });
     if (str.includes("/products/MLBUNTRUSTED/items")) return reply({ results: [{
       item_id: "MLBNOTGREEN", seller_id: 90, price: 50, original_price: 100,
       condition: "new"

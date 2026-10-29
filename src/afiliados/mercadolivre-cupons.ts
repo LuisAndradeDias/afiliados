@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Oferta } from "../fontes/types.js";
+import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 
 const CUPONS_URL =
   process.env.MERCADOLIVRE_COUPON_SOURCE_URL?.trim() ||
@@ -63,12 +64,17 @@ function limparHtml(html: string): string {
     .replace(/&amp;|&#38;/gi, "&")
     .replace(/&quot;|&#34;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&aacute;/gi, "�")
-    .replace(/&eacute;/gi, "�")
-    .replace(/&iacute;/gi, "�")
-    .replace(/&oacute;/gi, "�")
-    .replace(/&uacute;/gi, "�")
-    .replace(/&ccedil;/gi, "�")
+    .replace(/&aacute;/gi, "\u00e1")
+    .replace(/&eacute;/gi, "\u00e9")
+    .replace(/&iacute;/gi, "\u00ed")
+    .replace(/&oacute;/gi, "\u00f3")
+    .replace(/&uacute;/gi, "\u00fa")
+    .replace(/&ccedil;/gi, "\u00e7")
+    .replace(/&agrave;/gi, "\u00e0")
+    .replace(/&atilde;/gi, "\u00e3")
+    .replace(/&ecirc;/gi, "\u00ea")
+    .replace(/&ocirc;/gi, "\u00f4")
+    .replace(/&uuml;/gi, "\u00fc")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -104,15 +110,16 @@ function datasDoTermo(termos: string): {
   validoDe?: string;
   validoAte?: string;
 } {
-  const inicio = termos.match(
-    /(?:Cupom\s+)?v�lido\s+de\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
+  const busca = textoNormalizado(termos);
+  const inicio = busca.match(
+    /(?:cupom\s+)?valido\s+de\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
   );
   if (!inicio) return {};
 
   const validoDe = isoDataBrasil(inicio[1], inicio[2], inicio[3]);
-  const restante = termos.slice((inicio.index ?? 0) + inicio[0].length);
+  const restante = busca.slice((inicio.index ?? 0) + inicio[0].length);
   const fim = restante.match(
-    /(?:at�|a)\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
+    /(?:ate|a)\s+(\d{2})\/(\d{2})\/(\d{2,4})/i
   );
 
   if (fim) {
@@ -122,7 +129,7 @@ function datasDoTermo(termos: string): {
     };
   }
 
-  if (/at�\s+(?:�s?|as)\s*23h59/i.test(termos)) {
+  if (/ate\s+as?\s*23h59/i.test(busca)) {
     return {
       validoDe,
       validoAte: isoDataBrasil(inicio[1], inicio[2], inicio[3], true)
@@ -133,28 +140,29 @@ function datasDoTermo(termos: string): {
 }
 
 function parsearCupom(codigo: string, termos: string): CupomMercadoLivre | null {
+  const busca = textoNormalizado(termos);
   const percentualMatch =
-    termos.match(
-      /Desconto(?:\s+de)?(?:\s+at�)?\s*(\d+(?:[.,]\d+)?)\s*%/i
+    busca.match(
+      /desconto(?:\s+de)?(?:\s+ate)?\s*(\d+(?:[.,]\d+)?)\s*%/i
     ) ??
-    termos.match(/(\d+(?:[.,]\d+)?)\s*%\s*OFF/i);
+    busca.match(/(\d+(?:[.,]\d+)?)\s*%\s*OFF/i);
 
   const valorFixoMatch = percentualMatch
     ? null
     : (
-        termos.match(
-          /(?:Desconto(?:\s+de)?|Ganhe)\s+R\$\s*([\d.]+(?:,\d+)?)/i
+        busca.match(
+          /(?:desconto(?:\s+de)?|ganhe)\s+R\$\s*([\d.]+(?:,\d+)?)/i
         ) ??
-        termos.match(/R\$\s*([\d.]+(?:,\d+)?)\s*OFF/i)
+        busca.match(/R\$\s*([\d.]+(?:,\d+)?)\s*OFF/i)
       );
 
-  const compraMinimaMatch = termos.match(
+  const compraMinimaMatch = busca.match(
     /compra(?:s)?\s+a\s+partir\s+de\s+R\$\s*([\d.]+(?:,\d+)?)/i
   );
-  const descontoMaximoMatch = termos.match(
-    /desconto\s+m�ximo\s+de\s+R\$\s*([\d.]+(?:,\d+)?)/i
+  const descontoMaximoMatch = busca.match(
+    /desconto\s+maximo\s+de\s+R\$\s*([\d.]+(?:,\d+)?)/i
   );
-  const limiteMatch = termos.match(
+  const limiteMatch = busca.match(
     /limite\s+de\s+([\d.]+)\s+cupons/i
   );
 
@@ -174,8 +182,8 @@ function parsearCupom(codigo: string, termos: string): CupomMercadoLivre | null 
     validoDe: datas.validoDe,
     validoAte: datas.validoAte,
     limiteCupons: numeroBR(limiteMatch?.[1]),
-    naoCumulativo: /n�o\s+(?:�\s+)?cumulativ[oa]/i.test(termos),
-    somenteItensElegiveis: /itens?\s+eleg�veis?/i.test(termos),
+    naoCumulativo: /nao\s+(?:e\s+)?cumulativ[oa]/i.test(busca),
+    somenteItensElegiveis: /itens?\s+elegiveis?/i.test(busca),
     termos: termos.slice(0, 2_500),
     origem: "mercadolivre-promocoes",
     coletadoEm: new Date().toISOString()
@@ -198,7 +206,7 @@ export function extrairCuponsMercadoLivre(html: string): CupomMercadoLivre[] {
         : Math.min(texto.length, inicio + 3_500);
 
     const termos = texto.slice(inicio, Math.min(fim, inicio + 3_500));
-    if (!/v�lido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(termos)) {
+    if (!/valido|desconto|compra|%\s*OFF|R\$\s*[\d.,]+\s*OFF/i.test(textoNormalizado(termos))) {
       continue;
     }
 
@@ -214,13 +222,15 @@ export function extrairCuponsMercadoLivre(html: string): CupomMercadoLivre[] {
   return [...porCodigo.values()];
 }
 
-function cupomAtivo(cupom: CupomMercadoLivre, agora = Date.now()): boolean {
-  const inicio = cupom.validoDe ? new Date(cupom.validoDe).getTime() : Number.NaN;
-  const fim = cupom.validoAte ? new Date(cupom.validoAte).getTime() : Number.NaN;
-
-  if (Number.isFinite(inicio) && agora < inicio) return false;
-  if (Number.isFinite(fim) && agora > fim) return false;
-  return true;
+export function cupomAtivo(cupom: CupomMercadoLivre, agora = Date.now()): boolean {
+  const inicio = cupom.validoDe ? Date.parse(cupom.validoDe) : Number.NaN;
+  const fim = cupom.validoAte ? Date.parse(cupom.validoAte) : Number.NaN;
+  const coletado = Date.parse(cupom.coletadoEm);
+  // Fonte publica velha ou periodo incompleto nunca deve contar como atual.
+  if (!Number.isFinite(inicio) || !Number.isFinite(fim) ||
+      !Number.isFinite(coletado) || fim < inicio) return false;
+  if (agora < inicio || agora > fim || agora < coletado) return false;
+  return agora - coletado <= 30 * 60_000;
 }
 
 function refreshMs(): number {
@@ -334,7 +344,7 @@ async function baixarCupons(): Promise<CupomMercadoLivre[]> {
 
   if (!resposta.ok) {
     throw new Error(
-      `Mercado Livre cupons HTTP ${resposta.status}: n�o foi poss�vel atualizar o cat�logo.`
+      `Mercado Livre cupons HTTP ${resposta.status}: nao foi possivel atualizar o catalogo.`
     );
   }
 
@@ -343,7 +353,7 @@ async function baixarCupons(): Promise<CupomMercadoLivre[]> {
 
   if (cupons.length === 0) {
     throw new Error(
-      "A p�gina oficial de promo��es n�o retornou cupons reconhec�veis."
+      "A pagina oficial de promocoes nao retornou cupons reconheciveis."
     );
   }
 
@@ -363,8 +373,8 @@ export async function obterCuponsMercadoLivre(
   let cupons = cache?.cupons ?? [];
 
   if (opcoes.forcarAtualizacao || idade >= refreshMs() || cupons.length === 0) {
-    // A p�gina p�blica frequentemente n�o traz cupons novos ou retorna HTML
-    // din�mico. Evitar outra consulta a cada minuto: sem fabricar cupons.
+    // A pagina publica frequentemente nao traz cupons novos ou retorna HTML
+    // dinamico. Evitar outra consulta a cada minuto: sem fabricar cupons.
     if (opcoes.forcarAtualizacao || !(await falhaCupomRecente())) {
       try {
         cupons = await baixarCupons();
@@ -372,7 +382,7 @@ export async function obterCuponsMercadoLivre(
       } catch {
         await registrarFalhaCupom();
         console.warn(
-          "Mercado Livre: cupons p�blicos n�o verific�veis; buscas de ofertas com descontos pr�prios continuam normalmente (nova consulta de cupons em at� 15 min)."
+          "Mercado Livre: cupons publicos nao verificaveis; buscas de ofertas com descontos proprios continuam normalmente (nova consulta de cupons em ate 15 min)."
         );
       }
     }
@@ -486,7 +496,12 @@ function limparCupomOferta(oferta: Oferta): Oferta {
     cupomCompraMinima: undefined,
     cupomDescontoMaximo: undefined,
     cupomValidoAte: undefined,
+    cupomColetadoEm: undefined,
     cupomValidacao: undefined,
+    cupomConfirmadoEm: undefined,
+    cupomProdutoIdConfirmado: undefined,
+    cupomAnuncioIdConfirmado: undefined,
+    cupomFonteConfirmacao: undefined,
     precoComCupomEstimado: undefined,
     descontoEfetivoPercentual: oferta.descontoPercentual ?? 0
   };
@@ -498,6 +513,9 @@ function aplicarCupom(
 ): Oferta | null {
   const oferta = limparCupomOferta(ofertaOriginal);
 
+  // Revalidacao local de periodo, fonte e cache ANTES de calcular
+  // qualquer valor teorico. Sem prova do checkout, isto e so candidato.
+  if (!cupomAtivo(cupom)) return null;
   if (exclusaoConhecida(oferta)) return null;
 
   const precoReferencia =
@@ -537,6 +555,7 @@ function aplicarCupom(
     cupomCompraMinima: cupom.compraMinima,
     cupomDescontoMaximo: cupom.descontoMaximo,
     cupomValidoAte: cupom.validoAte,
+    cupomColetadoEm: cupom.coletadoEm,
     cupomValidacao: "catalogo-oficial-estimado",
     precoComCupomEstimado: precoCupom,
     descontoEfetivoPercentual: descontoEfetivo
@@ -584,10 +603,28 @@ export async function revalidarCupomMercadoLivre(
 
   if (!cupom) {
     console.warn(
-      `Mercado Livre: cupom ${oferta.cupomCodigo} n�o aparece mais no cat�logo oficial; removendo da oferta.`
+      `Mercado Livre: cupom ${oferta.cupomCodigo} nao aparece mais no catalogo oficial; removendo da oferta.`
     );
     return limparCupomOferta(oferta);
   }
 
-  return aplicarCupom(oferta, cupom) ?? limparCupomOferta(oferta);
+  const calculado = aplicarCupom(oferta, cupom);
+  if (!calculado) return limparCupomOferta(oferta);
+
+  // Preserva uma prova recente de checkout SOMENTE se a campanha ainda
+  // existe e o preco calculado continua igual ao comprovado no produto.
+  const jaConfirmado = avaliarCupomParaDivulgacao(oferta).podeAnunciar;
+  const mesmoPreco = Number.isFinite(oferta.precoComCupomEstimado) &&
+    Math.abs((calculado.precoComCupomEstimado ?? 0) -
+      (oferta.precoComCupomEstimado ?? 0)) < 0.01;
+  if (!jaConfirmado || !mesmoPreco) return calculado;
+
+  return {
+    ...calculado,
+    cupomValidacao: "produto-confirmado",
+    cupomConfirmadoEm: oferta.cupomConfirmadoEm,
+    cupomProdutoIdConfirmado: oferta.cupomProdutoIdConfirmado,
+    cupomAnuncioIdConfirmado: oferta.cupomAnuncioIdConfirmado,
+    cupomFonteConfirmacao: oferta.cupomFonteConfirmacao
+  };
 }

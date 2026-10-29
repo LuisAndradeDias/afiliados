@@ -24,6 +24,9 @@ import {
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
 import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
+import { revalidarEstoqueEPrecoMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
+import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
+import { consultarElegibilidadeCanalWhatsapp } from "../canais/elegibilidade.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -51,16 +54,65 @@ interface PacotePreparar {
   imagemUrl?: string;
   plataforma?: string;
   produtoId?: string;
+  anuncioId?: string;
+  vendedorId?: number;
+  estoqueDisponivel?: number;
+  disponibilidadeConfirmada?: boolean;
+  disponibilidadeVerificadaEm?: string;
   titulo?: string;
   precoAtual?: number;
   precoAnterior?: number;
   descontoPercentual?: number;
   descontoEfetivoPercentual?: number;
+  cupomCodigo?: string;
+  cupomValidacao?: "catalogo-oficial-estimado" | "produto-confirmado";
+  cupomValidoAte?: string;
+  cupomConfirmadoEm?: string;
+  cupomProdutoIdConfirmado?: string;
+  cupomAnuncioIdConfirmado?: string;
+  cupomFonteConfirmacao?: "checkout";
+  precoComCupomEstimado?: number;
 }
 
 const pacote: PacotePreparar = await readFile(pacotePath, "utf8")
   .then((texto) => JSON.parse(texto) as PacotePreparar)
   .catch(() => ({}));
+
+async function canalHomologadoParaEnvio(): Promise<boolean> {
+  const decisao = await consultarElegibilidadeCanalWhatsapp({
+    grupo: nomeGrupo ?? "",
+    plataforma: pacote.plataforma
+  });
+  if (!decisao.podePublicar) {
+    console.error(`CANAL_NAO_HOMOLOGADO: ${decisao.codigo} — ${decisao.motivo}`);
+    return false;
+  }
+  return true;
+}
+
+function cupomDoPacoteAptoParaEnvio(): boolean {
+  // A mesma regra protege Amazon, Mercado Livre e a futura Shopee.
+  const temCupom = Boolean(pacote.cupomCodigo) ||
+    /🎟️\s*Cupom\s*:/i.test(mensagem);
+  if (!temCupom) return true;
+  return avaliarCupomParaDivulgacao({
+    produtoId: pacote.produtoId ?? "",
+    anuncioId: pacote.anuncioId,
+    precoAtual: pacote.precoAtual ?? 0,
+    cupomCodigo: pacote.cupomCodigo,
+    cupomValidacao: pacote.cupomValidacao,
+    cupomValidoAte: pacote.cupomValidoAte,
+    cupomConfirmadoEm: pacote.cupomConfirmadoEm,
+    cupomProdutoIdConfirmado: pacote.cupomProdutoIdConfirmado,
+    cupomAnuncioIdConfirmado: pacote.cupomAnuncioIdConfirmado,
+    cupomFonteConfirmacao: pacote.cupomFonteConfirmacao,
+    precoComCupomEstimado: pacote.precoComCupomEstimado
+  }).podeAnunciar;
+}
+
+if (!modoTeste && !cupomDoPacoteAptoParaEnvio()) {
+  throw new Error("CUPOM_SEM_COMPROVACAO: mensagem bloqueada antes de abrir o WhatsApp. Refaca a oferta sem cupom ou confirme-o no checkout.");
+}
 
 // Reconfere o histórico antes de abrir o navegador: um produto com outro
 // ASIN/código de anúncio não pode ser republicado só por isso.
@@ -75,6 +127,22 @@ if (!modoTeste) {
   })) {
     console.log("DUPLICADO_BLOQUEADO: oferta já enviada recentemente. Nenhum envio executado.");
     process.exit(4);
+  }
+  // Antes de chamadas externas ou abertura do Chrome, validar o destino.
+  if (!(await canalHomologadoParaEnvio())) {
+    process.exit(8);
+  }
+  if (pacote.plataforma === "Mercado Livre") {
+    // O perfil do WhatsApp so abre apos uma consulta atual do estoque.
+    await revalidarEstoqueEPrecoMercadoLivre({
+      plataforma: "Mercado Livre",
+      produtoId: pacote.produtoId,
+      anuncioId: pacote.anuncioId,
+      vendedorId: pacote.vendedorId,
+      precoAtual: pacote.precoAtual ?? 0,
+      estoqueDisponivel: pacote.estoqueDisponivel,
+      disponibilidadeConfirmada: pacote.disponibilidadeConfirmada
+    });
   }
 }
 
@@ -382,6 +450,13 @@ async function aguardarFinalizacao(
     );
 
     if (enviarPorPainel || enviarAutomaticamente) {
+      // A elegibilidade pode ter sido revogada durante a revisao.
+      if (!modoTeste && !(await canalHomologadoParaEnvio())) {
+        await rm(enviarSignalPath, { force: true });
+        await context.close().catch(() => undefined);
+        process.exitCode = 8;
+        return;
+      }
       // Última proteção antes do clique físico: nenhuma oferta já enviada
       // pode ser publicada novamente, mesmo se o histórico mudou durante a revisão.
       if (pacote.produtoId && pacote.titulo &&
@@ -393,6 +468,40 @@ async function aguardarFinalizacao(
         console.log("DUPLICADO_BLOQUEADO: repetição detectada antes do clique. Nenhum envio executado.");
         await context.close().catch(() => undefined);
         process.exitCode = 4;
+        return;
+      }
+      // Protecao final no momento do clique fisico: o estoque pode ter
+      // acabado enquanto o usuario revisava a imagem ou a mensagem.
+      if (!modoTeste && pacote.plataforma === "Mercado Livre") {
+        try {
+          await revalidarEstoqueEPrecoMercadoLivre({
+            plataforma: "Mercado Livre",
+            produtoId: pacote.produtoId ?? "",
+            anuncioId: pacote.anuncioId,
+            vendedorId: pacote.vendedorId,
+            precoAtual: pacote.precoAtual ?? 0,
+            estoqueDisponivel: pacote.estoqueDisponivel,
+            disponibilidadeConfirmada: pacote.disponibilidadeConfirmada
+          });
+        } catch (erro) {
+          await rm(enviarSignalPath, { force: true });
+          const motivo = erro instanceof Error ? erro.message : "Falha de revalidacao";
+          const codigo = motivo.startsWith("PRECO_CONTEXTUAL_NAO_CONFIRMADO:")
+            ? "PRECO_CONTEXTUAL_ENVIO_BLOQUEADO"
+            : "PRODUTO_INDISPONIVEL_ENVIO_BLOQUEADO";
+          console.error(codigo + ": " + motivo);
+          await context.close().catch(() => undefined);
+          process.exitCode = 6;
+          return;
+        }
+      }
+      // A revisao pode durar mais que os 10 minutos de validade da prova.
+      // Nunca clicar Enviar com um cupom que venceu durante a espera.
+      if (!modoTeste && !cupomDoPacoteAptoParaEnvio()) {
+        await rm(enviarSignalPath, { force: true });
+        console.error("CUPOM_CONFIRMADO_EXPIRADO_ENVIO_BLOQUEADO: revise a mensagem, nenhum envio executado.");
+        await context.close().catch(() => undefined);
+        process.exitCode = 7;
         return;
       }
       autoEnvioTentado = true;

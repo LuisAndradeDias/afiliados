@@ -1,4 +1,6 @@
 import type { Oferta } from "../fontes/types.js";
+import { disponibilidadeMercadoLivreRecente } from "../fontes/mercadolivre/disponibilidade.js";
+import { avaliarCupomParaDivulgacao } from "./cupons-politica.js";
 
 const PRODUTOS_PRIORITARIOS =
   /\b(?:smartphone|celular|iphone|galaxy|ipad|tablet|notebook|laptop|ultrabook|macbook|computador|desktop|pc\s*gamer|placa\s+de\s+video|processador|memoria\s+ram|ssd|pendrive|monitor|smart\s*tv|televisor|televisao|tv|fone(?:s)?|headphone|headset|earbuds|airpods|caixa\s+de\s+som|soundbar|home\s*theater|microfone|mouse|teclado|webcam|power\s*bank|carregador\s+por\s+inducao|console|playstation|xbox|nintendo|switch|controle\s+gamer|controle\s+sem\s+fio|roteador|repetidor\s+wifi|impressora|camera\s+digital|camera\s+wifi|camera\s+de\s+seguranca|smartwatch|smartband|relogio\s+inteligente|tomada\s+inteligente|smart\s+plug|lampada\s+(?:inteligente|smart)|echo|fire\s*tv|kindle|projetor|air\s*fryer|fritadeira\s+eletrica|cafeteira|aspirador|robo\s+aspirador|microondas|micro-ondas|geladeira|refrigerador|freezer|liquidificador|batedeira|maquina\s+de\s+lavar|lavadora|lava\s+e\s+seca|lava\s*loucas|fogao|cooktop|forno\s+eletrico|ventilador|climatizador|ar\s*condicionado|purificador\s+de\s+agua|ferro\s+de\s+passar|barbeador\s+eletrico|secador\s+de\s+cabelo)\b/i;
@@ -38,7 +40,7 @@ export function economiaRealOferta(oferta: Oferta): number {
   const anterior = oferta.precoAnterior;
   // Cupom publico generico nao garante elegibilidade deste produto.
   const comCupom =
-    oferta.cupomValidacao === "produto-confirmado" &&
+    avaliarCupomParaDivulgacao(oferta).podeAnunciar &&
     oferta.precoComCupomEstimado &&
     oferta.precoComCupomEstimado > 0 &&
     oferta.precoComCupomEstimado < precoAtual
@@ -54,7 +56,7 @@ export function economiaRealOferta(oferta: Oferta): number {
 
   // Sem preco anterior, cupom so entra se confirmado para aquele produto.
   if (
-    oferta.cupomValidacao === "produto-confirmado" &&
+    avaliarCupomParaDivulgacao(oferta).podeAnunciar &&
     comCupom < precoAtual
   ) {
     return Math.round((precoAtual - comCupom) * 100) / 100;
@@ -107,6 +109,10 @@ export function avaliarQualidadeOferta(
     economiaReais
   });
 
+  if (!disponibilidadeMercadoLivreRecente(oferta)) {
+    return retorno(false, "disponibilidade ou estoque nao comprovados");
+  }
+
   if (!Number.isFinite(oferta.precoAtual) || oferta.precoAtual < minimoPreco) {
     return retorno(false, "preco muito baixo ou invalido");
   }
@@ -115,7 +121,7 @@ export function avaliarQualidadeOferta(
     return retorno(false, "acessorio ou consumivel");
   }
 
-  const desconto = oferta.cupomValidacao === "produto-confirmado"
+  const desconto = avaliarCupomParaDivulgacao(oferta).podeAnunciar
     ? (oferta.descontoEfetivoPercentual ?? oferta.descontoPercentual ?? 0)
     : (oferta.descontoPercentual ?? 0);
   if (!Number.isFinite(desconto) || desconto < minimoDesconto || desconto > 90) {

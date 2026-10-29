@@ -14,6 +14,8 @@ const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/ofertas-v2.css": "ofertas-v2.css",
   "/central/assets/central.tokens.css": "central.tokens.css",
   "/central/assets/central.js": "central.js",
+  "/central/assets/unified-nav.css": "unified-nav.css",
+  "/central/assets/unified-nav.js": "unified-nav.js",
   "/central/assets/shopee.css": "shopee.css",
   "/central/assets/shopee.js": "shopee.js",
 });
@@ -31,6 +33,20 @@ export async function responderRotaVisual({
 }: RotaVisual): Promise<boolean> {
   if (method !== "GET") return false;
   const publicDir = resolve(raiz, "src", "painel", "public");
+
+  if (pathname === "/revisao") {
+    const html = await readFile(resolve(publicDir, "revisao.html"), "utf8");
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer",
+      "content-security-policy": "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+    });
+    res.end(html);
+    return true;
+  }
 
   if (pathname === "/shopee") {
     const html = await readFile(resolve(publicDir, "shopee.html"), "utf8");
@@ -78,7 +94,8 @@ export async function responderRotaVisual({
   }
 
   if (pathname === "/" || pathname === "/ofertas") {
-    const html = await readFile(resolve(publicDir, "index.html"), "utf8");
+    const html = await readFile(resolve(publicDir,
+      pathname === "/" ? "central.html" : "index.html"), "utf8");
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(html);
     return true;

@@ -137,12 +137,20 @@ assert.equal(avaliarQualidadeOferta(suporteTV, cfg).elegivel, false);
 const cupomConfirmado = criarOferta({
   titulo: "Fone Bluetooth Sony",
   plataforma: "Mercado Livre",
+  anuncioId: "MLB123456", vendedorId: 101,
+  estoqueDisponivel: 2, disponibilidadeConfirmada: true,
+  disponibilidadeVerificadaEm: new Date().toISOString(),
   precoAtual: 150,
   precoAnterior: undefined,
   precoComCupomEstimado: 95,
   descontoEfetivoPercentual: 37,
   descontoPercentual: undefined,
-  cupomValidacao: "produto-confirmado"
+  cupomCodigo: "PROVA123",
+  cupomValidacao: "produto-confirmado",
+  cupomConfirmadoEm: new Date().toISOString(),
+  cupomProdutoIdConfirmado: "TESTE",
+  cupomAnuncioIdConfirmado: "MLB123456",
+  cupomFonteConfirmacao: "checkout"
 });
 assert.equal(avaliarQualidadeOferta(cupomConfirmado, cfg).elegivel, true);
 assert.equal(

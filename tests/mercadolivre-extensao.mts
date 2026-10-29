@@ -4,16 +4,17 @@ import { readFile } from "node:fs/promises";
 
 const source=await readFile("browser-extension/mercadolivre-affiliate/content.js","utf8");
 const browser=await chromium.launch({channel:"chrome",headless:true});
-async function fixture(path,html){
+async function fixture(path,html,productUrl="https://www.mercadolivre.com.br/p/MLB123456"){
   const page=await browser.newPage();
   await page.route("https://www.mercadolivre.com.br"+path,route=>route.fulfill({
     status:200,contentType:"text/html; charset=utf-8",body:html
   }));
-  await page.addInitScript(()=>{
+  await page.addInitScript((productUrl)=>{
     window.__meliJobResult=null;
     window.__meliGetJobCalls=0;
-    const job={id:"TEST-JOB-123",urlProduto:"https://www.mercadolivre.com.br/p/MLBTEST123",status:"pending"};
+    const job={id:"TEST-JOB-123",urlProduto:productUrl,status:"pending"};
     Object.defineProperty(window,"chrome",{configurable:true,value:{runtime:{
+      id:"EXTENSION_FIXTURE",
       lastError:null,
       sendMessage(message,callback){
         if(message.type==="getJob"){window.__meliGetJobCalls++;queueMicrotask(()=>callback({ok:true,job}));return;}
@@ -21,7 +22,7 @@ async function fixture(path,html){
         queueMicrotask(()=>callback({ok:true}));
       }
     }}});
-  });
+  },productUrl);
   await page.goto("https://www.mercadolivre.com.br"+path);
   await page.addScriptTag({content:source});
   return page;
@@ -43,7 +44,7 @@ try{
   assert.ok(!result.error,"Simulacao nao deve reportar erro.");
   assert.equal(result.link,"https://meli.la/TEST123");
   assert.equal(await page.locator("select").inputValue(),"padrao");
-  assert.equal(await page.locator("textarea").inputValue(),"https://www.mercadolivre.com.br/p/MLBTEST123");
+  assert.equal(await page.locator("textarea").inputValue(),"https://www.mercadolivre.com.br/p/MLB123456");
   await page.close();
 
   const page2=await fixture("/afiliados",`<html><body>
@@ -57,11 +58,145 @@ try{
   assert.equal((await page2.evaluate(()=>window.__meliJobResult)).link,"https://meli.la/TEST567");
   await page2.close();
 
+  // URL de anuncio individual: o gerador so habilita apos receber input.
+  const itemUrl="https://produto.mercadolivre.com.br/MLB-1234567890-fone-teste-_JM";
+  const itemPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <textarea aria-label="URL do produto" placeholder="Cole a URL do produto"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Etiqueta existente</option></select>
+    <button id="itemGerar" type="button" disabled>Gerar</button>
+    <div id="resultado"></div>
+    <script>
+      const field=document.querySelector("textarea");
+      const generate=document.querySelector("#itemGerar");
+      field.addEventListener("input",()=>{generate.disabled=!field.value.includes("/MLB-")});
+      generate.addEventListener("click",()=>{document.querySelector("#resultado").textContent="https://meli.la/ITEMLINK001"});
+    </script>
+  </body></html>`,itemUrl);
+  await itemPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:17000});
+  const itemResult=await itemPage.evaluate(()=>window.__meliJobResult);
+  assert.equal(itemResult.link,"https://meli.la/ITEMLINK001");
+  assert.equal(await itemPage.locator("textarea").inputValue(),itemUrl);
+  await itemPage.close();
+
+  // URL integral como copiada da pagina real: slug nao deve ser descartado.
+  const fullUrl="https://www.mercadolivre.com.br/parafusadeira-e-furadeira-impacto-the-black-tools-tb-21pw-38-cor-amarelo-frequencia-5060-hz/p/MLB38053317";
+  const fullPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <textarea aria-label="Insira 1 ou mais URLs de produtos"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Etiqueta existente</option></select>
+    <button id="fullGerar" disabled>Gerar</button>
+    <div id="fullResult"></div>
+    <script>
+      const target=document.querySelector("textarea");
+      const button=document.querySelector("#fullGerar");
+      target.addEventListener("input",()=>{
+        button.disabled=!target.value.includes("/parafusadeira-e-furadeira-impacto-")
+          || !target.value.endsWith("/p/MLB38053317");
+      });
+      button.addEventListener("click",()=>{
+        document.querySelector("#fullResult").textContent="https://meli.la/FAKE_FULL_URL_TEST";
+      });
+    </script>
+  </body></html>`,fullUrl);
+  await fullPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:18000});
+  const fullResult=await fullPage.evaluate(()=>window.__meliJobResult);
+  assert.equal(fullResult.link,"https://meli.la/FAKE_FULL_URL_TEST");
+  assert.equal(await fullPage.locator("textarea").inputValue(),fullUrl);
+  await fullPage.close();
+
+  // Etiqueta ja escolhida nao prova que o produto ou URL foi aceito.
+  const disabledPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <textarea aria-label="URL do produto" placeholder="Cole a URL do produto"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Etiqueta existente</option></select>
+    <button disabled>Gerar</button>
+  </body></html>`);
+  await disabledPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:12000});
+  const disabledResult=await disabledPage.evaluate(()=>window.__meliJobResult);
+  assert.match(disabledResult.error,/etiqueta pode estar correta/i);
+  assert.match(disabledResult.error,/URL_PRESERVADA/);
+  assert.match(disabledResult.error,/ETIQUETA_SELECIONADA/);
+  assert.match(disabledResult.error,/BOTAO_DISABLED/);
+  assert.ok(!disabledResult.error.includes("https://"),"Diagnostico nao revela URL do usuario");
+  assert.ok(!disabledResult.link);
+  await disabledPage.close();
+
+  // O proprio portal pode descartar o valor apos input e mostrar um erro.
+  // Nunca copiar o texto do aviso nem a URL do produto para o diagnostico.
+  const rejectedPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <form><textarea aria-label="URL do produto"></textarea>
+    <select aria-label="Etiqueta"><option value="tag" selected>Principal</option></select>
+    <button disabled>Gerar</button>
+    <span role="alert">AVISO PRIVADO: dado da conta 12345</span>
+    </form>
+    <script>document.querySelector("textarea").addEventListener("input",ev=>{
+      ev.target.value="";
+    });</script>
+  </body></html>`);
+  await rejectedPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:12000});
+  const rejectedResult=await rejectedPage.evaluate(()=>window.__meliJobResult);
+  assert.match(rejectedResult.error,/URL_DIVERGENTE/);
+  assert.match(rejectedResult.error,/ALERTA_VISIVEL/);
+  assert.match(rejectedResult.error,/ETIQUETA_SELECIONADA/);
+  assert.ok(!rejectedResult.error.includes("12345"));
+  assert.ok(!rejectedResult.error.includes("https://"));
+  await rejectedPage.close();
+
+  // Botao aria-disabled e diferente de atributo disabled nativo.
+  const ariaPage=await fixture("/afiliados/linkbuilder",`<html><body>
+    <input type="url" aria-label="URL do produto">
+    <button aria-disabled="true">Gerar</button>
+  </body></html>`);
+  await ariaPage.waitForFunction(()=>Boolean(window.__meliJobResult),null,{timeout:12000});
+  const ariaResult=await ariaPage.evaluate(()=>window.__meliJobResult);
+  assert.match(ariaResult.error,/BOTAO_ARIA_DISABLED/);
+  assert.match(ariaResult.error,/ETIQUETA_NAO_DETECTADA/);
+  assert.ok(!ariaResult.error.includes("https://"));
+  await ariaPage.close();
+
   const page3=await fixture("/p/MLBTEST123",`<html><body><input type="text" placeholder="Buscar produtos">
     <button>Comprar agora</button></body></html>`);
   await page3.waitForTimeout(2200);
   assert.equal(await page3.evaluate(()=>window.__meliGetJobCalls),0);
   assert.equal(await page3.evaluate(()=>window.__meliJobResult),null);
   await page3.close();
+
+  // Recarregar o Conector invalida scripts injetados antes do reload.
+  // Em todos os casos a aba antiga deve interromper mensagens e polling,
+  // sem excecao nao tratada e sem acionar jobs ou enviar dados.
+  async function verificarContextoInvalidado(tipo:string) {
+    const page=await browser.newPage();
+    const pageErrors:string[]=[];
+    page.on("pageerror",error=>pageErrors.push(error.message));
+    await page.route("https://www.mercadolivre.com.br/afiliados/linkbuilder",route=>
+      route.fulfill({status:200,contentType:"text/html",body:"<html><body><p>Teste isolado</p></body></html>"})
+    );
+    await page.addInitScript((modo)=>{
+      window.__meliInvalidCalls=0;
+      Object.defineProperty(window,"chrome",{configurable:true,value:{runtime:{
+        id:modo==="sem-id"?undefined:"EXTENSION_FIXTURE",
+        get lastError(){
+          if(modo==="callback") throw new Error("Extension context invalidated.");
+          return null;
+        },
+        sendMessage(_message,callback){
+          window.__meliInvalidCalls++;
+          if(modo==="sincrono") throw new Error("Extension context invalidated.");
+          if(modo==="promessa") return Promise.reject(new Error("Extension context invalidated."));
+          if(modo==="callback") queueMicrotask(()=>callback(undefined));
+        }
+      }}});
+    },tipo);
+    await page.goto("https://www.mercadolivre.com.br/afiliados/linkbuilder");
+    await page.addScriptTag({content:source});
+    await page.waitForTimeout(2250);
+    const calls=await page.evaluate(()=>window.__meliInvalidCalls);
+    assert.equal(calls,tipo==="sem-id"?0:1,"O contexto antigo deve parar no primeiro erro");
+    assert.deepEqual(pageErrors,[],"Nao pode gerar erros JS nao tratados");
+    await page.close();
+  }
+
+  for(const tipo of ["sincrono","callback","promessa","sem-id"]) {
+    await verificarContextoInvalidado(tipo);
+  }
+  console.log("mercadolivre-extensao: reload invalido tratado, polling interrompido OK");
   console.log("mercadolivre-extensao: links oficiais simulados, etiqueta unica e aba segura OK");
 }finally{await browser.close();}
