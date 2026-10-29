@@ -52,6 +52,8 @@ jobs:
         run: node --import tsx --test tests/ux-lovable-transfer.mts
       - name: Lovable UX - cinco rotas no desktop e celular, sem login
         run: node --import tsx tests/ux-lovable-visual.mts
+      - name: UX Unificada v2 - aprovado visual, links e controles reais em 3 resolucoes
+        run: node --import tsx tests/ux-unificada-v2.mts
       - name: Interface simulada em Chrome headless, sem perfil do usuario
         run: node --import tsx tests/painel-operacional.mts
       - name: Conector 02 em Chrome headless com formularios ficticios

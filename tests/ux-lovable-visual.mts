@@ -63,8 +63,8 @@ try{
       assert.equal(await current.getAttribute("href"),item.current);
       const titlePx = await page.locator("h1").first().evaluate((x) =>
         parseFloat(getComputedStyle(x).fontSize));
-      assert.ok(titlePx >= 27 && titlePx <= 35,
-        item.route+" deve usar tipografia Lovable: "+titlePx+"px");
+      assert.ok(titlePx >= 26 && titlePx <= 35,
+        item.route+" deve usar tipografia UX Unificada v2 (26px no mobile): "+titlePx+"px");
       const navHeight=await current.evaluate(x=>x.getBoundingClientRect().height);
       assert.ok(navHeight>=43.5,"Menu clicavel deve ter 44px ("+navHeight+")");
       if(viewport.width<500){
