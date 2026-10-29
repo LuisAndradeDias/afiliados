@@ -6,6 +6,9 @@ import {
   type DetalheCatalogoDisponibilidade
 } from "../fontes/mercadolivre/disponibilidade.js";
 import { auditarPrecoContextualMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
+import { auditarAnuncioDiretoMercadoLivre,
+  type AuditoriaAnuncioDireto
+} from "../fontes/mercadolivre/auditoria-anuncio-direto.js";
 import { investigarCatalogoSemVencedor,
   type InvestigacaoCatalogoSemVencedor
 } from "../fontes/mercadolivre/investigacao-sem-vencedor.js";
@@ -15,25 +18,32 @@ import { investigarCatalogoSemVencedor,
  * Um GET /products/{id} e UMA de duas alternativas, nunca ambas:
  * - sem buy box: GET /products/{id}/items (classificacao, sem vendedor);
  * - com buy box: GET /items/{winner}/sale_price (preco do canal).
+ * - sem buy box + anuncio especifico: GET /items/{id} e no maximo
+ *   um GET /items/{id}/sale_price. Nao seleciona como vencedor.
  * Nao gera links de afiliado, nao coleta cookies, nao abre WhatsApp.
  * Imprime somente preco, estado e codigo sanitizado: sem token, seller ID
  * nem URL de afiliado. Requer Central pausada.
  */
 const produtoId = process.argv[2] ?? "";
-if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
-  console.log("DIAGNOSTICO=INVALIDO MOTIVO=PRODUTO_ID_INVALIDO");
+const anuncioSolicitado = process.argv[3] ?? "";
+if (!/^MLB[0-9]{5,}$/.test(produtoId) ||
+    (anuncioSolicitado !== "" && !/^MLB[0-9]{5,}$/.test(anuncioSolicitado))) {
+  console.log("DIAGNOSTICO=INVALIDO MOTIVO=PRODUTO_OU_ANUNCIO_ID_INVALIDO");
   process.exitCode = 2;
 } else {
   let motivo = "NAO_INICIADO";
   let criteriosCatalogo: Record<string, boolean> | undefined;
   let investigacaoSemVencedor: InvestigacaoCatalogoSemVencedor | undefined;
+  let investigacaoAnuncioDireto: AuditoriaAnuncioDireto | undefined;
   try {
+    motivo = "CENTRAL_INACESSIVEL";
     const estadoResponse = await fetch("http://127.0.0.1:3030/api/status", {
       method: "GET", signal: AbortSignal.timeout(4_000)
     });
     const estado = estadoResponse.ok
       ? await estadoResponse.json() as Record<string, unknown>
       : {};
+    motivo = "CENTRAL_NAO_ESTA_PAUSADA";
     if (estado.operacaoEstado !== "paused" ||
         estado.whatsappAutoEnvioAtivo === true ||
         estado.whatsappEnvioPendente === true ||
@@ -118,14 +128,26 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
         // Somente uma leitura adicional para distinguir listagem vazia,
         // listagem sem vencedor e erro de permissao. NUNCA escolher
         // candidato da lista como se fosse buy_box_winner.
-        investigacaoSemVencedor = await investigarCatalogoSemVencedor(
-          produtoId, catalogo, token
-        );
+        if (anuncioSolicitado) {
+          // Este anuncio nao vira vencedor: apenas verificamos sua ficha,
+          // vinculo catalogo/seller e preco do mesmo item, se autorizados.
+          investigacaoAnuncioDireto = await auditarAnuncioDiretoMercadoLivre(
+            produtoId, anuncioSolicitado, token
+          );
+        } else {
+          investigacaoSemVencedor = await investigarCatalogoSemVencedor(
+            produtoId, catalogo, token
+          );
+        }
         motivo = "CATALOGO_ATIVO_SEM_VENCEDOR_OFICIAL";
       } else {
         motivo = "CATALOGO_NAO_ATIVO_OU_ID_DIVERGENTE";
       }
       throw new Error("STOP_WINNER");
+    }
+    if (anuncioSolicitado && vencedor.item_id !== anuncioSolicitado) {
+      motivo = "ANUNCIO_SOLICITADO_NAO_EH_VENCEDOR_OFICIAL";
+      throw new Error("STOP_DIFFERENT_WINNER");
     }
     if (!catalogoComCompraConfirmada(produtoId,item,catalogo) ||
         centavosBRL(item.price) === undefined) {
@@ -169,6 +191,7 @@ if (!/^MLB[0-9]{5,}$/.test(produtoId)) {
       motivo,
       criteriosCatalogo,
       investigacaoSemVencedor,
+      investigacaoAnuncioDireto,
       modalidadePagamentoConfirmada:false,
       cupomAplicavelConfirmado:false,
       atribuicaoComprovada:false
