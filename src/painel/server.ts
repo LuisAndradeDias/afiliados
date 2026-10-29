@@ -49,6 +49,7 @@ import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 import { auditarDestinoLinkMercadoLivre } from "../afiliados/mercadolivre-destino.js";
 import { auditarDestinoLinkMercadoLivreNavegador } from "../afiliados/mercadolivre-destino-navegador.js";
 import { consultarElegibilidadeCanalWhatsapp } from "../canais/elegibilidade.js";
+import { consultarPainelRevisao } from "../revisao/consulta.js";
 
 const raiz = process.cwd();
 const mensagemPath = resolve(raiz, "data", "ultima-mensagem-whatsapp.txt");
@@ -2395,6 +2396,16 @@ const server = createServer(async (req, res) => {
         );
         json(res, 409, { ok: false, mensagem });
       }
+      return;
+    }
+
+    if (req.method === "GET" && requestUrl.pathname === "/api/revisao") {
+      res.setHeader("cache-control", "no-store");
+      res.setHeader("x-content-type-options", "nosniff");
+      json(res, 200, await consultarPainelRevisao({
+        raiz,
+        grupo: process.env.WHATSAPP_GROUP_NAME?.trim() ?? ""
+      }));
       return;
     }
 

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Revisão e evidências | Caça Promos VIP</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#182230;background:#f6f8fb;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;line-height:1.5}
+a{color:#2146a1;text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid #82a9fe;outline-offset:3px}
+.top{background:#142238;color:#fff;padding:25px 22px 57px}
+.top-inner{max-width:1120px;margin:auto}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;color:#b4c7e3}
+h1{font-size:clamp(25px,4vw,36px);line-height:1.1;letter-spacing:-.035em;margin:8px 0}
+.top p{color:#d1dbe9;max-width:680px;margin:0;font-size:14px}
+.nav{display:flex;gap:18px;align-items:center;max-width:1120px;margin:17px auto 0;flex-wrap:wrap}
+.nav a{color:#dce7ff;font-size:13px;font-weight:650}
+.nav a[aria-current]{color:#fff;text-decoration:underline;text-underline-offset:6px}
+.shell{max-width:1120px;margin:-31px auto 0;padding:0 20px 50px}
+.card{background:#fff;border:1px solid #e4e9f1;border-radius:16px;box-shadow:0 9px 23px rgba(16,24,40,.05)}
+.notice{padding:17px 20px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.notice strong{font-size:14px}
+.notice p{margin:4px 0 0;font-size:12px;color:#667085}
+.small-button{background:#fff;border:1px solid #cbd5e1;border-radius:9px;padding:8px 14px;color:#293b54;font-weight:700}
+.small-button:hover{background:#f2f6ff}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:15px 0 22px}
+.metric{padding:15px 18px}
+.metric span{display:block;font-size:12px;color:#667085;font-weight:600}
+.metric strong{display:block;margin-top:7px;font-size:30px;font-variant-numeric:tabular-nums;line-height:1.2}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.bar h2{margin:0;font-size:19px;letter-spacing:-.02em}
+.bar p{margin:3px 0 0;color:#667085;font-size:12px}
+.filters{display:flex;gap:7px;flex-wrap:wrap}
+.filters button{border:1px solid #d5dbe5;border-radius:9px;background:#fff;padding:8px 12px;font-size:12px;font-weight:750;color:#475467}
+.filters button[aria-pressed="true"]{background:#162944;border-color:#162944;color:#fff}
+.stack{display:grid;gap:13px}
+.empty{padding:44px 25px;text-align:center}
+.empty h3{margin:0 0 9px;font-size:19px}
+.empty p{font-size:13px;color:#667085;margin:0 auto;max-width:525px}
+.offer{padding:20px 22px}
+.offer-head{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.offer h3{font-size:17px;margin:6px 0;line-height:1.35}
+.offer small{display:block;color:#667085;font-size:12px}
+.keyline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;border:1px solid #d9e0ed;border-radius:99px;padding:3px 9px;font-size:11px;color:#344054;font-weight:720;background:#f8fafc}
+.chip.block{color:#9b251a;background:#fff3f2;border-color:#fecdca}
+.chip.pending{color:#995500;background:#fffaed;border-color:#f7de9b}
+.chip.ok{color:#05603a;background:#eefaf3;border-color:#afe6c9}
+.info-line{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0 13px;font-size:12px;color:#475467}
+.info-line b{color:#16263b}
+details{border-top:1px solid #eef0f5;padding-top:12px}
+details summary{font-weight:700;font-size:13px;cursor:pointer;color:#2146a1}
+.evidence-list{display:grid;gap:8px;margin-top:13px}
+.evidence{display:grid;grid-template-columns:minmax(135px,175px) 1fr;align-items:start;gap:14px;border:1px solid #eef1f5;border-radius:10px;padding:11px 13px;background:#fafbfd}
+.evidence strong{font-size:12px}
+.evidence p{margin:3px 0 0;color:#596579;font-size:12px;line-height:1.5}
+.evidence time{display:block;font-size:11px;color:#667085;margin-top:5px}
+.reasons{margin-top:14px;padding:14px;border:1px solid #f5d9b8;border-radius:10px;background:#fffdf7}
+.reasons h4{font-size:12px;margin:0 0 7px;color:#92400e}
+.reasons ul{padding-left:19px;margin:0;font-size:12px;color:#634d39}
+.reasons li+li{margin-top:5px}
+.reasons code{font-size:10px;color:#8b6b4f}
+.footer{font-size:12px;color:#667085;margin-top:24px}
+.alert{border:1px solid #f5d18c;color:#915500;background:#fffae8;padding:11px 14px;border-radius:10px;font-size:12px;margin-bottom:14px}
+@media(max-width:700px){.shell{padding:0 12px 32px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.evidence{grid-template-columns:1fr;gap:4px}.offer{padding:15px}.top{padding:20px 15px 52px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="eyebrow">CENTRAL INTELIGENTE / ETAPA 58</div>
+    <h1>Revisão e evidências</h1>
+    <p>Entenda o que foi registrado, o que ainda precisa de verificação e por que uma oferta não está pronta para divulgação.</p>
+  </div>
+  <nav class="nav" aria-label="Navegação da Central">
+    <a href="/central">Central Unificada</a>
+    <a href="/ofertas">Ofertas</a>
+    <a href="/revisao" aria-current="page">Revisão</a>
+    <a href="/shopee">Shopee</a>
+  </nav>
+</header>
+<main class="shell">
+  <section class="card notice" aria-label="Modo de operação">
+    <div><strong>Consulta somente leitura</strong>
+      <p>Não aprova promoções, não gera links, não altera o grupo e não executa envios. Dados salvos não substituem uma verificação ao vivo.</p>
+    </div>
+    <button type="button" id="refresh" class="small-button">Atualizar evidências</button>
+  </section>
+  <section class="cards" aria-label="Resumo de registros">
+    <article class="card metric"><span>Registros candidatos</span><strong id="metricAll">—</strong></article>
+    <article class="card metric"><span>Bloqueados</span><strong id="metricBlocked">—</strong></article>
+    <article class="card metric"><span>Para revisão</span><strong id="metricPending">—</strong></article>
+    <article class="card metric"><span>Aprovados neste modo</span><strong id="metricApproved">0</strong></article>
+  </section>
+  <div class="bar">
+    <div><h2>Fichas comerciais</h2><p id="lastChecked">Consultando registros locais…</p></div>
+    <div class="filters" role="group" aria-label="Filtrar registros">
+      <button type="button" data-filter="todos" aria-pressed="true">Todos</button>
+      <button type="button" data-filter="bloqueada" aria-pressed="false">Bloqueados</button>
+      <button type="button" data-filter="necessita-revisao" aria-pressed="false">Para revisão</button>
+    </div>
+  </div>
+  <div id="warnings" aria-live="polite"></div>
+  <section class="stack" id="cards" aria-live="polite" aria-label="Ofertas registradas">
+    <div class="card empty"><h3>Consultando…</h3></div>
+  </section>
+  <p class="footer">Registros provenientes dos arquivos operacionais locais. Nenhuma comissão ou disponibilidade é presumida a partir de snapshots. O histórico completo de decisões será incorporado em uma evolução posterior.</p>
+</main>
+<script>
+(function(){
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const cards = $("cards");
+  let fichas = [];
+  let filtro = "todos";
+  const nomes = { identidade:"Produto", preco:"Preço", disponibilidade:"Disponibilidade",
+    cupom:"Cupom", link:"Link de afiliado", atribuicao:"Atribuição", canal:"Destino" };
+  const estados = { registrada:"Registrada", pendente:"Pendente", expirada:"Desatualizada",
+    divergente:"Divergente", "nao-informada":"Não informado" };
+  function el(tag, cls, txt) {
+    const node = document.createElement(tag);
+    if(cls) node.className = cls;
+    if(txt !== undefined) node.textContent = String(txt);
+    return node;
+  }
+  function hora(value) {
+    const t = Date.parse(value || "");
+    return Number.isFinite(t) ? new Date(t).toLocaleString("pt-BR") : "Sem data";
+  }
+  function vazio(mensagem) {
+    const box = el("div","card empty");
+    box.append(el("h3",null,mensagem || "Nenhuma oferta registrada"));
+    box.append(el("p",null,"Quando uma oferta for preparada, sua ficha aparecerá aqui. Nenhuma promoção de teste é inserida na operação."));
+    cards.append(box);
+  }
+  function evidencia(item) {
+    const box = el("div","evidence");
+    const title = el("div",null);
+    title.append(el("strong",null,nomes[item.criterio] || "Verificação"));
+    const right = el("div",null);
+    const tone = item.estado === "registrada" ? "ok" :
+      item.estado === "divergente" ? "block" : "pending";
+    right.append(el("span","chip "+tone,estados[item.estado] || "Pendente"));
+    right.append(el("p",null,item.descricao || "Sem detalhes"));
+    if(item.verificadaEm) right.append(el("time",null,"Observação: "+hora(item.verificadaEm)));
+    box.append(title,right);
+    return box;
+  }
+  function ficha(f) {
+    const box = el("article","card offer");
+    const head = el("div","offer-head");
+    const title = el("div",null);
+    const chips = el("div","keyline");
+    chips.append(el("span","chip",f.plataforma || "Marketplace"));
+    chips.append(el("span","chip "+(f.decisao.estado === "bloqueada" ? "block" : "pending"),
+      f.decisao.estado === "bloqueada" ? "Publicação bloqueada" : "Revisão necessária"));
+    title.append(chips,el("h3",null,f.titulo || "Produto sem título"),
+      el("small",null,"Produto: "+(f.produtoId || "—")+" · Origem: "+
+      (f.origem === "preparacao-whatsapp" ? "Preparação WhatsApp" : "Mercado Livre")));
+    const amount = el("div",null);
+    if(typeof f.precoObservado === "number") {
+      amount.append(el("small",null,"Preço registrado (não homologado)"));
+      amount.append(el("strong",null,new Intl.NumberFormat("pt-BR",{
+        style:"currency",currency:"BRL"
+      }).format(f.precoObservado)));
+    }
+    head.append(title,amount);box.append(head);
+    const line = el("div","info-line");
+    line.append(el("span",null,"Atualização do arquivo: "+hora(f.arquivoAtualizadoEm)));
+    line.append(el("span",null,"Regra de revisão v"+f.decisao.regraVersao));
+    box.append(line);
+    const detail = el("details",null);
+    const summary = el("summary",null,"Ver evidências e motivos");
+    detail.append(summary);
+    const list = el("div","evidence-list");
+    (f.evidencias || []).forEach((item) => list.append(evidencia(item)));
+    detail.append(list);
+    const reasons = el("section","reasons");
+    reasons.append(el("h4",null,"Por que não está pronta para publicar?"));
+    const reasonList = el("ul",null);
+    (f.decisao.motivos || []).forEach((motivo) => {
+      const li = el("li",null,motivo.descricao || "Verificação pendente");
+      const code = el("code",null," (" + String(motivo.codigo || "") + ")");
+      li.append(code); reasonList.append(li);
+    });
+    reasons.append(reasonList); detail.append(reasons);
+    box.append(detail);
+    return box;
+  }
+  function render(){
+    cards.replaceChildren();
+    const atual = fichas.filter((f) => filtro === "todos" || f.decisao.estado === filtro);
+    if(!atual.length) return vazio(filtro === "todos" ? "Nenhuma oferta registrada" : "Nenhuma oferta nesta situação");
+    atual.forEach((f) => cards.append(ficha(f)));
+  }
+  async function atualizar(){
+    $("refresh").disabled = true;
+    $("lastChecked").textContent = "Atualizando registros locais…";
+    try{
+      const response = await fetch("/api/revisao",{cache:"no-store",credentials:"same-origin"});
+      if(!response.ok) throw new Error("Falha ao consultar a Central");
+      const data = await response.json();
+      if(data.modo !== "somente-leitura" || !Array.isArray(data.fichas)) throw new Error("Resposta inválida");
+      fichas = data.fichas;
+      $("metricAll").textContent = data.resumo.candidatos;
+      $("metricBlocked").textContent = data.resumo.bloqueados;
+      $("metricPending").textContent = data.resumo.necessitamRevisao;
+      $("metricApproved").textContent = data.resumo.aprovados;
+      $("lastChecked").textContent = "Última consulta: "+hora(data.consultadoEm);
+      $("warnings").replaceChildren();
+      if(Array.isArray(data.avisos) && data.avisos.length) {
+        $("warnings").append(el("div","alert","Há registros que exigem atenção: "+data.avisos.join(", ")));
+      }
+      render();
+    }catch{
+      cards.replaceChildren();
+      vazio("Não foi possível consultar os registros");
+      $("lastChecked").textContent = "Central indisponível para revisão; nenhuma ação foi executada.";
+    }finally{
+      $("refresh").disabled = false;
+    }
+  }
+  document.querySelectorAll("[data-filter]").forEach((b) =>
+    b.addEventListener("click",()=>{
+      filtro = b.dataset.filter;
+      document.querySelectorAll("[data-filter]").forEach((x) =>
+        x.setAttribute("aria-pressed",String(x === b)));
+      render();
+    })
+  );
+  $("refresh").addEventListener("click",atualizar);
+  atualizar();
+})();
+</script>
+</body>
+</html>

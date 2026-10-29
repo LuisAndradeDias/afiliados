@@ -32,6 +32,20 @@ export async function responderRotaVisual({
   if (method !== "GET") return false;
   const publicDir = resolve(raiz, "src", "painel", "public");
 
+  if (pathname === "/revisao") {
+    const html = await readFile(resolve(publicDir, "revisao.html"), "utf8");
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+    });
+    res.end(html);
+    return true;
+  }
+
   if (pathname === "/shopee") {
     const html = await readFile(resolve(publicDir, "shopee.html"), "utf8");
     res.writeHead(200, {
