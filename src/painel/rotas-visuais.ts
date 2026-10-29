@@ -14,6 +14,8 @@ const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/ofertas-v2.css": "ofertas-v2.css",
   "/central/assets/central.tokens.css": "central.tokens.css",
   "/central/assets/central.js": "central.js",
+  "/central/assets/unified-nav.css": "unified-nav.css",
+  "/central/assets/unified-nav.js": "unified-nav.js",
   "/central/assets/shopee.css": "shopee.css",
   "/central/assets/shopee.js": "shopee.js",
 });
@@ -40,7 +42,7 @@ export async function responderRotaVisual({
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
       "referrer-policy": "no-referrer",
-      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+      "content-security-policy": "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
     });
     res.end(html);
     return true;
