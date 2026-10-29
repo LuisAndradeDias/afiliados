@@ -44,6 +44,10 @@ jobs:
         run: node --import tsx --test tests/etapa58-revisao.mts
       - name: Etapa 58 - painel de revisao visual isolado, sem envios
         run: node --import tsx tests/etapa58-revisao-visual.mts
+      - name: Home de metricas sem login - roteamento e leitura local
+        run: node --import tsx --test tests/home-metricas.mts
+      - name: Home de metricas visual - desktop e celular, sem login
+        run: node --import tsx tests/home-metricas-visual.mts
       - name: Interface simulada em Chrome headless, sem perfil do usuario
         run: node --import tsx tests/painel-operacional.mts
       - name: Conector 02 em Chrome headless com formularios ficticios

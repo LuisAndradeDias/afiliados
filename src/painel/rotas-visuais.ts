@@ -92,7 +92,8 @@ export async function responderRotaVisual({
   }
 
   if (pathname === "/" || pathname === "/ofertas") {
-    const html = await readFile(resolve(publicDir, "index.html"), "utf8");
+    const html = await readFile(resolve(publicDir,
+      pathname === "/" ? "central.html" : "index.html"), "utf8");
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(html);
     return true;
