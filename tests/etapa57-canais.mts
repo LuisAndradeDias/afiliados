@@ -182,6 +182,15 @@ test("preparador chega ao navegador sem apagar mensagem, mas nao envia no teste 
   }
 });
 
+test("preparador espera sessao visualmente conectada antes de buscar o grupo", async () => {
+  const entry = await readFile(join(root, "src", "robo", "whatsapp-preparar.ts"), "utf8");
+  const espera = entry.indexOf("await aguardarWhatsappConectado(page);");
+  const busca = entry.indexOf("await verificarDestinoWhatsapp(page, nomeGrupo);");
+  assert.ok(espera > 0 && busca > espera, "A busca deve aguardar autenticacao real");
+  assert.match(entry, /timeoutMs = 90_000/);
+  assert.match(entry, /WHATSAPP_PREPARACAO:SESSAO_CONFIRMADA/);
+});
+
 test("codigo da ultima checagem precede o clique de envio", async () => {
   const entry = await readFile(join(root, "src", "robo", "whatsapp-preparar.ts"), "utf8");
   const lateGuard = entry.indexOf("process.exitCode = 8;");

@@ -25,6 +25,7 @@ import {
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
 import { verificarDestinoWhatsapp } from "./whatsapp-alvo.js";
+import { detectarEstadoVisualWhatsapp } from "./whatsapp-conexao.js";
 import { revalidarEstoqueEPrecoMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
 import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 import { consultarElegibilidadeCanalWhatsapp } from "../canais/elegibilidade.js";
@@ -546,6 +547,29 @@ async function aguardarFinalizacao(
   }
 }
 
+/** Aguarda autenticacao real antes de procurar o grupo; perfil salvo nao basta. */
+async function aguardarWhatsappConectado(page: Page, timeoutMs = 90_000): Promise<void> {
+  const limite = Date.now() + timeoutMs;
+  let estadoAnterior = "";
+  while (!page.isClosed() && Date.now() < limite) {
+    const estado = await detectarEstadoVisualWhatsapp(page);
+    if (estado === "conectado") {
+      console.log("WHATSAPP_PREPARACAO:SESSAO_CONFIRMADA");
+      return;
+    }
+    if (estado !== estadoAnterior) {
+      console.log(estado === "qr"
+        ? "WHATSAPP_PREPARACAO:AGUARDANDO_QR_CODE"
+        : "WHATSAPP_PREPARACAO:AGUARDANDO_AUTENTICACAO");
+      estadoAnterior = estado;
+    }
+    await page.waitForTimeout(1_500);
+  }
+  throw new Error(
+    "WHATSAPP_SESSAO_NAO_CONFIRMADA: o WhatsApp nao concluiu o login a tempo. A oferta permanece salva e nenhum envio foi realizado."
+  );
+}
+
 async function obterPaginaWhatsapp(context: BrowserContext): Promise<Page> {
   const paginas = context.pages();
   const page = paginas[0] ?? (await context.newPage());
@@ -698,6 +722,9 @@ if (modoTeste) {
   console.log("Se aparecer QR Code, faça o login pelo celular. O programa continuará sozinho.");
 }
 try {
+  // A interface pode demorar dezenas de segundos para carregar depois do QR.
+  // Nao declarar busca-ausente enquanto a sessao ainda esta autenticando.
+  if (!modoTeste) await aguardarWhatsappConectado(page);
   const diagnosticoGrupo = await verificarDestinoWhatsapp(page, nomeGrupo);
   if (diagnosticoGrupo !== "grupo-pronto") {
     throw new Error(

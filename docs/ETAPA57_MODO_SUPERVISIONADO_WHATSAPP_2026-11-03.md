@@ -12,7 +12,7 @@ Recuperar a operacao original sem API paga: o robo encontra e valida uma oferta,
 
 ## Fluxo
 1. Monitor Amazon/Mercado Livre gera pacote apos filtros de preco, estoque, cupom, duplicidade e link.
-2. O preparador identifica o destino salvo, abre WhatsApp Web e preenche imagem e mensagem, sem clicar em Enviar.
+2. O preparador identifica o destino salvo, abre WhatsApp Web, aguarda ate 90 segundos a autenticacao visual e preenche imagem e mensagem, sem clicar em Enviar. Isso evita falhar prematuramente quando o WhatsApp demora para carregar apos abrir o Chrome.
 3. Se a oferta ja estava salva antes do reinicio, o botao **Abrir oferta no WhatsApp** permite retomar a preparacao sem exigir homologacao comercial.
 4. O usuario confere o destinatario e a oferta e clica em **Enviar** no proprio WhatsApp uma unica vez.
 5. O observador `src/robo/whatsapp-envio-observer.ts` compara mensagens de saida com a linha de base; apenas apos evidencia real da oferta enviada registra no historico e sinaliza ao painel para continuar o ciclo.
