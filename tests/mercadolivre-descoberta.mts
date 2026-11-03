@@ -10,6 +10,22 @@ assert.ok(padrao.length >= 20, "Sem .env, n�o pode buscar apenas smartphone.")
 assert.ok(padrao.includes("smartphone samsung") && padrao.includes("air fryer") && padrao.includes("fone bluetooth"));
 assert.deepEqual(consultasMercadoLivre({MERCADOLIVRE_QUERIES:" notebook ,fone bluetooth,notebook "} as NodeJS.ProcessEnv),["notebook","fone bluetooth"]);
 assert.deepEqual(consultasMercadoLivre({MERCADOLIVRE_QUERY:"ssd"} as NodeJS.ProcessEnv),["ssd"]);
+
+// A lista personalizada do Acer pode crescer sem descartar prioridades nem
+// gerar solicitações extras sem o controle explícito de rodadas.
+const expandidas = consultasMercadoLivre({
+  MERCADOLIVRE_QUERIES:"notebook,air fryer",
+  MERCADOLIVRE_EXPAND_DEFAULT_QUERIES:"true"
+} as NodeJS.ProcessEnv);
+assert.deepEqual(expandidas.slice(0,2),["notebook","air fryer"]);
+assert.ok(expandidas.length >= 38 && expandidas.length <= 48,
+  "Ampliação deve cobrir novos nichos com limite rígido de categorias.");
+assert.ok(expandidas.includes("parafusadeira") && expandidas.includes("panela de pressao eletrica"));
+assert.equal(new Set(expandidas.map(x=>x.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase())).size,
+  expandidas.length,"Não repetir categorias iguais com acentos diferentes.");
+const planoAmpliado = planejarBuscasMercadoLivre(expandidas,0,2,[],true);
+assert.equal(planoAmpliado.consultas.length,3,
+  "Cota de requisições deve continuar controlada por rodada.");
 const primeiras = planejarBuscasMercadoLivre(padrao,0,3,[],true);
 const outras = planejarBuscasMercadoLivre(padrao,4,3,[],true);
 assert.equal(primeiras.consultas.length,4);

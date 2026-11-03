@@ -206,3 +206,15 @@ button.ops-settings-open:hover { background:#e8fff5; }
 
 .ops-settings-head { align-items:flex-start; }
 .ops-settings-head button { height:36px; min-height:36px; align-self:flex-start; }
+
+.ops-publish-checklist-button { width:100%; margin-bottom:9px;
+  background:#eef5f2; color:#276b52; border:1px solid #a8cfbd;
+  font-size:12px; line-height:1.4; }
+.ops-publish-checklist-button:hover { background:#dff3ea; }
+.ops-channel-checklist { background:#fff; border:1px solid #dce5e9;
+  border-radius:12px; padding:17px; }
+.ops-channel-checklist h3 { margin:0 0 7px; font-size:14px; color:#172c3d; }
+.ops-channel-checklist p, .ops-channel-checklist li { color:#4a6274;
+  font-size:12px; line-height:1.55; }
+.ops-channel-checklist ul { padding-left:18px; margin:10px 0 0; }
+.ops-channel-checklist li + li { margin-top:8px; }

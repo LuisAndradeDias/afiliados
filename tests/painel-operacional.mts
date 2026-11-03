@@ -103,6 +103,27 @@ try {
     waitUntil: "networkidle"
   });
 
+  state = {
+    ...base,
+    mercadoLivreMonitorUltimaBuscaEm:Date.now(),
+    logs:[
+      "[15:40:01] [mercadolivre-buscar] Iniciado.",
+      "[15:40:30] [mercadolivre-buscar] Mercado Livre catalogo: consultados=60, detalhe-404=0, publicacoes-404=0, vendedores-verdes=0, catalogos-ativos-sem-vencedor=60.",
+      "[15:40:31] [mercadolivre-buscar] Finalizado com código 2."
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#meliDot").getAttribute("class"))?.includes("ok"),
+    "Busca API com resposta valida nao deve depender de conversao de link para ficar verde."
+  );
+  assert(
+    (await page.locator("#mercadoLivreStatus").innerText()).includes("API respondeu"),
+    "Status deve distinguir disponibilidade de busca da verificacao do gerador de links."
+  );
+  state = { ...base };
+  await page.waitForTimeout(1700);
+
   // Uma pasta Chrome existente nao comprova que a conta esta autenticada.
   assert(
     !(await page.locator("#whatsappDot").getAttribute("class"))?.includes("ok"),

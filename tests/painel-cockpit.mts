@@ -87,6 +87,13 @@ try{
   assert.equal(await page.locator("#mlClientId").count(),1);
   assert.equal(await page.locator("#whatsappGroupInput").count(),1);
   assert.equal(await page.locator("#opsHistoryList li").count()>0,true);
+  assert.equal(await page.locator("#opsPublishSetupButton").isVisible(),true,
+    "Canal pendente precisa de caminho visível até autorização comercial.");
+  await page.locator("#opsPublishSetupButton").click();
+  assert.equal(await page.locator('[data-ops-settings-tab="publicacao"]').getAttribute("aria-selected"),"true");
+  assert.equal(await page.locator("#opsChannelChecklist").isVisible(),true);
+  assert.match(await page.locator("#opsChannelChecklist").innerText(),/regra|autoriza|homologa/i);
+  await page.keyboard.press("Escape");
   const previewWidth=await page.locator("#mensagem").evaluate(el=>el.getBoundingClientRect().width);
   assert.ok(previewWidth>250,"A mensagem sem imagem não pode ficar em uma coluna estreita: "+previewWidth);
   if (process.env.CPV_COCKPIT_SCREENSHOT_DIR) {

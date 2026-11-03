@@ -1790,14 +1790,34 @@
           : "Configurar Tracking ID";
         setDot("amazonDot", s.afiliadoConfigurado ? "ok" : "warn");
 
-        $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? (s.mercadoLivreExtensionConectada ? "Token salvo · extensão respondeu" : "Token salvo · extensão sem sinal")
-          : "Configuração pendente";
-        setDot(
-          "meliDot",
-          s.mercadoLivreApiConfigurada && s.mercadoLivreLinkJob?.status === "done" ? "ok" : "warn"
-        );
-        $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "Token salvo (acesso não verificado)" : "API pendente";
+        const ultimaBuscaMeliOk = Number(s.mercadoLivreMonitorUltimaBuscaEm) > 0 &&
+          Array.isArray(s.logs) &&
+          (() => {
+            const logs = s.logs.filter(x => typeof x === "string");
+            let inicio = -1;
+            for (let i = 0; i < logs.length; i++) {
+              if (logs[i].includes("[mercadolivre-buscar] Iniciado.")) inicio = i;
+            }
+            if (inicio < 0) return false;
+            const rodada = logs.slice(inicio);
+            return rodada.some(x => /\[mercadolivre-buscar\] Finalizado com código (0|2)\./.test(x))
+              && !rodada.some(x => /MERCADOLIVRE_RECONNECT_REQUIRED|MERCADOLIVRE_RATE_LIMIT|HTTP 401|HTTP 403|HTTP 429/i.test(x));
+          })();
+        const meliConfigurado = Boolean(s.mercadoLivreApiConfigurada);
+        $("mercadoLivreStatus").textContent = !meliConfigurado
+          ? "API pendente"
+          : ultimaBuscaMeliOk
+            ? (s.mercadoLivreExtensionConectada
+                ? "API respondeu · extensão conectada"
+                : "API respondeu · extensão sem sinal")
+            : (s.mercadoLivreExtensionConectada
+                ? "Token salvo · extensão respondeu · API não verificada"
+                : "Token salvo · conexão ainda não verificada");
+        // Saude da consulta nao depende de conversao comercial de link.
+        setDot("meliDot", meliConfigurado && ultimaBuscaMeliOk ? "ok" : "warn");
+        $("mercadoLivreApi").textContent = ultimaBuscaMeliOk
+          ? "Consulta API verificada · links de afiliado dependem de conversão separada"
+          : meliConfigurado ? "Token salvo (acesso não verificado)" : "API pendente";
 
         const cycleButton = $("cycleToggleButton");
         const cycleBadge = $("cycleBadge");

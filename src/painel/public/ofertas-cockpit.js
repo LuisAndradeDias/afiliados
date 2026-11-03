@@ -278,6 +278,27 @@
     // O contêiner anterior ficou vazio; remover somente o invólucro.
     if(legacyHost?.matches("section.section") &&
        !legacyHost.querySelector("details.toolbox"))legacyHost.remove();
+    const avisoPublicacao=document.createElement("section");
+    avisoPublicacao.id="opsChannelChecklist";
+    avisoPublicacao.className="ops-channel-checklist";
+    avisoPublicacao.setAttribute("aria-label","Verificações de publicação");
+    const tituloChecklist=document.createElement("h3");
+    tituloChecklist.textContent="Condições para publicar";
+    const textoChecklist=document.createElement("p");
+    textoChecklist.textContent="A sessão do WhatsApp e a identificação do grupo não substituem a homologação comercial para cada marketplace.";
+    const listaChecklist=document.createElement("ul");
+    for(const regra of [
+      "Confirmar autorização do responsável pelo grupo e participação voluntária.",
+      "Conferir as regras oficiais de divulgação do programa de afiliados para este canal.",
+      "Registrar revisão comercial e homologação vigente para a plataforma.",
+      "Verificar o link, o preço, o estoque e eventuais cupons antes do envio."
+    ]){
+      const item=document.createElement("li");
+      item.textContent=regra;
+      listaChecklist.appendChild(item);
+    }
+    avisoPublicacao.append(tituloChecklist,textoChecklist,listaChecklist);
+    $("opsSettingsPanel-publicacao").appendChild(avisoPublicacao);
     const advanced=$("whatsappDestination")?.querySelector(".group-advanced");
     if(advanced){
       advanced.open=true;
@@ -289,6 +310,14 @@
       shortcut.addEventListener("click",()=>abrir("publicacao"));
       $("openWhatsappConnectionButton")?.insertAdjacentElement("beforebegin",shortcut);
     }
+    const setupButton=document.createElement("button");
+    setupButton.id="opsPublishSetupButton";
+    setupButton.type="button";
+    setupButton.className="secondary ops-publish-checklist-button";
+    setupButton.textContent="Entender pendência do canal";
+    setupButton.addEventListener("click",()=>abrir("publicacao"));
+    const sendActions=$("reopenWhatsappButton")?.parentElement;
+    if(sendActions) sendActions.prepend(setupButton);
     $("opsSettingsOpen").addEventListener("click",()=>abrir());
     $("opsSettingsClose").addEventListener("click",fechar);
     overlay.querySelector("[data-ops-dismiss]").addEventListener("click",fechar);
