@@ -1813,8 +1813,17 @@
             : (s.mercadoLivreExtensionConectada
                 ? "Token salvo · extensão respondeu · API não verificada"
                 : "Token salvo · conexão ainda não verificada");
-        // Saude da consulta nao depende de conversao comercial de link.
-        setDot("meliDot", meliConfigurado && ultimaBuscaMeliOk ? "ok" : "warn");
+        // A luz representa a conexao do token + Conector 02; a API e
+        // avaliada separadamente no texto para nao inventar verificacao.
+        const conectorMeliPronto = meliConfigurado &&
+          Boolean(s.mercadoLivreExtensionConectada);
+        setDot("meliDot", conectorMeliPronto || (meliConfigurado && ultimaBuscaMeliOk)
+          ? "ok" : "warn");
+        $("meliDot").title = ultimaBuscaMeliOk
+          ? "API respondeu na ultima busca; geracao de link e etapa separada."
+          : conectorMeliPronto
+            ? "Token salvo e Conector 02 ativo; API aguardando nova verificacao."
+            : "Conector Mercado Livre ainda nao confirmado.";
         $("mercadoLivreApi").textContent = ultimaBuscaMeliOk
           ? "Consulta API verificada · links de afiliado dependem de conversão separada"
           : meliConfigurado ? "Token salvo (acesso não verificado)" : "API pendente";

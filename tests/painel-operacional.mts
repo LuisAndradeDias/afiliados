@@ -124,6 +124,17 @@ try {
   state = { ...base };
   await page.waitForTimeout(1700);
 
+  // O indicador principal do ML representa a conectividade do conector
+  // e do token; verificar a API é um estado independente.
+  assert(
+    (await page.locator("#meliDot").getAttribute("class"))?.includes("ok"),
+    "Conector 02 conectado e token salvo precisam aparecer verdes sem exigir link convertido."
+  );
+  assert(
+    (await page.locator("#mercadoLivreStatus").innerText()).includes("API não verificada"),
+    "A cor do conector não pode inventar uma verificação atual da API."
+  );
+
   // Uma pasta Chrome existente nao comprova que a conta esta autenticada.
   assert(
     !(await page.locator("#whatsappDot").getAttribute("class"))?.includes("ok"),
