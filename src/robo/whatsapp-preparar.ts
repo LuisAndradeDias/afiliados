@@ -129,10 +129,8 @@ if (!modoTeste) {
     console.log("DUPLICADO_BLOQUEADO: oferta já enviada recentemente. Nenhum envio executado.");
     process.exit(4);
   }
-  // Antes de chamadas externas ou abertura do Chrome, validar o destino.
-  if (!(await canalHomologadoParaEnvio())) {
-    process.exit(8);
-  }
+  // A elegibilidade do canal continua obrigatoria no momento da publicacao.
+  // A abertura do WhatsApp para revisar a mensagem nao publica a oferta.
   if (pacote.plataforma === "Mercado Livre") {
     // O perfil do WhatsApp so abre apos uma consulta atual do estoque.
     await revalidarEstoqueEPrecoMercadoLivre({

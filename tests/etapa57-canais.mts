@@ -146,7 +146,7 @@ test("cadastro ausente ou invalido falha fechado", async () => {
   }
 });
 
-test("preparador nao abre Chrome nem apaga a mensagem em canal nao homologado", async () => {
+test("preparador chega ao navegador sem apagar mensagem, mas nao envia no teste isolado", async () => {
   const dir = await mkdtemp(join(tmpdir(), "etapa57-sem-envio-"));
   try {
     await mkdir(join(dir, "data"));
@@ -171,9 +171,11 @@ test("preparador nao abre Chrome nem apaga a mensagem em canal nao homologado", 
         NODE_ENV: "test"
       }
     });
-    assert.equal(child.status, 8, child.stderr?.slice(0, 600));
-    assert.match(child.stderr + child.stdout, /CANAL_NAO_HOMOLOGADO/);
-    assert.doesNotMatch(child.stderr + child.stdout, /browser_inexistente/);
+    // O bloqueio inicial saiu, portanto o preparador tenta abrir o navegador.
+    // O canal ficticio de teste impede qualquer conexao real com o WhatsApp.
+    assert.notEqual(child.status, 0, "O navegador ficticio nao deveria abrir");
+    assert.notEqual(child.status, 8, "A homologacao nao bloqueia a preparacao inicial");
+    assert.match(child.stderr + child.stdout, /N[oã]o foi poss[ií]vel abrir o perfil do WhatsApp/i);
     assert.equal(await readFile(join(dir, "data", "ultima-mensagem-whatsapp.txt"), "utf8"), mensagem);
   } finally {
     await rm(dir, { recursive: true, force: true });
