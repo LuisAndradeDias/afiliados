@@ -60,15 +60,14 @@
     const badge=$("cpvStatus");
     if(badge){badge.textContent=a.title;badge.title=a.detail;badge.dataset.situacao=a.kind;}
     escrever("opsChannelState",s.canalElegibilidade?.podePublicar===true
-      ?"Canal elegível segundo os registros da Central."
-      :"Canal não homologado · envio bloqueado");
-    escrever("opsChannelDetail",s.canalElegibilidade?.motivo||"Confira as regras comerciais e a autorização do destino.");
+      ?"Envio disponível"
+      :"Envio indisponível");
     escrever("opsSettingsRunState",s.monitorAlternadoAtivo?"Ciclo em execução":"Ciclo pausado");
     const modo=$("tempoCurtoButton")?.getAttribute("aria-pressed")==="true"?"curto":"medio";
     $("opsSettingsRhythmMedium")?.setAttribute("aria-pressed",String(modo==="medio"));
     $("opsSettingsRhythmShort")?.setAttribute("aria-pressed",String(modo==="curto"));
     const avisos=[];
-    if(s.canalElegibilidade?.podePublicar===false)avisos.push("Canal sem homologação · publicação bloqueada");
+    if(s.canalElegibilidade?.podePublicar===false)avisos.push("Envio indisponível para o destino atual");
     if(!s.whatsappAutoEnvioAtivo)avisos.push("Envio automático desativado");
     if(s.ofertaPreparada)avisos.push("Oferta preparada aguardando decisão");
     if(!avisos.length)avisos.push("Nenhuma pendência adicional informada");
@@ -78,30 +77,6 @@
       list?.replaceChildren(...avisos.map(t=>{const li=document.createElement("li");li.textContent=t;return li;}));
       if(list)list.dataset.key=key;
     }
-  }
-  function renderizarElegibilidadePlataformas(s) {
-    const resultados = s.elegibilidadePorPlataforma || {};
-    const itens = [
-      ["opsPolicyAmazon", "Amazon", "amazon"],
-      ["opsPolicyMercadoLivre", "Mercado Livre", "mercado-livre"],
-      ["opsPolicyShopee", "Shopee", "shopee"]
-    ];
-    for(const [id,rotulo,chave] of itens){
-      const item=$(id);
-      if(!item)continue;
-      const decisao=resultados[chave];
-      const situacao=decisao?.podePublicar===true
-        ? "Registro elegível"
-        : decisao?.codigo==="REGRA_INCONCLUSIVA"
-          ? "Revisão necessária"
-          : "Pendente de homologação";
-      item.dataset.elegibilidade=decisao?.podePublicar===true?"registrado":"pendente";
-      item.textContent=rotulo+" · "+situacao+" — "+
-        (decisao?.motivo || "Não foi possível consultar a situação desta plataforma.");
-    }
-    escrever("opsPolicyAutoSend",s.whatsappAutoEnvioAtivo
-      ? "Autoenvio configurado como ligado. Verifique também a autorização do WhatsApp."
-      : "Autoenvio desligado. Conta conectada não autoriza mensagens automáticas.");
   }
   const linhas = s => Array.isArray(s.logs)
     ?s.logs.filter(t=>typeof t==="string").slice(-300):[];
@@ -278,17 +253,16 @@
           </section>
           <section id="opsSettingsPanel-publicacao" role="tabpanel" class="ops-settings-panel" hidden>
             <div class="ops-settings-info">
-              <h3>Destino e publicação</h3>
-              <p>Verificar uma sessão não concede autorização para enviar promoções.</p>
-              <strong id="opsChannelState">Consultando regras do canal...</strong>
-              <p id="opsChannelDetail"></p>
+              <h3>Destino WhatsApp</h3>
+              <p>Grupo usado pela Central para preparar a próxima oferta.</p>
+              <strong id="opsChannelState">Consultando envio...</strong>
             </div>
             <div id="opsGroupConfigHost"></div>
           </section>
           <section id="opsSettingsPanel-diagnostico" role="tabpanel"
             class="ops-settings-panel" hidden></section>
         </div>
-        <footer class="ops-settings-foot">Nenhuma regra de autorização, credencial ou envio é alterada ao abrir esta área.</footer>
+        <footer class="ops-settings-foot">Configurações locais da Central de Ofertas.</footer>
       </section>`;
     document.body.appendChild(overlay);
     const [tools,accounts,monitor]=caixas;
@@ -302,46 +276,6 @@
     // O contêiner anterior ficou vazio; remover somente o invólucro.
     if(legacyHost?.matches("section.section") &&
        !legacyHost.querySelector("details.toolbox"))legacyHost.remove();
-    const avisoPublicacao=document.createElement("section");
-    avisoPublicacao.id="opsChannelChecklist";
-    avisoPublicacao.className="ops-channel-checklist";
-    avisoPublicacao.setAttribute("aria-label","Verificações de publicação");
-    const tituloChecklist=document.createElement("h3");
-    tituloChecklist.textContent="Condições para publicar";
-    const textoChecklist=document.createElement("p");
-    textoChecklist.textContent="A sessão do WhatsApp e a identificação do grupo não substituem a homologação comercial para cada marketplace.";
-    const listaChecklist=document.createElement("ul");
-    for(const regra of [
-      "Confirmar autorização do responsável pelo grupo e participação voluntária.",
-      "Conferir as regras oficiais de divulgação do programa de afiliados para este canal.",
-      "Registrar revisão comercial e homologação vigente para a plataforma.",
-      "Verificar o link, o preço, o estoque e eventuais cupons antes do envio."
-    ]){
-      const item=document.createElement("li");
-      item.textContent=regra;
-      listaChecklist.appendChild(item);
-    }
-    avisoPublicacao.append(tituloChecklist,textoChecklist,listaChecklist);
-    $("opsSettingsPanel-publicacao").appendChild(avisoPublicacao);
-    const resumoPlataformas=document.createElement("section");
-    resumoPlataformas.id="opsPolicySummary";
-    resumoPlataformas.className="ops-policy-summary";
-    resumoPlataformas.setAttribute("aria-label","Elegibilidade comercial por plataforma");
-    resumoPlataformas.innerHTML=`
-      <h3>Elegibilidade por marketplace</h3>
-      <p>Leitura dos registros da Central. A conexão técnica não equivale a autorização.</p>
-      <div id="opsPolicyAmazon" class="ops-policy-item">Amazon · Consultando...</div>
-      <div id="opsPolicyMercadoLivre" class="ops-policy-item">Mercado Livre · Consultando...</div>
-      <div id="opsPolicyShopee" class="ops-policy-item">Shopee · Consultando...</div>
-      <p id="opsPolicyAutoSend" class="ops-policy-auto">Verificando modo de envio...</p>
-      <p class="ops-policy-note">Regras do Mercado Livre para WhatsApp apresentam
-        orientações públicas divergentes. Confirme os termos aplicáveis à sua conta.</p>
-      <p class="ops-policy-sources">
-        <a href="https://www.mercadolivre.com.br/l/checklist" target="_blank" rel="noopener noreferrer">Checklist ML</a>
-        <a href="https://www.mercadolivre.com.br/l/afiliados-pode-compartilhar" target="_blank" rel="noopener noreferrer">Restrições ML</a>
-        <a href="https://faq.whatsapp.com/5957850900902049/?locale=pt_BR" target="_blank" rel="noopener noreferrer">Automação no WhatsApp</a>
-      </p>`;
-    $("opsSettingsPanel-publicacao").appendChild(resumoPlataformas);
     const advanced=$("whatsappDestination")?.querySelector(".group-advanced");
     if(advanced){
       advanced.open=true;
@@ -357,7 +291,7 @@
     setupButton.id="opsPublishSetupButton";
     setupButton.type="button";
     setupButton.className="secondary ops-publish-checklist-button";
-    setupButton.textContent="Entender pendência do canal";
+    setupButton.textContent="Configurar destino";
     setupButton.addEventListener("click",()=>abrir("publicacao"));
     const sendActions=$("reopenWhatsappButton")?.parentElement;
     if(sendActions) sendActions.prepend(setupButton);
@@ -410,7 +344,6 @@
       update(s){
         estado=s||{};
         renderizarSituacao(estado);
-        renderizarElegibilidadePlataformas(estado);
         renderizarHistorico(estado);
         renderizarTerminal(estado);
       },

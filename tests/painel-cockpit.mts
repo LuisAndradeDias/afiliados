@@ -96,16 +96,17 @@ try{
     "Canal pendente precisa de caminho visível até autorização comercial.");
   await page.locator("#opsPublishSetupButton").click();
   assert.equal(await page.locator('[data-ops-settings-tab="publicacao"]').getAttribute("aria-selected"),"true");
-  assert.equal(await page.locator("#opsChannelChecklist").isVisible(),true);
-  assert.match(await page.locator("#opsChannelChecklist").innerText(),/regra|autoriza|homologa/i);
-  assert.match(await page.locator("#opsPolicyAmazon").innerText(),/pendente|não homologado/i,
-    "Amazon exige homologação própria");
-  assert.match(await page.locator("#opsPolicyMercadoLivre").innerText(),/revisão|inconclusiva|pendente/i,
-    "Mercado Livre exibe o bloqueio por regra inconclusiva");
-  assert.match(await page.locator("#opsPolicyShopee").innerText(),/pendente|não homologado/i,
-    "Shopee permanece independente");
-  assert.match(await page.locator("#opsPolicyAutoSend").innerText(),/desligado|desativado/i,
-    "Autoenvio deve ser reportado separadamente da conexão");
+  assert.equal(await page.locator("#opsChannelChecklist").count(),0,
+    "Não incluir checklist comercial extenso nas configurações.");
+  assert.equal(await page.locator("#opsPolicySummary").count(),0,
+    "Não exibir múltiplos cartões comerciais no painel operacional.");
+  assert.equal(await page.locator("#opsGroupConfigHost").isVisible(),true,
+    "Preservar configuração do grupo original.");
+  assert.match(await page.locator("#opsChannelState").innerText(),/indisponível|bloqueado/i,
+    "Não declarar liberado um envio ainda bloqueado no backend.");
+  assert.equal(await page.locator("#opsChannelDetail").count(),0,
+    "Remover parágrafos jurídicos extensos da interface.");
+  assert.equal(await page.locator("#opsPublishSetupButton").innerText(),"Configurar destino");
   await page.keyboard.press("Escape");
   const previewWidth=await page.locator("#mensagem").evaluate(el=>el.getBoundingClientRect().width);
   assert.ok(previewWidth>250,"A mensagem sem imagem não pode ficar em uma coluna estreita: "+previewWidth);

@@ -211,30 +211,3 @@ button.ops-settings-open:hover { background:#e8fff5; }
   background:#eef5f2; color:#276b52; border:1px solid #a8cfbd;
   font-size:12px; line-height:1.4; }
 .ops-publish-checklist-button:hover { background:#dff3ea; }
-.ops-channel-checklist { background:#fff; border:1px solid #dce5e9;
-  border-radius:12px; padding:17px; }
-.ops-channel-checklist h3 { margin:0 0 7px; font-size:14px; color:#172c3d; }
-.ops-channel-checklist p, .ops-channel-checklist li { color:#4a6274;
-  font-size:12px; line-height:1.55; }
-.ops-channel-checklist ul { padding-left:18px; margin:10px 0 0; }
-.ops-channel-checklist li + li { margin-top:8px; }
-
-/* Etapa 57: leitura comercial separada da conexao tecnicamente verificada. */
-.ops-policy-summary { background:#fff; border:1px solid #dce5e9;
-  border-radius:12px; padding:17px; display:grid; gap:9px; }
-.ops-policy-summary h3 { margin:0; color:#182d3e; font-size:14px; }
-.ops-policy-summary p { margin:0; font-size:11px; color:#5a7283; line-height:1.55; }
-.ops-policy-item { background:#f9fbfc; border:1px solid #e1e9ed;
-  padding:12px 13px; border-radius:9px; font-size:12px; color:#596778;
-  overflow-wrap:anywhere; line-height:1.6; }
-.ops-policy-item[data-elegibilidade="pendente"] {
-  border-left:3px solid #e7a64f; }
-.ops-policy-item[data-elegibilidade="registrado"] {
-  border-left:3px solid #2da47f; }
-.ops-policy-summary .ops-policy-auto { margin-top:5px;
-  border-radius:9px; padding:11px 12px; color:#765624; background:#fff8e9;
-  border:1px solid #f0e1bc; font-weight:650; }
-.ops-policy-summary .ops-policy-note { padding-top:5px; }
-.ops-policy-sources { display:flex; flex-wrap:wrap; gap:6px 12px; }
-.ops-policy-sources a { color:#11694e; font-size:11px; font-weight:700;
-  text-decoration:underline; }
