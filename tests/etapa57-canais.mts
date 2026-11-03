@@ -45,11 +45,15 @@ function avaliar(registro: unknown, plataforma = "Mercado Livre") {
 
 test("plataformas sao especificas e desconhecidas nunca sao elegiveis", () => {
   assert.equal(identificarPlataformaCanal("Mercado Livre"), "mercado-livre");
+  assert.equal(identificarPlataformaCanal("mercado-livre"), "mercado-livre");
+  assert.equal(identificarPlataformaCanal(" Meli "), "mercado-livre");
   assert.equal(identificarPlataformaCanal("Amazon Brasil"), "amazon");
   assert.equal(identificarPlataformaCanal("Shopee"), "shopee");
   assert.equal(identificarPlataformaCanal("Outra loja"), null);
   assert.equal(avaliar(aprovacao(), "Outra loja").podePublicar, false);
   assert.equal(avaliar(aprovacao(), "Shopee").codigo, "CANAL_NAO_HOMOLOGADO");
+  assert.equal(avaliar(aprovacao(), "mercado-livre").codigo, "CANAL_HOMOLOGADO");
+  assert.equal(avaliar(aprovacao(), "mercado-livre").podePublicar, true);
 });
 
 test("somente o cadastro exato e completo pode permitir publicacao", () => {

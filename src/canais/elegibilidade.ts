@@ -54,7 +54,7 @@ export function identificarPlataformaCanal(
 ): PlataformaCanal | null {
   const texto = (plataforma ?? "").normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-  if (texto === "mercado livre" || texto === "meli") return "mercado-livre";
+  if (texto === "mercado livre" || texto === "mercado-livre" || texto === "meli") return "mercado-livre";
   if (texto === "amazon" || texto === "amazon brasil") return "amazon";
   if (texto === "shopee") return "shopee";
   return null;
