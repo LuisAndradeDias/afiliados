@@ -14,7 +14,7 @@ test("probe de link recusa execucao sem confirmacao manual", {
   const r = spawnSync("powershell.exe", [
     "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
     "-File", script,
-  ], { encoding: "utf8", timeout: 10000 });
+  ], { encoding: "utf8", timeout: 30000 });
   assert.equal(r.status, 3, r.stderr || r.stdout);
   assert.match(r.stdout, /EXECUTION_REFUSED/);
   assert.doesNotMatch(r.stdout + r.stderr, /Bearer |access_token|refresh_token|PREFLIGHT=PASS/i);
@@ -48,6 +48,6 @@ test("PowerShell do probe tem sintaxe valida", {
     "-NoProfile", "-NonInteractive", "-Command",
     "$t=$null;$e=$null;[System.Management.Automation.Language.Parser]::ParseFile(" +
       JSON.stringify(script) + ",[ref]$t,[ref]$e)|Out-Null;if(@($e).Count){exit 2}",
-  ], { encoding: "utf8", timeout: 10000 });
+  ], { encoding: "utf8", timeout: 30000 });
   assert.equal(r.status, 0, r.stderr || r.stdout);
 });

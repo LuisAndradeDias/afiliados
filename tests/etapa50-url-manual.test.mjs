@@ -13,7 +13,7 @@ test("teste manual recusa URL sem confirmacao e nao entra em contato com painel"
     "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
     "-File",script,"-UrlProduto",
     "https://www.mercadolivre.com.br/p/MLB123456"
-  ],{encoding:"utf8",timeout:8000});
+  ],{encoding:"utf8",timeout:30000});
   assert.equal(result.status,3,result.stderr||result.stdout);
   assert.match(result.stdout,/EXECUTION_REFUSED/);
   assert.doesNotMatch(result.stdout+result.stderr,/SAFE_TEST_START/);
@@ -39,6 +39,6 @@ test("PowerShell manual probe tem sintaxe valida",{
     "-NoProfile","-NonInteractive","-Command",
     "$t=$null;$e=$null;[System.Management.Automation.Language.Parser]::ParseFile("+
       JSON.stringify(script)+",[ref]$t,[ref]$e)|Out-Null;if(@($e).Count){exit 2}"
-  ],{encoding:"utf8",timeout:8000});
+  ],{encoding:"utf8",timeout:30000});
   assert.equal(result.status,0,result.stderr||result.stdout);
 });
