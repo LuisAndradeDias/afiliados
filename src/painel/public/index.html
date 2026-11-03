@@ -1128,13 +1128,13 @@
             <div id="whatsappConnectionDetails" class="whatsapp-connection-feedback" role="status" aria-live="polite">Sessão ainda não verificada. Clique para abrir o Chrome do projeto.</div>
           </div>
           <div class="send-actions">
-            <button id="reopenWhatsappButton" class="primary" data-action="preparar" style="display:none">↗ Reabrir no WhatsApp</button>
+            <button id="reopenWhatsappButton" class="primary" data-action="preparar" style="display:none">↗ Abrir oferta no WhatsApp</button>
             <button id="sendNowButton" class="success" data-action="preparar-send">📤 Enviar pelo painel</button>
             <button id="sendNextButton" class="primary" data-action="preparar-send-next">📤 Enviar + próxima</button>
             <button id="discardOfferButton" class="danger" data-action="preparar-cancel">✕ Descartar oferta</button>
           </div>
           <div class="send-note">
-            Você pode enviar diretamente no WhatsApp. Quando a mensagem enviada for detectada, o painel registra a oferta e retoma o ciclo automaticamente.
+            O robô prepara imagem, link e mensagem no grupo. Para publicar, clique uma vez em Enviar no próprio WhatsApp Web. Após a confirmação real da mensagem, o painel registra a oferta e retoma o ciclo; não haverá clique automático pelo robô.
           </div>
         </aside>
       </div>
@@ -1623,7 +1623,7 @@
         searching: `Consultando ofertas e aplicando os filtros configurados na ${nome}.`,
         linking: "A oferta do Mercado Livre passou pelos filtros. A extensão está gerando o link de afiliado.",
         preparing: `A promoção da ${nome} já foi escolhida. O sistema está montando imagem, mensagem e janela do WhatsApp.`,
-        review: `O WhatsApp está pronto com a promoção da ${nome}. Revise e envie pelo WhatsApp ou pelo painel.`,
+        review: `O WhatsApp está pronto com a promoção da ${nome}. Clique uma vez em Enviar no próprio WhatsApp; o painel detectará a publicação.`,
         sending: "O comando de envio foi disparado. O ciclo só continuará depois que o WhatsApp confirmar o envio.",
         "offer-pending": "A promoção está salva no painel, mas não existe uma janela ativa de revisão. Use “Reabrir no WhatsApp”.",
         error: s.mercadoLivreFluxoMensagem || "Consulte os logs em Ferramentas avançadas."
@@ -1633,19 +1633,18 @@
       const canalBloqueado = estado === "offer-pending" &&
         s.ofertaPreparada && s.canalElegibilidade?.podePublicar === false;
       $("flowTitle").textContent = canalBloqueado
-        ? "Oferta salva · publicação bloqueada até homologação"
+        ? "Oferta salva · abrir para revisar no WhatsApp"
         : faltaGrupo
           ? "Oferta salva · configure o grupo do WhatsApp"
           : titulos[estado] || "Atividade do ciclo";
       $("flowDescription").textContent = canalBloqueado
-        ? "O WhatsApp pode estar conectado, mas o envio não pode ser preparado: " +
-          (s.canalElegibilidade?.motivo || "o canal precisa ser homologado.") +
-          " A oferta foi preservada. Use Conectar somente para verificar a sessão, sem envio."
+        ? "Oferta preservada. Você pode abrir o WhatsApp e revisar a mensagem. Para publicar, clique em Enviar no próprio WhatsApp. Cadastro comercial pendente: " +
+          (s.canalElegibilidade?.motivo || "o canal precisa ser homologado.")
         : faltaGrupo
           ? "O preparador não abriu o WhatsApp porque o destino não estava configurado. Salve o nome exato do grupo no cartão Destino; a promoção foi preservada."
           : detalhes[estado] || "";
       $("flowBadge").textContent = canalBloqueado
-        ? "Canal pendente" : badges[estado] || "Processando";
+        ? "Revisão manual" : badges[estado] || "Processando";
 
       $("stepSearchText").textContent =
         plataforma === "amazon"
@@ -1776,11 +1775,11 @@
         }
         $("autoSendStatus").textContent = s.whatsappAutoEnvioAtivo
           ? "Autoenvio ativo: quando a oferta ficar pronta, o mouse clicará uma vez após " + Math.round((s.whatsappAutoEnvioAtrasoMs || 1500) / 1000) + " s. Sem repetição se a confirmação falhar."
-          : "Autoenvio pausado: é necessário confirmar o envio no WhatsApp ou no painel.";
+          : "Modo supervisionado: o robô prepara a oferta; você clica em Enviar uma vez no WhatsApp Web.";
         $("whatsappSetupHint").textContent = s.grupoConfigurado
           ? (ofertaPreparada && !s.canalElegibilidade?.podePublicar
-              ? "Envio bloqueado: " + (s.canalElegibilidade?.motivo || "canal sem homologação") + " O grupo foi preservado; revise as regras comerciais antes de publicar."
-              : "Grupo salvo. A elegibilidade comercial depende do marketplace e deve estar homologada antes de enviar.")
+              ? "Grupo salvo. É possível abrir a oferta para revisão manual. Homologação comercial pendente: " + (s.canalElegibilidade?.motivo || "canal sem homologação")
+              : "Grupo salvo. O WhatsApp abrirá a oferta para sua confirmação; confira as condições comerciais do marketplace.")
           : "Salve o nome exato do grupo. O perfil do painel é diferente do Chrome comum; se abrir para conectar, feche a janela depois do login.";
 
         mostrarConexaoWhatsapp(s);
@@ -1899,9 +1898,7 @@
           preparing: "Montando imagem e mensagem para o grupo.",
           review: "O ciclo aguarda você enviar a oferta.",
           sending: "Aguardando confirmação real do WhatsApp.",
-          "offer-pending": !s.canalElegibilidade?.podePublicar
-            ? "Envio suspenso até a homologação do canal. A sessão pode ser verificada sem publicar."
-            : "Use Reabrir no WhatsApp para continuar.",
+          "offer-pending": "Abra a oferta no WhatsApp para revisão. Depois, confirme manualmente no próprio WhatsApp.",
           error: s.mercadoLivreFluxoMensagem || "Consulte os logs."
         };
         $("cycleNowDetail").textContent = aguardandoIntervalo && estado === "scheduled"
@@ -1926,13 +1923,10 @@
             : "consulta em andamento";
         }
 
-        if (s.grupoConfigurado && ofertaPreparada && !s.canalElegibilidade?.podePublicar) {
-          $("cycleWhatsapp").textContent = "Canal não homologado";
-          $("cycleWhatsappDetail").textContent = s.canalElegibilidade?.motivo || "Envio bloqueado até a revisão comercial.";
-        } else if (revisaoPronta) {
-          $("cycleWhatsapp").textContent = "Pronto para enviar";
+        if (revisaoPronta) {
+          $("cycleWhatsapp").textContent = "Aguardando seu clique";
           $("cycleWhatsappDetail").textContent =
-            `Grupo ${s.grupo || "não configurado"} · revisão aberta`;
+            `Revise o grupo ${s.grupo || "não configurado"} e clique em Enviar no WhatsApp`;
         } else if (preparando) {
           $("cycleWhatsapp").textContent = "Abrindo / preparando";
           $("cycleWhatsappDetail").textContent =
@@ -2131,18 +2125,13 @@
           $("mensagem").textContent = mensagem;
           $("reviewOrigin").textContent = nomePlataforma(ofertaPlataforma);
 
-          if (ofertaPreparada && s.canalElegibilidade?.podePublicar === false) {
+          if (revisaoPronta) {
             $("reviewSubtitle").textContent =
-              "Oferta preservada. A publicação aguarda homologação do canal de destino.";
-            $("reviewWhatsappState").textContent =
-              "A conta do WhatsApp pode estar conectada, mas não há cadastro comercial homologado para esta oferta. A abertura da mensagem para envio permanece bloqueada. Verifique a sessão pelo botão Conectar, sem envio.";
-          } else if (revisaoPronta) {
-            $("reviewSubtitle").textContent =
-              "O WhatsApp está aberto com esta oferta. Revise a mensagem e confirme o envio.";
+              "Oferta pronta no grupo. Confira e clique uma vez em Enviar no próprio WhatsApp Web.";
             $("reviewWhatsappState").textContent =
               s.whatsappAutoEnvioAtivo
                 ? "WhatsApp pronto. Autoenvio armado: clique físico em poucos segundos, sem duplicação."
-                : "WhatsApp pronto. Você pode enviar na janela do WhatsApp ou pelo botão abaixo.";
+                : "WhatsApp pronto. Para publicar, clique uma vez no botão Enviar do WhatsApp. O painel detectará o envio e continuará o ciclo.";
           } else if ((s.executando || []).includes("login")) {
             $("reviewSubtitle").textContent =
               "WhatsApp aberto para conferir a sessão. A oferta continua salva, sem envio.";
@@ -2159,7 +2148,7 @@
               ? "A oferta está salva, mas a janela de revisão do WhatsApp não está ativa."
               : "A oferta está salva. Falta escolher o grupo para abrir a revisão no WhatsApp.";
             $("reviewWhatsappState").textContent = s.grupoConfigurado
-              ? "WhatsApp não está aberto para esta oferta. Use Reabrir no WhatsApp."
+              ? "WhatsApp não está aberto para esta oferta. Use Abrir oferta no WhatsApp e depois clique em Enviar na conversa."
               : "Defina e salve o nome exato do grupo abaixo. Você também pode abrir o WhatsApp do painel para verificar a sessão.";
           }
         } else {
@@ -2277,13 +2266,11 @@
         const elegibilidadeBloqueada = ofertaPreparada && !s.canalElegibilidade?.podePublicar;
         reopenWhatsappButton.style.display =
           mensagem && !preparando ? "" : "none";
-        reopenWhatsappButton.disabled = elegibilidadeBloqueada || whatsappOcupado;
-        reopenWhatsappButton.textContent = elegibilidadeBloqueada
-          ? "Canal não homologado · envio bloqueado"
-          : "↗ Reabrir no WhatsApp";
-        reopenWhatsappButton.title = elegibilidadeBloqueada
-          ? "Envio impedido até cadastro e revisão das regras do canal. Use Conectar para testar o login sem envio."
-          : "Reabrir a oferta quando houver permissão comercial.";
+        // Revisar no WhatsApp nao exige homologacao comercial. A publicacao
+        // so ocorre apos o clique deliberado da pessoa no proprio WhatsApp.
+        reopenWhatsappButton.disabled = whatsappOcupado || !s.grupoConfigurado;
+        reopenWhatsappButton.textContent = "↗ Abrir oferta no WhatsApp";
+        reopenWhatsappButton.title = "Abre o grupo salvo e prepara imagem e mensagem. Nenhum clique de envio e executado pelo robo.";
         sendNowButton.style.display =
           mensagem && revisaoPronta && !elegibilidadeBloqueada ? "" : "none";
         discardOfferButton.style.display =
@@ -2313,7 +2300,7 @@
             b.disabled =
               whatsappOcupado ||
               !ofertaPreparada ||
-              elegibilidadeBloqueada;
+              !s.grupoConfigurado;
           } else if (acao === "preparar-send") {
             b.disabled =
               !revisaoPronta ||

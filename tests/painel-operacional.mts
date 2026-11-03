@@ -248,15 +248,17 @@ try {
     "A falta de ofertas no ML deve mostrar o motivo tecnico sem chamar de falha de login."
   );
   assert(
-    (await page.locator("#reviewSubtitle").innerText()).includes("homologação"),
-    "Oferta bloqueada por canal deve exibir motivo em vez de recomendar reabrir."
+    (await page.locator("#reviewSubtitle").innerText()).includes("janela de revisão"),
+    "A oferta deve permitir revisão no WhatsApp mesmo sem homologação comercial."
   );
   assert(
-    (await page.locator("#flowTitle").innerText()).includes("bloqueada"),
-    "Atividade atual nao pode sugerir que apenas falta abrir o WhatsApp."
+    (await page.locator("#flowTitle").innerText()).includes("abrir para revisar"),
+    "O painel deve distinguir preparação manual de autorização comercial."
   );
-  assert(await page.locator("#reopenWhatsappButton").isDisabled(),
-    "Sem homologacao o preparador permanece bloqueado.");
+  assert(await page.locator("#reopenWhatsappButton").isEnabled(),
+    "A abertura do grupo para revisão deve continuar disponível sem homologação comercial.");
+  assert(!(await page.locator("#sendNowButton").isVisible()),
+    "O envio pelo painel permanece indisponível sem homologação.");
   assert(await page.locator("#openWhatsappConnectionButton").isEnabled(),
     "Verificar sessao sem envio continua permitido.");
   state = { ...base };
@@ -427,17 +429,17 @@ try {
   };
   await page.waitForTimeout(1_700);
   assert(
-    (await page.locator("#cycleWhatsapp").innerText()) === "Canal não homologado",
-    "O estado comercial deve ser compreensível no ciclo."
+    (await page.locator("#cycleWhatsapp").innerText()) === "Perfil salvo",
+    "O estado do WhatsApp deve permitir preparação manual mesmo com canal comercial pendente."
   );
   assert(
-    (await page.locator("#whatsappSetupHint").innerText()).includes("Envio bloqueado"),
-    "O painel deve explicar por que o canal está bloqueado."
+    (await page.locator("#whatsappSetupHint").innerText()).includes("Homologação comercial pendente"),
+    "O painel deve informar a pendência comercial sem bloquear a revisão."
   );
   assert(
-    (await page.locator("#reopenWhatsappButton").isDisabled()) &&
+    (await page.locator("#reopenWhatsappButton").isEnabled()) &&
     !(await page.locator("#sendNowButton").isVisible()),
-    "Oferta de canal não homologado não permite abrir nem enviar."
+    "A oferta pode ser aberta para revisão, mas o painel não autoriza disparo."
   );
 
   // A migração para o PC novo começa sem grupo; a oferta deve ser

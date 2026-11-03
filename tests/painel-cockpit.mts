@@ -83,8 +83,12 @@ try{
   page.on("pageerror",err=>errors.push(String(err)));
   await page.goto("http://127.0.0.1:"+addr.port+"/ofertas",{waitUntil:"networkidle"});
   await page.locator("#opsNowTitle").waitFor({timeout:4500});
-  assert.match(await page.locator("#opsNowTitle").innerText(),/oferta pendente|envio bloqueado/i);
-  assert.match(await page.locator("#opsNowDetail").innerText(),/homologa|canal|autoriz/i);
+  assert.match(await page.locator("#opsNowTitle").innerText(),/oferta salva|abrir no WhatsApp/i);
+  assert.match(await page.locator("#opsNowDetail").innerText(),/homologa|canal|prepara/i);
+  assert.equal(await page.locator("#reopenWhatsappButton").isEnabled(),true,
+    "Revisar uma oferta no WhatsApp nao deve depender da homologacao comercial.");
+  assert.equal(await page.locator("#sendNowButton").isVisible(),false,
+    "Envio pelo painel continua indisponivel sem homologacao.");
   assert.match(await page.locator("#opsConsole").innerText(),/Mercado Livre:/);
   assert.equal(await page.locator(".health-item").count(),4,"manter quatro status");
   assert.equal(await page.locator("#cycleToggleButton").count(),1);
@@ -105,7 +109,7 @@ try{
   assert.match(await page.locator("#opsChannelState").innerText(),/pendente|bloqueado/i,
     "Não declarar liberado um canal ainda bloqueado no backend.");
   assert.equal(await page.locator("#opsWhatsappGroup").innerText(),"Caça Promos VIP 👑");
-  assert.match(await page.locator("#opsWhatsappMode").innerText(),/revisão/i);
+  assert.match(await page.locator("#opsWhatsappMode").innerText(),/revisão.*clique.*WhatsApp/i);
   assert.equal(await page.locator("#opsWhatsappConnection").innerText(),"Sessão conectada");
   assert.equal(await page.locator("#whatsappGroupInput").isVisible(),false,
     "A troca de grupo deve permanecer recolhida por padrão.");

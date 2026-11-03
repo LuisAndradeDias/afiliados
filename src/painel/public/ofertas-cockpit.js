@@ -22,13 +22,16 @@
     if(em("login")){
       title="Verificando WhatsApp e grupo";detail="Conferência de sessão sem enviar mensagens.";kind="working";
     }else if(s.whatsappEnvioPendente||s.operacaoEstado==="sending"){
-      title="Aguardando confirmação do WhatsApp";detail="A mensagem precisa ser confirmada na conversa.";kind="waiting";
+      title="Aguardando confirmação do WhatsApp";detail="O painel está verificando se a mensagem foi publicada.";kind="waiting";
+    }else if(s.whatsappRevisaoPronta){
+      title="Oferta pronta · clique em Enviar no WhatsApp";
+      detail="Revise a imagem e a mensagem no grupo. Apenas seu clique publica; o histórico é atualizado após confirmação.";kind="waiting";
     }else if(em("preparar")||em("mercadolivre-whatsapp")||s.operacaoEstado==="preparing"){
       title="Preparando oferta para revisão";detail="Montando os dados da oferta antes da divulgação.";kind="working";
     }else if(s.ofertaPreparada && s.canalElegibilidade?.podePublicar!==true){
-      title="Oferta pendente · envio bloqueado";
-      detail=s.canalElegibilidade?.motivo||"O canal de destino ainda não está homologado.";
-      kind="blocked";
+      title="Oferta salva · pronta para abrir no WhatsApp";
+      detail="A preparação manual está disponível. A homologação comercial do canal continua pendente.";
+      kind="waiting";
     }else if(s.ofertaPreparada){
       title=s.whatsappRevisaoPronta?"Oferta pronta para revisão no WhatsApp":"Oferta preparada · aguardando revisão";
       detail="Confira os dados comerciais antes da divulgação.";kind="waiting";
@@ -65,7 +68,7 @@
     escrever("opsWhatsappGroup",s.grupoConfigurado?s.grupo:"Não configurado");
     escrever("opsWhatsappMode",s.whatsappAutoEnvioAtivo
       ?"Autoenvio configurado"
-      :"Revisão antes do envio");
+      :"Revisão + clique no WhatsApp");
     escrever("opsWhatsappConnection",s.sessaoWhatsapp===true
       ?"Sessão conectada"
       :"Sessão não verificada");
@@ -76,8 +79,8 @@
     $("opsSettingsRhythmMedium")?.setAttribute("aria-pressed",String(modo==="medio"));
     $("opsSettingsRhythmShort")?.setAttribute("aria-pressed",String(modo==="curto"));
     const avisos=[];
-    if(s.canalElegibilidade?.podePublicar===false)avisos.push("Envio indisponível para o destino atual");
-    if(!s.whatsappAutoEnvioAtivo)avisos.push("Envio automático desativado");
+    if(s.canalElegibilidade?.podePublicar===false)avisos.push("Homologação comercial pendente para este canal");
+    if(!s.whatsappAutoEnvioAtivo)avisos.push("Envio manual: clique em Enviar no WhatsApp");
     if(s.ofertaPreparada)avisos.push("Oferta preparada aguardando decisão");
     if(!avisos.length)avisos.push("Nenhuma pendência adicional informada");
     const list=$("opsAlerts");
