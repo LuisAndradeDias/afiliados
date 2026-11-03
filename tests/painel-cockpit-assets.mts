@@ -24,6 +24,12 @@ try{
     assert.match(response.headers.get("content-type")??"",new RegExp(contentType));
     assert.ok((await response.text()).includes(fragment),path);
   }
+  for (const path of ["/ofertas", "/"]) {
+    const page=await fetch(origin+path);
+    assert.equal(page.status,200,path);
+    assert.equal(page.headers.get("cache-control"),"no-store",
+      "HTML da Central deve ser sempre revalidado, evitando interface antiga.");
+  }
   const unknown=await fetch(origin+"/central/assets/arquivo-secreto.txt");
   assert.equal(unknown.status,404,"rotas nao permitidas permanecem bloqueadas");
   console.log("ASSETS_COCKPIT_OK: CSS e JS públicos, rota desconhecida negada");

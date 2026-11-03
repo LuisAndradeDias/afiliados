@@ -102,8 +102,15 @@ try{
     "Não exibir múltiplos cartões comerciais no painel operacional.");
   assert.equal(await page.locator("#opsGroupConfigHost").isVisible(),true,
     "Preservar configuração do grupo original.");
-  assert.match(await page.locator("#opsChannelState").innerText(),/indisponível|bloqueado/i,
-    "Não declarar liberado um envio ainda bloqueado no backend.");
+  assert.match(await page.locator("#opsChannelState").innerText(),/pendente|bloqueado/i,
+    "Não declarar liberado um canal ainda bloqueado no backend.");
+  assert.equal(await page.locator("#opsWhatsappGroup").innerText(),"Caça Promos VIP 👑");
+  assert.match(await page.locator("#opsWhatsappMode").innerText(),/revisão/i);
+  assert.equal(await page.locator("#opsWhatsappConnection").innerText(),"Sessão conectada");
+  assert.equal(await page.locator("#whatsappGroupInput").isVisible(),false,
+    "A troca de grupo deve permanecer recolhida por padrão.");
+  await page.locator("#opsGroupConfigHost .group-advanced summary").click();
+  assert.equal(await page.locator("#whatsappGroupInput").isVisible(),true);
   assert.equal(await page.locator("#opsChannelDetail").count(),0,
     "Remover parágrafos jurídicos extensos da interface.");
   assert.equal(await page.locator("#opsPublishSetupButton").innerText(),"Configurar destino");

@@ -60,8 +60,17 @@
     const badge=$("cpvStatus");
     if(badge){badge.textContent=a.title;badge.title=a.detail;badge.dataset.situacao=a.kind;}
     escrever("opsChannelState",s.canalElegibilidade?.podePublicar===true
-      ?"Envio disponível"
-      :"Envio indisponível");
+      ?"Canal verificado"
+      :"Canal pendente");
+    escrever("opsWhatsappGroup",s.grupoConfigurado?s.grupo:"Não configurado");
+    escrever("opsWhatsappMode",s.whatsappAutoEnvioAtivo
+      ?"Autoenvio configurado"
+      :"Revisão antes do envio");
+    escrever("opsWhatsappConnection",s.sessaoWhatsapp===true
+      ?"Sessão conectada"
+      :"Sessão não verificada");
+    const conexao=$("opsWhatsappConnection");
+    if(conexao)conexao.dataset.connected=String(s.sessaoWhatsapp===true);
     escrever("opsSettingsRunState",s.monitorAlternadoAtivo?"Ciclo em execução":"Ciclo pausado");
     const modo=$("tempoCurtoButton")?.getAttribute("aria-pressed")==="true"?"curto":"medio";
     $("opsSettingsRhythmMedium")?.setAttribute("aria-pressed",String(modo==="medio"));
@@ -252,10 +261,18 @@
             </div>
           </section>
           <section id="opsSettingsPanel-publicacao" role="tabpanel" class="ops-settings-panel" hidden>
-            <div class="ops-settings-info">
-              <h3>Destino WhatsApp</h3>
-              <p>Grupo usado pela Central para preparar a próxima oferta.</p>
-              <strong id="opsChannelState">Consultando envio...</strong>
+            <div class="ops-whatsapp-card" aria-label="Configuração de publicação no WhatsApp">
+              <div class="ops-whatsapp-head">
+                <div><span class="ops-whatsapp-eyebrow">WHATSAPP</span>
+                  <h3>Grupo de promoções</h3></div>
+                <span id="opsWhatsappConnection" class="ops-whatsapp-connection">Verificando...</span>
+              </div>
+              <div class="ops-whatsapp-grid">
+                <div><span>Destino atual</span><strong id="opsWhatsappGroup">Consultando...</strong></div>
+                <div><span>Modo de envio</span><strong id="opsWhatsappMode">Consultando...</strong></div>
+              </div>
+              <p class="ops-whatsapp-state"><span id="opsChannelState">Verificando canal...</span>
+                <span>O envio segue condicionado à validação da oferta e do canal.</span></p>
             </div>
             <div id="opsGroupConfigHost"></div>
           </section>
@@ -278,7 +295,8 @@
        !legacyHost.querySelector("details.toolbox"))legacyHost.remove();
     const advanced=$("whatsappDestination")?.querySelector(".group-advanced");
     if(advanced){
-      advanced.open=true;
+      // A troca de destino permanece opcional; não exigir redigitação do grupo salvo.
+      advanced.open=false;
       $("opsGroupConfigHost").appendChild(advanced);
       const shortcut=document.createElement("button");
       shortcut.type="button";shortcut.id="opsGroupSettingsShortcut";

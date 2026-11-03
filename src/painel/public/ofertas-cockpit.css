@@ -211,3 +211,30 @@ button.ops-settings-open:hover { background:#e8fff5; }
   background:#eef5f2; color:#276b52; border:1px solid #a8cfbd;
   font-size:12px; line-height:1.4; }
 .ops-publish-checklist-button:hover { background:#dff3ea; }
+
+/* Publicacao WhatsApp: resumo enxuto, sem homologacoes em cartoes repetidos. */
+.ops-whatsapp-card { border:1px solid #dce7e5; border-radius:14px;
+  background:#fff; padding:20px; display:grid; gap:16px; }
+.ops-whatsapp-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.ops-whatsapp-eyebrow { color:#168366; font-size:10px; font-weight:850;
+  letter-spacing:.11em; }
+.ops-whatsapp-head h3 { margin:4px 0 0; font-size:17px; color:#172e40; }
+.ops-whatsapp-connection { flex:0 0 auto; background:#f2f5f7; color:#5d7180;
+  font-size:11px; font-weight:750; border-radius:999px; padding:8px 10px; }
+.ops-whatsapp-connection[data-connected="true"] { background:#e6f6ef; color:#176e4f; }
+.ops-whatsapp-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.ops-whatsapp-grid > div { min-width:0; border:1px solid #e4ebef;
+  border-radius:11px; padding:13px; background:#f9fbfc; }
+.ops-whatsapp-grid span { display:block; font-size:11px; color:#617789; margin-bottom:5px; }
+.ops-whatsapp-grid strong { display:block; color:#19344a; font-size:13px;
+  line-height:1.45; overflow-wrap:anywhere; }
+.ops-whatsapp-state { margin:0; padding:0 1px; display:flex; flex-wrap:wrap;
+  gap:5px 9px; color:#667c8b; font-size:11px; line-height:1.55; }
+.ops-whatsapp-state #opsChannelState { font-weight:750; color:#965b19; }
+#opsGroupConfigHost { padding:13px 16px; }
+#opsGroupConfigHost .group-advanced summary { font-size:12px; color:#255b4c; }
+@media(max-width:680px) {
+  .ops-whatsapp-head { align-items:flex-start; }
+  .ops-whatsapp-grid { grid-template-columns:1fr; }
+  .ops-whatsapp-card { padding:16px; }
+}
