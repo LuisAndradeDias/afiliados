@@ -53,3 +53,19 @@ Mesmo que um programa de afiliados permita divulgação de links, isso **não** 
 - Depois de comprovadas as condições, o próximo passo será revisitar autorização comercial, documentar e realizar teste supervisionado em destino permitido, sem disparos em massa.
 
 **Nunca inventar `data/elegibilidade-canais.json` ou marcar `homologado` para desbloquear robô.**
+
+## Pesquisa complementar: Amazon e Shopee (03/11/2026)
+
+**Amazon Associados Brasil:**
+- https://associados.amazon.com.br/help/node/topic/G8TW5AE9XL2VX9VM — fontes sociais aceitas na inscrição são listadas como Facebook (páginas abertas), Instagram, Twitter, YouTube e Twitch; WhatsApp não consta dessa lista. Isso **não equivale a uma aprovação do grupo** para links de associados.
+- https://associados.amazon.com.br/help/node/topic/GPXFHVYZMTGPUMPE — identificação publicitária clara junto ao link e declaração de associado exigidas conforme o contexto.
+- Requer confirmação específica das condições da conta e da modalidade desejada, antes de usar WhatsApp como fonte de tráfego.
+
+**Shopee Brasil:**
+- https://help.shopee.com.br/portal/10/article/170264-%5BFAQ%5D%20Onde%20posso%20divulgar%20meus%20links%20de%20Afiliado%3F — a central de ajuda menciona WhatsApp e Telegram entre aplicativos de mensagens usados para divulgar links.
+- https://help.shopee.com.br/portal/10/article/196794-Identifica%C3%A7%C3%A3o-de-Conte%C3%BAdo-Publicit%C3%A1rio%3A-Guia-CONAR-2026-para-Influenciadores-e-Afiliados — marcação de publicidade para conteúdos remunerados.
+- Isso não comprova aprovação do cadastro individual, consentimento dos destinatários ou permissão do WhatsApp para automação via navegador.
+
+### Distinção indispensável
+
+Permissão do programa de afiliados, autorização do destino/grupo e permissão da plataforma de mensagens são verificações distintas. **Nenhuma mensagem automática será habilitada com base apenas nas políticas públicas acima.**
