@@ -1232,10 +1232,19 @@ async function estado() {
   });
   const plataformaPacoteAtual = plataformaDoValor(pacote.plataforma);
   const ofertaPreparada = Boolean(mensagem.trim() && plataformaPacoteAtual);
+  const grupoWhatsappConfigurado = process.env.WHATSAPP_GROUP_NAME?.trim() ?? "";
   const canalElegibilidade = await consultarElegibilidadeCanalWhatsapp({
-    grupo: process.env.WHATSAPP_GROUP_NAME?.trim() ?? "",
+    grupo: grupoWhatsappConfigurado,
     plataforma: pacote.plataforma
   });
+  // Consulta independente e somente leitura por plataforma. A ausencia de
+  // uma oferta atual nao deve ocultar a situacao comercial dos canais.
+  const [elegibilidadeAmazon, elegibilidadeMercadoLivre, elegibilidadeShopee] =
+    await Promise.all([
+      consultarElegibilidadeCanalWhatsapp({ grupo: grupoWhatsappConfigurado, plataforma: "amazon" }),
+      consultarElegibilidadeCanalWhatsapp({ grupo: grupoWhatsappConfigurado, plataforma: "mercado-livre" }),
+      consultarElegibilidadeCanalWhatsapp({ grupo: grupoWhatsappConfigurado, plataforma: "shopee" })
+    ]);
   const whatsappEmExecucao = processos.has("preparar");
   const operacaoPlataforma: PlataformaMonitor | null =
     whatsappEmExecucao || finalizacaoWhatsappAtual
@@ -1284,6 +1293,11 @@ async function estado() {
     grupo: process.env.WHATSAPP_GROUP_NAME?.trim() || "Não configurado",
     grupoConfigurado: Boolean(process.env.WHATSAPP_GROUP_NAME?.trim()),
     canalElegibilidade,
+    elegibilidadePorPlataforma: {
+      amazon: elegibilidadeAmazon,
+      "mercado-livre": elegibilidadeMercadoLivre,
+      shopee: elegibilidadeShopee
+    },
     whatsappAutoEnvioAtivo: process.env.WHATSAPP_AUTO_SEND_ENABLED === "true",
     whatsappAutoEnvioAtrasoMs: Number(process.env.WHATSAPP_AUTO_SEND_DELAY_MS ?? "1500"),
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),

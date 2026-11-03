@@ -12,6 +12,11 @@ let state: Record<string, unknown> = {
     codigo: "CANAL_NAO_HOMOLOGADO",
     motivo: "Canal sem cadastro comercial homologado.", podePublicar: false
   },
+  elegibilidadePorPlataforma: {
+    amazon: {codigo:"CANAL_NAO_HOMOLOGADO", motivo:"Amazon sem homologação comercial.", podePublicar:false},
+    "mercado-livre": {codigo:"REGRA_INCONCLUSIVA", motivo:"Mercado Livre com regras divergentes.", podePublicar:false},
+    shopee: {codigo:"CANAL_NAO_HOMOLOGADO", motivo:"Shopee não configurada.", podePublicar:false}
+  },
   afiliadoConfigurado:true, afiliadoTag: "afiliado-teste-20",
   sessaoWhatsapp:true, mercadoLivreApiConfigurada:true,
   mercadoLivreExtensionConectada:true, mercadoLivreAppConfigurada:true,
@@ -93,6 +98,14 @@ try{
   assert.equal(await page.locator('[data-ops-settings-tab="publicacao"]').getAttribute("aria-selected"),"true");
   assert.equal(await page.locator("#opsChannelChecklist").isVisible(),true);
   assert.match(await page.locator("#opsChannelChecklist").innerText(),/regra|autoriza|homologa/i);
+  assert.match(await page.locator("#opsPolicyAmazon").innerText(),/pendente|não homologado/i,
+    "Amazon exige homologação própria");
+  assert.match(await page.locator("#opsPolicyMercadoLivre").innerText(),/revisão|inconclusiva|pendente/i,
+    "Mercado Livre exibe o bloqueio por regra inconclusiva");
+  assert.match(await page.locator("#opsPolicyShopee").innerText(),/pendente|não homologado/i,
+    "Shopee permanece independente");
+  assert.match(await page.locator("#opsPolicyAutoSend").innerText(),/desligado|desativado/i,
+    "Autoenvio deve ser reportado separadamente da conexão");
   await page.keyboard.press("Escape");
   const previewWidth=await page.locator("#mensagem").evaluate(el=>el.getBoundingClientRect().width);
   assert.ok(previewWidth>250,"A mensagem sem imagem não pode ficar em uma coluna estreita: "+previewWidth);
