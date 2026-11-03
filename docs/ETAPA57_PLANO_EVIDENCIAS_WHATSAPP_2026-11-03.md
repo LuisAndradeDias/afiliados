@@ -6,7 +6,9 @@ Data de pesquisa: 03/11/2026. Canal: grupo já configurado na Central, sem repro
 
 - Teste técnico: WhatsApp Web autenticado, busca e cabeçalho do grupo confirmados, diagnostico com codigo zero.
 - Arquivo local `data/elegibilidade-canais.json`: AUSENTE na instalação examinada.
-- Grupo declarado no programa, modalidade pública, autorização do responsável, opt-in dos participantes: SEM EVIDÊNCIA DOCUMENTADA, não presumir.
+- **Atualização por declaração do proprietário (03/11/2026):** o grupo Caça Promos VIP é **público**, e qualquer pessoa pode ingressar voluntariamente a qualquer momento. Informação declarada na conversa, ainda sem verificação independente da configuração do grupo.
+- O proprietário **solicitou expressamente** envio automático; isso registra sua intenção de divulgar, mas **não constitui autorização técnica do WhatsApp para automação via navegador** nem homologação dos programas de afiliados.
+- Cadastro do grupo no programa de afiliados, confirmação atual das regras específicas da conta e aceite das comunicações pelos participantes: ainda sem documentação suficiente. Não presumir.
 - `WHATSAPP_AUTO_SEND_ENABLED`: false, monitor desligado.
 - Nenhuma comissão, elegibilidade comercial ou autorização de automação foi confirmada neste levantamento.
 
