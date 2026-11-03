@@ -2,6 +2,7 @@ import "dotenv/config";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import { detectarEstadoVisualWhatsapp } from "./whatsapp-conexao.js";
+import { verificarDestinoWhatsapp } from "./whatsapp-alvo.js";
 
 const modoTeste = process.env.WHATSAPP_LOGIN_TEST === "true";
 const profileDir = resolve("data", modoTeste ? "whatsapp-profile-test" : "whatsapp-profile");
@@ -59,10 +60,12 @@ async function conectar(): Promise<void> {
       return;
     }
 
-    console.log("Use o QR Code no Chrome do projeto, se solicitado. " +
-      "Aguarde a confirmação de conexão no painel antes de fechar a janela.");
+    console.log("Se for solicitado, escaneie o QR Code no Chrome. " +
+      "A verificação da conta e do grupo encerrará a janela automaticamente, sem enviar.");
 
-    while (!page.isClosed()) {
+    let grupoConfirmado = false;
+    const expiracao = Date.now() + 180_000;
+    while (!page.isClosed() && Date.now() < expiracao) {
       const visto = await detectarEstadoVisualWhatsapp(page);
       if (visto === "fechada") break;
       const atual = visto === "conectado"
@@ -72,12 +75,37 @@ async function conectar(): Promise<void> {
         informar(atual);
         anterior = atual;
       }
-      if (visto === "conectado") confirmou = true;
-      await new Promise<void>(resolve => setTimeout(resolve, 1_500));
+      if (visto === "conectado") {
+        confirmou = true;
+        const nomeExato = process.env.WHATSAPP_GROUP_NAME?.trim();
+        if (!nomeExato) {
+          informar("GRUPO_NAO_CONFIGURADO");
+        } else {
+          const estadoDestino = await verificarDestinoWhatsapp(page, nomeExato);
+          if (estadoDestino === "grupo-pronto") {
+            grupoConfirmado = true;
+            informar("GRUPO_CONFIRMADO");
+          } else {
+            informar("DESTINO_" + estadoDestino.toUpperCase().replaceAll("-", "_"));
+          }
+        }
+        break;
+      }
+      await new Promise<void>(resolve => setTimeout(resolve, 1_200));
     }
 
-    informar(confirmou ? "VERIFICADO_ANTES_FECHAMENTO" :
-      "ENCERRADO_SEM_VERIFICACAO");
+    if (confirmou && grupoConfirmado) {
+      informar("DIAGNOSTICO_OK");
+      console.log("Conta e grupo confirmados. Fechando o Chrome sem enviar mensagens.");
+    } else if (confirmou) {
+      informar("GRUPO_PENDENTE");
+      console.warn("Conta conectada, mas grupo/compositor nao confirmados. Nenhuma mensagem foi enviada.");
+      process.exitCode = 2;
+    } else {
+      informar(page.isClosed() ? "JANELA_FECHADA" : "TEMPO_LIMITE");
+      console.warn("A conexao nao foi confirmada. Nenhuma mensagem foi enviada.");
+      process.exitCode = 1;
+    }
   } catch (error) {
     const motivo = codigoFalha(error);
     informar(motivo);

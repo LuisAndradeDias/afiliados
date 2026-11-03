@@ -13,6 +13,7 @@ import {
 import {
   captureSendBaseline,
   detectManualSend,
+  aguardarConfirmacaoRealWhatsapp,
   type WhatsappSendBaseline
 } from "./whatsapp-envio-observer.js";
 import {
@@ -23,7 +24,7 @@ import {
   deveAutoEnviar,
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
-import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
+import { verificarDestinoWhatsapp } from "./whatsapp-alvo.js";
 import { revalidarEstoqueEPrecoMercadoLivre } from "../fontes/mercadolivre/preco-contextual.js";
 import { avaliarCupomParaDivulgacao } from "../ofertas/cupons-politica.js";
 import { consultarElegibilidadeCanalWhatsapp } from "../canais/elegibilidade.js";
@@ -251,19 +252,6 @@ async function primeiroVisivel(
   }
   throw new Error("Elemento esperado não foi encontrado no WhatsApp Web.");
 }
-
-async function localizarBusca(page: Page): Promise<Locator> {
-  return primeiroVisivel(
-    [
-      page.getByRole("textbox", { name: /pesquisar|search/i }),
-      page.locator('#side div[contenteditable="true"][role="textbox"]'),
-      page.locator('div[contenteditable="true"][data-tab="3"]'),
-      page.locator('div[contenteditable="true"][aria-label*="Pesquisar"]')
-    ],
-    30_000
-  );
-}
-
 
 async function fecharAbasExtras(
   context: BrowserContext,
@@ -521,6 +509,12 @@ async function aguardarFinalizacao(
           page,
           origemEnvio === "painel"
         );
+        if (!(await aguardarConfirmacaoRealWhatsapp(page, baseline))) {
+          throw new Error(
+            "O WhatsApp nao exibiu uma nova mensagem de saida desta oferta. " +
+            "Nao registrar nem repetir automaticamente."
+          );
+        }
         await registrarEnvioAtual();
         console.log(
           origemEnvio === "automatico"
@@ -684,36 +678,36 @@ if (!modoTeste) {
 
 if (modoTeste) {
   await page.setContent(`
-    <div contenteditable="true" role="textbox" data-tab="3" aria-label="Pesquisar"></div>
-    <div id="lista"><span title="${nomeGrupo}">${nomeGrupo}</span></div>
-    <footer>
-      <div contenteditable="true" role="textbox" data-tab="10"></div>
-      <button aria-label="Enviar" type="button">Enviar</button>
-    </footer>
+    <aside id="side">
+      <div contenteditable="true" role="textbox" data-tab="3" aria-label="Pesquisar"></div>
+      <div role="button" id="grupo-ficticio"><span title="${nomeGrupo}">${nomeGrupo}</span></div>
+    </aside>
+    <main id="main" style="display:none">
+      <header><span title="${nomeGrupo}">${nomeGrupo}</span></header>
+      <footer>
+        <div contenteditable="true" role="textbox" data-tab="10"></div>
+        <button aria-label="Enviar" type="button">Enviar</button>
+      </footer>
+    </main>
+    <script>
+      document.querySelector("#grupo-ficticio").addEventListener("click", () => {
+        document.querySelector("#main").style.display = "block";
+      });
+    </script>
   `);
 } else {
   console.log("Aguardando o WhatsApp Web ficar pronto...");
   console.log("Se aparecer QR Code, faça o login pelo celular. O programa continuará sozinho.");
 }
 try {
-  const busca = await localizarBusca(page);
-  // O WhatsApp pode nao localizar grupos quando a busca inclui emojis.
-  // Pesquise sem emojis, mas confira o destino pelo nome completo.
-  const termoBusca = termoBuscaGrupoWhatsapp(nomeGrupo);
-  await busca.fill(termoBusca);
-  if (modoTeste && (await busca.textContent())?.trim() !== termoBusca) {
-    throw new Error("O termo de pesquisa do grupo foi preenchido incorretamente.");
+  const diagnosticoGrupo = await verificarDestinoWhatsapp(page, nomeGrupo);
+  if (diagnosticoGrupo !== "grupo-pronto") {
+    throw new Error(
+      "DESTINO_WHATSAPP_NAO_CONFIRMADO: " + diagnosticoGrupo +
+      ". Nenhum envio foi iniciado."
+    );
   }
-
-  const resultadoGrupo = await primeiroVisivel(
-    [
-      page.getByTitle(nomeGrupo, { exact: true }),
-      page.locator("[title]").filter({ hasText: nomeGrupo })
-    ],
-    8_000
-  );
-  await resultadoGrupo.click();
-
+  console.log("DESTINO_WHATSAPP_CONFIRMADO: grupo unico, cabecalho e compositor verificados.");
   const compositorInicial = await localizarCompositor(page);
 
   // O observador precisa ser armado ANTES de a oferta aparecer no compositor.

@@ -130,6 +130,26 @@ export async function captureSendBaseline(
   };
 }
 
+/**
+ * So confirma publicacao quando o proprio grupo renderiza novo balao de saida
+ * contendo referencia desta oferta. Compositor vazio ou dialogo fechado
+ * nao sao prova de envio.
+ */
+export async function aguardarConfirmacaoRealWhatsapp(
+  page: Page, baseline: WhatsappSendBaseline,
+  opcoes: { timeoutMs?: number; intervaloMs?: number } = {}
+): Promise<boolean> {
+  const timeoutMs = Math.max(0, Math.min(25_000, opcoes.timeoutMs ?? 15_000));
+  const intervaloMs = Math.max(40, Math.min(1_000, opcoes.intervaloMs ?? 250));
+  const limite = Date.now() + timeoutMs;
+  while (!page.isClosed()) {
+    if (await detectManualSend(page, baseline).catch(() => false)) return true;
+    if (Date.now() >= limite) break;
+    await new Promise(resolve => setTimeout(resolve, intervaloMs));
+  }
+  return false;
+}
+
 export async function detectManualSend(
   page: Page,
   baseline: WhatsappSendBaseline

@@ -1122,7 +1122,7 @@
             </div>
             </details>
             <span id="whatsappSetupHint" class="group-hint">O grupo deve ser escolhido antes de preparar a oferta. Nenhuma mensagem será enviada ao configurar.</span>
-            <button id="openWhatsappConnectionButton" class="secondary" type="button" data-action="login">Abrir WhatsApp do painel / verificar sessão</button>
+            <button id="openWhatsappConnectionButton" class="secondary" type="button" data-action="login">Testar WhatsApp e grupo (sem envio)</button>
             <div id="whatsappConnectionDetails" class="whatsapp-connection-feedback" role="status" aria-live="polite">Sessão ainda não verificada. Clique para abrir o Chrome do projeto.</div>
           </div>
           <div class="send-actions">
@@ -1274,7 +1274,7 @@
             <div class="tool-block">
               <h3>WhatsApp</h3>
               <p>Login e sessão persistente usados para preparar as mensagens no grupo configurado.</p>
-              <button style="width:100%" class="secondary" data-action="login">🔐 Conectar / renovar login</button>
+              <button style="width:100%" class="secondary" data-action="login">🔐 Testar WhatsApp e grupo (sem envio)</button>
               <div id="whatsappSettingsConnectionDetails" class="whatsapp-connection-feedback" role="status" aria-live="polite">Aguardando uma verificação de sessão.</div>
               <button style="width:100%;margin-top:8px" class="secondary" data-action="preparar">🖼️ Reabrir oferta atual</button>
             </div>
@@ -1386,10 +1386,35 @@
       const houveFalha = tentativa.some(linha =>
         /\[login\] Finalizado com código (?!0\.)/.test(linha));
 
+      if (evento === "DIAGNOSTICO_OK") {
+        return {
+          titulo: "Grupo confirmado · sessão verificada",
+          detalhe: "A conta e o grupo foram confirmados. A janela foi encerrada automaticamente para liberar o perfil do navegador. Nenhuma mensagem foi enviada. A publicação depende das regras do canal.",
+          conectado: false, erro: false
+        };
+      }
+      if (evento === "GRUPO_PENDENTE" ||
+          evento.startsWith("DESTINO_") || evento === "GRUPO_NAO_CONFIGURADO") {
+        const naoEncontrado = eventos.includes("DESTINO_GRUPO_NAO_LOCALIZADO");
+        return {
+          titulo: naoEncontrado ? "Grupo não localizado" : "Grupo ainda não confirmado",
+          detalhe: naoEncontrado
+            ? "WhatsApp conectado, mas o grupo exato não foi localizado. Confira se ele aparece na lista de conversas da sua conta; nenhuma mensagem foi enviada."
+            : "WhatsApp conectado, porém o grupo, o cabeçalho ou o campo de mensagem não passaram na verificação. Nenhuma mensagem foi enviada.",
+          conectado: false, erro: true
+        };
+      }
+      if (evento === "TEMPO_LIMITE") {
+        return {
+          titulo: "Tempo limite de autenticação",
+          detalhe: "O WhatsApp não confirmou a conexão dentro do período de verificação. Abra novamente e escaneie o QR Code, se solicitado.",
+          conectado: false, erro: true
+        };
+      }
       if (evento === "CONECTADO" && emAndamento) {
         return {
           titulo: "WhatsApp conectado nesta verificação",
-          detalhe: "Conectado ao WhatsApp Web no Chrome do projeto. Nenhuma mensagem foi enviada. Feche a janela quando terminar.",
+          detalhe: "Conectado ao WhatsApp Web. O sistema está validando o grupo configurado e encerrará a janela automaticamente, sem enviar mensagens.",
           conectado: true, erro: false
         };
       }
@@ -2336,7 +2361,7 @@
         });
         const data = await resposta.json();
         toast(nome === "login" && data.ok
-          ? "Abrindo o Chrome do projeto. Acompanhe o estado da conexão junto ao botão."
+          ? "Verificação iniciada: o Chrome testará a conta e o grupo e fechará sem enviar mensagens."
           : data.mensagem, data.ok ? "ok" : "warn");
       } catch {
         toast("Falha ao executar a ação.", "bad");

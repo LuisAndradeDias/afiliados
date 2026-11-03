@@ -58,6 +58,8 @@ jobs:
         run: node --import tsx tests/ux-unificada-v2.mts
       - name: Conexao WhatsApp - detectar QR, autenticacao e fechamento sem mensagens
         run: node --import tsx --test tests/whatsapp-login-estado.mts
+      - name: WhatsApp - grupo exato, lista extensa e confirmacao de envio com cenarios simulados
+        run: node --import tsx --test --test-concurrency=1 tests/whatsapp-destino-diagnostico.mts tests/whatsapp-auto-confirmacao.mts tests/whatsapp-preparador-grupo.mts tests/whatsapp-envio-observer.mts tests/whatsapp-grupo.mts
       - name: Interface simulada em Chrome headless, sem perfil do usuario
         run: node --import tsx tests/painel-operacional.mts
       - name: Conector 02 em Chrome headless com formularios ficticios

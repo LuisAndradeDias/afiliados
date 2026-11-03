@@ -155,6 +155,38 @@ try {
     !(await page.locator("#whatsappDot").getAttribute("class"))?.includes("ok"),
     "Falha de conexao deve manter indicador nao conectado."
   );
+  state = {
+    ...base,
+    logs:[
+      "[17:30:00] [login] Iniciado.",
+      "[17:30:03] [login] WHATSAPP_CONEXAO:CONECTADO",
+      "[17:30:09] [login] WHATSAPP_CONEXAO:GRUPO_CONFIRMADO",
+      "[17:30:10] [login] WHATSAPP_CONEXAO:DIAGNOSTICO_OK",
+      "[17:30:12] [login] Finalizado com código 0."
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+    .includes("Grupo confirmado"),
+    "A interface deve diferenciar sessao conectada de grupo tambem verificado."
+  );
+  state = {
+    ...base,
+    logs:[
+      "[17:31:00] [login] Iniciado.",
+      "[17:31:03] [login] WHATSAPP_CONEXAO:CONECTADO",
+      "[17:31:09] [login] WHATSAPP_CONEXAO:DESTINO_GRUPO_NAO_LOCALIZADO",
+      "[17:31:10] [login] WHATSAPP_CONEXAO:GRUPO_PENDENTE",
+      "[17:31:12] [login] Finalizado com código 2."
+    ]
+  };
+  await page.waitForTimeout(1700);
+  assert(
+    (await page.locator("#whatsappConnectionDetails").innerText())
+    .includes("não localizado"),
+    "O painel deve explicar quando o WhatsApp esta conectado mas o destino nao."
+  );
   state = { ...base };
   await page.waitForTimeout(1700);
 
