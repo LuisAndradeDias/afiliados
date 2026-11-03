@@ -902,6 +902,8 @@
   <link rel="stylesheet" href="/central/assets/ofertas-v2.css" />
   <link rel="stylesheet" href="/central/assets/unified-nav.css" />
   <script src="/central/assets/unified-nav.js" defer></script>
+  <link rel="stylesheet" href="/central/assets/ofertas-cockpit.css" />
+  <script src="/central/assets/ofertas-cockpit.js" defer></script>
 </head>
 <body>
   <header class="hero">
@@ -2232,8 +2234,13 @@
           $("instagramReelEmpty").style.display = "grid";
         }
 
-        $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
-        $("logs").scrollTop = $("logs").scrollHeight;
+        // Cockpit usa os mesmos dados, preservando filtros e pausa de leitura.
+        if (window.cpvCockpit) {
+          window.cpvCockpit.update(s);
+        } else {
+          $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
+          $("logs").scrollTop = $("logs").scrollHeight;
+        }
         const resumoBuscaMeli = resumoUltimaBuscaMercadoLivre(s);
         $("mlDiscoveryNotice").textContent = resumoBuscaMeli;
         $("mlDiscoveryNotice").style.display = resumoBuscaMeli ? "block" : "none";
