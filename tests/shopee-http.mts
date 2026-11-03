@@ -49,6 +49,9 @@ test("status da conta é honesto; cadastro, listagem e exclusão são manuais", 
     assert.equal(status.conta, "aguardando");
     assert.equal(status.mesmoGrupoFuturo, true);
     assert.equal(status.envioAutomatico, false);
+    assert.equal(status.integracaoPronta, false);
+    assert.equal(typeof status.grupoConfigurado, "boolean");
+    assert.equal(status.rascunhosTotal, 0);
     assert.equal((await (await fetch(base + "/api/shopee/rascunhos")).json()).rascunhos.length, 0);
 
     const response = await post(base, manual);

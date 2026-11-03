@@ -65,10 +65,15 @@ export async function responderRotaShopee({
   }
 
   if (req.method === "GET" && pathname === "/api/shopee/status") {
+    const grupoConfigurado = Boolean(process.env.WHATSAPP_GROUP_NAME?.trim());
+    const rascunhosTotal = await repo.listar().then(itens => itens.length)
+      .catch(() => null);
     json(res, 200, {
       ok: true, conta: "aguardando",
       apiAtiva: false, modo: "manual",
-      mesmoGrupoFuturo: true, envioAutomatico: false
+      grupoConfigurado, rascunhosTotal,
+      mesmoGrupoFuturo: true, envioAutomatico: false,
+      integracaoPronta: false
     });
     return true;
   }

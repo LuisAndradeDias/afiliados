@@ -442,6 +442,34 @@ try {
     "A oferta pode ser aberta para revisão, mas o painel não autoriza disparo."
   );
 
+  // Envio manual sem confirmacao real: a oferta fica salva e nao pode
+  // ser reaberta acidentalmente sem conferencia explicita da conversa.
+  state = {
+    ...base,
+    grupoConfigurado: true,
+    ofertaPreparada: true,
+    ofertaPlataformaAtual: "amazon",
+    operacaoEstado: "offer-pending",
+    mensagem: "OFERTA FICTICIA - ENVIO INCERTO",
+    whatsappEnvioIncerto: true
+  };
+  await page.waitForTimeout(1_700);
+  assert(
+    /Envio anterior sem confirmação/i.test(await page.locator("#reviewSubtitle").innerText()),
+    "O painel precisa alertar sobre publicacao incerta."
+  );
+  assert(
+    (await page.locator("#reopenWhatsappButton").getAttribute("data-action")) ===
+      "preparar-confirmar-nao-enviado",
+    "A reabertura exige confirmar ausencia de envio."
+  );
+  assert(
+    /NÃO foi enviado/i.test(await page.locator("#reopenWhatsappButton").innerText()),
+    "A pessoa precisa conferir a conversa antes de reabrir."
+  );
+  assert(!(await page.locator("#sendNowButton").isVisible()),
+    "O envio pelo painel continua desabilitado.");
+
   // A migração para o PC novo começa sem grupo; a oferta deve ser
   // preservada, com um formulário legível e login separado da preparação.
   state = {

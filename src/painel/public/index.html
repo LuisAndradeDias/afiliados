@@ -1632,18 +1632,23 @@
       const faltaGrupo = estado === "offer-pending" && !s.grupoConfigurado;
       const canalBloqueado = estado === "offer-pending" &&
         s.ofertaPreparada && s.canalElegibilidade?.podePublicar === false;
-      $("flowTitle").textContent = canalBloqueado
+      $("flowTitle").textContent = s.whatsappEnvioIncerto && s.ofertaPreparada
+        ? "Envio incerto · conferir conversa antes de reabrir"
+        : canalBloqueado
         ? "Oferta salva · abrir para revisar no WhatsApp"
         : faltaGrupo
           ? "Oferta salva · configure o grupo do WhatsApp"
           : titulos[estado] || "Atividade do ciclo";
-      $("flowDescription").textContent = canalBloqueado
+      $("flowDescription").textContent = s.whatsappEnvioIncerto && s.ofertaPreparada
+        ? "O WhatsApp fechou após preparar a oferta, mas o sistema não detectou confirmação. Veja a conversa e só reabra após confirmar que ela NÃO foi enviada."
+        : canalBloqueado
         ? "Oferta preservada. Você pode abrir o WhatsApp e revisar a mensagem. Para publicar, clique em Enviar no próprio WhatsApp. Cadastro comercial pendente: " +
           (s.canalElegibilidade?.motivo || "o canal precisa ser homologado.")
         : faltaGrupo
           ? "O preparador não abriu o WhatsApp porque o destino não estava configurado. Salve o nome exato do grupo no cartão Destino; a promoção foi preservada."
           : detalhes[estado] || "";
-      $("flowBadge").textContent = canalBloqueado
+      $("flowBadge").textContent = s.whatsappEnvioIncerto && s.ofertaPreparada
+        ? "Conferência obrigatória" : canalBloqueado
         ? "Revisão manual" : badges[estado] || "Processando";
 
       $("stepSearchText").textContent =
@@ -1759,6 +1764,7 @@
         const origemMl = ofertaPlataforma === "mercado-livre";
         const revisaoPronta = Boolean(s.whatsappRevisaoPronta);
         const ofertaPreparada = Boolean(s.ofertaPreparada);
+        const envioIncerto = ofertaPreparada && Boolean(s.whatsappEnvioIncerto);
         const fluxoMlAtivo =
           s.mercadoLivreFluxoAutomatico &&
           s.mercadoLivreFluxoEtapa !== "idle" &&
@@ -1923,7 +1929,10 @@
             : "consulta em andamento";
         }
 
-        if (revisaoPronta) {
+        if (envioIncerto) {
+          $("cycleWhatsapp").textContent = "Envio incerto";
+          $("cycleWhatsappDetail").textContent = "Confira a conversa antes de reabrir; evite duplicação.";
+        } else if (revisaoPronta) {
           $("cycleWhatsapp").textContent = "Aguardando seu clique";
           $("cycleWhatsappDetail").textContent =
             `Revise o grupo ${s.grupo || "não configurado"} e clique em Enviar no WhatsApp`;
@@ -1988,7 +1997,7 @@
         $("amazonLaneMeta").textContent =
           `Última consulta: ${horario(s.amazonMonitorUltimaBuscaEm)} · cadência ~2 min`;
         $("meliLaneMeta").textContent =
-          `Última consulta: ${horario(s.mercadoLivreMonitorUltimaBuscaEm)} · ${cuponsAtivos} cupom(ns) ativo(s)`;
+          `Última consulta: ${horario(s.mercadoLivreMonitorUltimaBuscaEm)} · ${Number(s.mercadoLivreCuponsTotal || 0)} cupom(ns) observado(s) · ${cuponsAtivos} campanha(s) potencialmente ativa(s). Cupom só é anunciado após confirmação no produto.`;
 
         $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
 
@@ -2125,7 +2134,10 @@
           $("mensagem").textContent = mensagem;
           $("reviewOrigin").textContent = nomePlataforma(ofertaPlataforma);
 
-          if (revisaoPronta) {
+          if (envioIncerto) {
+            $("reviewSubtitle").textContent = "Envio anterior sem confirmação no histórico. Verifique o grupo antes de tentar outra vez.";
+            $("reviewWhatsappState").textContent = "A janela foi fechada depois da preparação. A oferta permanece salva, mas pode ter sido enviada. Confira a conversa: reabra somente se tiver certeza de que NÃO foi publicada.";
+          } else if (revisaoPronta) {
             $("reviewSubtitle").textContent =
               "Oferta pronta no grupo. Confira e clique uma vez em Enviar no próprio WhatsApp Web.";
             $("reviewWhatsappState").textContent =
@@ -2269,8 +2281,14 @@
         // Revisar no WhatsApp nao exige homologacao comercial. A publicacao
         // so ocorre apos o clique deliberado da pessoa no proprio WhatsApp.
         reopenWhatsappButton.disabled = whatsappOcupado || !s.grupoConfigurado;
-        reopenWhatsappButton.textContent = "↗ Abrir oferta no WhatsApp";
-        reopenWhatsappButton.title = "Abre o grupo salvo e prepara imagem e mensagem. Nenhum clique de envio e executado pelo robo.";
+        reopenWhatsappButton.dataset.action = envioIncerto
+          ? "preparar-confirmar-nao-enviado" : "preparar";
+        reopenWhatsappButton.textContent = envioIncerto
+          ? "Conferi: NÃO foi enviado · Reabrir"
+          : "↗ Abrir oferta no WhatsApp";
+        reopenWhatsappButton.title = envioIncerto
+          ? "Antes de reabrir, verifique no grupo se esta oferta ja foi publicada. O robo nao faz nenhum envio automaticamente."
+          : "Abre o grupo salvo e prepara imagem e mensagem. Nenhum clique de envio e executado pelo robo.";
         sendNowButton.style.display =
           mensagem && revisaoPronta && !elegibilidadeBloqueada ? "" : "none";
         discardOfferButton.style.display =
@@ -2296,7 +2314,7 @@
 
           if (acao === "login") {
             b.disabled = whatsappOcupado;
-          } else if (acao === "preparar") {
+          } else if (acao === "preparar" || acao === "preparar-confirmar-nao-enviado") {
             b.disabled =
               whatsappOcupado ||
               !ofertaPreparada ||
@@ -2409,6 +2427,10 @@
           acao(nome, { redirectUri: $("mlRedirectUriInput").value });
         } else if (nome === "intervalo-set") {
           acao("intervalo-set", { modo: button.dataset.modo });
+        } else if (nome === "preparar-confirmar-nao-enviado") {
+          if (window.confirm("Verifique o grupo antes de continuar. Você tem certeza de que esta oferta NÃO foi enviada? Reabrir uma oferta já publicada pode duplicá-la.")) {
+            acao(nome, { confirmouNaoEnvio: true });
+          }
         } else if (nome === "monitor-set") {
           acao("monitor-set", {
             ativo: !Boolean(estadoAtual.monitorAlternadoAtivo)

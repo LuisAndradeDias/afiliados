@@ -17,7 +17,10 @@ const server = createServer(async (req, res) => {
       operacaoEstado: "paused",
       monitorAlternadoAtivo: false,
       monitorAlternadoProximaPlataforma: "mercado-livre",
-      ofertaPreparada: false
+      ofertaPreparada: false,
+      historicoEnvios: { total: 12, ultimoEm: "2026-11-02T20:00:00.000Z" },
+      mercadoLivreCuponsTotal: 7,
+      mercadoLivreCuponsAtivos: 0
     });
     return;
   }
@@ -57,6 +60,9 @@ try {
     assert.equal(await page.locator("h1").innerText(), "Painel de métricas");
     assert.equal(await page.locator("#metricBlocked").innerText(), "2");
     assert.equal(await page.locator("#metricPending").innerText(), "1");
+    assert.equal(await page.locator("#metricConfirmed").innerText(), "12");
+    assert.equal(await page.locator("#metricCouponsObserved").innerText(), "7");
+    assert.match(await page.locator("#metricCouponsNote").innerText(), /0 campanha/);
     assert.equal(await page.locator("#monitor").innerText(), "Pausado");
     assert.equal(await page.locator("#flow").innerText(), "Pausado");
     assert.equal(await page.locator("input[type=password]").count(), 0);

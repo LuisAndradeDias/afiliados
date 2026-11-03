@@ -26,6 +26,9 @@
     }else if(s.whatsappRevisaoPronta){
       title="Oferta pronta · clique em Enviar no WhatsApp";
       detail="Revise a imagem e a mensagem no grupo. Apenas seu clique publica; o histórico é atualizado após confirmação.";kind="waiting";
+    }else if(s.whatsappEnvioIncerto&&s.ofertaPreparada){
+      title="Envio incerto · confira o WhatsApp";
+      detail="A oferta pode ter sido enviada antes de a janela fechar. Verifique a conversa para evitar duplicação.";kind="blocked";
     }else if(em("preparar")||em("mercadolivre-whatsapp")||s.operacaoEstado==="preparing"){
       title="Preparando oferta para revisão";detail="Montando os dados da oferta antes da divulgação.";kind="working";
     }else if(s.ofertaPreparada && s.canalElegibilidade?.podePublicar!==true){
@@ -79,6 +82,7 @@
     $("opsSettingsRhythmMedium")?.setAttribute("aria-pressed",String(modo==="medio"));
     $("opsSettingsRhythmShort")?.setAttribute("aria-pressed",String(modo==="curto"));
     const avisos=[];
+    if(s.whatsappEnvioIncerto)avisos.push("Conferir possível envio antes de reabrir a oferta");
     if(s.canalElegibilidade?.podePublicar===false)avisos.push("Homologação comercial pendente para este canal");
     if(!s.whatsappAutoEnvioAtivo)avisos.push("Envio manual: clique em Enviar no WhatsApp");
     if(s.ofertaPreparada)avisos.push("Oferta preparada aguardando decisão");

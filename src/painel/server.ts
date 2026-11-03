@@ -16,9 +16,11 @@ import { arquivoDoRobo as arquivoDo } from "./dominios/scripts-robo.js";
 import { calcularAtrasoMonitor, criarTemporizadorExclusivo } from "./dominios/monitor-agendamento.js";
 import { responderRotaVisual } from "./rotas-visuais.js";
 import { responderRotaShopee } from "./shopee-http.js";
+import { criarPendenciaWhatsapp } from "./whatsapp-pendencia.js";
 import {
   cooldownHoras,
   contarBloqueadas,
+  consultarResumoEnviosConfirmados,
   limparHistoricoOfertas,
   ultimasOfertasEnviadas,
   previewCooldownMinutos
@@ -71,6 +73,8 @@ const instagramPacotePath = resolve(
 );
 const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
 const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
+const pendenciaWhatsapp = criarPendenciaWhatsapp(resolve(raiz, "data", "envio-incerto-whatsapp.json"));
+let pendenciaWhatsappNaMemoria = false;
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
 const porta = Number(process.env.PAINEL_PORT ?? 3030);
 
@@ -536,6 +540,8 @@ async function limparPreparacaoAtual(
   await Promise.all(
     caminhos.map((caminho) => rm(caminho, { force: true }).catch(() => undefined))
   );
+  await pendenciaWhatsapp.limpar();
+  pendenciaWhatsappNaMemoria = false;
 }
 
 function iniciar(
@@ -583,6 +589,15 @@ function iniciar(
         texto.includes("Aguardando sua confirmação no painel ou o envio direto no WhatsApp.")
       )
     ) {
+      // Grava a pendencia assim que a oferta chega ao compositor.
+      // Sobrevive a fechamento do Windows ou queda abrupta do processo.
+      if (!whatsappRevisaoPronta) {
+        pendenciaWhatsappNaMemoria = true;
+        void pendenciaWhatsapp.marcar().catch((erro) => {
+          registrar("whatsapp", "Falha ao proteger oferta preparada: " +
+            (erro instanceof Error ? erro.message : String(erro)));
+        });
+      }
       whatsappRevisaoPronta = true;
       const plataforma =
         origemPreparacaoEmExecucao ?? origemPreparacaoAtual;
@@ -717,6 +732,17 @@ function iniciar(
 
     if (codigo !== 0) {
       mercadoLivreFluxoAutomatico = false;
+      if (revisaoEstavaPronta && finalizacao !== "cancelar") {
+        // Janela fechada depois da revisao pode significar clique manual ja feito.
+        // Nao presumir envio ou reabrir automaticamente; exigir conferencia.
+        pendenciaWhatsappNaMemoria = true;
+        try { await pendenciaWhatsapp.marcar(); }
+        catch (erro) {
+          registrar("whatsapp", "Nao foi possivel persistir a pendencia de envio: " +
+            (erro instanceof Error ? erro.message : String(erro)));
+        }
+        registrar("whatsapp", "ENVIO_INCERTO: confira a conversa antes de reabrir para evitar publicacao repetida.");
+      }
 
       const detalhe = revisaoEstavaPronta
         ? "A janela do WhatsApp foi fechada antes da confirmação."
@@ -751,7 +777,13 @@ function iniciar(
       return;
     }
 
-    if (finalizacao !== "enviar") return;
+    if (finalizacao !== "enviar") {
+      if (revisaoEstavaPronta && finalizacao !== "cancelar") {
+        pendenciaWhatsappNaMemoria = true;
+        await pendenciaWhatsapp.marcar().catch(() => undefined);
+      }
+      return;
+    }
 
     ultimoEnvioConcluidoEm = Date.now();
     ultimoEnvioComProxima =
@@ -1186,6 +1218,7 @@ async function iniciarFluxoMercadoLivreAutomatico(
 async function estado() {
   const mensagem = await readFile(mensagemPath, "utf8").catch(() => "");
   const statusCupons = await statusCuponsMercadoLivre();
+  const historicoEnvios = await consultarResumoEnviosConfirmados();
   const pacote: PacotePainel = await readFile(pacotePath, "utf8")
     .then((texto) => JSON.parse(texto) as PacotePainel)
     .catch(() => ({}));
@@ -1299,6 +1332,8 @@ async function estado() {
       shopee: elegibilidadeShopee
     },
     whatsappAutoEnvioAtivo: process.env.WHATSAPP_AUTO_SEND_ENABLED === "true",
+    whatsappEnvioIncerto: !whatsappEmExecucao &&
+      (pendenciaWhatsappNaMemoria || await pendenciaWhatsapp.pendente()),
     whatsappAutoEnvioAtrasoMs: Number(process.env.WHATSAPP_AUTO_SEND_DELAY_MS ?? "1500"),
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
     afiliadoTag: process.env.AMAZON_ASSOCIATE_TAG?.trim() ?? "",
@@ -1377,6 +1412,10 @@ async function estado() {
       : (pacote.descontoPercentual ?? 0),
     mercadoLivreCuponsTotal: statusCupons.total,
     mercadoLivreCuponsAtivos: statusCupons.ativos,
+    historicoEnvios,
+    mercadoLivreCuponsObservados: statusCupons.total,
+    mercadoLivreCupomNaoComprovado: cupomPacote.situacao !== "confirmado",
+    cupomMotivo: cupomPacote.motivo,
     mercadoLivreCuponsAtualizadosEm: statusCupons.coletadoEm ?? "",
     cooldownHoras: cooldownHoras(),
     previewCooldownMinutos: previewCooldownMinutos(),
@@ -1836,7 +1875,7 @@ async function executarAcao(
     return { ok, mensagem: ok ? "Busca iniciada." : "Já existe uma busca em andamento." };
   }
 
-  if (acao === "preparar") {
+  if (acao === "preparar" || acao === "preparar-confirmar-nao-enviado") {
     if (!process.env.WHATSAPP_GROUP_NAME?.trim()) {
       return {
         ok: false,
@@ -1856,6 +1895,24 @@ async function executarAcao(
         ok: false,
         mensagem: "Feche a janela de login do WhatsApp antes de preparar a oferta."
       };
+    }
+
+    const envioIncerto = pendenciaWhatsappNaMemoria || await pendenciaWhatsapp.pendente();
+    const confirmaNaoEnvio = acao === "preparar-confirmar-nao-enviado" &&
+      dados.confirmouNaoEnvio === true;
+    if (acao === "preparar-confirmar-nao-enviado" && !confirmaNaoEnvio) {
+      return { ok: false, mensagem: "Confirme expressamente que a oferta NAO foi enviada." };
+    }
+    if (envioIncerto && !confirmaNaoEnvio) {
+      return {
+        ok: false,
+        mensagem: "Envio anterior sem confirmacao. Confira no grupo se a promocao ja foi publicada; so reabra se tiver certeza de que nao foi enviada."
+      };
+    }
+    if (envioIncerto && confirmaNaoEnvio) {
+      await pendenciaWhatsapp.limpar();
+      pendenciaWhatsappNaMemoria = false;
+      registrar("whatsapp", "Operador confirmou ausencia de envio anterior. Nova revisao permitida, sem autoenvio.");
     }
 
     const pacoteAtual = await readFile(pacotePath, "utf8")

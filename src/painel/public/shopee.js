@@ -110,6 +110,8 @@
       "API conectada" : "Aguardando sua conta";
     byId("shopeeAccountStat").textContent = info.apiAtiva ?
       "Conectada" : "Aguardando";
+    byId("shopeeGroupState").textContent = info.grupoConfigurado
+      ? "Grupo já salvo" : "Grupo pendente";
   }
 
   form.addEventListener("submit", async event => {

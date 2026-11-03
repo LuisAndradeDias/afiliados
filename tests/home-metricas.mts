@@ -28,7 +28,7 @@ test("home sem login abre dashboard de metricas, preservando rotas de ofertas", 
     assert.ok(pagina.indexOf('class="stats"') < pagina.indexOf('class="grid"'),
       "Metricas devem aparecer antes dos modulos de atalho.");
     for (const id of ["monitor", "flow", "next", "review",
-      "metricCandidates", "metricBlocked", "metricPending"]) {
+      "metricCandidates", "metricBlocked", "metricPending", "metricConfirmed", "metricCouponsObserved"]) {
       assert.ok(pagina.includes('id="' + id + '"'), "Metrica ausente: " + id);
     }
     assert.doesNotMatch(pagina, /type="password"|<form[^>]*login/i);

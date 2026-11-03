@@ -233,6 +233,42 @@ export async function contarBloqueadas(): Promise<number> {
   return registros.filter((registro) => dentroDoCooldown(registro)).length;
 }
 
+export interface ResumoEnviosConfirmados {
+  total: number;
+  amazon: number;
+  mercadoLivre: number;
+  shopee: number;
+  ultimoEm: string | null;
+}
+
+/** Conta apenas registros persistidos com timestamp valido, sem presumir publicacoes. */
+export function resumirEnviosConfirmados(
+  registros: readonly RegistroHistoricoOferta[]
+): ResumoEnviosConfirmados {
+  const resumo: ResumoEnviosConfirmados = {
+    total: 0, amazon: 0, mercadoLivre: 0, shopee: 0, ultimoEm: null
+  };
+  let ultimo = 0;
+  for (const registro of registros) {
+    const data = Date.parse(registro.enviadoEm ?? "");
+    if (!Number.isFinite(data)) continue;
+    resumo.total += 1;
+    const plataforma = plataformaCanonica(registro.plataforma);
+    if (plataforma === "amazon") resumo.amazon += 1;
+    if (plataforma === "mercado-livre") resumo.mercadoLivre += 1;
+    if (plataforma === "shopee") resumo.shopee += 1;
+    if (data > ultimo) {
+      ultimo = data;
+      resumo.ultimoEm = new Date(data).toISOString();
+    }
+  }
+  return resumo;
+}
+
+export async function consultarResumoEnviosConfirmados(): Promise<ResumoEnviosConfirmados> {
+  return resumirEnviosConfirmados(await lerHistorico());
+}
+
 /** Últimas postagens confirmadas, usadas somente para diversificar o grupo. */
 export async function ultimasOfertasEnviadas(limite = 5): Promise<RegistroHistoricoOferta[]> {
   const registros = await lerHistorico();
