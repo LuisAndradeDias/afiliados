@@ -731,29 +731,6 @@ function iniciar(
       carregarProxima || monitorAlternadoAtivo;
     await limparPreparacaoAtual(origemFinalizada);
 
-    try {
-      // Somente confirmações reais do WhatsApp iniciam a próxima espera.
-      await sincronizarIntervaloPublicacoes();
-      if (intervaloCalculado.ultimoEnvioEm <= 0 ||
-          Math.abs(intervaloCalculado.ultimoEnvioEm - ultimoEnvioConcluidoEm) > 120_000) {
-        throw new Error("Histórico sem o envio recém-confirmado pelo WhatsApp.");
-      }
-      const restante = Math.max(0, Math.ceil(
-        (intervaloCalculado.proximaLiberacaoEm - Date.now()) / 1000
-      ));
-      registrar("intervalo", "Tempo " + intervaloModo +
-        ": próxima publicação liberada em " +
-        Math.ceil(restante / 60) + " min" +
-        (intervaloCalculado.pausaLonga ? " (pausa prolongada após 4 envios)" : "") +
-        (intervaloCalculado.limitadoPorHora ? " (limite de 4 por hora)" : "") + ".");
-    } catch (erro) {
-      const detalhe = erro instanceof Error ? erro.message : String(erro);
-      registrar("intervalo", "Não foi possível verificar o histórico: " + detalhe);
-      if (monitorAlternadoAtivo) await definirMonitorMercadoLivreAtivo(false);
-      atualizarFluxoMercadoLivre("error", "Ciclo pausado: verifique o histórico de envios antes de retomar.");
-      return;
-    }
-
     if (monitorAlternadoAtivo) {
       const proxima: PlataformaMonitor =
         origemFinalizada === "mercado-livre"
@@ -767,7 +744,7 @@ function iniciar(
       agendarMonitorAlternado(
         proxima,
         5_000,
-        `Envio concluído. ${nomePlataformaMonitor(proxima)} será consultada após o intervalo selecionado.`
+        `Envio concluído. ${nomePlataformaMonitor(proxima)} será consultada em seguida.`
       );
       return;
     }
