@@ -20,6 +20,10 @@ import {
   statusCuponsMercadoLivre
 } from "../afiliados/mercadolivre-cupons.js";
 import { lerConfigAutoEnvio } from "../robo/whatsapp-auto-send.js";
+import {
+  CONSULTAS_AMAZON_AUTORIZADAS,
+  DESCONTO_MINIMO_PERCENTUAL
+} from "../ofertas/regras-autorizadas.js";
 
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
@@ -1243,8 +1247,8 @@ async function estado() {
     whatsappEnvioPendente:
       finalizacaoWhatsappAtual === "enviar" ||
       whatsappAutoEnvioEmAndamento,
-    descontoMinimo: Number(process.env.MIN_DISCOUNT_PERCENT ?? 20),
-    consultas: process.env.AMAZON_QUERIES ?? process.env.AMAZON_QUERY ?? "ofertas",
+    descontoMinimo: DESCONTO_MINIMO_PERCENTUAL,
+    consultas: CONSULTAS_AMAZON_AUTORIZADAS.join(","),
     executando: [...processos.keys()],
     mensagem,
     imagemUrl: pacote.imagemUrl,
