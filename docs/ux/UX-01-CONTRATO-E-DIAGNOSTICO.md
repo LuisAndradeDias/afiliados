@@ -67,6 +67,7 @@ Um estado não consultado deve ser reportado como NÃO VERIFICADO.
 5. **CI verde não equivale a aprovação visual**. Uma pessoa precisa comparar o resultado com a referência e aprovar qualquer mudança relevante.
 6. Para deploy: backup por SHA256, runtime sem envio em curso, copiar somente arquivos afetados, revalidar o navegador em produção e manter rollback restrito.
 7. Reportar separadamente "alterado na branch", "testado", "mesclado", "implantado" e "validado na tela". Não misturar ambientes.
+8. Após cada deploy, executar npm run ux:auditar-local. Este diagnóstico visita apenas localhost:3030 por GET e grava capturas privadas em %LOCALAPPDATA%/Projeto04/previews/ux-live-readonly; nunca enviá-las ao GitHub.
 
 ## 6. Plano UX incremental
 

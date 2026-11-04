@@ -20,5 +20,6 @@ Liste telas, arquivos e impacto funcional. Indique explicitamente o que NÃO mud
 - [ ] Não havia mensagem sendo preparada/enviada.
 - [ ] Somente arquivos necessários foram atualizados.
 - [ ] URLs, /api/status e interface real foram revalidados após restart.
+- [ ] npm run ux:auditar-local concluiu com sucesso; capturas reais ficaram apenas no Acer (não no PR).
 
 **Evidências concretas:** link para execução do CI, imagens sintéticas, commit SHA e ressalvas.

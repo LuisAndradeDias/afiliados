@@ -14,5 +14,6 @@ Leia docs/ux/UX-01-CONTRATO-E-DIAGNOSTICO.md antes de alterar a UX.
 - CI verde não é aprovação do design. Obter revisão humana para mudança visual relevante.
 - Nunca usar mensagem real, WhatsApp ou POST/DELETE como parte de um teste visual.
 - Produção em C:\projeto02 não é checkout Git; pode diferir da main. Backup/hash antes de atualizar.
+- Após deploy, rodar npm run ux:auditar-local; o comando só consulta localhost:3030 e guarda evidências privadas em AppData.
 - Se houver falha, rollback apenas de arquivos que foram efetivamente modificados.
 - Comunicar etapa exata: branch, teste, CI, merge, deploy e verificação visual — não pular níveis.
