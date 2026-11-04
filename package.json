@@ -26,7 +26,9 @@
     "test:whatsapp-auto-send": "tsx tests/whatsapp-auto-send.mts",
     "test:historico-antiduplicado": "tsx tests/historico-antiduplicado.mts",
     "test:whatsapp-grupo": "tsx tests/whatsapp-grupo.mts",
-    "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts"
+    "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts",
+    "test:recuperacao-central": "tsx tests/contrato-sem-regressoes.mts && tsx tests/recuperacao-rotas.mts && tsx tests/revisao-tecnica.mts && tsx tests/shopee-http.mts && tsx tests/shopee-rascunhos.mts && tsx tests/shopee-ui.mts",
+    "test:recuperacao-visual": "tsx tests/recuperacao-visual.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

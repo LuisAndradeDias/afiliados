@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Visão geral | Caça Promos VIP</title>
+  <link rel="stylesheet" href="/central/assets/central.css">
+  <link rel="stylesheet" href="/central/assets/unified-nav.css">
+  <script src="/central/assets/unified-nav.js" defer></script>
+  <script src="/central/assets/central.js" defer></script>
+</head>
+<body>
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Menu principal">
+      <div class="brand"><span class="logo">CP</span><span><strong>CAÇA PROMOS VIP</strong><small>Central unificada</small></span></div>
+      <div class="nav-title">MÓDULOS</div>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="/central" aria-current="page">⌂ &nbsp; Visão geral</a>
+        <a href="/ofertas">◈ &nbsp; Central de Ofertas</a>
+        <a href="/revisao">▣ &nbsp; Revisão técnica</a>
+        <a href="/shopee"><span class="shopee-nav-mark">S</span> &nbsp; Shopee</a>
+      </nav>
+      <div class="side-foot">
+        <b>Operação local</b>
+        <p>Visualização integrada. Os módulos de ofertas e WhatsApp conservam suas próprias configurações e controles.</p>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="top">
+        <div style="display:flex;align-items:center;gap:14px">
+          <button id="menuBtn" class="mobile-bar" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+          <span class="breadcrumb">Caça Promos VIP &nbsp; / &nbsp; <b>Visão geral</b></span>
+        </div>
+        <span class="top-status"><span class="dot"></span> <span id="headerState">Verificando Central...</span></span>
+      </header>
+      <main class="main">
+        <div class="heading">
+          <div>
+            <span class="eyebrow">OPERAÇÃO · AMAZON + MERCADO LIVRE</span>
+            <h1>Painel de métricas</h1>
+            <p>Acompanhe a operação real e acesse os módulos. Os valores exibidos são observações; nenhuma mudança de política é aplicada nesta página.</p>
+          </div>
+          <a class="btn primary" href="/ofertas">Abrir ofertas</a>
+        </div>
+        <h2 class="section-title">Visão operacional</h2>
+        <div class="stats" aria-label="Indicadores reais do motor">
+          <article class="panel stat"><span>Monitor</span><strong id="monitor">—</strong><small>Consultas automáticas</small></article>
+          <article class="panel stat"><span>Atividade atual</span><strong id="flow">—</strong><small>Estado do motor</small></article>
+          <article class="panel stat"><span>Próxima fonte</span><strong id="next">—</strong><small>Alternância técnica</small></article>
+          <article class="panel stat"><span>Oferta preparada</span><strong id="review">—</strong><small>Sem presumir publicação</small></article>
+          <article class="panel stat"><span>Autoenvio WhatsApp</span><strong id="metricAutoSend">—</strong><small>Configuração da Central</small></article>
+          <article class="panel stat"><span>Envios confirmados</span><strong id="metricConfirmed">—</strong><small id="metricConfirmedNote">Histórico local comprovado</small></article>
+          <article class="panel stat"><span>Cupons observados no Meli</span><strong id="metricCouponsObserved">—</strong><small id="metricCouponsNote">Não equivale a cupom aplicável</small></article>
+        </div>
+        <h2 class="section-title">Módulos</h2>
+        <div class="grid">
+          <article class="panel module">
+            <span class="symbol">◈</span><h2>Ofertas</h2>
+            <p>Gerencie consultas Amazon e Mercado Livre, links, preparação no WhatsApp e autoenvio existente.</p>
+            <a class="btn primary" href="/ofertas">Abrir Central de Ofertas</a>
+          </article>
+          <article class="panel module">
+            <span class="symbol">▣</span><h2>Revisão técnica</h2>
+            <p>Consulte dados de produtos, preços observados, cupons, links e histórico. Não cria novas regras de publicação.</p>
+            <a class="btn" href="/revisao">Ver revisão</a>
+          </article>
+          <article class="panel module shopee-central-module">
+            <span class="symbol shopee-symbol">S</span><h2>Shopee</h2>
+            <p>Organize links de afiliado em rascunhos locais. A integração automática permanece pendente de configuração.</p>
+            <a class="btn shopee-btn" href="/shopee">Preparar Shopee</a>
+          </article>
+        </div>
+        <div class="bottom">
+          <section class="panel info">
+            <h2>Fonte de verdade</h2>
+            <p>O backend atual controla buscas, regras autorizadas, histórico e envio. Esta Central é uma camada de apresentação.</p>
+            <div class="links"><span class="tag">20% desconto mínimo</span><span class="tag">24h de cooldown</span><span class="tag">120min de prévia</span></div>
+          </section>
+          <section class="panel info">
+            <h2>Saúde da Central</h2>
+            <p id="centralHealth" role="status" aria-live="polite">Carregando estado local...</p>
+            <div class="notice">As mensagens só entram no histórico após confirmação real do WhatsApp.</div>
+          </section>
+        </div>
+        <p class="footnote">Caça Promos VIP · Central moderna vinculada ao motor atual.</p>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Revisão técnica | Caça Promos VIP</title>
+  <link rel="stylesheet" href="/central/assets/unified-nav.css">
+  <script src="/central/assets/unified-nav.js" defer></script>
+  <script src="/central/assets/revisao.js" defer></script>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;color:#182230;background:#f5f7fb}
+    *{box-sizing:border-box}body{margin:0;line-height:1.45}
+    a{color:#1d4ed8}button{font:inherit;cursor:pointer}
+    button:focus-visible,a:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+    .rev-hero{background:linear-gradient(130deg,#142238,#233f68);padding:35px 22px 56px;color:#fff}
+    .rev-hero>div{max-width:1120px;margin:auto}
+    .rev-kicker{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#b6d2f9;font-weight:800}
+    h1{font-size:clamp(27px,4vw,38px);margin:6px 0 8px;letter-spacing:-.03em}
+    .rev-hero p{margin:0;color:#d4e1ef;max-width:760px;font-size:14px}
+    .rev-shell{max-width:1120px;margin:-30px auto 0;padding:0 20px 50px}
+    .rev-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .rev-panel{background:#fff;border:1px solid #e3eaf2;border-radius:15px;box-shadow:0 7px 22px rgba(16,24,40,.05)}
+    .rev-stat{padding:19px 20px}.rev-stat span{display:block;font-size:12px;color:#64748b;font-weight:650}
+    .rev-stat strong{display:block;font-size:30px;margin-top:6px;font-variant-numeric:tabular-nums}
+    .rev-stat small{display:block;color:#64748b;font-size:11px;margin-top:3px}
+    .rev-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:28px 0 14px}
+    .rev-toolbar h2{font-size:19px;margin:0;letter-spacing:-.02em}
+    .rev-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .rev-btn{border:1px solid #cbd5e1;background:white;padding:9px 13px;border-radius:9px;color:#334155;font-size:12px;font-weight:750}
+    .rev-btn[aria-pressed="true"]{background:#1e3a5c;color:#fff;border-color:#1e3a5c}
+    .rev-list{display:grid;gap:12px}
+    .rev-card{padding:19px 21px}
+    .rev-card h3{margin:4px 0 8px;font-size:17px}
+    .rev-chip{display:inline-flex;padding:4px 10px;border-radius:50px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:750}
+    .rev-fields{display:flex;gap:15px;flex-wrap:wrap;color:#475569;font-size:12px;margin:12px 0}
+    .rev-fields b{color:#1e293b}
+    .rev-card details{border-top:1px solid #edf2f7;padding-top:10px}
+    .rev-card summary{font-size:12px;font-weight:750;cursor:pointer}
+    .rev-card ul{padding-left:21px;font-size:12px;color:#475569}
+    .rev-alert{border:1px solid #f3d18b;background:#fffbeb;color:#92400e;border-radius:10px;padding:12px 15px;font-size:12px}
+    .rev-empty{padding:35px 20px;color:#64748b;text-align:center}
+    .rev-foot{font-size:12px;color:#64748b;margin-top:24px}
+    @media(max-width:650px){.rev-stats{grid-template-columns:1fr 1fr}.rev-stat:last-child{grid-column:1/-1}.rev-shell{padding:0 12px 35px}}
+  </style>
+</head>
+<body>
+  <header class="rev-hero">
+    <div>
+      <span class="rev-kicker">Central de Afiliados · somente leitura</span>
+      <h1>Revisão técnica das ofertas</h1>
+      <p>Dados registrados de produtos, preços, links e cupons. Esta tela não cria aprovação comercial, não altera filtros e não aciona publicações.</p>
+    </div>
+  </header>
+  <main class="rev-shell">
+    <section class="rev-stats" aria-label="Indicadores de revisão">
+      <article class="rev-panel rev-stat"><span>Ofertas observadas</span><strong id="revObserved">—</strong><small>Registros locais atuais</small></article>
+      <article class="rev-panel rev-stat"><span>Envios confirmados</span><strong id="revSent">—</strong><small>Somente histórico persistido</small></article>
+      <article class="rev-panel rev-stat"><span>Autoenvio configurado</span><strong id="revAuto">—</strong><small>Consulta de status; não altera o motor</small></article>
+    </section>
+    <div class="rev-toolbar">
+      <h2>Registros técnicos</h2>
+      <div class="rev-actions" role="group" aria-label="Filtro de registros">
+        <button class="rev-btn" type="button" data-rev-filter="todos" aria-pressed="true">Todos</button>
+        <button class="rev-btn" type="button" data-rev-filter="oferta-preparada" aria-pressed="false">Preparados</button>
+        <button class="rev-btn" type="button" data-rev-filter="observacao-mercado-livre" aria-pressed="false">Mercado Livre</button>
+        <button class="rev-btn" type="button" id="revRefresh">Atualizar</button>
+      </div>
+    </div>
+    <div id="revAlerts" aria-live="polite"></div>
+    <div id="revList" class="rev-list" aria-live="polite">
+      <div class="rev-panel rev-empty">Consultando arquivos locais...</div>
+    </div>
+    <p class="rev-foot">A publicação e a verificação de preço continuam sob responsabilidade do motor de ofertas atual. Dados ausentes não são inventados.</p>
+  </main>
+</body>
+</html>

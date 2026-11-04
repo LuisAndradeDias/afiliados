@@ -1,0 +1,21 @@
+/* Visão técnica anexa ao painel atual; nenhum controle do motor é alterado. */
+.cpv-ops-panel {
+  margin: 0 0 24px; border: 1px solid #dce4ef; background: #fff; color: #1e293b;
+  border-radius: 17px; padding: 18px 20px; box-shadow: 0 7px 22px rgba(16,24,40,.06);
+}
+.cpv-ops-header { display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:15px; }
+.cpv-ops-header strong { display:block; font-size:17px; letter-spacing:-.02em; }
+.cpv-ops-header p { margin: 5px 0 0; font-size: 13px; line-height:1.45; color:#64748b; }
+.cpv-ops-pill { border:1px solid #cbd5e1; border-radius:40px; padding:6px 10px; white-space:nowrap; font-size:11px; font-weight:760; background:#f8fafc; }
+.cpv-ops-pill[data-state="working"]{background:#edf6ff;color:#1d4ed8;border-color:#bfdbfe}
+.cpv-ops-pill[data-state="warning"]{background:#fffaeb;color:#92400e;border-color:#fde68a}
+.cpv-ops-pill[data-state="online"]{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+.cpv-ops-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.cpv-ops-metric{background:#f8fafc;border:1px solid #e6edf5;border-radius:12px;padding:13px 14px;min-width:0}
+.cpv-ops-metric span{display:block;font-size:11px;font-weight:650;color:#64748b}
+.cpv-ops-metric strong{display:block;margin-top:6px;font-size:16px;overflow-wrap:anywhere}
+.cpv-ops-logs{margin-top:13px;border-top:1px solid #edf2f7;padding-top:13px}
+.cpv-ops-logs summary{font-size:12px;font-weight:750;color:#334155;cursor:pointer}
+.cpv-ops-logs pre{font-size:11px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;max-height:190px;overflow:auto;color:#334155;margin:12px 0 0}
+@media(max-width:800px){.cpv-ops-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.cpv-ops-header{flex-direction:column}.cpv-ops-panel{padding:15px}.cpv-ops-metrics{gap:8px}.cpv-ops-metric{padding:11px}}

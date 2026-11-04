@@ -26,3 +26,4 @@ jobs:
       - run: npm run test:historico-antiduplicado
       - run: npm run test:amazon-preco-dom
       - run: npm run test:whatsapp-auto-send
+      - run: npm run test:recuperacao-central

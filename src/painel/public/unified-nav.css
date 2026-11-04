@@ -1,0 +1,21 @@
+.cpv-unified-nav {
+  position: relative; z-index: 30; display: flex; align-items: center;
+  justify-content: space-between; gap: 18px; padding: 13px 24px;
+  background: #101f36; color: #f5f9ff; font-family: Inter, system-ui, sans-serif;
+  box-shadow: 0 2px 14px rgba(16,31,54,.16);
+}
+.cpv-unified-brand { font-size: 12px; font-weight: 850; letter-spacing: .105em; white-space: nowrap; }
+.cpv-unified-links { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.cpv-unified-links a {
+  text-decoration: none; color: #d4e1f5; font-size: 12px; font-weight: 650;
+  padding: 8px 12px; border-radius: 9px; transition: background .15s;
+}
+.cpv-unified-links a:hover, .cpv-unified-links a[aria-current="page"] {
+  color: #fff; background: rgba(255,255,255,.15);
+}
+.cpv-unified-links a:focus-visible { outline: 2px solid #9cc7ff; outline-offset: 3px; }
+@media (max-width: 620px) {
+  .cpv-unified-nav { align-items: flex-start; flex-direction: column; padding: 13px 16px; gap: 8px; }
+  .cpv-unified-links { gap: 3px; width: 100%; }
+  .cpv-unified-links a { padding: 8px 10px; }
+}
