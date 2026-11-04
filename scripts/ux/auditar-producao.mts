@@ -44,6 +44,7 @@ let tentativasEscrita = 0;
 try {
   browser = await chromium.launch({ channel: "chrome", headless: true });
   for (const width of widths) {
+    let navBaseline: Array<{x:number;y:number;width:number;height:number}> | null = null;
     const context = await browser.newContext({
       viewport: { width, height: 900 }, deviceScaleFactor: 1
     });
@@ -72,16 +73,49 @@ try {
       assert.equal(response?.status(), 200, "Rota quebrada: " + rota);
       await page.waitForTimeout(900);
       const measurements = await page.evaluate(() => {
-        const sidebar = document.querySelector(".sidebar");
+        const sidebar = document.querySelector("#sidebar")!;
+        const nav = document.querySelector("#cpvUnifiedNav")!;
+        const top = document.querySelector(".cpv-global-top")!;
+        const aside = sidebar.getBoundingClientRect();
+        const context = top.getBoundingClientRect();
+        const links = [...nav.querySelectorAll("a")].map(item => {
+          const r = item.getBoundingClientRect();
+          return {x:r.x,y:r.y,width:r.width,height:r.height};
+        });
         return {
-          tema: sidebar ? getComputedStyle(sidebar).backgroundColor : "navegacao-superior",
+          tema: getComputedStyle(sidebar).backgroundColor,
+          sidebarX: aside.x, sidebarWidth: aside.width,
+          topX: context.x, topWidth: context.width, topHeight: context.height,
+          links,
           overflow: document.documentElement.scrollWidth - innerWidth
         };
       });
-      assert.ok(measurements.overflow <= 2, "Rolagem horizontal: " + rota + " " + width);
-      if (rota === "/central" || rota === "/shopee") {
-        assert.equal(measurements.tema, "rgb(23, 35, 51)", "Tema perdido: " + rota);
+      assert.ok(measurements.overflow <= 1, "Rolagem horizontal: " + rota + " " + width);
+      assert.equal(measurements.tema, "rgb(23, 35, 51)", "Tema do menu perdido: " + rota);
+      assert.equal(measurements.sidebarWidth, 252, "Menu com largura diferente: "+rota);
+      assert.equal(measurements.links.length, 4, "Navegação incompleta: "+rota);
+      if (width > 860) {
+        assert.equal(measurements.sidebarX, 0, "Menu deslocado 1px ou mais: "+rota);
+        assert.deepEqual(
+          {x:measurements.topX,width:measurements.topWidth,height:measurements.topHeight},
+          {x:252,width:width-252,height:78},
+          "Barra de contexto fora da posição: "+rota
+        );
+      } else {
+        assert.deepEqual(
+          {x:measurements.topX,width:measurements.topWidth,height:measurements.topHeight},
+          {x:0,width,height:70},
+          "Barra móvel fora da posição: "+rota
+        );
+        await page.locator("#menuBtn").click();
+        await page.waitForTimeout(270);
+        const abertoX=await page.locator("#sidebar").evaluate(node=>node.getBoundingClientRect().x);
+        assert.equal(abertoX,0,"Menu móvel não chegou à coordenada zero em "+rota);
+        await page.keyboard.press("Escape");
       }
+      if(navBaseline) assert.deepEqual(measurements.links,navBaseline,
+        "Links desalinhados entre telas (incluindo 1px): "+rota);
+      else navBaseline=measurements.links;
       if (rota === "/ofertas") {
         assert.equal(await page.locator("#autoEnvioButton").count(), 1);
       }
@@ -100,7 +134,7 @@ try {
   assert.equal(tentativasEscrita, 0, "A página tentou gravar dados durante auditoria");
   const report = join(directory, "relatorio-readonly.json");
   await writeFile(report, JSON.stringify({
-    versao: "UX-01", ambiente: "local", modo: "GET-only",
+    versao: "UX-02", ambiente: "local", modo: "GET-only",
     status, rotas: resultados
   }, null, 2), "utf8");
   console.log("UX_LIVE_AUDIT_OK: " + resultados.length + " capturas locais, sem escrita ou recursos quebrados.");

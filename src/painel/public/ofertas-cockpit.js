@@ -19,7 +19,13 @@
     '<details class="cpv-ops-logs"><summary>Últimos registros do motor</summary>',
     '<pre id="cpvOpsLogs">Nenhum registro consultado.</pre></details>'
   ].join("");
-  main.prepend(section);
+  // O controle do ciclo e a oferta vêm antes do diagnóstico auxiliar.
+  const launch = main.querySelector("#launchCard");
+  const health = main.querySelector(".health");
+  if (launch && health) main.insertBefore(launch, health);
+  const review = main.querySelector("#reviewCard");
+  if (review) review.after(section);
+  else main.append(section);
   const get = id => document.getElementById(id);
   const put = (id, value) => { const el = get(id); if (el) el.textContent = value; };
   const fonte = s => {
