@@ -4,7 +4,7 @@ Este documento descreve o estado atual do projeto e deve ser atualizado quando u
 
 ## Objetivo
 
-Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo para WhatsApp e manter a confirmação humana antes do envio.
+Localizar ofertas, aplicar regras de afiliados autorizadas, preparar conteúdo para WhatsApp e concluir o envio manualmente ou pelo autoenvio autorizado com confirmação real.
 
 ## Fluxos principais
 
@@ -28,7 +28,7 @@ Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo pa
 7. `src/afiliados/mercadolivre.ts` valida e salva somente links oficiais de compartilhamento (`meli.la` ou `/sec/`).
 8. Quando o fluxo automático está ativo, o backend encadeia o resultado do link diretamente em `src/robo/mercadolivre-whatsapp.ts`.
 9. `src/robo/mercadolivre-whatsapp.ts` transforma a oferta validada em mensagem/pacote.
-10. `src/robo/whatsapp-preparar.ts` abre o grupo e aguarda confirmação humana.
+10. `src/robo/whatsapp-preparar.ts` abre o grupo e aguarda envio manual ou autoenvio, conforme a configuração.
 11. **Enviar + próxima ML** registra o envio e reinicia busca → link → preparação.
 12. O histórico usa a chave `mercado-livre:<produtoId>`, evitando repetição.
 
@@ -60,7 +60,7 @@ Localizar ofertas elegíveis, aplicar regras de afiliados, preparar conteúdo pa
 - A automação do link deve operar na interface oficial do Gerador de Links; não usar endpoints privados/descobertos por engenharia reversa.
 - Não tratar URL normal de produto como link de afiliado.
 - Mercado Livre só pode ser preparado para WhatsApp depois de salvar um link oficial.
-- O envio continua dependente de confirmação no painel.
+- O envio pode ser automático ou manual. O autoenvio usa cursor físico determinístico, uma única tentativa e confirmação real antes de registrar.
 - Tokens, cookies, perfis de navegador e `.env` ficam somente na máquina local.
 
 ## Comandos
@@ -145,3 +145,16 @@ A UI não deve inferir a origem da oferta combinando `origemPreparacaoAtual` com
 A ação principal do ciclo é `monitor-set`, com `ativo: true|false`. `mercadolivre-monitor-toggle` fica apenas para compatibilidade.
 
 Ao falhar/fechar a janela de revisão, o pacote é preservado e o estado vira `offer-pending`. O usuário deve reabrir ou descartar antes que o agendador volte a pesquisar.
+
+
+## Regras autorizadas
+
+A referência canônica é `docs/REGRAS_AUTORIZADAS.md`. Os valores executáveis ficam em `src/ofertas/regras-autorizadas.ts`.
+
+Não reintroduzir por handoff/agente: cotas por categoria/faixa de preço, foco obrigatório em eletrônicos, piso de preço/economia, limite de 4 publicações/hora, modos Tempo médio/Tempo curto, cooldown de 7 dias ou Instagram.
+
+## Camada visual moderna existente no Acer
+
+A instalação `C:\projeto02` contém arquivos de uma evolução visual posterior que ainda não foi consolidada integralmente na `main`, incluindo Central unificada, navegação, página de revisão e estrutura de Shopee.
+
+Esses arquivos são patrimônio do projeto e não devem ser apagados por uma sincronização cega. Porém, módulos da antiga branch de Etapas 49/50/57/58 que impõem homologação/elegibilidade de canal não são regras autorizadas. Ao promover a UI moderna para a `main`, separar apresentação e funcionalidades úteis dessas políticas não aprovadas.

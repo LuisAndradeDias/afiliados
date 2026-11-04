@@ -1,6 +1,6 @@
 # Afiliados
 
-Central local para localizar ofertas, validar links de afiliado, preparar conteúdo e revisar o envio no WhatsApp.
+Central local para localizar ofertas, validar links de afiliado, preparar conteúdo e operar o envio no WhatsApp. O autoenvio final por cursor físico está autorizado e pode ser ligado/desligado no painel.
 
 ## Estado atual
 
@@ -9,7 +9,7 @@ O projeto possui dois fluxos ativos:
 - **Amazon**: coleta via navegador, rotação de categorias, score por promoção/comissão, aplicação do Tracking ID e preparação no WhatsApp.
 - **Mercado Livre**: coleta via API oficial, filtro de publicação nova + vendedor verde, geração automática do link pelo Gerador de Links oficial através de uma extensão local do Chrome, validação do link e preparação automática no WhatsApp. Depois da revisão, **Enviar + próxima ML** inicia outra oferta automaticamente. O modo manual continua disponível como fallback.
 
-O envio continua dependendo de confirmação humana no painel.
+O envio pode ser manual ou automático. No autoenvio, o sistema move o cursor físico de forma determinística até o botão real, faz uma única tentativa e só registra o envio após confirmação real do WhatsApp.
 
 ## Stack
 
@@ -74,7 +74,7 @@ O fluxo normal é:
 2. O sistema busca, pontua e escolhe a melhor oferta disponível.
 3. O Tracking ID é aplicado ao link.
 4. Foto + mensagem são preparadas no WhatsApp.
-5. Você revisa e confirma **Enviar agora** ou **Enviar + próxima Amazon**.
+5. Com autoenvio ligado, o cursor físico envia após o atraso configurado; com autoenvio desligado, use o envio manual do painel.
 
 A comissão exibida é uma estimativa baseada na categoria de busca.
 
@@ -140,12 +140,7 @@ amazon:B0...
 mercado-livre:MLB...
 ```
 
-Os tempos padrão são controlados por:
-
-```env
-OFFER_PREVIEW_COOLDOWN_MINUTES=120
-OFFER_COOLDOWN_HOURS=24
-```
+Os valores de negócio autorizados ficam em `src/ofertas/regras-autorizadas.ts`: desconto-base 20%, cooldown de envio 24h e cooldown de prévia 120min. Valores legados do `.env` não devem substituir essas regras sem aprovação explícita.
 
 ## Configuração local
 
@@ -174,7 +169,7 @@ Ou manualmente:
 1. Abra `chrome://extensions/`.
 2. Ative **Modo do desenvolvedor**.
 3. Clique em **Carregar sem compactação**.
-4. Selecione `C:\projeto01\browser-extension\mercadolivre-affiliate`.
+4. Selecione `C:\projeto02\browser-extension\mercadolivre-affiliate`.
 
 A extensão não lê cookies, senhas nem tokens. Ela automatiza somente a interface visível do Gerador de Links e conversa com o painel local em `127.0.0.1:3030`.
 
@@ -196,7 +191,7 @@ Depois da revisão:
 - **Enviar agora**: envia e encerra a rodada.
 - **Enviar + próxima ML**: envia e repete automaticamente o ciclo para outra oferta.
 
-O envio continua exigindo confirmação humana.
+O envio pode usar o autoenvio autorizado ou o fallback manual.
 
 
 ## Monitoramento contínuo do Mercado Livre
@@ -318,3 +313,20 @@ O botão principal usa uma ação idempotente `monitor-set`. A interface envia e
 A plataforma exibida na revisão vem do pacote real da oferta (`ultima-oferta-whatsapp.json`), e não da última plataforma consultada pelo monitor.
 
 Se o WhatsApp fechar ou falhar depois que a oferta foi criada, a oferta é preservada como `offer-pending`; o ciclo não inicia outra busca por cima dela.
+
+
+## Fonte de verdade das regras
+
+Consulte primeiro `docs/REGRAS_AUTORIZADAS.md` e `src/ofertas/regras-autorizadas.ts`.
+
+Handoffs antigos, auditorias, PRs arquivados e sugestões de agentes não podem criar regras permanentes. O PR #49 / "Etapa 50" foi arquivado e não deve ser mesclado integralmente.
+
+## Instalação operacional atual
+
+- Computador principal: `ACER`
+- Pasta: `C:\projeto02`
+- Painel: `http://localhost:3030`
+- Repositório: `LuisAndradeDias/afiliados`
+- Produção: branch `main`
+
+Antes de copiar a `main` inteira sobre o Acer, compare os arquivos locais. O Acer contém uma camada visual moderna (Central unificada, revisão e estrutura Shopee) proveniente de trabalho ainda não consolidado integralmente na `main`. Preserve o que for útil e integre seletivamente; não restaure regras comerciais não autorizadas junto com essa UI.
