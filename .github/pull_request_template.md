@@ -1,0 +1,24 @@
+## O que mudou?
+Liste telas, arquivos e impacto funcional. Indique explicitamente o que NÃO mudou.
+
+## Base e evidências
+- [ ] Branch derivada da main atual, SHA conferido.
+- [ ] Tipo de mudança definido: visual, operacional ou ambos.
+- [ ] Nenhum dado real, .env, perfil ou motor foi alterado inadvertidamente.
+- [ ] Regras 20% / 24h / 120min e confirmação real preservadas.
+
+## Alteração de UX
+- [ ] Typecheck e test:ux-contrato aprovados.
+- [ ] CI gerou oito capturas sintéticas; comparação visual revisada.
+- [ ] Central, Ofertas, Shopee e Revisão abriram em desktop/celular.
+- [ ] Nenhum CSS/JS/import 404, erro JavaScript ou rolagem horizontal.
+- [ ] Links, botões, menu, foco e contraste mantidos.
+- [ ] Mudança relevante de layout recebeu aprovação humana ANTES de deploy.
+
+## Produção
+- [ ] Backup/hash e rollback documentados.
+- [ ] Não havia mensagem sendo preparada/enviada.
+- [ ] Somente arquivos necessários foram atualizados.
+- [ ] URLs, /api/status e interface real foram revalidados após restart.
+
+**Evidências concretas:** link para execução do CI, imagens sintéticas, commit SHA e ressalvas.
