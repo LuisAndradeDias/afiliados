@@ -1,0 +1,74 @@
+/* Shopee — modulo da Central Unificada, com os mesmos tokens e contraste. */
+.shopee-main{max-width:1440px;padding-top:34px}
+.shopee-top-status{font-size:12px;font-weight:700;color:#a45519;background:#fff6ec;border:1px solid #f1d4b8;padding:9px 13px;border-radius:999px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.shopee-pulse{width:8px;height:8px;border-radius:50%;background:#ee8a37;display:inline-block}
+.top-left{display:flex;align-items:center;gap:12px}
+.shopee-nav-icon{display:grid;place-items:center;width:22px;height:22px;background:#f38a32;border-radius:6px;color:#fff;font-weight:900;font-size:12px}
+.shopee-hero{background:linear-gradient(115deg,#fff 0%,#fff 59%,#fff7ed 100%);border:1px solid #e6eaf0;border-radius:22px;padding:34px;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(245px,.8fr);gap:26px;align-items:center;box-shadow:0 16px 38px #1c3a5007}
+.shopee-eyebrow,.shopee-kicker{font-size:10px;font-weight:900;letter-spacing:.14em;color:#c36315}
+.shopee-title-row{display:flex;align-items:flex-start;gap:17px;margin-top:14px}
+.shopee-brand-symbol{width:62px;height:62px;display:grid;place-items:center;flex:none;background:#ee8730;color:#fff;border-radius:19px;font-size:30px;font-weight:900;box-shadow:0 9px 22px #e9853038}
+.shopee-hero h1{margin:0 0 11px;color:#203244;font-size:clamp(26px,3vw,38px);line-height:1.14;letter-spacing:-.045em}
+.shopee-hero-copy p{font-size:14px;line-height:1.75;color:#627489;max-width:720px;margin:0}
+.shopee-hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.btn.shopee-primary{background:#ed7c22;border-color:#ed7c22;color:#fff;box-shadow:0 5px 13px #ec7e2226;font-weight:800}
+.btn.shopee-primary:hover{background:#d96813;border-color:#d96813}
+.shopee-hero-aside{background:#fff;border:1px solid #f4e3d3;border-radius:17px;padding:25px;display:flex;flex-direction:column;gap:11px;min-height:205px;justify-content:center;box-shadow:0 7px 20px #cb6c1510}
+.shopee-aside-label{font-size:11px;color:#9f6e46;letter-spacing:.1em;font-weight:800}
+.shopee-hero-aside strong{font-size:22px;letter-spacing:-.03em;color:#303c4b}
+.shopee-hero-aside p{font-size:12px;color:#788694;line-height:1.6}
+.shopee-waiting{font-size:11px;color:#b76b27;background:#fff4e7;align-self:flex-start;padding:7px 10px;border-radius:7px;font-weight:760}
+.shopee-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0 22px}
+.shopee-stat{padding:23px;min-height:139px;display:flex;flex-direction:column;gap:9px}
+.shopee-stat>span{font-size:12px;color:#6b7d8e;font-weight:640}
+.shopee-stat>strong{color:#2a3848;font-size:24px;letter-spacing:-.025em}
+.shopee-stat>small{font-size:11px;color:#82919e;line-height:1.5}
+.shopee-columns{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:18px;margin-bottom:20px;align-items:stretch}
+.shopee-form-panel,.shopee-guide,.shopee-drafts{padding:27px}
+.shopee-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:11px}
+.shopee-panel-heading h2,.shopee-guide h2{margin:8px 0 0;font-size:21px;letter-spacing:-.035em;color:#26394b}
+.shopee-form-panel>p,.shopee-drafts-hint{font-size:13px;color:#6d8092;line-height:1.68;margin:0 0 25px}
+.shopee-mini-tag,.shopee-draft-indicator{font-size:11px;font-weight:800;color:#a25921;background:#fff4e7;border-radius:8px;padding:7px 9px;white-space:nowrap}
+#shopeeForm{display:flex;flex-direction:column;gap:8px}
+#shopeeForm label:not(.shopee-check){font-size:12px;font-weight:760;color:#344a5e;margin-top:10px}
+#shopeeForm input:not([type=checkbox]){height:48px;border:1px solid #ccd8e2;border-radius:10px;padding:12px 13px;background:#fff;width:100%;color:#26394b;font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s}
+#shopeeForm input:not([type=checkbox]):focus-visible{border-color:#d77429;box-shadow:0 0 0 3px #f49a4830;outline:none}
+.shopee-input-help{font-size:11px;color:#81909c;line-height:1.5;margin:0 0 1px}
+.shopee-price-input{position:relative}
+.shopee-price-input>span{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#718092;font-size:13px;font-weight:800}
+#shopeePreco{padding-left:45px!important}
+.shopee-check{display:flex;align-items:flex-start;gap:10px;line-height:1.52;font-size:12px;font-weight:620;color:#4e6174;margin-top:16px;cursor:pointer}
+.shopee-check input{width:17px;height:17px;margin:1px 0 0;flex:none;accent-color:#ed7c22}
+.shopee-save{align-self:flex-start;margin-top:15px;min-width:185px}
+.shopee-save:disabled{opacity:.58;cursor:wait}
+.shopee-feedback{font-size:12px;border-radius:9px;padding:12px 13px;line-height:1.6;margin:9px 0 0}
+.shopee-feedback.ok{background:#ebf7f1;color:#136c46}
+.shopee-feedback.error{background:#fff0eb;color:#9a401d}
+.shopee-steps{list-style:none;margin:24px 0 0;padding:0;display:grid;gap:22px}
+.shopee-steps li{display:flex;gap:13px;align-items:flex-start}
+.shopee-steps li>span{width:34px;height:34px;background:#fff1e6;border:1px solid #f8dec8;display:grid;place-items:center;border-radius:11px;font-size:12px;font-weight:900;color:#bc6924;flex:none}
+.shopee-steps li strong{font-size:13px;color:#334355}
+.shopee-steps li p{font-size:12px;line-height:1.65;color:#748597;margin:6px 0 0}
+.shopee-guide-footer{margin-top:28px;border-top:1px solid #e5eaef;padding-top:19px;display:grid;gap:10px}
+.shopee-guide-footer .btn{justify-self:start}
+.shopee-disabled:disabled{cursor:not-allowed;background:#f0f3f6;border-color:#dde5eb;color:#758494;opacity:1;box-shadow:none}
+.shopee-guide-footer small{font-size:11px;color:#8a98a4;line-height:1.5}
+.shopee-drafts-hint{margin-bottom:18px}
+.shopee-drafts-list{display:grid;gap:10px}
+.shopee-empty{padding:40px 24px;border-radius:12px;background:#f8fafb;border:1px dashed #cfdbe5;text-align:center;color:#6c8192;font-size:13px;line-height:1.6}
+.shopee-draft{border:1px solid #e1e8ee;border-radius:12px;display:flex;gap:14px;align-items:center;justify-content:space-between;padding:16px;background:#fff}
+.shopee-draft-content{min-width:0;display:grid;gap:7px;flex:1}
+.shopee-draft-content strong{font-size:14px;color:#2d4153;overflow-wrap:anywhere}
+.shopee-draft-content small{font-size:11px;color:#7b8b99}
+.shopee-draft-meta{font-size:11px;color:#a76631;font-weight:760}
+.shopee-draft-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:end}
+.shopee-draft-actions button{background:#fff;border:1px solid #d7e0e8;padding:8px 11px;min-height:38px;border-radius:8px;font-weight:730;font-size:11px;white-space:nowrap;color:#43576c}
+.shopee-draft-actions button:hover{background:#f5f8fa}
+.shopee-draft-actions button.danger{color:#a24532;border-color:#efdad3}
+.shopee-disclaimer{font-size:11px;color:#8796a3;line-height:1.6;margin:22px 0}
+.shopee-form-panel:focus-within,.shopee-drafts:focus-within{border-color:#e1b18d}
+.shopee-main button:focus-visible,.shopee-main a:focus-visible,.sidebar a:focus-visible{outline:3px solid #e78b46;outline-offset:3px}
+@media(max-width:1190px){.shopee-hero{grid-template-columns:minmax(0,1.3fr) minmax(230px,.8fr)}.shopee-columns{grid-template-columns:1fr 1fr}}
+@media(max-width:930px){.shopee-hero{grid-template-columns:1fr}.shopee-hero-aside{min-height:unset}.shopee-columns{grid-template-columns:1fr}.shopee-main{padding-top:25px}}
+@media(max-width:600px){.shopee-hero{padding:22px}.shopee-brand-symbol{width:49px;height:49px;font-size:23px;border-radius:14px}.shopee-title-row{gap:12px}.shopee-hero h1{font-size:27px}.shopee-stats{grid-template-columns:1fr}.shopee-stat{min-height:110px}.shopee-form-panel,.shopee-guide,.shopee-drafts{padding:20px}.shopee-draft{align-items:flex-start;flex-direction:column}.shopee-draft-actions{justify-content:flex-start}.shopee-top-status{font-size:10px;max-width:160px;white-space:normal}}
+@media(prefers-reduced-motion:reduce){.shopee-main *{transition:none!important}}

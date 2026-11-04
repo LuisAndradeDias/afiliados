@@ -24,6 +24,8 @@ import {
   CONSULTAS_AMAZON_AUTORIZADAS,
   DESCONTO_MINIMO_PERCENTUAL
 } from "../ofertas/regras-autorizadas.js";
+import { responderRotaVisual } from "./rotas-visuais.js";
+import { responderRotaShopee } from "./shopee-http.js";
 
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
@@ -1851,6 +1853,15 @@ const server = createServer(async (req, res) => {
       res.end(JSON.stringify({ ok: true }));
       return;
     }
+
+    // Rotas visuais opcionais e rascunhos Shopee. Nao alteram o monitor
+    // nem o endpoint legado "/" utilizado em producao.
+    if (await responderRotaShopee({
+      req, res, pathname: requestUrl.pathname, raiz
+    })) return;
+    if (await responderRotaVisual({
+      method: req.method, pathname: requestUrl.pathname, res, raiz
+    })) return;
 
     if (req.method === "GET" && requestUrl.pathname === "/") {
       const html = await readFile(paginaPath, "utf8");
