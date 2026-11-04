@@ -63,8 +63,11 @@ try {
     let baselineStyles: Record<string, Record<string, string>> | null = null;
     let baselineGeometry: Array<{ x:number;y:number;width:number;height:number }> | null = null;
     for (const route of routes) {
-      const response = await page.goto(base + route, { waitUntil: "domcontentloaded" });
+      const response = await page.goto(base + route, { waitUntil: "networkidle" });
       assert.equal(response?.status(), 200, route + " HTTP");
+      // CSS externo e fontes precisam estar concluídos antes de comparar pixels;
+      // DOM pronto sozinho não garante estilos prontos em todos os runners.
+      await page.evaluate(() => document.fonts.ready);
       await page.locator("#cpvUnifiedNav .cpv-nav-link").first().waitFor();
       assert.equal(await page.locator("#cpvUnifiedNav").count(), 1);
       assert.equal(await page.locator("#cpvUnifiedNav a").count(), 4);
@@ -159,14 +162,19 @@ try {
       }
       if(!baseline){
         baseline=current;
-        const perturb=await page.addStyleTag({
-          content:"body.cpv-shell-unified .sidebar.cpv-nav-sidebar {left:1px!important}"
+        // Alteração inline com prioridade máxima: determinística no Windows e no Linux.
+        // Evita falsa falha por estilos de página/frames não estabilizados.
+        await page.locator("#sidebar").evaluate(node => {
+          (node as HTMLElement).style.setProperty("left", "1px", "important");
         });
+        await page.waitForTimeout(80);
         const wrongX=await page.locator("#sidebar").evaluate(node=>node.getBoundingClientRect().x);
         assert.equal(wrongX,1,"Controle negativo deve deslocar exatamente 1px");
         const shifted=await page.screenshot({clip:{x:0,y:0,width:252,height:900},animations:"disabled"});
         assert.ok(!shifted.equals(current),"Teste de pixels NÃO detectou deslocamento de 1px");
-        await perturb.evaluate(node=>node.remove());
+        await page.locator("#sidebar").evaluate(node => {
+          (node as HTMLElement).style.removeProperty("left");
+        });
       }
       if(mobile){
         await page.keyboard.press("Escape");
