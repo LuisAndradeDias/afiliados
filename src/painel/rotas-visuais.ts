@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 
 const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/central.css": "central.css",
+  "/central/assets/central.tokens.css": "central.tokens.css",
   "/central/assets/ofertas-cockpit.css": "ofertas-cockpit.css",
   "/central/assets/ofertas-cockpit.js": "ofertas-cockpit.js",
   "/central/assets/central.js": "central.js",

@@ -30,3 +30,4 @@ jobs:
       - run: npm run test:whatsapp-observer
       - run: npm run test:recuperacao-central
       - run: npm run test:recuperacao-visual
+      - run: npm run test:central-visual-integridade
