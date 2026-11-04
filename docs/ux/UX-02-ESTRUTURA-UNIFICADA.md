@@ -32,7 +32,7 @@ tests/ux-shell-pixel.mts:
 - quatro telas e quatro larguras: 1595, 1280, 768 e 390px;
 - geometria igual de sidebar, links e topbar, sem tolerância de 1px;
 - propriedades CSS computadas iguais após normalizar a seleção de página;
-- screenshot com até 3% de tolerância só para rasterização de fontes entre documentos no Chromium;
+- screenshot com até 5% de tolerância só para rasterização de fontes entre documentos no Chromium Windows/Linux;
 - controle negativo: left:1px deve ser detectado na geometria E imagem;
 - menu móvel abre e fecha com Escape; nenhuma escrita no backend.
 
