@@ -17,7 +17,6 @@ import {
 } from "../src/ofertas/historico.js";
 
 const anteriorCwd = process.cwd();
-const originalCooldown = process.env.OFFER_COOLDOWN_HOURS;
 const pastaTeste = await mkdtemp(join(tmpdir(), "afiliados-antiduplicado-"));
 
 const twibi = {
@@ -41,8 +40,7 @@ const twibiMercadoLivre = {
 
 try {
   process.chdir(pastaTeste);
-  process.env.OFFER_COOLDOWN_HOURS = "168";
-  assert.equal(cooldownHoras(), 168);
+  assert.equal(cooldownHoras(), 24);
   assert.equal(normalizarTituloProduto("Roteador  Wi-Fí 6"), "roteador wi fi 6");
 
   assert.ok(mesmoProdutoHistorico(twibi, twibi));
@@ -68,17 +66,17 @@ try {
   assert.equal(await ofertaJaEnviadaRecentemente(twibiMercadoLivre), true);
   assert.ok((await chavesBloqueadas()).has("amazon:b0c6ty3pck"));
 
-  // Mesmo depois de 72 horas, não permitir duplicação durante a semana.
+  // O padrão autorizado é 24 horas: dentro do prazo bloqueia; depois libera.
   const historico = JSON.parse(await readFile("data/historico-ofertas.json", "utf8"));
-  historico[0].enviadoEm = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  historico[0].enviadoEm = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
   historico[0].vistoEm = historico[0].enviadoEm;
   await writeFile("data/historico-ofertas.json", JSON.stringify(historico), "utf8");
   assert.equal(await ofertaJaEnviadaRecentemente(twibiOutroAnuncio), true);
-  historico[0].enviadoEm = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  historico[0].enviadoEm = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
   historico[0].vistoEm = historico[0].enviadoEm;
   await writeFile("data/historico-ofertas.json", JSON.stringify(historico), "utf8");
   assert.equal(await ofertaJaEnviadaRecentemente(twibiOutroAnuncio), false,
-    "Depois do prazo, o item volta a ser elegível");
+    "Depois de 24 horas, o item volta a ser elegível");
 
   await limparHistoricoOfertas();
   const novas = Array.from({ length: 12 }, (_, index) => ({
@@ -128,11 +126,9 @@ try {
 
   console.log(
     "historico-antiduplicado: OK (ASIN alternativo, marketplaces, variantes, " +
-    "cooldown de 7 dias, concorrência, histórico inválido e bloqueio antes do clique)"
+    "cooldown de 24h, concorrência, histórico inválido e bloqueio antes do clique)"
   );
 } finally {
   process.chdir(anteriorCwd);
-  if (originalCooldown === undefined) delete process.env.OFFER_COOLDOWN_HOURS;
-  else process.env.OFFER_COOLDOWN_HOURS = originalCooldown;
   await rm(pastaTeste, { recursive: true, force: true });
 }
