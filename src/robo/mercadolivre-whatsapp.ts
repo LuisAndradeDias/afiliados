@@ -6,6 +6,7 @@ import { registrarOfertaVista } from "../ofertas/historico.js";
 import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { revalidarCupomMercadoLivre } from "../afiliados/mercadolivre-cupons.js";
+import { DESCONTO_MINIMO_PERCENTUAL } from "../ofertas/regras-autorizadas.js";
 
 let oferta = await lerOfertaMercadoLivre();
 
@@ -36,7 +37,7 @@ if (oferta.cupomCodigo) {
   );
 }
 
-const minimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
+const minimo = DESCONTO_MINIMO_PERCENTUAL;
 const beneficioEfetivo =
   oferta.descontoEfetivoPercentual ??
   oferta.descontoPercentual ??
