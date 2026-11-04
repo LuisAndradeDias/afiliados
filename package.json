@@ -28,7 +28,8 @@
     "test:whatsapp-grupo": "tsx tests/whatsapp-grupo.mts",
     "test:amazon-preco-dom": "tsx tests/amazon-preco-dom.mts",
     "test:recuperacao-central": "tsx tests/contrato-sem-regressoes.mts && tsx tests/recuperacao-rotas.mts && tsx tests/revisao-tecnica.mts && tsx tests/shopee-http.mts && tsx tests/shopee-rascunhos.mts && tsx tests/shopee-ui.mts",
-    "test:recuperacao-visual": "tsx tests/recuperacao-visual.mts"
+    "test:recuperacao-visual": "tsx tests/recuperacao-visual.mts",
+    "test:central-visual-integridade": "tsx tests/central-visual-integridade.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
