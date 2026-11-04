@@ -1280,6 +1280,7 @@ async function lerJson(req: import("node:http").IncomingMessage) {
 }
 
 
+async function executarAcao(
   acao: string,
   dados: Record<string, unknown> = {}
 ): Promise<{ ok: boolean; mensagem: string }> {
@@ -1416,7 +1417,8 @@ async function lerJson(req: import("node:http").IncomingMessage) {
     };
   }
 
- ||
+  if (
+    acao === "monitor-set" ||
     acao === "mercadolivre-monitor-toggle"
   ) {
     const desejado =
