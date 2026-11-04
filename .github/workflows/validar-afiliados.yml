@@ -37,6 +37,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ux-fixture-capturas
-          path: test-results/ux/*.png
+          path: |
+            test-results/ux/*.png
+            test-results/ux03/*.png
           if-no-files-found: ignore
           retention-days: 7

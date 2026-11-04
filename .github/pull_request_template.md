@@ -13,6 +13,8 @@ Liste telas, arquivos e impacto funcional. Indique explicitamente o que NÃO mud
 - [ ] Central, Ofertas, Shopee e Revisão abriram em desktop/celular.
 - [ ] Nenhum CSS/JS/import 404, erro JavaScript ou rolagem horizontal.
 - [ ] Sidebar, topbar e links com geometrias exatas nas quatro telas; o teste negativo de 1px passou.
+- [ ] Em Ofertas, status atual, console lateral, filtros, pausa, histórico e drawer com campos originais verificados nas quatro resoluções.
+- [ ] Logs e capturas não revelam segredos; nenhum botão de envio ou alteração de configuração é acionado nos testes.
 - [ ] Autoenvio no celular, estados vazios e hierarquia de Ofertas inspecionados no navegador.
 - [ ] Links, botões, menu, foco e contraste mantidos.
 - [ ] Mudança relevante de layout recebeu aprovação humana ANTES de deploy.

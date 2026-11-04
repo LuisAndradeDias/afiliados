@@ -118,6 +118,38 @@ try {
       else navBaseline=measurements.links;
       if (rota === "/ofertas") {
         assert.equal(await page.locator("#autoEnvioButton").count(), 1);
+        assert.equal(await page.locator("#cpvOpsPanel").count(), 1,
+          "Status da operação sumiu da Central");
+        assert.equal(await page.locator("#cpvTerminal").count(), 1,
+          "Console de logs sumiu da Central");
+        assert.equal(await page.locator("#cpvHistory").count(), 1,
+          "Linha do tempo sumiu da Central");
+        assert.equal(await page.locator("#cpvSettingsButton").count(), 1);
+        assert.equal(await page.locator("#amazonTag").count(), 1);
+        assert.equal(await page.locator("#mlClientSecret").count(), 1);
+        assert.equal(await page.locator("#logs").count(), 1);
+        const layout = await page.evaluate(() => {
+          const banner = document.getElementById("cpvOpsPanel")!.getBoundingClientRect();
+          const launch = document.getElementById("launchCard")!.getBoundingClientRect();
+          const terminal = document.getElementById("cpvTerminal")!.getBoundingClientRect();
+          return {before:banner.y<launch.y,side:terminal.x>=launch.x+launch.width-1};
+        });
+        assert.ok(layout.before,"Status não está acima do controle principal");
+        if(width>=1370) assert.ok(layout.side,"Console não está do lado do ciclo");
+        await page.locator("#cpvSettingsButton").click();
+        await page.locator("#cpvSettingsDialog").waitFor({state:"visible"});
+        await page.locator("#cpvSettingsTab-monitor").click();
+        assert.ok((await page.locator("#cpvRuleDiscount").innerText()).includes("%"),
+          "Regras reais não são exibidas no drawer");
+        await page.locator("#cpvSettingsTab-contas").click();
+        await page.screenshot({
+          path:join(directory,"ofertas-config-"+width+".png"),
+          animations:"disabled",
+          mask:[page.locator("#cpvSettingsDialog input")],
+          maskColor:"#dce5ec"
+        });
+        await page.keyboard.press("Escape");
+        await page.locator("#cpvSettingsDialog").waitFor({state:"hidden"});
       }
       const screenshot = join(directory, rota.slice(1) + "-" + width + ".png");
       await page.screenshot({ path: screenshot, fullPage: true, animations: "disabled" });
