@@ -2,18 +2,28 @@ import { aplicarAfiliadoAmazon } from "../afiliados/amazon.js";
 import { AmazonBrowserFonte } from "../fontes/amazon/browser.js";
 import type { Oferta } from "../fontes/types.js";
 import { calcularScore } from "../ofertas/score.js";
-import { avaliarQualidadeOferta } from "../ofertas/qualidade.js";
-import { filtroHistoricoOfertas, ultimasOfertasEnviadas } from "../ofertas/historico.js";
-import { escolherOfertaVariada } from "../ofertas/diversidade.js";
+import { filtroHistoricoOfertas } from "../ofertas/historico.js";
 import { lerIndiceRotacao, salvarIndiceRotacao } from "../ofertas/rotacao.js";
-import { estimarComissaoAmazon } from "../ofertas/comissoes-amazon.js";
+import {
+  estimarComissaoAmazon,
+  pesoBuscaPorComissao
+} from "../ofertas/comissoes-amazon.js";
 
+function criarFilaPonderada(consultas: string[]): string[] {
+  const pesos = consultas.map((consulta) => ({
+    consulta,
+    peso: pesoBuscaPorComissao(estimarComissaoAmazon(consulta))
+  }));
+  const maiorPeso = Math.max(...pesos.map(({ peso }) => peso));
+  const fila: string[] = [];
 
+  for (let rodada = 0; rodada < maiorPeso; rodada += 1) {
+    for (const item of pesos) {
+      if (item.peso > rodada) fila.push(item.consulta);
+    }
+  }
 
-function criarFilaCategorias(consultas: string[]): string[] {
-  // Cada categoria tem uma vez na fila. A comissão não deve fazer
-  // Echo/notebook dominar as buscas de fones, periféricos e eletroportáteis.
-  return [...new Set(consultas)];
+  return fila;
 }
 
 function selecionarConsultas(
@@ -73,7 +83,7 @@ export interface ResultadoBusca {
 export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   const consultas = (process.env.AMAZON_QUERIES ??
     process.env.AMAZON_QUERY ??
-    "smartphone")
+    "ofertas")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
@@ -83,11 +93,12 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   }
 
   const limite = Number(process.env.AMAZON_LIMIT ?? 20);
+  const descontoMinimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
   const tag = process.env.AMAZON_ASSOCIATE_TAG;
   const porId = new Map<string, Oferta>();
 
-  const filaCategorias = criarFilaCategorias(consultas);
-  const indiceInicial = await lerIndiceRotacao(filaCategorias.length);
+  const filaPonderada = criarFilaPonderada(consultas);
+  const indiceInicial = await lerIndiceRotacao(filaPonderada.length);
   const porRodada = Math.max(
     1,
     Math.min(
@@ -96,7 +107,7 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
     )
   );
   const selecao = selecionarConsultas(
-    filaCategorias,
+    filaPonderada,
     indiceInicial,
     porRodada
   );
@@ -131,7 +142,7 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
   const bloqueadoPorHistorico = await filtroHistoricoOfertas();
 
   const elegiveis = todas
-    .filter((oferta) => avaliarQualidadeOferta(oferta).elegivel)
+    .filter((oferta) => (oferta.descontoPercentual ?? 0) >= descontoMinimo)
     .map((oferta) => ({ oferta, score: calcularScore(oferta) }))
     .sort((a, b) => b.score - a.score);
 
@@ -139,22 +150,12 @@ export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
     ({ oferta }) => !bloqueadoPorHistorico(oferta)
   );
 
-  const escolhida = escolherOfertaVariada(
-    disponiveis.map(({ oferta }) => oferta),
-    await ultimasOfertasEnviadas(5)
-  );
-  const melhor = escolhida?.oferta;
+  const melhor = disponiveis[0]?.oferta;
   const categoriaEscolhida = melhor?.categoria;
-  if (escolhida) {
-    console.log(
-      `Variedade Amazon: faixa=${escolhida.faixa}, categoria=${escolhida.categoria}, ` +
-      `pontuacao ajustada=${escolhida.scoreFinal}.`
-    );
-  }
 
   await salvarIndiceRotacao(
     selecao.proximoIndice,
-    filaCategorias.length
+    filaPonderada.length
   );
 
   const melhorDesconto = Math.max(
