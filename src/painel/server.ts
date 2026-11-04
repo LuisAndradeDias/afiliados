@@ -9,15 +9,8 @@ import {
   cooldownHoras,
   contarBloqueadas,
   limparHistoricoOfertas,
-  ultimasOfertasEnviadas,
   previewCooldownMinutos
 } from "../ofertas/historico.js";
-import {
-  calcularProximaPublicacao,
-  modoIntervaloValido,
-  normalizarModoIntervalo,
-  type ModoIntervalo
-} from "../ofertas/intervalos-envio.js";
 import {
   lerOfertaMercadoLivre,
   salvarLinkAfiliadoMercadoLivre
@@ -35,18 +28,6 @@ const pacotePath = resolve(raiz, "data", "ultima-oferta-whatsapp.json");
 const ofertaMercadoLivrePath = resolve(raiz, "data", "ultima-oferta-mercadolivre.json");
 const perfilPath = resolve(raiz, "data", "whatsapp-profile");
 const perfilMercadoLivrePath = resolve(raiz, "data", "mercadolivre-profile");
-const instagramDirPath = resolve(
-  raiz,
-  process.env.INSTAGRAM_DATA_DIR?.trim() || "data/instagram"
-);
-const instagramAvaliacaoPath = resolve(
-  instagramDirPath,
-  "ultima-avaliacao.json"
-);
-const instagramPacotePath = resolve(
-  instagramDirPath,
-  "ultimo-pacote.json"
-);
 const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
 const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
@@ -111,18 +92,6 @@ let mercadoLivreMonitorUltimaBuscaEm = 0;
 let amazonMonitorUltimaBuscaEm = 0;
 let mercadoLivreBuscaLimitada = false;
 let mercadoLivreBloqueadoAte = 0;
-
-let intervaloModo: ModoIntervalo = normalizarModoIntervalo(process.env.PROMO_INTERVAL_MODE);
-let intervaloCalculado = calcularProximaPublicacao([], intervaloModo);
-let intervaloInicializado = false;
-
-// O histórico já é persistente: reconstituir a espera evita pular o intervalo
-// ao reiniciar o painel e não exige um segundo arquivo de controle.
-async function sincronizarIntervaloPublicacoes(): Promise<void> {
-  const confirmados = await ultimasOfertasEnviadas(1000);
-  intervaloCalculado = calcularProximaPublicacao(confirmados, intervaloModo);
-  intervaloInicializado = true;
-}
 
 function monitorAlternadoSlotMs(): number {
   const segundos = Number(
@@ -199,21 +168,11 @@ function agendarMonitorAlternado(
   cancelarAgendamentoMonitorAlternado();
   if (!monitorAlternadoAtivo) return;
 
-  if (!intervaloInicializado) {
-    registrar("monitor", "Histórico ainda não carregado; nenhuma busca automática foi agendada.");
-    return;
-  }
-
-  // Todas as rotas de continuação passam por esta barreira, inclusive
-  // retomadas de erro, duplicata, cancelamento e reinicialização.
-  const esperaRestante = Math.max(0, intervaloCalculado.proximaLiberacaoEm - Date.now());
-  const atraso = Math.max(500, atrasoMs, esperaRestante);
+  const atraso = Math.max(500, atrasoMs);
   monitorAlternadoProximaPlataforma = plataforma;
   mercadoLivreMonitorProximaBuscaEm = Date.now() + atraso;
 
-  atualizarFluxoMercadoLivre("monitoring", esperaRestante > 0
-    ? "Intervalo entre promoções ativo. Próxima consulta aguardando a liberação do envio."
-    : mensagem);
+  atualizarFluxoMercadoLivre("monitoring", mensagem);
 
   monitorAlternadoTimer = setTimeout(() => {
     monitorAlternadoTimer = null;
@@ -235,16 +194,6 @@ async function executarTurnoMonitorAlternado(
   plataforma: PlataformaMonitor
 ): Promise<void> {
   if (!monitorAlternadoAtivo) return;
-
-  // Rechecagem defensiva no momento em que o timer dispara.
-  if (Date.now() < intervaloCalculado.proximaLiberacaoEm) {
-    agendarMonitorAlternado(
-      plataforma,
-      intervaloCalculado.proximaLiberacaoEm - Date.now(),
-      "Respeitando a espera configurada antes da próxima promoção."
-    );
-    return;
-  }
 
   if (monitorTemTarefaAtiva()) {
     agendarMonitorAlternado(
@@ -1200,18 +1149,6 @@ async function estado() {
   const pacote: PacotePainel = await readFile(pacotePath, "utf8")
     .then((texto) => JSON.parse(texto) as PacotePainel)
     .catch(() => ({}));
-  const instagramAvaliacao = await readFile(
-    instagramAvaliacaoPath,
-    "utf8"
-  )
-    .then((texto) => JSON.parse(texto))
-    .catch(() => null);
-  const instagramConteudo = await readFile(
-    instagramPacotePath,
-    "utf8"
-  )
-    .then((texto) => JSON.parse(texto))
-    .catch(() => null);
   const ofertaMercadoLivre = await readFile(
     ofertaMercadoLivrePath,
     "utf8"
@@ -1305,13 +1242,6 @@ async function estado() {
     monitorAlternadoUltimaPlataforma,
     monitorAlternadoProximaBuscaEm: mercadoLivreMonitorProximaBuscaEm,
     monitorAlternadoSlotSegundos: monitorAlternadoSlotMs() / 1_000,
-    intervaloModo,
-    intervaloProximaLiberacaoEm: intervaloCalculado.proximaLiberacaoEm,
-    intervaloUltimoEnvioEm: intervaloCalculado.ultimoEnvioEm,
-    intervaloPausaLonga: intervaloCalculado.pausaLonga,
-    intervaloLimitadoPorHora: intervaloCalculado.limitadoPorHora,
-    intervaloPublicacoesNoDia: intervaloCalculado.publicacoesNoDia,
-    intervaloCarregado: intervaloInicializado,
     mercadoLivreMonitorProximaBuscaEm,
     mercadoLivreMonitorUltimaBuscaEm,
     amazonMonitorUltimaBuscaEm,
@@ -1358,11 +1288,6 @@ async function estado() {
     cooldownHoras: cooldownHoras(),
     previewCooldownMinutos: previewCooldownMinutos(),
     ofertasBloqueadas: await contarBloqueadas(),
-    instagramAvaliacao,
-    instagramConteudo,
-    instagramMinimoDesconto: Number(
-      process.env.INSTAGRAM_MIN_DISCOUNT_PERCENT ?? 35
-    ),
     logs
   };
 }
@@ -1377,61 +1302,7 @@ async function lerJson(req: import("node:http").IncomingMessage) {
   return corpo ? JSON.parse(corpo) : {};
 }
 
-async function servirImagemInstagram(
-  tipo: "story" | "reel",
-  res: import("node:http").ServerResponse
-): Promise<void> {
-  const pacote = await readFile(
-    instagramPacotePath,
-    "utf8"
-  )
-    .then((texto) => JSON.parse(texto) as {
-      storyArquivo?: string;
-      reelCapaArquivo?: string;
-    })
-    .catch(() => null);
 
-  const relativo =
-    tipo === "story"
-      ? pacote?.storyArquivo
-      : pacote?.reelCapaArquivo;
-
-  if (!relativo) {
-    res.writeHead(404, {
-      "content-type": "text/plain; charset=utf-8"
-    });
-    res.end("Imagem Instagram ainda não disponível.");
-    return;
-  }
-
-  const caminho = resolve(raiz, relativo);
-  if (!caminho.startsWith(instagramDirPath)) {
-    res.writeHead(403, {
-      "content-type": "text/plain; charset=utf-8"
-    });
-    res.end("Caminho de imagem inválido.");
-    return;
-  }
-
-  const bytes = await readFile(caminho).catch(
-    () => null
-  );
-  if (!bytes) {
-    res.writeHead(404, {
-      "content-type": "text/plain; charset=utf-8"
-    });
-    res.end("Imagem Instagram não encontrada.");
-    return;
-  }
-
-  res.writeHead(200, {
-    "content-type": "image/jpeg",
-    "cache-control": "no-store"
-  });
-  res.end(bytes);
-}
-
-async function executarAcao(
   acao: string,
   dados: Record<string, unknown> = {}
 ): Promise<{ ok: boolean; mensagem: string }> {
@@ -1568,41 +1439,7 @@ async function executarAcao(
     };
   }
 
-  if (acao === "intervalo-set") {
-    if (!modoIntervaloValido(dados.modo)) {
-      return { ok: false, mensagem: "Escolha Tempo médio ou Tempo curto." };
-    }
-
-    const novoModo = dados.modo;
-    // Primeiro valida o histórico e só então grava a escolha permanentemente.
-    const calculado = calcularProximaPublicacao(
-      await ultimasOfertasEnviadas(1000), novoModo
-    );
-    await salvarVariavelEnv("PROMO_INTERVAL_MODE", novoModo);
-    intervaloModo = novoModo;
-    intervaloCalculado = calculado;
-    intervaloInicializado = true;
-
-    const temOfertaPendente = await existe(mensagemPath) && await existe(pacotePath);
-    if (monitorAlternadoAtivo && !monitorTemTarefaAtiva() && !temOfertaPendente) {
-      agendarMonitorAlternado(
-        monitorAlternadoProximaPlataforma,
-        750,
-        "Intervalo de publicações atualizado no painel."
-      );
-    }
-
-    registrar("intervalo", "Ritmo de publicações alterado para " + novoModo + ".");
-    return {
-      ok: true,
-      mensagem: novoModo === "curto"
-        ? "Tempo curto ativado: 5–12min30s; após 4 envios, 15–22min30s."
-        : "Tempo médio ativado: 10–25min; após 4 envios, 30–45min."
-    };
-  }
-
-  if (
-    acao === "monitor-set" ||
+ ||
     acao === "mercadolivre-monitor-toggle"
   ) {
     const desejado =
@@ -1639,10 +1476,6 @@ async function executarAcao(
       };
     }
 
-    // Recarrega a última confirmação antes de retomar, inclusive após
-    // interrupção do processo ou envio manual ocorrido enquanto estava parado.
-    await sincronizarIntervaloPublicacoes();
-
     if (!monitorAlternadoAtivo) {
       await definirMonitorMercadoLivreAtivo(true);
     }
@@ -1670,7 +1503,7 @@ async function executarAcao(
     return {
       ok: true,
       mensagem:
-        "Ciclo Amazon + Mercado Livre ativo. Os intervalos entre publicações seguem o ritmo selecionado."
+        "Ciclo Amazon + Mercado Livre ativo."
     };
   }
 
@@ -2036,22 +1869,6 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (
-      req.method === "GET" &&
-      requestUrl.pathname === "/api/instagram/story"
-    ) {
-      await servirImagemInstagram("story", res);
-      return;
-    }
-
-    if (
-      req.method === "GET" &&
-      requestUrl.pathname === "/api/instagram/reel-capa"
-    ) {
-      await servirImagemInstagram("reel", res);
-      return;
-    }
-
     if (req.method === "GET" && requestUrl.pathname === "/") {
       const html = await readFile(paginaPath, "utf8");
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
@@ -2282,18 +2099,6 @@ server.listen(porta, "127.0.0.1", () => {
   console.log(`Painel disponível em http://localhost:${porta}`);
 
   void (async () => {
-    try {
-      await sincronizarIntervaloPublicacoes();
-    } catch (erro) {
-      // Se o histórico estiver indisponível, a opção segura é não publicar.
-      registrar("intervalo", "Histórico indisponível; monitor não pode iniciar: " +
-        (erro instanceof Error ? erro.message : String(erro)));
-      if (monitorAlternadoAtivo) await definirMonitorMercadoLivreAtivo(false);
-      atualizarFluxoMercadoLivre("error",
-        "Ciclo pausado: não foi possível restaurar o intervalo de publicações.");
-      return;
-    }
-
     if (!monitorAlternadoAtivo) return;
 
     const temOfertaPendente =
@@ -2311,10 +2116,10 @@ server.listen(porta, "127.0.0.1", () => {
     agendarMonitorAlternado(
       "mercado-livre",
       1_500,
-      "Ciclo restaurado. Próxima publicação respeitará o intervalo configurado."
+      "Ciclo restaurado. Próxima consulta: Mercado Livre."
     );
   })().catch((erro) => {
-    registrar("intervalo", "Falha na inicialização do monitor: " +
+    registrar("monitor", "Falha na inicialização do monitor: " +
       (erro instanceof Error ? erro.message : String(erro)));
   });
 });
