@@ -331,56 +331,6 @@
       min-height: 48px;
       flex: 0 0 auto;
     }
-    .intervalo-area {
-      margin-top: 16px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: var(--surface-2);
-    }
-    .intervalo-topo {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-    .intervalo-topo strong { font-size: 13px; }
-    .intervalo-topo span { font-size: 11px; color: var(--muted); }
-    .intervalo-opcoes {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-    .intervalo-opcao {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 4px;
-      min-width: 0;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 13px;
-      background: #fff;
-      color: var(--text);
-      text-align: left;
-    }
-    .intervalo-opcao strong { font-size: 14px; }
-    .intervalo-opcao span { font-size: 12px; color: #475467; }
-    .intervalo-opcao small { font-size: 11px; color: var(--muted); }
-    .intervalo-opcao.ativo {
-      background: var(--green-soft);
-      border-color: #75dba4;
-      box-shadow: 0 0 0 2px rgba(7,148,85,.10);
-    }
-    .intervalo-opcao.ativo strong { color: var(--green-dark); }
-    .intervalo-aviso {
-      margin: 9px 0 0;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.4;
-    }
     .autoenvio-box {
       margin-top: 12px;
       padding: 13px;
@@ -766,125 +716,10 @@
     }
 
 
-    .instagram-card { padding: 20px; }
-    .instagram-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 18px;
-    }
-    .instagram-head p { margin: 6px 0 0; color: var(--muted); }
-    .instagram-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 8px 11px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 900;
-      background: #e7f8f1;
-      color: #08734e;
-      white-space: nowrap;
-    }
-    .instagram-grid {
-      display: grid;
-      grid-template-columns: 220px 220px minmax(0, 1fr);
-      gap: 16px;
-      align-items: start;
-    }
-    .instagram-preview {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: #f7f9fb;
-      padding: 10px;
-      min-height: 290px;
-    }
-    .instagram-preview strong {
-      display: block;
-      margin: 2px 0 9px;
-      font-size: 12px;
-    }
-    .instagram-preview img {
-      display: none;
-      width: 100%;
-      aspect-ratio: 9 / 16;
-      object-fit: cover;
-      border-radius: 12px;
-      background: #e8edf1;
-    }
-    .instagram-placeholder {
-      min-height: 260px;
-      display: grid;
-      place-items: center;
-      text-align: center;
-      color: var(--muted);
-      font-size: 12px;
-      padding: 18px;
-    }
-    .instagram-info {
-      display: grid;
-      gap: 12px;
-      min-width: 0;
-    }
-    .instagram-score-box {
-      border: 1px solid var(--line);
-      background: #f8fafb;
-      border-radius: 16px;
-      padding: 14px;
-    }
-    .instagram-score-box small {
-      display: block;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-    .instagram-score-box strong {
-      font-size: 18px;
-    }
-    .instagram-reasons {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-    .instagram-copy {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 14px;
-      background: #fff;
-    }
-    .instagram-copy h3 {
-      margin: 0 0 8px;
-      font-size: 13px;
-    }
-    .instagram-copy pre {
-      margin: 0;
-      white-space: pre-wrap;
-      max-height: 135px;
-      overflow: auto;
-      font: inherit;
-      font-size: 12px;
-      line-height: 1.45;
-      color: #263744;
-      background: #f7f9fb;
-      padding: 12px;
-      border: 1px solid #e3e9ee;
-    }
-    .instagram-copy-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .instagram-copy-actions button {
-      width: auto;
-      padding: 9px 11px;
-      font-size: 11px;
-    }
     @media (max-width: 900px) {
       .hero-inner { flex-direction: column; align-items: flex-start; }
       .runtime { width: 100%; }
-      .launch-grid, .review-grid, .tool-grid, .cycle-status-grid, .platform-lanes, .instagram-grid { grid-template-columns: 1fr; }
+      .launch-grid, .review-grid, .tool-grid, .cycle-status-grid, .platform-lanes { grid-template-columns: 1fr; }
       .cycle-head { flex-direction: column; }
       .cycle-toggle { width: 100%; min-width: 0; }
       .intervalo-opcoes { grid-template-columns: 1fr; }
@@ -954,36 +789,14 @@
             <h2>Ciclo Amazon + Mercado Livre</h2>
             <span id="cycleBadge" class="cycle-badge">Verificando...</span>
           </div>
-          <p>As ofertas alternam Amazon e Mercado Livre, respeitando pausas variáveis entre publicações confirmadas. Escolha abaixo o ritmo do seu grupo.</p>
+          <p>As ofertas alternam Amazon e Mercado Livre. O ciclo pausa apenas quando há uma tarefa/oferta ativa ou limitação técnica da integração.</p>
         </div>
         <button id="cycleToggleButton" class="success cycle-toggle" data-action="monitor-set">
           Iniciar ciclo automático
         </button>
       </div>
 
-      <div class="intervalo-area">
-        <div class="intervalo-topo">
-          <strong>Ritmo das promoções</strong>
-          <span>Selecione uma das duas opções</span>
-        </div>
-        <div class="intervalo-opcoes" role="group" aria-label="Tempo de espera entre promoções">
-          <button type="button" id="tempoMedioButton" class="intervalo-opcao ativo"
-            data-action="intervalo-set" data-modo="medio" aria-pressed="true">
-            <strong>Tempo médio</strong>
-            <span>10 a 25 minutos</span>
-            <small>Após 4 envios: 30 a 45 minutos</small>
-          </button>
-          <button type="button" id="tempoCurtoButton" class="intervalo-opcao"
-            data-action="intervalo-set" data-modo="curto" aria-pressed="false">
-            <strong>Tempo curto</strong>
-            <span>5 a 12min30s</span>
-            <small>Após 4 envios: 15 a 22min30s</small>
-          </button>
-        </div>
-        <p id="intervaloAviso" class="intervalo-aviso" aria-live="polite">
-          Limite de 4 ofertas por hora. O intervalo inicia após o WhatsApp confirmar o envio.
-        </p>
-        <div class="autoenvio-box">
+      <div class="autoenvio-box">
           <div class="autoenvio-copy">
             <strong>Envio automático no WhatsApp</strong>
             <span id="autoEnvioDetail">
@@ -999,7 +812,6 @@
             Ativar autoenvio
           </button>
         </div>
-      </div>
 
       <div class="cycle-status-grid">
         <div class="cycle-status cycle-status-main">
@@ -1120,71 +932,6 @@
       </div>
     </section>
 
-
-    <section id="instagramCard" class="card instagram-card section">
-      <div class="instagram-head">
-        <div>
-          <span class="section-kicker">CONTEÚDO INSTAGRAM</span>
-          <h2>Melhores ofertas para divulgar</h2>
-          <p>O sistema só gera conteúdo quando a oferta tiver potencial suficiente para Story ou Reel.</p>
-        </div>
-        <span id="instagramBadge" class="instagram-badge">Aguardando avaliação</span>
-      </div>
-
-      <div class="instagram-grid">
-        <div class="instagram-preview">
-          <strong>Story · 1080×1920</strong>
-          <img id="instagramStory" alt="Story gerado para Instagram" />
-          <div id="instagramStoryEmpty" class="instagram-placeholder">
-            Nenhum Story premium gerado ainda.
-          </div>
-        </div>
-
-        <div class="instagram-preview">
-          <strong>Capa do Reel · 1080×1920</strong>
-          <img id="instagramReel" alt="Capa de Reel gerada para Instagram" />
-          <div id="instagramReelEmpty" class="instagram-placeholder">
-            Reels são reservados para ofertas premium e destaque.
-          </div>
-        </div>
-
-        <div class="instagram-info">
-          <div class="instagram-score-box">
-            <small>Avaliação da oferta atual</small>
-            <strong id="instagramScore">Ainda não avaliada</strong>
-            <div id="instagramReasons" class="instagram-reasons">
-              Mínimo recomendado: desconto forte, imagem utilizável e score de conteúdo suficiente.
-            </div>
-          </div>
-
-          <div class="instagram-score-box">
-            <small>Último pacote pronto</small>
-            <strong id="instagramPackageTitle">Nenhum pacote gerado</strong>
-            <div id="instagramPackageMeta" class="instagram-reasons"></div>
-          </div>
-
-          <div class="instagram-copy">
-            <h3>Legenda pronta</h3>
-            <pre id="instagramLegenda">Aguardando uma oferta selecionada.</pre>
-            <div class="instagram-copy-actions">
-              <button type="button" class="primary" data-instagram-copy="legenda">Copiar legenda</button>
-              <button type="button" class="primary" data-instagram-copy="roteiro">Copiar roteiro</button>
-              <button type="button" class="primary" data-instagram-copy="hashtags">Copiar hashtags</button>
-            </div>
-          </div>
-
-          <div class="instagram-copy">
-            <h3>Roteiro do Reel</h3>
-            <pre id="instagramRoteiro">Disponível quando a oferta for premium ou destaque.</pre>
-          </div>
-
-          <div class="instagram-copy">
-            <h3>Hashtags</h3>
-            <pre id="instagramHashtags">#ofertas #promocao #achadinhos</pre>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <section class="section">
       <details class="toolbox">
@@ -1348,32 +1095,6 @@
       }
     }
 
-
-    async function copiarInstagram(campo) {
-      const pacote = estadoAtual.instagramConteudo || {};
-      const valor =
-        campo === "hashtags"
-          ? (pacote.hashtags || []).join(" ")
-          : pacote[campo];
-
-      if (!valor) {
-        toast("Ainda não existe conteúdo Instagram para copiar.", "warn");
-        return;
-      }
-
-      try {
-        await navigator.clipboard.writeText(String(valor));
-        toast("Conteúdo copiado.", "ok");
-      } catch {
-        toast("Não foi possível copiar automaticamente.", "bad");
-      }
-    }
-
-    for (const botao of document.querySelectorAll("[data-instagram-copy]")) {
-      botao.addEventListener("click", () => {
-        void copiarInstagram(botao.dataset.instagramCopy);
-      });
-    }
 
     function nomePlataforma(valor) {
       return valor === "mercado-livre" ? "Mercado Livre" : valor === "amazon" ? "Amazon" : "—";
@@ -1627,24 +1348,6 @@
             "s, fará uma única tentativa e aguardará confirmação real."
           : "Desligado. A oferta ficará pronta e aguardará sua confirmação.";
 
-        const modoIntervalo = s.intervaloModo === "curto" ? "curto" : "medio";
-        for (const [id, nome] of [
-          ["tempoMedioButton", "medio"],
-          ["tempoCurtoButton", "curto"]
-        ]) {
-          $(id).classList.toggle("ativo", modoIntervalo === nome);
-          $(id).setAttribute("aria-pressed", String(modoIntervalo === nome));
-        }
-        const liberacaoEm = Number(s.intervaloProximaLiberacaoEm || 0);
-        const aguardandoIntervalo =
-          s.monitorAlternadoAtivo && liberacaoEm > Date.now();
-        $("intervaloAviso").textContent = aguardandoIntervalo
-          ? "Próxima publicação em " + contagemAte(liberacaoEm) +
-            (s.intervaloPausaLonga ? " · pausa prolongada" : "") +
-            (s.intervaloLimitadoPorHora ? " · limite de 4 por hora" : "") +
-            ". O contador continua após reiniciar o painel."
-          : "Após 4 envios do dia, há uma pausa maior. Limite de 4 publicações por hora.";
-
         if (s.monitorAlternadoAtivo) {
           cycleButton.textContent = "⏸ Pausar novas buscas";
           cycleButton.classList.remove("success");
@@ -1666,9 +1369,8 @@
           "offer-pending": `Oferta pendente · ${operacaoPlataforma}`,
           error: "Atenção necessária"
         };
-        $("cycleNow").textContent = aguardandoIntervalo && estado === "scheduled"
-          ? "Intervalo entre promoções"
-          : agoraPorEstado[estado] || "Processando";
+        $("cycleNow").textContent =
+          agoraPorEstado[estado] || "Processando";
 
         const detalhePorEstado = {
           paused: "Nenhuma busca automática será iniciada.",
@@ -1676,14 +1378,15 @@
           searching: "Aplicando desconto, histórico, comissão e filtros.",
           linking: "Aguardando o link oficial de afiliado.",
           preparing: "Montando imagem e mensagem para o grupo.",
-          review: "O ciclo aguarda você enviar a oferta.",
+          review: s.whatsappAutoEnvioAtivo
+            ? "Autoenvio ativo: aguardando o clique e a confirmação real do WhatsApp."
+            : "A oferta está pronta para envio manual ou pelo painel.",
           sending: "Aguardando confirmação real do WhatsApp.",
           "offer-pending": "Use Reabrir no WhatsApp para continuar.",
           error: s.mercadoLivreFluxoMensagem || "Consulte os logs."
         };
-        $("cycleNowDetail").textContent = aguardandoIntervalo && estado === "scheduled"
-          ? "Tempo restante: " + contagemAte(liberacaoEm) + ". Próxima oferta somente após a espera."
-          : detalhePorEstado[estado] || "";
+        $("cycleNowDetail").textContent =
+          detalhePorEstado[estado] || "";
 
         if (!s.monitorAlternadoAtivo) {
           $("cycleNext").textContent = "Ciclo pausado";
@@ -1938,85 +1641,6 @@
         }
 
 
-        const instagramAvaliacao = s.instagramAvaliacao || null;
-        const instagramConteudo = s.instagramConteudo || null;
-        const instagramBadge = $("instagramBadge");
-        const instagramStory = $("instagramStory");
-        const instagramReel = $("instagramReel");
-
-        if (instagramAvaliacao) {
-          const classificacao =
-            instagramAvaliacao.classificacaoFinal ||
-            instagramAvaliacao.classificacao ||
-            "normal";
-          $("instagramScore").textContent =
-            `${instagramAvaliacao.score || 0}/100 · ${classificacao}`;
-          $("instagramReasons").textContent = [
-            ...(instagramAvaliacao.motivos || []),
-            ...(instagramAvaliacao.bloqueios || []),
-            instagramAvaliacao.motivoGeracao
-          ].filter(Boolean).join(" · ");
-          instagramBadge.textContent = instagramAvaliacao.gerado
-            ? `🔥 ${classificacao} · ${instagramAvaliacao.score}/100`
-            : `${classificacao} · ${instagramAvaliacao.score}/100`;
-        } else {
-          $("instagramScore").textContent = "Ainda não avaliada";
-          $("instagramReasons").textContent =
-            `O sistema avalia automaticamente ofertas com pelo menos ${s.instagramMinimoDesconto || 35}% de desconto.`;
-          instagramBadge.textContent = "Aguardando avaliação";
-        }
-
-        if (instagramConteudo) {
-          $("instagramPackageTitle").textContent =
-            instagramConteudo.titulo || "Pacote Instagram";
-          $("instagramPackageMeta").textContent =
-            `${instagramConteudo.classificacao || "story"} · score ${instagramConteudo.instagramScore || 0}/100 · ${instagramConteudo.plataforma || ""}`;
-          $("instagramLegenda").textContent =
-            instagramConteudo.legenda || "Legenda não disponível.";
-          $("instagramRoteiro").textContent =
-            instagramConteudo.roteiro || "Roteiro não disponível.";
-          $("instagramHashtags").textContent =
-            (instagramConteudo.hashtags || []).join(" ");
-
-          if (instagramConteudo.storyArquivo) {
-            instagramStory.src =
-              `/api/instagram/story?v=${encodeURIComponent(instagramConteudo.geradoEm || "")}`;
-            instagramStory.style.display = "block";
-            $("instagramStoryEmpty").style.display = "none";
-          } else {
-            instagramStory.removeAttribute("src");
-            instagramStory.style.display = "none";
-            $("instagramStoryEmpty").style.display = "grid";
-          }
-
-          if (instagramConteudo.reelCapaArquivo) {
-            instagramReel.src =
-              `/api/instagram/reel-capa?v=${encodeURIComponent(instagramConteudo.geradoEm || "")}`;
-            instagramReel.style.display = "block";
-            $("instagramReelEmpty").style.display = "none";
-          } else {
-            instagramReel.removeAttribute("src");
-            instagramReel.style.display = "none";
-            $("instagramReelEmpty").style.display = "grid";
-          }
-        } else {
-          $("instagramPackageTitle").textContent = "Nenhum pacote gerado";
-          $("instagramPackageMeta").textContent =
-            "Quando uma oferta atingir o score mínimo, o pacote aparecerá aqui.";
-          $("instagramLegenda").textContent =
-            "Aguardando uma oferta selecionada.";
-          $("instagramRoteiro").textContent =
-            "Disponível quando a oferta for premium ou destaque.";
-          $("instagramHashtags").textContent =
-            "#ofertas #promocao #achadinhos";
-          instagramStory.removeAttribute("src");
-          instagramStory.style.display = "none";
-          instagramReel.removeAttribute("src");
-          instagramReel.style.display = "none";
-          $("instagramStoryEmpty").style.display = "grid";
-          $("instagramReelEmpty").style.display = "grid";
-        }
-
         $("logs").textContent = s.logs?.length ? s.logs.join("\n") : "Aguardando atividade...";
         $("logs").scrollTop = $("logs").scrollHeight;
 
@@ -2153,8 +1777,6 @@
           }).then(() => { $("mlClientSecret").value = ""; });
         } else if (nome === "mercadolivre-redirect-save") {
           acao(nome, { redirectUri: $("mlRedirectUriInput").value });
-        } else if (nome === "intervalo-set") {
-          acao("intervalo-set", { modo: button.dataset.modo });
         } else if (nome === "whatsapp-auto-send-set") {
           acao(nome, {
             ativo: !Boolean(estadoAtual.whatsappAutoEnvioAtivo),

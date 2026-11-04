@@ -49,8 +49,8 @@ export function chaveOferta(
 }
 
 export function cooldownHoras(): number {
-  const valor = Number(process.env.OFFER_COOLDOWN_HOURS ?? 168);
-  return Number.isFinite(valor) && valor > 0 ? valor : 168;
+  const valor = Number(process.env.OFFER_COOLDOWN_HOURS ?? 24);
+  return Number.isFinite(valor) && valor > 0 ? valor : 24;
 }
 
 export function previewCooldownMinutos(): number {
@@ -231,15 +231,6 @@ export async function chavesBloqueadas(): Promise<Set<string>> {
 export async function contarBloqueadas(): Promise<number> {
   const registros = await lerHistorico();
   return registros.filter((registro) => dentroDoCooldown(registro)).length;
-}
-
-/** Últimas postagens confirmadas, usadas somente para diversificar o grupo. */
-export async function ultimasOfertasEnviadas(limite = 5): Promise<RegistroHistoricoOferta[]> {
-  const registros = await lerHistorico();
-  return registros
-    .filter((registro) => registro.enviadoEm && Number.isFinite(Date.parse(registro.enviadoEm)))
-    .sort((a, b) => Date.parse(b.enviadoEm!) - Date.parse(a.enviadoEm!))
-    .slice(0, Math.max(0, Math.trunc(limite)));
 }
 
 /** Usado na seleção das duas plataformas, inclusive anúncios com IDs diferentes. */
