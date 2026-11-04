@@ -12,6 +12,8 @@ Liste telas, arquivos e impacto funcional. Indique explicitamente o que NÃO mud
 - [ ] CI gerou oito capturas sintéticas; comparação visual revisada.
 - [ ] Central, Ofertas, Shopee e Revisão abriram em desktop/celular.
 - [ ] Nenhum CSS/JS/import 404, erro JavaScript ou rolagem horizontal.
+- [ ] Sidebar, topbar e links com geometrias exatas nas quatro telas; o teste negativo de 1px passou.
+- [ ] Autoenvio no celular, estados vazios e hierarquia de Ofertas inspecionados no navegador.
 - [ ] Links, botões, menu, foco e contraste mantidos.
 - [ ] Mudança relevante de layout recebeu aprovação humana ANTES de deploy.
 

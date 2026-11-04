@@ -1,21 +1,460 @@
-.cpv-unified-nav {
-  position: relative; z-index: 30; display: flex; align-items: center;
-  justify-content: space-between; gap: 18px; padding: 13px 24px;
-  background: #101f36; color: #f5f9ff; font-family: Inter, system-ui, sans-serif;
-  box-shadow: 0 2px 14px rgba(16,31,54,.16);
+/*
+ * UX-02 / Casca visual da Central.
+ * Fonte unica: este stylesheet, nao CSS individual de cada pagina.
+ * Emissor, integrações, estado e logica do painel permanecem intocados.
+ */
+:root {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  --cpv-nav-width: 252px;
+  --cpv-navy: #172333;
+  --cpv-green: #148a69;
+  --cpv-bg: #f6f8fb;
+  --cpv-line: #e1e8f0;
+  --cpv-text: #1b2938;
+  --cpv-secondary: #657587;
 }
-.cpv-unified-brand { font-size: 12px; font-weight: 850; letter-spacing: .105em; white-space: nowrap; }
-.cpv-unified-links { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.cpv-unified-links a {
-  text-decoration: none; color: #d4e1f5; font-size: 12px; font-weight: 650;
-  padding: 8px 12px; border-radius: 9px; transition: background .15s;
+body.cpv-shell-unified {
+  box-sizing: border-box;
+  padding-left: var(--cpv-nav-width);
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--cpv-bg);
 }
-.cpv-unified-links a:hover, .cpv-unified-links a[aria-current="page"] {
-  color: #fff; background: rgba(255,255,255,.15);
+body.cpv-shell-unified *,
+body.cpv-shell-unified *::before,
+body.cpv-shell-unified *::after { box-sizing: border-box; }
+body.cpv-shell-unified .app { display: block; min-width: 0; }
+body.cpv-shell-unified .workspace { min-width: 0; width: 100%; }
+
+/* Uma unica sidebar: exatamente as mesmas dimensoes em quatro telas. */
+body.cpv-shell-unified .sidebar.cpv-nav-sidebar {
+  position: fixed;
+  z-index: 130;
+  inset: 0 auto 0 0;
+  width: var(--cpv-nav-width);
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 24px 14px 20px;
+  border: 0;
+  border-right: 1px solid #2b3b4e;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--cpv-navy);
+  color: #d3e0ec;
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  text-align: left;
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+  isolation: isolate;
+  contain: paint;
+  transform: none;
 }
-.cpv-unified-links a:focus-visible { outline: 2px solid #9cc7ff; outline-offset: 3px; }
-@media (max-width: 620px) {
-  .cpv-unified-nav { align-items: flex-start; flex-direction: column; padding: 13px 16px; gap: 8px; }
-  .cpv-unified-links { gap: 3px; width: 100%; }
-  .cpv-unified-links a { padding: 8px 10px; }
+body.cpv-shell-unified .cpv-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 69px;
+  flex: none;
+  padding: 0 10px 23px;
+  border-bottom: 1px solid rgba(226, 237, 245, .13);
+}
+body.cpv-shell-unified .cpv-nav-logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 45px;
+  height: 45px;
+  border-radius: 13px;
+  color: #0f533e;
+  background: linear-gradient(150deg, #baf8db 0%, #7de4b8 100%);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -.06em;
+}
+body.cpv-shell-unified .cpv-nav-brand-text {
+  display: block;
+  min-width: 0;
+}
+body.cpv-shell-unified .cpv-nav-brand-text strong {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: .025em;
+  line-height: 1.35;
+}
+body.cpv-shell-unified .cpv-nav-brand-text small {
+  display: block;
+  margin-top: 4px;
+  color: #9fb3c6;
+  font-size: 11px;
+}
+body.cpv-shell-unified .cpv-nav-label {
+  display: block;
+  color: #95abc0;
+  margin: 6px 0 0;
+  padding: 0 12px;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .15em;
+}
+body.cpv-shell-unified .cpv-nav-links {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+}
+body.cpv-shell-unified .cpv-nav-links .cpv-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 45px;
+  padding: 10px 13px;
+  color: #d3e0ec;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: normal;
+}
+body.cpv-shell-unified .cpv-nav-links .cpv-nav-link:hover {
+  color: #fff;
+  background: rgba(198, 229, 237, .09);
+}
+body.cpv-shell-unified .cpv-nav-links .cpv-nav-link[aria-current="page"] {
+  color: #d9ffec;
+  background: #285246;
+  border-color: rgba(130, 224, 187, .13);
+  box-shadow: inset 3px 0 0 #69ddb1;
+}
+body.cpv-shell-unified .cpv-nav-links .cpv-nav-link:focus-visible {
+  outline: 3px solid #a8efcf;
+  outline-offset: 2px;
+}
+body.cpv-shell-unified .cpv-nav-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1;
+}
+body.cpv-shell-unified .cpv-nav-icon-shopee {
+  background: #ee8432;
+  color: #fff;
+  font-size: 11px;
+}
+body.cpv-shell-unified .cpv-nav-link-label { min-width: 0; }
+body.cpv-shell-unified .cpv-nav-foot {
+  margin-top: auto;
+  padding: 18px 12px 0;
+  border-top: 1px solid rgba(226, 237, 245, .13);
+  color: #a2b5c5;
+  font-size: 11px;
+  line-height: 1.65;
+}
+body.cpv-shell-unified .cpv-nav-foot strong {
+  color: #eff9f5;
+  font-size: 11px;
+}
+body.cpv-shell-unified .cpv-nav-foot p { margin: 7px 0 0; }
+
+/* Barra de contexto com altura e alinhamento idênticos. */
+body.cpv-shell-unified .cpv-global-top {
+  position: relative;
+  z-index: 15;
+  width: 100%;
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px clamp(24px, 3.3vw, 54px);
+  margin: 0;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #e4eaf0;
+  border-radius: 0;
+  color: #1b2938;
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+body.cpv-shell-unified .cpv-global-top-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+body.cpv-shell-unified .cpv-global-breadcrumb,
+body.cpv-shell-unified .cpv-global-top .breadcrumb {
+  color: #6b7c8e;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.5;
+}
+body.cpv-shell-unified .cpv-global-breadcrumb strong,
+body.cpv-shell-unified .cpv-global-top .breadcrumb b {
+  color: #23394c;
+  font-weight: 780;
+}
+body.cpv-shell-unified .cpv-global-operation {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 33px;
+  flex: none;
+  padding: 8px 12px;
+  border: 1px solid #d4eee2;
+  border-radius: 30px;
+  color: #28705a;
+  background: #eefaf5;
+  font-size: 11.5px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+body.cpv-shell-unified .cpv-global-operation::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #12ac79;
+}
+body.cpv-shell-unified .cpv-global-operation[data-state="warning"] {
+  color: #92400e;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+body.cpv-shell-unified .cpv-global-operation[data-state="warning"]::before { background: #eab308; }
+body.cpv-shell-unified .cpv-global-top .top-status,
+body.cpv-shell-unified .cpv-global-top .shopee-top-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 33px;
+  flex: none;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 720;
+}
+body.cpv-shell-unified .cpv-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid #dce4ed;
+  border-radius: 10px;
+  background: white;
+  color: #273f52;
+  box-shadow: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+body.cpv-shell-unified .cpv-nav-toggle:focus-visible {
+  outline: 3px solid #a8efcf;
+  outline-offset: 2px;
+}
+
+/* O mesmo canvas e grid de cartões, sem alterar os IDs operacionais. */
+body.cpv-shell-unified .hero {
+  background: var(--cpv-bg);
+  padding: 31px clamp(24px, 3.3vw, 54px) 23px;
+  color: var(--cpv-text);
+}
+body.cpv-shell-unified .hero-inner {
+  max-width: 1350px;
+  align-items: center;
+  margin: 0 auto;
+}
+body.cpv-shell-unified .hero .eyebrow {
+  color: var(--cpv-green);
+  font-size: 11px;
+}
+body.cpv-shell-unified .hero h1 {
+  color: #172333;
+  font-size: clamp(28px, 3vw, 37px);
+  font-weight: 820;
+  line-height: 1.14;
+  letter-spacing: -.043em;
+}
+body.cpv-shell-unified .hero p {
+  max-width: 650px;
+  color: var(--cpv-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+body.cpv-shell-unified .hero .runtime {
+  min-width: 190px;
+  padding: 13px 16px;
+  color: #1b3345;
+  border: 1px solid var(--cpv-line);
+  border-radius: 14px;
+  background: #fff;
+  backdrop-filter: none;
+  box-shadow: 0 4px 16px rgba(15, 35, 59, .035);
+}
+body.cpv-shell-unified .hero .runtime small { color: #64748b; }
+body.cpv-shell-unified .shell {
+  max-width: 1458px;
+  margin: 0 auto;
+  padding: 0 clamp(24px, 3.3vw, 54px) 76px;
+}
+body.cpv-shell-unified .shell .card {
+  border-color: var(--cpv-line);
+  border-radius: 16px;
+  box-shadow: 0 7px 22px rgba(16, 24, 40, .045);
+}
+body.cpv-shell-unified .shell .section { margin-top: 17px; }
+body.cpv-shell-unified .shell #launchCard { margin-top: 0; }
+body.cpv-shell-unified .shell #cpvOpsPanel { margin: 17px 0 0; }
+body.cpv-shell-unified .shell .health { margin-top: 17px; }
+body.cpv-shell-unified .shell .health-item { border-color: var(--cpv-line); box-shadow: none; }
+body.cpv-shell-unified .shell .cycle-toggle {
+  min-height: 45px;
+  min-width: 190px;
+  border-radius: 10px;
+}
+body.cpv-shell-unified .shell .autoenvio-box {
+  border-color: var(--cpv-line);
+  border-radius: 12px;
+}
+body.cpv-shell-unified .shell .cycle-status-grid { gap: 10px; }
+body.cpv-shell-unified .shell .cycle-status { border-radius: 12px; }
+
+/* Revisão deixa de usar outro "header de aplicativo". */
+body.cpv-shell-unified .rev-hero {
+  padding: 34px clamp(24px, 3.3vw, 54px) 23px;
+  background: var(--cpv-bg);
+  color: #172333;
+}
+body.cpv-shell-unified .rev-hero > div { max-width: 1350px; }
+body.cpv-shell-unified .rev-hero .rev-kicker { color: #138460; }
+body.cpv-shell-unified .rev-hero h1 {
+  color: #172333;
+  font-size: clamp(28px, 3vw, 37px);
+  line-height: 1.14;
+  letter-spacing: -.043em;
+}
+body.cpv-shell-unified .rev-hero p {
+  max-width: 690px;
+  color: var(--cpv-secondary);
+  font-size: 13px;
+}
+body.cpv-shell-unified .rev-shell {
+  max-width: 1458px;
+  margin: 0 auto;
+  padding: 0 clamp(24px, 3.3vw, 54px) 76px;
+}
+body.cpv-shell-unified .rev-panel { border-color: var(--cpv-line); border-radius: 16px; }
+
+/* Sobreposição móvel: a barra nunca muda de posição entre módulos. */
+body.cpv-shell-unified .cpv-nav-scrim { display: none; }
+@media (max-width: 860px) {
+  body.cpv-shell-unified { padding-left: 0; }
+  body.cpv-shell-unified .sidebar.cpv-nav-sidebar {
+    transform: translateX(-103%);
+    transition: transform 190ms ease;
+    box-shadow: 11px 0 36px rgba(15, 23, 42, .24);
+  }
+  body.cpv-shell-unified .sidebar.cpv-nav-sidebar.open { transform: translateX(0); }
+  body.cpv-shell-unified .cpv-nav-scrim {
+    position: fixed;
+    z-index: 125;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    margin: 0;
+    background: rgba(15, 26, 40, .48);
+  }
+  body.cpv-shell-unified .cpv-nav-scrim.open { display: block; }
+  body.cpv-shell-unified .cpv-nav-toggle { display: inline-flex; }
+  body.cpv-shell-unified .cpv-global-top {
+    min-height: 70px;
+    padding: 10px 20px;
+  }
+  body.cpv-shell-unified .hero,
+  body.cpv-shell-unified .rev-hero { padding: 27px 20px 16px; }
+  body.cpv-shell-unified .shell,
+  body.cpv-shell-unified .rev-shell { padding: 0 20px 54px; }
+}
+@media (max-width: 560px) {
+  body.cpv-shell-unified .cpv-global-top {
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  body.cpv-shell-unified .cpv-global-breadcrumb,
+  body.cpv-shell-unified .cpv-global-top .breadcrumb { font-size: 11px; }
+  body.cpv-shell-unified .cpv-global-operation,
+  body.cpv-shell-unified .cpv-global-top .top-status,
+  body.cpv-shell-unified .cpv-global-top .shopee-top-status {
+    padding: 6px 8px;
+    max-width: 137px;
+    white-space: normal;
+    font-size: 10px;
+    line-height: 1.3;
+  }
+  body.cpv-shell-unified .hero,
+  body.cpv-shell-unified .rev-hero { padding: 22px 16px 17px; }
+  body.cpv-shell-unified .shell,
+  body.cpv-shell-unified .rev-shell { padding: 0 14px 54px; }
+  body.cpv-shell-unified .hero-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  body.cpv-shell-unified .hero .runtime {
+    width: 100%;
+    min-width: 0;
+  }
+  body.cpv-shell-unified .shell .cycle-toggle { width: 100%; }
+  body.cpv-shell-unified .shell .autoenvio-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+  body.cpv-shell-unified .shell .autoenvio-copy strong { font-size: 13px; }
+  body.cpv-shell-unified .shell .autoenvio-copy span {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  body.cpv-shell-unified .shell .autoenvio-toggle {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.cpv-shell-unified .sidebar.cpv-nav-sidebar,
+  body.cpv-shell-unified .sidebar.cpv-nav-sidebar *,
+  body.cpv-shell-unified .sidebar.cpv-nav-sidebar *::before,
+  body.cpv-shell-unified .sidebar.cpv-nav-sidebar *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

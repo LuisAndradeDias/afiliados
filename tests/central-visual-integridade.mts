@@ -77,7 +77,7 @@ test("Central aplica tokens visuais, tema escuro, fonte legível e responsividad
         assert.equal(response?.status(), 200, pathname);
         const styles = await page.evaluate(() => {
           const sidebar = document.querySelector(".sidebar");
-          const nav = document.querySelector(".sidebar .nav a");
+          const nav = document.querySelector("#cpvUnifiedNav a");
           const main = document.querySelector(".main");
           const body = getComputedStyle(document.body);
           const sidebarStyle = getComputedStyle(sidebar!);
