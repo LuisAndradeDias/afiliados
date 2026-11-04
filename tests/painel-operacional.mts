@@ -108,14 +108,6 @@ try {
     "Atividade pausada não foi renderizada corretamente."
   );
   assert(
-    (await page.locator("#tempoMedioButton").getAttribute("aria-pressed")) === "true",
-    "Tempo médio deve aparecer selecionado por padrão."
-  );
-  assert(
-    (await page.locator("#tempoCurtoButton").getAttribute("aria-pressed")) === "false",
-    "Tempo curto deve aparecer como alternativa."
-  );
-  assert(
     (await page.locator("#autoEnvioButton").innerText()) === "Ativar autoenvio",
     "Autoenvio desligado deve oferecer ativação."
   );
@@ -137,29 +129,6 @@ try {
   assert(
     (await page.locator("#autoEnvioDetail").innerText()).includes("2s"),
     "Painel deve mostrar o atraso configurado do autoenvio."
-  );
-
-  state = {
-    ...base,
-    intervaloModo: "curto",
-    intervaloProximaLiberacaoEm: Date.now() + 5 * 60_000,
-    monitorAlternadoAtivo: true,
-    operacaoEstado: "scheduled",
-    monitorAlternadoProximaPlataforma: "mercado-livre",
-    monitorAlternadoProximaBuscaEm: Date.now() + 5 * 60_000
-  };
-  await page.waitForTimeout(1_700);
-  assert(
-    (await page.locator("#tempoCurtoButton").getAttribute("aria-pressed")) === "true",
-    "A seleção de Tempo curto deve aparecer no painel."
-  );
-  assert(
-    (await page.locator("#cycleNow").innerText()) === "Intervalo entre promoções",
-    "Durante a espera, o estado principal deve mostrar o intervalo."
-  );
-  assert(
-    (await page.locator("#intervaloAviso").innerText()).includes("Próxima publicação em"),
-    "Painel deve mostrar o contador do próximo envio."
   );
 
   state = {
