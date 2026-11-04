@@ -1,6 +1,6 @@
 # Caça Promos VIP — instruções obrigatórias para agentes de manutenção
 
-Leia docs/ux/UX-01-CONTRATO-E-DIAGNOSTICO.md e docs/ux/UX-02-ESTRUTURA-UNIFICADA.md antes de alterar a UX.
+Leia docs/ux/UX-01-CONTRATO-E-DIAGNOSTICO.md, docs/ux/UX-02-ESTRUTURA-UNIFICADA.md e docs/ux/UX-03-COCKPIT-OPERACIONAL.md antes de alterar a UX.
 
 ## Anti-regressão / anti-alucinação
 
@@ -29,3 +29,6 @@ Leia docs/ux/UX-01-CONTRATO-E-DIAGNOSTICO.md e docs/ux/UX-02-ESTRUTURA-UNIFICADA
 - NÃO fazer merge nem deploy de alteração visual se algum teste de navegação/pixel/asset falhar ou se a captura exibir desalinhamento. Corrigir primeiro, repetir a rodada inteira e guardar evidências.
 - Se uma mudança parecer exigir reescrever o motor ou restaurar versão antiga inteira, PARAR e isolar a mudança visual. Não tocar no autoenvio, WhatsApp, contas, cupons ou regras.
 - Declaração de conclusão de UX deve indicar as telas e resoluções realmente vistas, resultados, problemas encontrados/corrigidos e pendências. Não afirmar "pixel perfeito" sem teste objetivo.
+- Ofertas UX-03: toda alteração deve preservar a faixa de status, console com filtros/pausa, linha do tempo honesta e drawer de configurações; rodar ux03-cockpit-terminal-settings.mts com as quatro resoluções.
+- Nunca clonar controles/IDs da operação, inventar envio confirmado, mover regras do motor por CSS/JS ou tornar o PR #49 arquivado fonte de regras comerciais.
+- Testar o drawer aberto/fechado, foco e campos preenchidos, e ocultar tokens/senhas de qualquer evidência visual pública.

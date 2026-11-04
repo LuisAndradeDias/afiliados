@@ -30,7 +30,7 @@
     "test:recuperacao-central": "tsx tests/contrato-sem-regressoes.mts && tsx tests/recuperacao-rotas.mts && tsx tests/revisao-tecnica.mts && tsx tests/shopee-http.mts && tsx tests/shopee-rascunhos.mts && tsx tests/shopee-ui.mts",
     "test:recuperacao-visual": "tsx tests/recuperacao-visual.mts",
     "test:central-visual-integridade": "tsx tests/central-visual-integridade.mts",
-    "test:ux-contrato": "tsx tests/ux-assets.mts && tsx tests/ux-contrato-visual.mts && tsx tests/ux-shell-pixel.mts",
+    "test:ux-contrato": "tsx tests/ux-assets.mts && tsx tests/ux-contrato-visual.mts && tsx tests/ux-shell-pixel.mts && tsx tests/ux03-cockpit-terminal-settings.mts",
     "ux:auditar-local": "tsx scripts/ux/auditar-producao.mts"
   },
   "dependencies": {

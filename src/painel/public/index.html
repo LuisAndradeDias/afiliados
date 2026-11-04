@@ -1252,6 +1252,9 @@
         const resposta = await fetch("/api/status", { cache: "no-store" });
         const s = await resposta.json();
         estadoAtual = s;
+        // UX-03: somente leitura. O cockpit compartilha o status já consultado
+        // pela página original, sem polling duplicado ou ações adicionais.
+        document.dispatchEvent(new CustomEvent("cpv:status", { detail: s }));
 
         const envioAtual = Number(s.ultimoEnvioConcluidoEm || 0);
         if (ultimoEnvioVisto === null) {
@@ -1475,7 +1478,10 @@
 
         $("desconto").textContent = (s.descontoMinimo ?? 20) + "%";
 
-        if (document.activeElement !== $("amazonTag")) {
+        if (
+          document.activeElement !== $("amazonTag") &&
+          $("amazonTag").dataset.cpvDirty !== "true"
+        ) {
           $("amazonTag").value = s.afiliadoTag || "";
         }
         if (!$("mlClientId").value && document.activeElement !== $("mlClientId")) {
@@ -1546,7 +1552,10 @@
           $("mlOfertaBox").style.display = "none";
         }
 
-        if (document.activeElement !== $("mlAffiliateLink")) {
+        if (
+          document.activeElement !== $("mlAffiliateLink") &&
+          $("mlAffiliateLink").dataset.cpvDirty !== "true"
+        ) {
           $("mlAffiliateLink").value = mlOferta.urlAfiliado || "";
         }
         if (mlOferta.urlAfiliado) {
@@ -1748,6 +1757,7 @@
           }
         }
       } catch {
+        document.dispatchEvent(new Event("cpv:status-error"));
         toast("Não foi possível atualizar o painel.", "bad");
       }
     }
@@ -1761,6 +1771,12 @@
           body: JSON.stringify({ action: nome, ...extras })
         });
         const data = await resposta.json();
+        if (data.ok && nome === "afiliado-save") {
+          delete $("amazonTag").dataset.cpvDirty;
+        }
+        if (data.ok && nome === "mercadolivre-link-save") {
+          delete $("mlAffiliateLink").dataset.cpvDirty;
+        }
         toast(data.mensagem, data.ok ? "ok" : "warn");
       } catch {
         toast("Falha ao executar a ação.", "bad");
