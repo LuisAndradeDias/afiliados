@@ -43,7 +43,7 @@ Expansão desejada:
 
 ## Seleção de ofertas
 
-- O desconto mínimo continua configurável. Referência histórica padrão: 20%.
+- Desconto mínimo atual autorizado: 20%. Alterações futuras exigem aprovação explícita do proprietário.
 - O sistema pode usar score, comissão, desconto, cupom e histórico para escolher entre ofertas válidas.
 - Não impor sem autorização:
   - preço mínimo do produto;
@@ -53,15 +53,15 @@ Expansão desejada:
   - cotas por faixa de preço;
   - proporção obrigatória Amazon x Mercado Livre;
   - quotas de categorias nas últimas publicações.
-- A rotação de consultas pode existir para ampliar a descoberta, sem transformar variedade em cota obrigatória.
+- A rotação de consultas pode existir para ampliar a descoberta, sem transformar variedade em cota obrigatória. As listas-base atuais são deliberadamente amplas e ficam em `src/ofertas/regras-autorizadas.ts`.
 - Não anunciar desconto comprovadamente incorreto.
 - Correções técnicas de parsing de preço devem ser preservadas.
 
 ## Histórico e duplicação
 
 - Não enviar a mesma oferta repetidamente.
-- Cooldown histórico padrão: 24 horas, salvo alteração explícita do proprietário.
-- Cooldown de prévia padrão: 120 minutos.
+- Cooldown histórico atual autorizado: 24 horas. Alterações futuras exigem aprovação explícita do proprietário.
+- Cooldown de prévia atual autorizado: 120 minutos.
 - A comparação pode considerar ID do produto e identidade equivalente pelo título/modelo para evitar duplicações com IDs diferentes.
 - Só marcar uma oferta como enviada depois de confirmação real do envio.
 

@@ -10,22 +10,15 @@ import {
   aplicarMelhorCupomMercadoLivre,
   obterCuponsMercadoLivre
 } from "../afiliados/mercadolivre-cupons.js";
+import {
+  CONSULTAS_MERCADOLIVRE_AUTORIZADAS,
+  DESCONTO_MINIMO_PERCENTUAL
+} from "../ofertas/regras-autorizadas.js";
 
-const consultas = (
-  process.env.MERCADOLIVRE_QUERIES ??
-  process.env.MERCADOLIVRE_QUERY ??
-  "ofertas"
-)
-  .split(",")
-  .map((item) => item.trim())
-  .filter(Boolean);
-
-if (consultas.length === 0) {
-  throw new Error("Nenhuma consulta do Mercado Livre foi configurada.");
-}
+const consultas = [...CONSULTAS_MERCADOLIVRE_AUTORIZADAS];
 
 const limite = Number(process.env.MERCADOLIVRE_LIMIT ?? 10);
-const minimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
+const minimo = DESCONTO_MINIMO_PERCENTUAL;
 const consultasPorRodada = Math.max(
   1,
   Math.min(

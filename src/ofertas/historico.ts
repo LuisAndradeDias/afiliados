@@ -2,6 +2,10 @@ import { randomBytes } from "node:crypto";
 import { mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Oferta } from "../fontes/types.js";
+import {
+  COOLDOWN_ENVIO_HORAS,
+  COOLDOWN_PREVIA_MINUTOS
+} from "./regras-autorizadas.js";
 
 const CAMINHO = "data/historico-ofertas.json";
 const CAMINHO_TRAVA = "data/historico-ofertas.lock";
@@ -49,13 +53,11 @@ export function chaveOferta(
 }
 
 export function cooldownHoras(): number {
-  const valor = Number(process.env.OFFER_COOLDOWN_HOURS ?? 24);
-  return Number.isFinite(valor) && valor > 0 ? valor : 24;
+  return COOLDOWN_ENVIO_HORAS;
 }
 
 export function previewCooldownMinutos(): number {
-  const valor = Number(process.env.OFFER_PREVIEW_COOLDOWN_MINUTES ?? 120);
-  return Number.isFinite(valor) && valor > 0 ? valor : 120;
+  return COOLDOWN_PREVIA_MINUTOS;
 }
 
 const palavrasGenericas = new Set([
