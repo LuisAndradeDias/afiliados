@@ -20,6 +20,9 @@ import {
   statusCuponsMercadoLivre
 } from "../afiliados/mercadolivre-cupons.js";
 import { lerConfigAutoEnvio } from "../robo/whatsapp-auto-send.js";
+import { responderRotaVisual } from "./rotas-visuais.js";
+import { responderRotaShopee } from "./shopee-http.js";
+import { responderRotaRevisao } from "./revisao-http.js";
 import {
   CONSULTAS_AMAZON_AUTORIZADAS,
   DESCONTO_MINIMO_PERCENTUAL
@@ -1851,6 +1854,11 @@ const server = createServer(async (req, res) => {
       res.end(JSON.stringify({ ok: true }));
       return;
     }
+
+    // Camada visual independente: não muda o motor, os controles ou o autoenvio.
+    if (await responderRotaVisual({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;
+    if (await responderRotaShopee({ req, res, pathname: requestUrl.pathname, raiz })) return;
+    if (await responderRotaRevisao({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;
 
     if (req.method === "GET" && requestUrl.pathname === "/") {
       const html = await readFile(paginaPath, "utf8");
