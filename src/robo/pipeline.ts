@@ -8,6 +8,10 @@ import {
   estimarComissaoAmazon,
   pesoBuscaPorComissao
 } from "../ofertas/comissoes-amazon.js";
+import {
+  CONSULTAS_AMAZON_AUTORIZADAS,
+  DESCONTO_MINIMO_PERCENTUAL
+} from "../ofertas/regras-autorizadas.js";
 
 function criarFilaPonderada(consultas: string[]): string[] {
   const pesos = consultas.map((consulta) => ({
@@ -81,19 +85,14 @@ export interface ResultadoBusca {
 }
 
 export async function buscarMelhorOferta(): Promise<ResultadoBusca> {
-  const consultas = (process.env.AMAZON_QUERIES ??
-    process.env.AMAZON_QUERY ??
-    "ofertas")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  const consultas = [...CONSULTAS_AMAZON_AUTORIZADAS];
 
   if (consultas.length === 0) {
     throw new Error("Nenhuma consulta da Amazon foi configurada.");
   }
 
   const limite = Number(process.env.AMAZON_LIMIT ?? 20);
-  const descontoMinimo = Number(process.env.MIN_DISCOUNT_PERCENT ?? 20);
+  const descontoMinimo = DESCONTO_MINIMO_PERCENTUAL;
   const tag = process.env.AMAZON_ASSOCIATE_TAG;
   const porId = new Map<string, Oferta>();
 
