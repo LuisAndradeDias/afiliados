@@ -27,6 +27,24 @@ assert(
   "Autoenvio não pode repetir depois da primeira tentativa."
 );
 
+const minimo = lerConfigAutoEnvio({
+  WHATSAPP_AUTO_SEND_ENABLED: "true",
+  WHATSAPP_AUTO_SEND_DELAY_MS: "10"
+} as NodeJS.ProcessEnv);
+assert(minimo.delayMs === 500, "Delay mínimo deve ser 500ms.");
+
+const maximo = lerConfigAutoEnvio({
+  WHATSAPP_AUTO_SEND_ENABLED: "true",
+  WHATSAPP_AUTO_SEND_DELAY_MS: "999999"
+} as NodeJS.ProcessEnv);
+assert(maximo.delayMs === 30_000, "Delay máximo deve ser 30s.");
+
+const invalido = lerConfigAutoEnvio({
+  WHATSAPP_AUTO_SEND_ENABLED: "true",
+  WHATSAPP_AUTO_SEND_DELAY_MS: "nao-e-numero"
+} as NodeJS.ProcessEnv);
+assert(invalido.delayMs === 1500, "Delay inválido deve usar 1500ms.");
+
 const desligado = lerConfigAutoEnvio({} as NodeJS.ProcessEnv);
 assert(!desligado.enabled, "Autoenvio deve ser opt-in.");
 assert(
