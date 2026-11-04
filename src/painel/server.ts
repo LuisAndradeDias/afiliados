@@ -26,6 +26,7 @@ import {
   registrarCuponsObservadosMercadoLivre,
   statusCuponsMercadoLivre
 } from "../afiliados/mercadolivre-cupons.js";
+import { lerConfigAutoEnvio } from "../robo/whatsapp-auto-send.js";
 
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
@@ -1273,8 +1274,12 @@ async function estado() {
                       ? "scheduled"
                       : "paused";
 
+  const autoEnvio = lerConfigAutoEnvio();
+
   return {
     grupo: process.env.WHATSAPP_GROUP_NAME || "Não configurado",
+    whatsappAutoEnvioAtivo: autoEnvio.enabled,
+    whatsappAutoEnvioDelayMs: autoEnvio.delayMs,
     afiliadoConfigurado: Boolean(process.env.AMAZON_ASSOCIATE_TAG?.trim()),
     afiliadoTag: process.env.AMAZON_ASSOCIATE_TAG?.trim() ?? "",
     linkAfiliadoAtual: pacote.urlAfiliado ?? "",
@@ -1516,6 +1521,50 @@ async function executarAcao(
     return {
       ok: true,
       mensagem: `Amazon vinculada com o ID ${tag}. As próximas ofertas usarão seu link de associado.`
+    };
+  }
+
+  if (acao === "whatsapp-auto-send-set") {
+    if (processos.has("preparar")) {
+      return {
+        ok: false,
+        mensagem:
+          "Há uma oferta aberta no WhatsApp. Finalize ou descarte essa oferta antes de alterar o autoenvio."
+      };
+    }
+
+    const ativo = Boolean(dados.ativo);
+    const delaySolicitado = Number(
+      dados.delayMs ??
+      process.env.WHATSAPP_AUTO_SEND_DELAY_MS ??
+      1500
+    );
+    const config = lerConfigAutoEnvio({
+      WHATSAPP_AUTO_SEND_ENABLED: ativo ? "true" : "false",
+      WHATSAPP_AUTO_SEND_DELAY_MS: String(delaySolicitado)
+    } as NodeJS.ProcessEnv);
+
+    await salvarVariavelEnv(
+      "WHATSAPP_AUTO_SEND_ENABLED",
+      config.enabled ? "true" : "false"
+    );
+    await salvarVariavelEnv(
+      "WHATSAPP_AUTO_SEND_DELAY_MS",
+      String(config.delayMs)
+    );
+
+    registrar(
+      "painel",
+      config.enabled
+        ? `Autoenvio do WhatsApp ativado com atraso de ${config.delayMs}ms.`
+        : "Autoenvio do WhatsApp desativado."
+    );
+
+    return {
+      ok: true,
+      mensagem: config.enabled
+        ? "Autoenvio ativado. Quando a próxima oferta estiver pronta, o cursor físico irá até Enviar, fará uma única tentativa e aguardará a confirmação real do WhatsApp."
+        : "Autoenvio desativado. As próximas ofertas voltarão a aguardar sua confirmação."
     };
   }
 

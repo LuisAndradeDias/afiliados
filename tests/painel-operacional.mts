@@ -41,6 +41,8 @@ const base = {
   cupomAtual: "",
   precoComCupomEstimado: 0,
   whatsappEnvioPendente: false,
+  whatsappAutoEnvioAtivo: false,
+  whatsappAutoEnvioDelayMs: 1500,
   ultimoEnvioConcluidoEm: 0,
   ultimoEnvioComProxima: false,
   ofertaPreparada: false,
@@ -113,6 +115,29 @@ try {
     (await page.locator("#tempoCurtoButton").getAttribute("aria-pressed")) === "false",
     "Tempo curto deve aparecer como alternativa."
   );
+  assert(
+    (await page.locator("#autoEnvioButton").innerText()) === "Ativar autoenvio",
+    "Autoenvio desligado deve oferecer ativação."
+  );
+  assert(
+    (await page.locator("#autoEnvioDetail").innerText()).includes("Desligado"),
+    "Painel deve informar quando o autoenvio está desligado."
+  );
+
+  state = {
+    ...base,
+    whatsappAutoEnvioAtivo: true,
+    whatsappAutoEnvioDelayMs: 2000
+  };
+  await page.waitForTimeout(1_700);
+  assert(
+    (await page.locator("#autoEnvioButton").innerText()) === "Desativar autoenvio",
+    "Autoenvio ativo deve oferecer desativação."
+  );
+  assert(
+    (await page.locator("#autoEnvioDetail").innerText()).includes("2s"),
+    "Painel deve mostrar o atraso configurado do autoenvio."
+  );
 
   state = {
     ...base,
@@ -181,6 +206,10 @@ try {
   assert(
     await page.locator("#sendNowButton").isVisible(),
     "Enviar deveria aparecer quando o WhatsApp está pronto."
+  );
+  assert(
+    await page.locator("#autoEnvioButton").isDisabled(),
+    "Configuração de autoenvio não pode ser alterada durante uma revisão ativa."
   );
   assert(
     !(await page.locator("#reopenWhatsappButton").isVisible()),

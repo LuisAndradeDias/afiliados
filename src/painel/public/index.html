@@ -381,6 +381,30 @@
       font-size: 11px;
       line-height: 1.4;
     }
+    .autoenvio-box {
+      margin-top: 12px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .autoenvio-copy { min-width: 0; }
+    .autoenvio-copy strong { display: block; font-size: 13px; }
+    .autoenvio-copy span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .autoenvio-toggle {
+      flex: 0 0 auto;
+      min-width: 180px;
+    }
     .cycle-status-grid {
       display: grid;
       grid-template-columns: 1.25fr 1fr 1fr;
@@ -959,6 +983,22 @@
         <p id="intervaloAviso" class="intervalo-aviso" aria-live="polite">
           Limite de 4 ofertas por hora. O intervalo inicia após o WhatsApp confirmar o envio.
         </p>
+        <div class="autoenvio-box">
+          <div class="autoenvio-copy">
+            <strong>Envio automático no WhatsApp</strong>
+            <span id="autoEnvioDetail">
+              Desligado. A oferta ficará pronta e aguardará sua confirmação.
+            </span>
+          </div>
+          <button
+            id="autoEnvioButton"
+            type="button"
+            class="secondary autoenvio-toggle"
+            data-action="whatsapp-auto-send-set"
+          >
+            Ativar autoenvio
+          </button>
+        </div>
       </div>
 
       <div class="cycle-status-grid">
@@ -1555,6 +1595,7 @@
 
         const cycleButton = $("cycleToggleButton");
         const cycleBadge = $("cycleBadge");
+        const autoEnvioButton = $("autoEnvioButton");
         const proximaBuscaEm = Number(
           s.monitorAlternadoProximaBuscaEm ||
           s.mercadoLivreMonitorProximaBuscaEm ||
@@ -1572,6 +1613,19 @@
 
         cycleBadge.textContent = s.monitorAlternadoAtivo ? "ATIVO" : "PAUSADO";
         cycleBadge.classList.toggle("active", Boolean(s.monitorAlternadoAtivo));
+
+        const autoEnvioAtivo = Boolean(s.whatsappAutoEnvioAtivo);
+        const autoEnvioDelayMs = Number(s.whatsappAutoEnvioDelayMs || 1500);
+        autoEnvioButton.textContent = autoEnvioAtivo
+          ? "Desativar autoenvio"
+          : "Ativar autoenvio";
+        autoEnvioButton.classList.toggle("success", !autoEnvioAtivo);
+        autoEnvioButton.classList.toggle("secondary", autoEnvioAtivo);
+        $("autoEnvioDetail").textContent = autoEnvioAtivo
+          ? "Ativo. Quando a próxima oferta ficar pronta, o cursor físico irá até o botão Enviar após " +
+            (autoEnvioDelayMs / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) +
+            "s, fará uma única tentativa e aguardará confirmação real."
+          : "Desligado. A oferta ficará pronta e aguardará sua confirmação.";
 
         const modoIntervalo = s.intervaloModo === "curto" ? "curto" : "medio";
         for (const [id, nome] of [
@@ -2059,6 +2113,8 @@
               s.monitorAlternadoAtivo;
           } else if (acao === "automatico-stop") {
             b.disabled = !automatico;
+          } else if (acao === "whatsapp-auto-send-set") {
+            b.disabled = preparando;
           } else {
             b.disabled = false;
           }
@@ -2099,6 +2155,11 @@
           acao(nome, { redirectUri: $("mlRedirectUriInput").value });
         } else if (nome === "intervalo-set") {
           acao("intervalo-set", { modo: button.dataset.modo });
+        } else if (nome === "whatsapp-auto-send-set") {
+          acao(nome, {
+            ativo: !Boolean(estadoAtual.whatsappAutoEnvioAtivo),
+            delayMs: Number(estadoAtual.whatsappAutoEnvioDelayMs || 1500)
+          });
         } else if (nome === "monitor-set") {
           acao("monitor-set", {
             ativo: !Boolean(estadoAtual.monitorAlternadoAtivo)
