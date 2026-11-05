@@ -25,6 +25,7 @@ jobs:
       - run: npm run test:mercadolivre-auth
       - run: npm run test:mercadolivre-qualidade
       - run: npm run test:painel-operacional
+      - run: npm run test:modos-busca
       - run: npm run test:historico-antiduplicado
       - run: npm run test:amazon-preco-dom
       - run: npm run test:whatsapp-auto-send

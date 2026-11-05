@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit",
     "test:whatsapp-observer": "tsx tests/whatsapp-envio-observer.mts",
     "test:painel-operacional": "tsx tests/painel-operacional.mts",
+    "test:modos-busca": "tsx tests/modos-busca.mts && tsx tests/modos-busca-http.mts && tsx tests/modos-busca-ui.mts",
     "test:imagem-oferta": "tsx tests/imagem-oferta.mts",
     "test:whatsapp-pointer": "tsx tests/whatsapp-pointer.mts",
     "test:whatsapp-auto-send": "tsx tests/whatsapp-auto-send.mts",
