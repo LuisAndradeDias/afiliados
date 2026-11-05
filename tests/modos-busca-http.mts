@@ -154,6 +154,10 @@ try{
   assert.equal(perfil.meliProdutosPorCategoria,40);
   assert.equal(after.monitorAlternadoAtivo,false,"Mudar modo não liga monitor");
   assert.equal(after.whatsappEnvioPendente,false,"Mudar modo não envia WhatsApp");
+  const logSelecao=(after.logs as string[]).find(x=>x.includes("Modo de pesquisa alterado"));
+  assert.ok(logSelecao,"Mudança de busca deve ser auditável");
+  assert.ok(!/whatsapp|envio|preparar/i.test(logSelecao),
+    "O histórico não deve classificar uma mudança administrativa como WhatsApp");
   assert.deepEqual(JSON.parse(await readFile(cfg,"utf8")),{modo:"longa"});
   await conferirFilho("amazon","longa");
   await conferirFilho("meli","longa");

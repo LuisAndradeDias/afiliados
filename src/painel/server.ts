@@ -1415,7 +1415,7 @@ async function executarAcao(
     modoBusca = pedido;
     registrar("painel",
       `Modo de pesquisa alterado para Busca ${pedido === "longa" ? "longa" : "média"}; ` +
-      "monitor e WhatsApp não foram acionados."
+      "configuração salva sem iniciar o ciclo."
     );
     return {
       ok: true,
