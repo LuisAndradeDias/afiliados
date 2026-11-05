@@ -59,6 +59,55 @@ export function publicacaoComEstoque(publicacao: PublicacaoCandidata): boolean {
     !(publicacao.sub_status || []).some(textoDeIndisponibilidade);
 }
 
+export interface ResumoTriagemPublicacoes {
+  total: number;
+  tecnicamenteValidas: number;
+  estoqueNaoInformado: number;
+  esgotadasExplicitamente: number;
+  mensagensIndisponibilidade: number;
+  condicaoNaoNova: number;
+  vendedoresInvalidos: number;
+  precosInvalidos: number;
+  identificadoresInvalidos: number;
+}
+
+/**
+ * Diagnóstico somente leitura. Contagens de motivo podem se sobrepor:
+ * a mesma publicação pode apresentar mais de um problema.
+ * Estoque ausente não significa indisponibilidade nem confirmação de compra.
+ */
+export function resumirPublicacoes(
+  publicacoes: PublicacaoCandidata[]
+): ResumoTriagemPublicacoes {
+  const resumo: ResumoTriagemPublicacoes = {
+    total: 0, tecnicamenteValidas: 0, estoqueNaoInformado: 0,
+    esgotadasExplicitamente: 0, mensagensIndisponibilidade: 0,
+    condicaoNaoNova: 0, vendedoresInvalidos: 0, precosInvalidos: 0,
+    identificadoresInvalidos: 0
+  };
+  for (const item of publicacoes) {
+    resumo.total += 1;
+    if (item.available_quantity == null) resumo.estoqueNaoInformado += 1;
+    if (estoqueEsgotadoReportado(item.available_quantity)) {
+      resumo.esgotadasExplicitamente += 1;
+    }
+    if ([item.title, item.message, item.status, ...(item.sub_status || [])]
+      .some(textoDeIndisponibilidade)) {
+      resumo.mensagensIndisponibilidade += 1;
+    }
+    if (item.condition !== "new") resumo.condicaoNaoNova += 1;
+    if (!Number.isInteger(item.seller_id) || item.seller_id <= 0) {
+      resumo.vendedoresInvalidos += 1;
+    }
+    if (!Number.isFinite(item.price) || item.price <= 0) {
+      resumo.precosInvalidos += 1;
+    }
+    if (!/^MLB\d+$/i.test(item.item_id)) resumo.identificadoresInvalidos += 1;
+    if (publicacaoComEstoque(item)) resumo.tecnicamenteValidas += 1;
+  }
+  return resumo;
+}
+
 export function ordenarPublicacoes(
   publicacoes: PublicacaoCandidata[]
 ): PublicacaoCandidata[] {

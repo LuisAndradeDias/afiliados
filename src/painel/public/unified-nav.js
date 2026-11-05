@@ -133,11 +133,15 @@
         const res = await fetch("/api/status", { cache: "no-store" });
         if (!res.ok) throw new Error("Status indisponível");
         const s = await res.json();
-        state.textContent = s.operacaoEstado === "error"
-          ? "Operação requer atenção"
+        const semOferta = s.operacaoEstado === "error" &&
+          /(?:nenhuma oferta|n[aã]o encontrou ofertas|sem ofertas eleg[ií]veis)/i
+            .test(String(s.mercadoLivreFluxoMensagem || ""));
+        state.textContent = semOferta ? "Busca sem ofertas"
+          : s.operacaoEstado === "error" ? "Operação requer atenção"
           : s.monitorAlternadoAtivo ? "Monitor ativo" : "Monitor pausado";
-        state.dataset.state = s.operacaoEstado === "error"
-          ? "warning" : s.monitorAlternadoAtivo ? "active" : "paused";
+        state.dataset.state = semOferta ? "paused"
+          : s.operacaoEstado === "error" ? "warning"
+          : s.monitorAlternadoAtivo ? "active" : "paused";
       } catch {
         state.textContent = "Status indisponível";
         state.dataset.state = "warning";

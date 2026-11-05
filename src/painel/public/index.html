@@ -1130,6 +1130,9 @@
 
     function renderFluxoMeli(s) {
       const estado = s.operacaoEstado || "paused";
+      const semOferta = estado === "error" &&
+        /(?:nenhuma oferta|n[aã]o encontrou ofertas|sem ofertas eleg[ií]veis)/i
+          .test(String(s.mercadoLivreFluxoMensagem || ""));
       const plataforma = s.operacaoPlataforma || s.ofertaPlataformaAtual || null;
       const nome = nomePlataforma(plataforma);
       const proxima = nomePlataforma(s.monitorAlternadoProximaPlataforma);
@@ -1178,9 +1181,11 @@
         error: s.mercadoLivreFluxoMensagem || "Consulte os logs em Ferramentas avançadas."
       };
 
-      $("flowTitle").textContent = titulos[estado] || "Atividade do ciclo";
+      $("flowTitle").textContent = semOferta
+        ? "Última busca sem ofertas elegíveis" : titulos[estado] || "Atividade do ciclo";
       $("flowDescription").textContent = detalhes[estado] || "";
-      $("flowBadge").textContent = badges[estado] || "Processando";
+      $("flowBadge").textContent = semOferta ? "Sem ofertas"
+        : badges[estado] || "Processando";
 
       $("stepSearchText").textContent =
         plataforma === "amazon"
@@ -1216,7 +1221,7 @@
         setStep("stepPrepare", "done");
         setStep("stepReview", estado === "offer-pending" ? "error" : "active");
       }
-      if (estado === "error") {
+      if (estado === "error" && !semOferta) {
         setStep("stepSearch", "error");
       }
     }
@@ -1338,6 +1343,9 @@
           s.operacaoPlataforma || s.ofertaPlataformaAtual
         );
         const estado = s.operacaoEstado || (s.monitorAlternadoAtivo ? "scheduled" : "paused");
+        const semOferta = estado === "error" &&
+          /(?:nenhuma oferta|n[aã]o encontrou ofertas|sem ofertas eleg[ií]veis)/i
+            .test(String(s.mercadoLivreFluxoMensagem || ""));
 
         cycleBadge.textContent = s.monitorAlternadoAtivo ? "ATIVO" : "PAUSADO";
         cycleBadge.classList.toggle("active", Boolean(s.monitorAlternadoAtivo));
@@ -1376,8 +1384,8 @@
           "offer-pending": `Oferta pendente · ${operacaoPlataforma}`,
           error: "Atenção necessária"
         };
-        $("cycleNow").textContent =
-          agoraPorEstado[estado] || "Processando";
+        $("cycleNow").textContent = semOferta ? "Busca concluída sem ofertas"
+          : agoraPorEstado[estado] || "Processando";
 
         const detalhePorEstado = {
           paused: "Nenhuma busca automática será iniciada.",

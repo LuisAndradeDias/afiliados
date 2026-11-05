@@ -382,7 +382,7 @@
     const isSearching = state === "searching" ||
       jobs.some(x => x.includes("buscar") || x.includes("automatico"));
     const errorNoOffer = state === "error" &&
-      /nenhuma oferta|não encontrou|nao encontrou|filtro/i.test(String(s.mercadoLivreFluxoMensagem || ""));
+      /(?:nenhuma oferta|n[aã]o encontrou ofertas|sem ofertas eleg[ií]veis)/i.test(String(s.mercadoLivreFluxoMensagem || ""));
     if (pending) return {
       heading: "Aguardando confirmação do WhatsApp",
       detail: "O envio só será considerado concluído após confirmação real do aplicativo.",
