@@ -36,3 +36,5 @@ Leia docs/ux/UX-01-CONTRATO-E-DIAGNOSTICO.md, docs/ux/UX-02-ESTRUTURA-UNIFICADA.
 - Nunca retornar os primeiros N anúncios sem verificar qualidade, desconto, estoque e anúncio específico; nunca afirmar elegibilidade de afiliado somente porque o produto está ativo na API.
 - Respeitar HTTP 429 e backoff; nunca ignorar falha da reputação, contornar botão disabled do portal, inventar link afiliado ou substituir a extensão do Acer pela versão mais antiga do GitHub.
 - Se houver oferta preparada, monitor ativo com publicação pendente ou envio não reconciliado, NÃO implantar nem reiniciar o motor. Não descartar ofertas existentes automaticamente.
+- MELI-05 (docs/ux/MELI-05-DISPONIBILIDADE-EXPLICITA.md): NÃO equiparar `available_quantity` ausente/`null` a estoque esgotado. Excluir anúncios apenas com quantidade explicitamente 0/negativa ou mensagem/status claro de indisponibilidade; continuar verificações de anúncio ativo, vendedor e preço. Registrar incerteza sem afirmar estoque confirmado.
+- Testar ofertas com estoque não informado e mensagens "estoque esgotado", "produto indisponível" e "oferta indisponível" antes de implantar mudanças de busca.

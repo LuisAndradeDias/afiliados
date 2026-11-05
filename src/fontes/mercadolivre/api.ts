@@ -1,6 +1,7 @@
 import type { Oferta } from "../types.js";
 import {
-  limiteInteiro, ordenarPublicacoes, validarPermalinkOficial
+  estoqueEsgotadoReportado, limiteInteiro, ordenarPublicacoes,
+  textoDeIndisponibilidade, validarPermalinkOficial
 } from "./selecao.js";
 import {
   MercadoLivreReautorizacaoNecessaria,
@@ -30,6 +31,10 @@ interface PublicacaoCatalogo {
   original_price?: number | null;
   condition?: string;
   available_quantity?: number | null;
+  title?: string;
+  message?: string;
+  status?: string;
+  sub_status?: string[];
 }
 
 interface RespostaCompeticao {
@@ -40,6 +45,9 @@ interface DetalheAnuncio {
   id?: string;
   seller_id?: number;
   status?: string;
+  sub_status?: string[];
+  title?: string;
+  message?: string;
   permalink?: string;
   price?: number;
   original_price?: number | null;
@@ -284,7 +292,12 @@ export class MercadoLivreApiFonte {
    */
   private async detalharAnuncio(
     publicacao: PublicacaoCatalogo
-  ): Promise<{ url: string; preco: number; anterior?: number } | null> {
+  ): Promise<{
+    url: string;
+    preco: number;
+    anterior?: number;
+    estoqueNaoInformado: boolean;
+  } | null> {
     const id = publicacao.item_id;
     const detalhe = await this.getJson<DetalheAnuncio>(
       `https://api.mercadolibre.com/items/${encodeURIComponent(id)}`
@@ -292,8 +305,10 @@ export class MercadoLivreApiFonte {
     if (detalhe.id !== id || detalhe.status !== "active" ||
         detalhe.condition !== "new" ||
         detalhe.seller_id !== publicacao.seller_id ||
-        !Number.isInteger(detalhe.available_quantity) ||
-        Number(detalhe.available_quantity) <= 0 ||
+        estoqueEsgotadoReportado(detalhe.available_quantity) ||
+        textoDeIndisponibilidade(detalhe.title) ||
+        textoDeIndisponibilidade(detalhe.message) ||
+        (detalhe.sub_status || []).some(textoDeIndisponibilidade) ||
         !Number.isFinite(detalhe.price) || !detalhe.price ||
         detalhe.price <= 0) return null;
 
@@ -308,7 +323,12 @@ export class MercadoLivreApiFonte {
         publicacao.original_price && publicacao.original_price > detalhe.price
         ? publicacao.original_price
         : undefined;
-    return { url: permalink, preco: detalhe.price, anterior };
+    return {
+      url: permalink,
+      preco: detalhe.price,
+      anterior,
+      estoqueNaoInformado: detalhe.available_quantity == null
+    };
   }
 
   async buscar(): Promise<Oferta[]> {
@@ -338,6 +358,7 @@ export class MercadoLivreApiFonte {
     let analisados = 0;
     let semEstoqueOuVendedor = 0;
     let semDadosValidos = 0;
+    let estoqueNaoInformado = 0;
 
     for (let pagina = 0; pagina < paginas; pagina += 1) {
       const url = new URL(
@@ -371,7 +392,8 @@ export class MercadoLivreApiFonte {
       for (const produto of produtos) {
         if (analisados >= limiteProdutos) break;
         if (produto.status !== "active" || produtosVistos.has(produto.id) ||
-            !/^MLB\d+$/i.test(produto.id) || !produto.name?.trim()) {
+            !/^MLB\d+$/i.test(produto.id) || !produto.name?.trim() ||
+            textoDeIndisponibilidade(produto.name)) {
           continue;
         }
         produtosVistos.add(produto.id);
@@ -413,6 +435,7 @@ export class MercadoLivreApiFonte {
           continue;
         }
 
+        if (detalhe.estoqueNaoInformado) estoqueNaoInformado += 1;
         ofertas.push({
           plataforma: "Mercado Livre",
           produtoId: produto.id,
@@ -445,7 +468,9 @@ export class MercadoLivreApiFonte {
       `Mercado Livre busca: categoria="${this.consulta}", ` +
       `analisados=${analisados}, ofertas_validadas=${ofertas.length}, ` +
       `sem_estoque_ou_reputacao=${semEstoqueOuVendedor}, ` +
-      `anuncio_desatualizado=${semDadosValidos}, selecionadas=${Math.min(maximo, ordenadas.length)}.`
+      `anuncio_desatualizado=${semDadosValidos}, ` +
+      `estoque_nao_informado=${estoqueNaoInformado}, ` +
+      `selecionadas=${Math.min(maximo, ordenadas.length)}.`
     );
     return ordenadas.slice(0, maximo);
   }

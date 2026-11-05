@@ -1,6 +1,7 @@
 /**
  * Regras TÉCNICAS de qualidade da busca Mercado Livre, sem mudar regras comerciais.
- * Somente publicação nova, com estoque confirmado e vendedor identificável.
+ * Produto novo e vendedor identificado. A falta da quantidade pública NÃO
+ * significa estoque esgotado; somente indícios explícitos bloqueiam a oferta.
  */
 export interface PublicacaoCandidata {
   item_id: string;
@@ -9,6 +10,28 @@ export interface PublicacaoCandidata {
   original_price?: number | null;
   condition?: string;
   available_quantity?: number | null;
+  title?: string;
+  message?: string;
+  status?: string;
+  sub_status?: string[];
+}
+
+/** Mensagens explícitas do anúncio. O texto é informação, não prova de estoque. */
+export function textoDeIndisponibilidade(texto: unknown): boolean {
+  if (typeof texto !== "string") return false;
+  const normalizado = texto
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return /\b(?:estoque (?:esgotad[oa]s?|indisponivel)|sem estoque|fora de estoque|produto[s]? indisponive(?:l|is)|produto[s]? esgotad[oa]s?|oferta[s]? indisponive(?:l|is)|oferta[s]? esgotad[oa]s?|item indisponivel|anuncio indisponivel|indisponivel para compra|nao disponivel|out of stock|sold out)\b/.test(normalizado);
+}
+
+/**
+ * null/undefined significa estoque NÃO INFORMADO pela API pública.
+ * Zero (ou negativo) é indisponibilidade explicitamente reportada.
+ */
+export function estoqueEsgotadoReportado(quantidade: number | null | undefined): boolean {
+  return typeof quantidade === "number" &&
+    Number.isFinite(quantidade) && quantidade <= 0;
 }
 
 export function descontoDoAnuncio(
@@ -20,13 +43,20 @@ export function descontoDoAnuncio(
   return Math.round((1 - preco / original) * 100);
 }
 
+/**
+ * Compatibilidade com o seletor da API: "com estoque" aqui significa
+ * "sem evidência de esgotamento". Não afirma disponibilidade confirmada.
+ */
 export function publicacaoComEstoque(publicacao: PublicacaoCandidata): boolean {
   return /^MLB\d+$/i.test(publicacao.item_id) &&
     Number.isInteger(publicacao.seller_id) && publicacao.seller_id > 0 &&
     Number.isFinite(publicacao.price) && publicacao.price > 0 &&
     publicacao.condition === "new" &&
-    Number.isInteger(publicacao.available_quantity) &&
-    Number(publicacao.available_quantity) > 0;
+    !estoqueEsgotadoReportado(publicacao.available_quantity) &&
+    !textoDeIndisponibilidade(publicacao.title) &&
+    !textoDeIndisponibilidade(publicacao.message) &&
+    !textoDeIndisponibilidade(publicacao.status) &&
+    !(publicacao.sub_status || []).some(textoDeIndisponibilidade);
 }
 
 export function ordenarPublicacoes(

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { MercadoLivreApiFonte } from "../src/fontes/mercadolivre/api.js";
 import {
   ordenarPublicacoes, publicacaoComEstoque, validarPermalinkOficial,
-  limiteInteiro
+  limiteInteiro, estoqueEsgotadoReportado, textoDeIndisponibilidade
 } from "../src/fontes/mercadolivre/selecao.js";
 
 const antigoFetch=globalThis.fetch;
@@ -23,6 +23,7 @@ const resposta=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
 });
 const low=Array.from({length:5},(_,i)=>"MLB"+(110+i));
 const winner="MLB999", stockZero="MLB998", stale="MLB997";
+const unavailable="MLB996", detailZero="MLB995";
 const itemId=(pid:string)=>"MLB"+pid.slice(3)+"00";
 let fetchCalls:string[]=[];
 let stockItemCalls=0;
@@ -37,12 +38,14 @@ function mockedFetch(input:string|URL|Request){
     if(u.searchParams.get("offset")==="0"){
       return Promise.resolve(resposta({results:low.map(id=>({
         id,name:"Produto "+id,status:"active",pictures:[{secure_url:"https://img.example/1.jpg"}]
-      })),paging:{total:8}}));
+      })),paging:{total:10}}));
     }
     if(u.searchParams.get("offset")==="5"){
-      return Promise.resolve(resposta({results:[winner,stockZero,stale].map(id=>({
-        id,name:"Produto "+id,status:"active",pictures:[]
-      })),paging:{total:8}}));
+      return Promise.resolve(resposta({
+        results:[winner,stockZero,stale,unavailable,detailZero].map(id=>({
+          id,name:"Produto "+id,status:"active",pictures:[]
+        })),paging:{total:10}
+      }));
     }
     throw new Error("Pagina nao esperada "+u.search);
   }
@@ -53,7 +56,7 @@ function mockedFetch(input:string|URL|Request){
     return Promise.resolve(resposta({results:[{
       item_id:itemId(id),seller_id:321,price:preco,
       original_price:id===winner?200:110,condition:"new",
-      available_quantity:id===stockZero?0:3
+      available_quantity:id===stockZero?0:id===winner?undefined:3
     }]}));
   }
   if(u.pathname==="/users/bulk"){
@@ -71,9 +74,20 @@ function mockedFetch(input:string|URL|Request){
       price:100,available_quantity:3,
       permalink:"https://produto.mercadolivre.com.br/MLB-"+id.slice(3)+"-fake-_JM"
     }));
+    if(id===itemId(unavailable))return Promise.resolve(resposta({
+      id,status:"active",seller_id:321,condition:"new",price:90,
+      available_quantity:4,message:"Produto indisponível",
+      permalink:"https://produto.mercadolivre.com.br/MLB-"+id.slice(3)+"-fake-_JM"
+    }));
+    if(id===itemId(detailZero))return Promise.resolve(resposta({
+      id,status:"active",seller_id:321,condition:"new",price:90,
+      available_quantity:0,
+      permalink:"https://produto.mercadolivre.com.br/MLB-"+id.slice(3)+"-fake-_JM"
+    }));
     return Promise.resolve(resposta({
       id,status:"active",seller_id:321,condition:"new",
-      price:id===itemId(winner)?90:100,available_quantity:3,
+      price:id===itemId(winner)?90:100,
+      available_quantity:id===itemId(winner)?undefined:3,
       original_price:id===itemId(winner)?200:110,
       permalink:"https://produto.mercadolivre.com.br/MLB-"+id.slice(3)+"-produto-_JM"
     }));
@@ -89,9 +103,32 @@ try{
   assert.ok(!publicacaoComEstoque({
     item_id:"MLB100",seller_id:42,price:100,condition:"new",available_quantity:0
   }));
-  assert.ok(!publicacaoComEstoque({
+  assert.ok(publicacaoComEstoque({
     item_id:"MLB100",seller_id:42,price:100,condition:"new",available_quantity:null
-  }));
+  }), "Estoque ausente não pode significar esgotado");
+  assert.ok(publicacaoComEstoque({
+    item_id:"MLB100",seller_id:42,price:100,condition:"new"
+  }), "Campo available_quantity ausente no Mercado Livre deve ser aceito");
+  assert.ok(!estoqueEsgotadoReportado(null));
+  assert.ok(!estoqueEsgotadoReportado(undefined));
+  assert.ok(estoqueEsgotadoReportado(0));
+  assert.ok(estoqueEsgotadoReportado(-1));
+  for(const aviso of [
+    "Estoque esgotado", "PRODUTO INDISPONÍVEL",
+    "Ofertas Indisponível", "Oferta indisponível",
+    "Sem estoque", "Produto esgotado", "Out of stock"
+  ]){
+    assert.equal(textoDeIndisponibilidade(aviso),true,
+      "Deve reconhecer aviso explícito: "+aviso);
+  }
+  for(const texto of ["", "Estoque não informado", "Disponível para compra", null]){
+    assert.equal(textoDeIndisponibilidade(texto),false,
+      "Não tratar ausência de mensagem como indisponibilidade");
+  }
+  assert.equal(publicacaoComEstoque({
+    item_id:"MLB100",seller_id:42,price:100,condition:"new",
+    available_quantity:4,message:"Produto indisponível"
+  }),false,"Aviso explícito supera quantidade positiva");
   assert.ok(!publicacaoComEstoque({
     item_id:"MLB100",seller_id:0,price:100,condition:"new",available_quantity:2
   }));
@@ -119,6 +156,8 @@ try{
   assert.equal(ofertas[0].produtoId,winner,
     "Oferta com 55% da página 2 foi ignorada pelo antigo retorno antecipado");
   assert.equal(ofertas[0].descontoPercentual,55);
+  assert.ok(ofertas.some(o=>o.produtoId===winner),
+    "API sem quantidade de estoque não pode eliminar oferta com anúncio ativo");
   assert.equal(ofertas[0].urlProduto,
     "https://produto.mercadolivre.com.br/MLB-99900-produto-_JM",
     "Usar permalink do ANÚNCIO validado, não URL /p/ do catálogo");
@@ -127,6 +166,10 @@ try{
   assert.equal(stockItemCalls,0,"Não consultar detalhe de anúncio sem estoque");
   assert.ok(!ofertas.some(o=>o.produtoId===stale),"Anúncio pausado não é elegível");
   assert.ok(!ofertas.some(o=>o.produtoId===stockZero),"Sem estoque não é elegível");
+  assert.ok(!ofertas.some(o=>o.produtoId===unavailable),
+    "Mensagem de indisponibilidade deve bloquear, mesmo com status ativo e estoque >0");
+  assert.ok(!ofertas.some(o=>o.produtoId===detailZero),
+    "Estoque 0 no detalhe deve bloquear, mesmo quando catálogo indicou disponibilidade");
   assert.ok(fetchCalls.some(c=>c.startsWith("/products/search")&&c.includes("offset=5")),
     "Deve consultar segunda página mesmo após cinco achados iniciais");
   assert.ok(fetchCalls.every(c=>!c.includes("access_token=")),
