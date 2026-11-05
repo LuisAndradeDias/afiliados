@@ -22,6 +22,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test --prefix captacao/caca-promos-vip
+      - run: npm run test:mercadolivre-auth
+      - run: npm run test:mercadolivre-qualidade
       - run: npm run test:painel-operacional
       - run: npm run test:historico-antiduplicado
       - run: npm run test:amazon-preco-dom
@@ -40,5 +42,6 @@ jobs:
           path: |
             test-results/ux/*.png
             test-results/ux03/*.png
+            test-results/meli/*.png
           if-no-files-found: ignore
           retention-days: 7
