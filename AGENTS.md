@@ -32,3 +32,7 @@ Leia docs/ux/UX-01-CONTRATO-E-DIAGNOSTICO.md, docs/ux/UX-02-ESTRUTURA-UNIFICADA.
 - Ofertas UX-03: toda alteração deve preservar a faixa de status, console com filtros/pausa, linha do tempo honesta e drawer de configurações; rodar ux03-cockpit-terminal-settings.mts com as quatro resoluções.
 - Nunca clonar controles/IDs da operação, inventar envio confirmado, mover regras do motor por CSS/JS ou tornar o PR #49 arquivado fonte de regras comerciais.
 - Testar o drawer aberto/fechado, foco e campos preenchidos, e ocultar tokens/senhas de qualquer evidência visual pública.
+- Mercado Livre MELI-04: antes de alterar busca, API ou extensão, ler docs/ux/MELI-04-BUSCA-QUALIDADE-E-GERADOR.md e rodar npm run test:mercadolivre-qualidade, npm run test:mercadolivre-auth e os testes operacionais.
+- Nunca retornar os primeiros N anúncios sem verificar qualidade, desconto, estoque e anúncio específico; nunca afirmar elegibilidade de afiliado somente porque o produto está ativo na API.
+- Respeitar HTTP 429 e backoff; nunca ignorar falha da reputação, contornar botão disabled do portal, inventar link afiliado ou substituir a extensão do Acer pela versão mais antiga do GitHub.
+- Se houver oferta preparada, monitor ativo com publicação pendente ou envio não reconciliado, NÃO implantar nem reiniciar o motor. Não descartar ofertas existentes automaticamente.

@@ -12,6 +12,7 @@
     "mercadolivre:preview": "tsx src/robo/mercadolivre-preview.ts",
     "mercadolivre:auth-check": "tsx src/robo/mercadolivre-auth-check.ts",
     "test:mercadolivre-auth": "tsx tests/mercadolivre-auth.mts",
+    "test:mercadolivre-qualidade": "tsx tests/mercadolivre-busca-qualidade.mts && tsx tests/mercadolivre-gerador-dom.mts",
     "mercadolivre:whatsapp": "tsx src/robo/mercadolivre-whatsapp.ts",
     "whatsapp:preview": "tsx src/robo/whatsapp-preview.ts",
     "whatsapp:login": "tsx src/robo/whatsapp-login.ts",

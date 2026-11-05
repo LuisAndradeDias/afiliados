@@ -35,11 +35,16 @@ const indiceRotacao = await readFile(rotacaoPath, "utf8")
     return Number(dados.indice ?? 0);
   })
   .catch(() => 0);
-const consultasUsadas = Array.from(
-  { length: consultasPorRodada },
-  (_, offset) =>
-    consultas[(indiceRotacao + offset) % consultas.length]
+// Expandir até duas categorias AUTORIZADAS adicionais somente se as
+// consultas normais não fornecerem oferta elegível, sem alterar cadence.
+const extrasSemElegivel = Math.max(0, Math.min(2,
+  Number(process.env.MERCADOLIVRE_EXTRA_QUERIES_ON_EMPTY ?? 2) || 0
+));
+const maxConsultas = Math.min(
+  consultas.length, consultasPorRodada + extrasSemElegivel
 );
+let consultasRealizadas = 0;
+let ofertasEncontradasApi = 0;
 const bloqueadoPorHistorico = await filtroHistoricoOfertas();
 const cupons = await obterCuponsMercadoLivre().catch((error) => {
   const mensagem = error instanceof Error ? error.message : String(error);
@@ -48,7 +53,21 @@ const cupons = await obterCuponsMercadoLivre().catch((error) => {
 });
 const porProduto = new Map<string, Oferta>();
 
-for (const consulta of consultasUsadas) {
+for (let indice = 0; indice < maxConsultas; indice += 1) {
+  if (indice >= consultasPorRodada) {
+    const elegivelAtual = [...porProduto.values()].some(oferta =>
+      (oferta.descontoEfetivoPercentual ??
+       oferta.descontoPercentual ?? 0) >= minimo &&
+      !bloqueadoPorHistorico(oferta)
+    );
+    if (elegivelAtual) break;
+    console.log(
+      "Mercado Livre: categorias iniciais sem oferta elegivel; " +
+      "ampliando a busca somente nas categorias aprovadas."
+    );
+  }
+  const consulta = consultas[(indiceRotacao + indice) % consultas.length];
+  consultasRealizadas += 1;
   console.log(`Buscando Mercado Livre: "${consulta}"`);
   let ofertas: Oferta[];
   try {
@@ -64,6 +83,7 @@ for (const consulta of consultasUsadas) {
     throw error;
   }
 
+  ofertasEncontradasApi += ofertas.length;
   for (const ofertaBase of ofertas) {
     const oferta = aplicarMelhorCupomMercadoLivre(
       ofertaBase,
@@ -91,7 +111,7 @@ await writeFile(
   rotacaoPath,
   JSON.stringify({
     indice:
-      (indiceRotacao + consultasPorRodada) % consultas.length
+      (indiceRotacao + consultasRealizadas) % consultas.length
   }, null, 2),
   "utf8"
 );
@@ -117,9 +137,11 @@ const elegiveis = todas
 const melhor = elegiveis[0];
 
 console.log(
-  `Mercado Livre: ${todas.length} ofertas encontradas, ` +
+  `Mercado Livre: ${consultasRealizadas} consultas autorizadas, ` +
+  `${ofertasEncontradasApi} anuncios confirmados na API, ` +
+  `${todas.length} produtos distintos, ` +
   `${elegiveis.length} elegiveis com minimo de ${minimo}% ` +
-  `(cupons ativos considerados: ${cupons.length}).`
+  `(cupons observados no catalogo: ${cupons.length}).`
 );
 if (!melhor) {
   console.log(
