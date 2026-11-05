@@ -331,6 +331,71 @@
       min-height: 48px;
       flex: 0 0 auto;
     }
+    .cpv-search-mode {
+      margin-top: 16px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface-2);
+    }
+    .cpv-search-mode-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      margin-bottom: 10px;
+    }
+    .cpv-search-mode-head strong { font-size: 13px; }
+    .cpv-search-mode-head span {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .cpv-search-mode-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .cpv-search-choice {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+      min-width: 0;
+      min-height: 94px;
+      padding: 12px 13px;
+      border: 1px solid #d0d5dd;
+      border-radius: 12px;
+      background: white;
+      color: var(--text);
+      text-align: left;
+    }
+    .cpv-search-choice strong { font-size: 14px; }
+    .cpv-search-choice span { font-size: 12px; font-weight: 650; }
+    .cpv-search-choice small {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .cpv-search-choice.active {
+      border-color: #079455;
+      background: #ecfdf3;
+      box-shadow: inset 0 0 0 1px #079455;
+    }
+    .cpv-search-choice:focus-visible {
+      outline: 3px solid #1d4ed8;
+      outline-offset: 2px;
+    }
+    .cpv-search-mode-note {
+      margin: 9px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    @media (max-width: 680px) {
+      .cpv-search-mode-options { grid-template-columns: 1fr; }
+      .cpv-search-choice { min-height: 84px; }
+    }
     .autoenvio-box {
       margin-top: 12px;
       padding: 13px;
@@ -798,6 +863,30 @@
         <button id="cycleToggleButton" class="success cycle-toggle" data-action="monitor-set">
           Iniciar ciclo automático
         </button>
+      </div>
+
+      <div class="cpv-search-mode" role="group" aria-label="Escolher profundidade da busca">
+        <div class="cpv-search-mode-head">
+          <strong>Profundidade da pesquisa</strong>
+          <span>Escolha antes de iniciar o ciclo</span>
+        </div>
+        <div class="cpv-search-mode-options">
+          <button id="buscaMediaButton" type="button" class="cpv-search-choice active"
+            data-action="busca-modo-set" data-modo="media" aria-pressed="true">
+            <strong>Busca média</strong>
+            <span id="buscaMediaResumo">Limites atuais de pesquisa</span>
+            <small>Pesquisa habitual, com os filtros existentes.</small>
+          </button>
+          <button id="buscaLongaButton" type="button" class="cpv-search-choice"
+            data-action="busca-modo-set" data-modo="longa" aria-pressed="false">
+            <strong>Busca longa</strong>
+            <span id="buscaLongaResumo">Mais categorias e candidatos</span>
+            <small>Pode demorar mais; respeita o limite da API.</small>
+          </button>
+        </div>
+        <p id="buscaModoNota" class="cpv-search-mode-note" role="status" aria-live="polite">
+          A escolha afeta apenas as próximas buscas. Não altera intervalos, descontos, cooldown ou WhatsApp.
+        </p>
       </div>
 
       <div class="autoenvio-box">
@@ -1349,6 +1438,26 @@
 
         cycleBadge.textContent = s.monitorAlternadoAtivo ? "ATIVO" : "PAUSADO";
         cycleBadge.classList.toggle("active", Boolean(s.monitorAlternadoAtivo));
+        const modoBusca = s.modoBusca === "longa" ? "longa" : "media";
+        for (const button of [$("buscaMediaButton"), $("buscaLongaButton")]) {
+          const ativo = button.dataset.modo === modoBusca;
+          button.classList.toggle("active", ativo);
+          button.setAttribute("aria-pressed", String(ativo));
+        }
+        const planos = s.orcamentoBuscaOpcoes || {};
+        const medio = planos.media || s.orcamentoBusca || {};
+        const longo = planos.longa || {};
+        const rotulo = (plano, amazonPadrao, meliPadrao) =>
+          "Amazon: " + (plano.amazonCategorias ?? amazonPadrao) +
+          " categorias · ML: " + (plano.meliCategoriasIniciais ?? meliPadrao) + " iniciais";
+        $("buscaMediaResumo").textContent = rotulo(medio, 4, 2);
+        $("buscaLongaResumo").textContent = rotulo(longo, 6, 3);
+        const atual = s.orcamentoBusca || (modoBusca === "longa" ? longo : medio);
+        $("buscaModoNota").textContent = "Mercado Livre: até " +
+          (atual.meliProdutosPorCategoria ?? 25) + " produtos/categoria, " +
+          (atual.meliPaginasPorCategoria ?? 2) + " páginas por categoria; até " +
+          (atual.meliCategoriasExtrasSemOferta ?? 2) + " extras se necessário. " +
+          "Não altera frequência, desconto ou envio.";
 
         const autoEnvioAtivo = Boolean(s.whatsappAutoEnvioAtivo);
         const autoEnvioDelayMs = Number(s.whatsappAutoEnvioDelayMs || 1500);
@@ -1711,6 +1820,8 @@
               s.whatsappEnvioPendente;
           } else if (acao === "historico-clear") {
             b.disabled = preparando;
+          } else if (acao === "busca-modo-set") {
+            b.disabled = s.monitorAlternadoAtivo || (s.executando || []).length > 0;
           } else if (acao === "monitor-set") {
             b.disabled =
               !s.monitorAlternadoAtivo &&
@@ -1771,7 +1882,8 @@
     }
 
     async function acao(nome, extras = {}) {
-      toast("Executando...", "warn");
+      const perfilBusca = nome === "busca-modo-set";
+      if (!perfilBusca) toast("Executando...", "warn");
       try {
         const resposta = await fetch("/api/action", {
           method: "POST",
@@ -1785,7 +1897,9 @@
         if (data.ok && nome === "mercadolivre-link-save") {
           delete $("mlAffiliateLink").dataset.cpvDirty;
         }
-        toast(data.mensagem, data.ok ? "ok" : "warn");
+        if (!perfilBusca || !data.ok) {
+          toast(data.mensagem, data.ok ? "ok" : "warn");
+        }
       } catch {
         toast("Falha ao executar a ação.", "bad");
       }
@@ -1814,6 +1928,8 @@
           acao("monitor-set", {
             ativo: !Boolean(estadoAtual.monitorAlternadoAtivo)
           });
+        } else if (nome === "busca-modo-set") {
+          acao(nome, { modo: button.dataset.modo });
         } else if (nome === "mercadolivre-monitor-toggle") {
           acao(nome);
         } else if (nome === "mercadolivre-fluxo") {

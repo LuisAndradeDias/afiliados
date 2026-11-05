@@ -27,6 +27,10 @@ import {
   CONSULTAS_AMAZON_AUTORIZADAS,
   DESCONTO_MINIMO_PERCENTUAL
 } from "../ofertas/regras-autorizadas.js";
+import {
+  lerModoBusca, modoBuscaValido, orcamentoBusca, salvarModoBusca,
+  variaveisBusca, type ModoBusca
+} from "../ofertas/modos-busca.js";
 
 const raiz = process.cwd();
 const paginaPath = resolve(raiz, "src", "painel", "public", "index.html");
@@ -39,6 +43,8 @@ const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
 const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
 const porta = Number(process.env.PAINEL_PORT ?? 3030);
+const modoBuscaPath = resolve(raiz, "data", "config-busca.json");
+let modoBusca: ModoBusca = lerModoBusca(modoBuscaPath);
 
 const processos = new Map<string, ChildProcess>();
 const logs: string[] = [];
@@ -536,12 +542,14 @@ function iniciar(
 ): boolean {
   if (processos.has(nome)) return false;
 
+  const pesquisa = nome === "buscar" || nome === "mercadolivre-buscar";
+  const ambienteBusca = pesquisa ? variaveisBusca(modoBusca) : {};
   const child = spawn(
     process.execPath,
     [tsxCli, arquivoDo(script)],
     {
       cwd: raiz,
-      env: { ...process.env, ...envExtra },
+      env: { ...process.env, ...ambienteBusca, ...envExtra },
       stdio: ["ignore", "pipe", "pipe"]
     }
   );
@@ -554,7 +562,10 @@ function iniciar(
     whatsappPreparacaoIniciadaEm = Date.now();
   }
 
-  registrar(nome, "Iniciado.");
+  registrar(nome, pesquisa
+    ? `Iniciado. Busca ${modoBusca === "longa" ? "longa" : "média"}; ` +
+      "cadência e regras comerciais preservadas."
+    : "Iniciado.");
   child.stdout?.on("data", (d) => {
     const texto = String(d);
     registrar(nome, texto);
@@ -1226,6 +1237,12 @@ async function estado() {
     monitorAlternadoUltimaPlataforma,
     monitorAlternadoProximaBuscaEm: mercadoLivreMonitorProximaBuscaEm,
     monitorAlternadoSlotSegundos: monitorAlternadoSlotMs() / 1_000,
+    modoBusca,
+    orcamentoBusca: orcamentoBusca(modoBusca),
+    orcamentoBuscaOpcoes: {
+      media: orcamentoBusca("media"),
+      longa: orcamentoBusca("longa")
+    },
     mercadoLivreMonitorProximaBuscaEm,
     mercadoLivreMonitorUltimaBuscaEm,
     amazonMonitorUltimaBuscaEm,
@@ -1377,6 +1394,34 @@ async function executarAcao(
     return {
       ok: true,
       mensagem: `Amazon vinculada com o ID ${tag}. As próximas ofertas usarão seu link de associado.`
+    };
+  }
+
+  if (acao === "busca-modo-set") {
+    const pedido = dados.modo;
+    if (!modoBuscaValido(pedido)) {
+      return { ok: false, mensagem: "Escolha Busca média ou Busca longa." };
+    }
+    if (monitorAlternadoAtivo || monitorTemTarefaAtiva()) {
+      return {
+        ok: false,
+        mensagem: "Pause o ciclo e conclua a busca em andamento antes de mudar o modo."
+      };
+    }
+    if (pedido === modoBusca) {
+      return { ok: true, mensagem: "Esse modo de busca já está selecionado." };
+    }
+    await salvarModoBusca(modoBuscaPath, pedido);
+    modoBusca = pedido;
+    registrar("painel",
+      `Modo de pesquisa alterado para Busca ${pedido === "longa" ? "longa" : "média"}; ` +
+      "monitor e WhatsApp não foram acionados."
+    );
+    return {
+      ok: true,
+      mensagem: pedido === "longa"
+        ? "Busca longa salva. Próximas pesquisas examinarão mais candidatos, sem acelerar os envios."
+        : "Busca média salva. Próximas pesquisas usarão os limites operacionais habituais."
     };
   }
 
