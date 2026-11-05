@@ -1,7 +1,7 @@
 import type { Oferta } from "../types.js";
 import {
   estoqueEsgotadoReportado, limiteInteiro, ordenarPublicacoes,
-  textoDeIndisponibilidade, validarPermalinkOficial
+  resumirPublicacoes, textoDeIndisponibilidade, validarPermalinkOficial
 } from "./selecao.js";
 import {
   MercadoLivreReautorizacaoNecessaria,
@@ -184,11 +184,11 @@ export class MercadoLivreApiFonte {
 
   private async buscarPublicacoes(
     produtoId: string
-  ): Promise<PublicacaoCatalogo[]> {
+  ): Promise<{ publicacoes: PublicacaoCatalogo[]; naoEncontrado: boolean }> {
     const resposta = await this.requisicao(
       `https://api.mercadolibre.com/products/${encodeURIComponent(produtoId)}/items`
     );
-    if (resposta.status === 404) return [];
+    if (resposta.status === 404) return { publicacoes: [], naoEncontrado: true };
 
     if (!resposta.ok) {
       const corpo = await resposta.text().catch(() => "");
@@ -203,7 +203,7 @@ export class MercadoLivreApiFonte {
     }
 
     const dados = (await resposta.json()) as RespostaCompeticao;
-    return dados.results ?? [];
+    return { publicacoes: dados.results ?? [], naoEncontrado: false };
   }
 
   private async carregarReputacoes(
@@ -359,6 +359,20 @@ export class MercadoLivreApiFonte {
     let semEstoqueOuVendedor = 0;
     let semDadosValidos = 0;
     let estoqueNaoInformado = 0;
+    let publicacoesRecebidas = 0;
+    let candidatasTecnicas = 0;
+    let estoqueNaoInformadoCatalogo = 0;
+    let estoqueEsgotadoExplicito = 0;
+    let mensagensIndisponiveis = 0;
+    let catalogos404 = 0;
+    let catalogosSemPublicacoes = 0;
+    let catalogos403 = 0;
+    let semReputacaoAprovada = 0;
+    let detalhes403 = 0;
+    let condicaoNaoNova = 0;
+    let vendedoresInvalidos = 0;
+    let precosInvalidos = 0;
+    let identificadoresInvalidos = 0;
 
     for (let pagina = 0; pagina < paginas; pagina += 1) {
       const url = new URL(
@@ -399,23 +413,41 @@ export class MercadoLivreApiFonte {
         produtosVistos.add(produto.id);
         analisados += 1;
 
-        let publicacoes: PublicacaoCatalogo[];
+        let resultadoPublicacoes: {
+          publicacoes: PublicacaoCatalogo[];
+          naoEncontrado: boolean;
+        };
         try {
-          publicacoes = await this.buscarPublicacoes(produto.id);
+          resultadoPublicacoes = await this.buscarPublicacoes(produto.id);
         } catch (error) {
           if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
-          const mensagem =
-            error instanceof Error ? error.message : String(error);
+          const mensagem = error instanceof Error ? error.message : String(error);
           if (mensagem.includes("HTTP 429")) throw error;
+          if (mensagem.includes("sem permissao")) catalogos403 += 1;
           console.warn(
             `Mercado Livre: pulando ${produto.id}: ${mensagem}`
           );
           continue;
         }
 
+        const publicacoes = resultadoPublicacoes.publicacoes;
+        if (resultadoPublicacoes.naoEncontrado) catalogos404 += 1;
+        else if (publicacoes.length === 0) catalogosSemPublicacoes += 1;
+        const triagem = resumirPublicacoes(publicacoes);
+        publicacoesRecebidas += triagem.total;
+        candidatasTecnicas += triagem.tecnicamenteValidas;
+        estoqueNaoInformadoCatalogo += triagem.estoqueNaoInformado;
+        estoqueEsgotadoExplicito += triagem.esgotadasExplicitamente;
+        mensagensIndisponiveis += triagem.mensagensIndisponibilidade;
+        condicaoNaoNova += triagem.condicaoNaoNova;
+        vendedoresInvalidos += triagem.vendedoresInvalidos;
+        precosInvalidos += triagem.precosInvalidos;
+        identificadoresInvalidos += triagem.identificadoresInvalidos;
+
         const melhor = await this.melhorPublicacao(publicacoes);
         if (!melhor) {
           semEstoqueOuVendedor += 1;
+          if (triagem.tecnicamenteValidas > 0) semReputacaoAprovada += 1;
           continue;
         }
 
@@ -426,7 +458,16 @@ export class MercadoLivreApiFonte {
           if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
           const mensagem = error instanceof Error ? error.message : String(error);
           if (mensagem.includes("HTTP 429")) throw error;
-          console.warn(`Mercado Livre: anuncio ${melhor.item_id} nao confirmado: ${mensagem}`);
+          if (mensagem.includes("HTTP 403")) {
+            detalhes403 += 1;
+            console.warn(
+              `Mercado Livre: anuncio ${melhor.item_id} sem permissao no detalhe (HTTP 403).`
+            );
+          } else {
+            console.warn(
+              `Mercado Livre: anuncio ${melhor.item_id} nao confirmado: ${mensagem}`
+            );
+          }
           semDadosValidos += 1;
           continue;
         }
@@ -467,10 +508,25 @@ export class MercadoLivreApiFonte {
     console.log(
       `Mercado Livre busca: categoria="${this.consulta}", ` +
       `analisados=${analisados}, ofertas_validadas=${ofertas.length}, ` +
-      `sem_estoque_ou_reputacao=${semEstoqueOuVendedor}, ` +
-      `anuncio_desatualizado=${semDadosValidos}, ` +
-      `estoque_nao_informado=${estoqueNaoInformado}, ` +
+      `sem_candidata_ou_vendedor_aprovado=${semEstoqueOuVendedor}, ` +
+      `detalhe_nao_validado=${semDadosValidos}, ` +
+      `estoque_nao_informado_validado=${estoqueNaoInformado}, ` +
       `selecionadas=${Math.min(maximo, ordenadas.length)}.`
+    );
+    // Funil observado na API real: motivos podem se sobrepor, não somar
+    // contagens de rejeição como se fossem produtos distintos.
+    console.log(
+      `Mercado Livre funil: categoria="${this.consulta}", ` +
+      `publicacoes=${publicacoesRecebidas}, ` +
+      `candidatas_tecnicas=${candidatasTecnicas}, ` +
+      `estoque_nao_informado_competicao=${estoqueNaoInformadoCatalogo}, ` +
+      `estoque_esgotado_explicito=${estoqueEsgotadoExplicito}, ` +
+      `mensagem_indisponivel=${mensagensIndisponiveis}, ` +
+      `nao_novos=${condicaoNaoNova}, vendedor_invalido=${vendedoresInvalidos}, ` +
+      `preco_invalido=${precosInvalidos}, item_invalido=${identificadoresInvalidos}, ` +
+      `catalogos_404=${catalogos404}, catalogos_vazios=${catalogosSemPublicacoes}, ` +
+      `catalogos_403=${catalogos403}, sem_reputacao_aprovada=${semReputacaoAprovada}, ` +
+      `detalhe_http403=${detalhes403}, validadas=${ofertas.length}.`
     );
     return ordenadas.slice(0, maximo);
   }

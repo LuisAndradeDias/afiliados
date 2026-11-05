@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import { MercadoLivreApiFonte } from "../src/fontes/mercadolivre/api.js";
 import {
   ordenarPublicacoes, publicacaoComEstoque, validarPermalinkOficial,
-  limiteInteiro, estoqueEsgotadoReportado, textoDeIndisponibilidade
+  limiteInteiro, estoqueEsgotadoReportado, textoDeIndisponibilidade,
+  resumirPublicacoes
 } from "../src/fontes/mercadolivre/selecao.js";
 
 const antigoFetch=globalThis.fetch;
@@ -132,6 +133,25 @@ try{
   assert.ok(!publicacaoComEstoque({
     item_id:"MLB100",seller_id:0,price:100,condition:"new",available_quantity:2
   }));
+  const triagem = resumirPublicacoes([
+    {item_id:"MLB1",seller_id:1,price:100,condition:"new"},
+    {item_id:"MLB2",seller_id:1,price:100,condition:"new",available_quantity:0},
+    {item_id:"MLB3",seller_id:1,price:100,condition:"new",available_quantity:null,
+      title:"Produto indisponível"},
+    {item_id:"MLB4",seller_id:1,price:100,condition:"used",available_quantity:2},
+    {item_id:"MLB5",seller_id:0,price:100,condition:"new",available_quantity:2},
+    {item_id:"MLB6",seller_id:1,price:0,condition:"new",available_quantity:2}
+  ]);
+  assert.equal(triagem.total,6);
+  assert.equal(triagem.tecnicamenteValidas,1,
+    "Só anúncio sem bloqueio explícito deve passar na triagem");
+  assert.equal(triagem.estoqueNaoInformado,2,
+    "Estoque ausente e null devem ser contados sem serem rejeitados por isso");
+  assert.equal(triagem.esgotadasExplicitamente,1);
+  assert.equal(triagem.mensagensIndisponibilidade,1);
+  assert.equal(triagem.condicaoNaoNova,1);
+  assert.equal(triagem.vendedoresInvalidos,1);
+  assert.equal(triagem.precosInvalidos,1);
   const ranked=ordenarPublicacoes([
     {item_id:"MLB11",seller_id:1,price:90,original_price:200,condition:"new",available_quantity:2},
     {item_id:"MLB12",seller_id:1,price:100,original_price:110,condition:"new",available_quantity:2},
@@ -174,6 +194,49 @@ try{
     "Deve consultar segunda página mesmo após cinco achados iniciais");
   assert.ok(fetchCalls.every(c=>!c.includes("access_token=")),
     "Token não deve ser embutido na URL");
+
+  // Funil observável: um catálogo 404 e um detalhe 403 não são "sem estoque".
+  const idDetalhe = "MLB700000";
+  let linhaFunil = "";
+  const logOriginal = console.log;
+  globalThis.fetch = (async (input:string|URL|Request) => {
+    const url = new URL(String(input));
+    assert.equal(url.origin,"https://api.mercadolibre.com");
+    if (url.pathname === "/products/search") return resposta({
+      results: [
+        {id:"MLB6999",name:"Produto ausente",status:"active"},
+        {id:"MLB7000",name:"Produto válido",status:"active"}
+      ], paging:{total:2}
+    });
+    if (url.pathname === "/products/MLB6999/items") return resposta({},404);
+    if (url.pathname === "/products/MLB7000/items") return resposta({
+      results:[{item_id:idDetalhe,seller_id:42,price:80,
+        original_price:160,condition:"new"}]
+    });
+    if (url.pathname === "/users/bulk") return resposta([
+      {status_code:200,body:{id:42,seller_reputation:{level_id:"5_green"}}}
+    ]);
+    if (url.pathname === "/items/"+idDetalhe) {
+      return resposta({error:"access_denied"},403);
+    }
+    throw new Error("Endpoint não simulado: "+url.pathname);
+  }) as typeof fetch;
+  try {
+    console.log = (...args:unknown[]) => {
+      const linha = args.map(String).join(" ");
+      if (linha.startsWith("Mercado Livre funil:")) linhaFunil = linha;
+      logOriginal(...args);
+    };
+    const semAcesso = await new MercadoLivreApiFonte("fone bluetooth",5,"token-falso").buscar();
+    assert.equal(semAcesso.length,0);
+  } finally {
+    console.log = logOriginal;
+  }
+  assert.match(linhaFunil,/catalogos_404=1/);
+  assert.match(linhaFunil,/candidatas_tecnicas=1/);
+  assert.match(linhaFunil,/estoque_nao_informado_competicao=1/);
+  assert.match(linhaFunil,/detalhe_http403=1/);
+  assert.match(linhaFunil,/validadas=0/);
 
   // Falha 429 precisa encerrar a busca, não ser tratada como "sem oferta".
   globalThis.fetch=(async (input:string|URL|Request)=>{

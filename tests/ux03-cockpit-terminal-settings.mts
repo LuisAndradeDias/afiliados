@@ -162,6 +162,22 @@ try{
     await page.locator("#cpvLiveTitle").getByText("Última busca sem ofertas elegíveis").waitFor({
       timeout:5000
     });
+    // UX-04: busca vazia não deve parecer falha técnica, inclusive no topo.
+    await page.reload({waitUntil:"networkidle"});
+    assert.equal(await page.locator("#cpvGlobalOperation").innerText(),"Busca sem ofertas");
+    assert.equal(await page.locator("#cpvGlobalOperation").getAttribute("data-state"),"paused");
+    assert.equal(await page.locator("#flowTitle").innerText(),"Última busca sem ofertas elegíveis");
+    assert.equal(await page.locator("#cycleNow").innerText(),"Busca concluída sem ofertas");
+    assert.equal(await page.locator("#stepSearch.error").count(),0,
+      "Busca sem resultados não é erro de execução");
+
+    // Um erro verdadeiro ainda precisa permanecer visível; não o mascarar.
+    status.mercadoLivreFluxoMensagem="Falha de autenticação no Mercado Livre.";
+    await page.reload({waitUntil:"networkidle"});
+    assert.equal(await page.locator("#cpvGlobalOperation").innerText(),"Operação requer atenção");
+    assert.equal(await page.locator("#cpvGlobalOperation").getAttribute("data-state"),"warning");
+    assert.equal(await page.locator("#flowTitle").innerText(),"A automação precisa de atenção");
+    assert.equal(await page.locator("#stepSearch.error").count(),1);
 
     // Screenshots com dados falsos, sem perfis ou sessão reais.
     status.operacaoEstado="paused";

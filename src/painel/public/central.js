@@ -20,8 +20,12 @@
   };
   function preenchimento(id, valor) { const item = byId(id); if (item) item.textContent = valor; }
   function resumo(s) {
+    const semOferta = s.operacaoEstado === "error" &&
+      /(?:nenhuma oferta|n[aã]o encontrou ofertas|sem ofertas eleg[ií]veis)/i
+        .test(String(s.mercadoLivreFluxoMensagem || ""));
     preenchimento("monitor", s.monitorAlternadoAtivo ? "Ativo" : "Pausado");
-    preenchimento("flow", estadoHumano[s.operacaoEstado] || "Não informado");
+    preenchimento("flow", semOferta ? "Sem ofertas" :
+      estadoHumano[s.operacaoEstado] || "Não informado");
     preenchimento("next", s.monitorAlternadoProximaPlataforma === "mercado-livre"
       ? "Mercado Livre" : s.monitorAlternadoProximaPlataforma === "amazon" ? "Amazon" : "—");
     preenchimento("review", s.ofertaPreparada ? "Pendente" : "Nenhuma");
@@ -36,7 +40,8 @@
       : s.ofertaPreparada ? "Há uma oferta preparada, ainda não confirmada como enviada."
       : "Conexão local estabelecida. Sem publicação acionada por esta página.";
     preenchimento("centralHealth", aviso);
-    preenchimento("headerState", s.operacaoEstado === "error" ? "Motor requer atenção" : "Central conectada");
+    preenchimento("headerState", semOferta ? "Busca sem ofertas" :
+      s.operacaoEstado === "error" ? "Motor requer atenção" : "Central conectada");
   }
   async function carregarEstado() {
     try {
