@@ -411,6 +411,16 @@
       detail: "Aplicando os filtros e as verificações de ofertas do motor.",
       pill: "BUSCA EM ANDAMENTO", tone: "working", platform, next
     };
+    const bloqueio = s.mercadoLivreBuscaBloqueio;
+    if (bloqueio && Number(bloqueio.ate) > Date.now()) return {
+      heading: bloqueio.tipo === "permissao"
+        ? "Mercado Livre: acesso negado pela API"
+        : "Mercado Livre: limite da API atingido",
+      detail: bloqueio.mensagem + " Nova tentativa permitida apos " +
+        new Date(Number(bloqueio.ate)).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) + ".",
+      pill: bloqueio.tipo === "permissao" ? "ACESSO NEGADO (403)" : "AGUARDANDO API (429)",
+      tone: "attention", platform: "Mercado Livre", next
+    };
     if (errorNoOffer) return {
       heading: "Última busca sem ofertas elegíveis",
       detail: "O Mercado Livre concluiu a rodada sem encontrar ofertas que atendam aos filtros atuais.",
