@@ -1,4 +1,5 @@
 import type { Oferta } from "../types.js";
+import { MercadoLivreAcessoNegado, MercadoLivreLimiteApi, lerRetryAfterMs } from "./erros.js";
 import {
   estoqueEsgotadoReportado, limiteInteiro, ordenarPublicacoes,
   resumirPublicacoes, textoDeIndisponibilidade, validarPermalinkOficial
@@ -103,17 +104,17 @@ export class MercadoLivreApiFonte {
     url: URL | string
   ): Promise<Response> {
     let resposta: Response | undefined;
-    const intervalo = Math.max(
-      250,
-      Number(process.env.MERCADOLIVRE_REQUEST_INTERVAL_MS ?? 500)
-    );
+    const configurado = Number(process.env.MERCADOLIVRE_REQUEST_INTERVAL_MS ?? 500);
+    const intervalo = Math.max(250, Number.isFinite(configurado) ? configurado : 500);
 
     if (!this.tokenInformadoManualmente) {
       this.accessToken = await obterTokenMercadoLivreValido();
     }
 
     let renovouApos401 = false;
-    for (let tentativa = 1; tentativa <= 4; tentativa += 1) {
+    // Só 401 permite uma segunda tentativa após renovar o token.
+    // 403/429 interrompem imediatamente; o painel controla a espera.
+    for (let tentativa = 1; tentativa <= 2; tentativa += 1) {
       const espera = Math.max(
         0,
         intervalo - (Date.now() - this.ultimaRequisicaoEm)
@@ -127,7 +128,8 @@ export class MercadoLivreApiFonte {
         headers: {
           accept: "application/json",
           authorization: "Bearer " + this.accessToken
-        }
+        },
+        signal: AbortSignal.timeout(15_000)
       });
 
       if (resposta.status === 401) {
@@ -142,19 +144,20 @@ export class MercadoLivreApiFonte {
           tokenRejeitado: this.accessToken
         });
         renovouApos401 = true;
-        tentativa -= 1;
+        await resposta.body?.cancel();
         continue;
       }
 
-      if (resposta.status !== 429) return resposta;
-
-      if (tentativa < 4) {
-        const retryAfter = Number(resposta.headers.get("retry-after") ?? 0);
-        const atraso = retryAfter > 0
-          ? retryAfter * 1_000
-          : tentativa * 2_500;
-        await new Promise((resolve) => setTimeout(resolve, atraso));
+      if (resposta.status === 403) {
+        await resposta.body?.cancel();
+        throw new MercadoLivreAcessoNegado(new URL(url).pathname);
       }
+      if (resposta.status === 429) {
+        const retryAfterMs = lerRetryAfterMs(resposta.headers.get("retry-after"));
+        await resposta.body?.cancel();
+        throw new MercadoLivreLimiteApi(retryAfterMs);
+      }
+      return resposta;
     }
 
     return resposta!;
@@ -225,6 +228,11 @@ export class MercadoLivreApiFonte {
       let outros = 0;
 
       for (const entrada of resposta) {
+        const status = entrada.status_code ?? entrada.code ?? 200;
+        if (status === 403) throw new MercadoLivreAcessoNegado('/users/bulk');
+        if (status === 429) throw new MercadoLivreLimiteApi(0);
+        if (status === 401) throw new MercadoLivreReautorizacaoNecessaria();
+        if (status < 200 || status >= 300) continue;
         const usuario = entrada.body;
         if (!usuario?.id) continue;
         const nivel = usuario.seller_reputation?.level_id;
@@ -242,7 +250,9 @@ export class MercadoLivreApiFonte {
         );
       }
     } catch (error) {
-      if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
+      if (error instanceof MercadoLivreReautorizacaoNecessaria ||
+          error instanceof MercadoLivreAcessoNegado ||
+          error instanceof MercadoLivreLimiteApi) throw error;
       const mensagem = error instanceof Error ? error.message : String(error);
       if (mensagem.includes("HTTP 429")) throw error;
       console.warn(
@@ -257,9 +267,9 @@ export class MercadoLivreApiFonte {
     }
   }
 
-  private async melhorPublicacao(
+  private async candidatasComReputacao(
     publicacoes: PublicacaoCatalogo[]
-  ): Promise<PublicacaoCatalogo | undefined> {
+  ): Promise<PublicacaoCatalogo[]> {
     const candidatas = ordenarPublicacoes(publicacoes);
 
     if (process.env.MERCADOLIVRE_DEBUG_SELLERS === "true") {
@@ -280,9 +290,11 @@ export class MercadoLivreApiFonte {
       consideradas.map((item) => item.seller_id)
     );
 
-    return consideradas.find(
-      (item) => this.reputacaoVerdePorVendedor.get(item.seller_id) === true
-    );
+    return consideradas.filter(
+      (item, index, lista) =>
+        this.reputacaoVerdePorVendedor.get(item.seller_id) === true &&
+        lista.findIndex(outro => outro.item_id === item.item_id) === index
+    ).slice(0, 3);
   }
 
   /**
@@ -420,7 +432,9 @@ export class MercadoLivreApiFonte {
         try {
           resultadoPublicacoes = await this.buscarPublicacoes(produto.id);
         } catch (error) {
-          if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
+          if (error instanceof MercadoLivreReautorizacaoNecessaria ||
+          error instanceof MercadoLivreAcessoNegado ||
+          error instanceof MercadoLivreLimiteApi) throw error;
           const mensagem = error instanceof Error ? error.message : String(error);
           if (mensagem.includes("HTTP 429")) throw error;
           if (mensagem.includes("sem permissao")) catalogos403 += 1;
@@ -444,32 +458,36 @@ export class MercadoLivreApiFonte {
         precosInvalidos += triagem.precosInvalidos;
         identificadoresInvalidos += triagem.identificadoresInvalidos;
 
-        const melhor = await this.melhorPublicacao(publicacoes);
-        if (!melhor) {
+        const candidatas = await this.candidatasComReputacao(publicacoes);
+        if (candidatas.length === 0) {
           semEstoqueOuVendedor += 1;
           if (triagem.tecnicamenteValidas > 0) semReputacaoAprovada += 1;
           continue;
         }
 
-        let detalhe: Awaited<ReturnType<typeof this.detalharAnuncio>>;
-        try {
-          detalhe = await this.detalharAnuncio(melhor);
-        } catch (error) {
-          if (error instanceof MercadoLivreReautorizacaoNecessaria) throw error;
-          const mensagem = error instanceof Error ? error.message : String(error);
-          if (mensagem.includes("HTTP 429")) throw error;
-          if (mensagem.includes("HTTP 403")) {
-            detalhes403 += 1;
-            console.warn(
-              `Mercado Livre: anuncio ${melhor.item_id} sem permissao no detalhe (HTTP 403).`
-            );
-          } else {
-            console.warn(
-              `Mercado Livre: anuncio ${melhor.item_id} nao confirmado: ${mensagem}`
-            );
+        let detalhe: Awaited<ReturnType<typeof this.detalharAnuncio>> = null;
+        for (const candidata of candidatas) {
+          try {
+            const confirmado = await this.detalharAnuncio(candidata);
+            if (confirmado && (!detalhe ||
+                (desconto(confirmado.preco, confirmado.anterior) ?? 0) >
+                  (desconto(detalhe.preco, detalhe.anterior) ?? 0) ||
+                ((desconto(confirmado.preco, confirmado.anterior) ?? 0) ===
+                  (desconto(detalhe.preco, detalhe.anterior) ?? 0) &&
+                  confirmado.preco < detalhe.preco))) {
+              detalhe = confirmado;
+            }
+          } catch (error) {
+            if (error instanceof MercadoLivreReautorizacaoNecessaria ||
+                error instanceof MercadoLivreAcessoNegado ||
+                error instanceof MercadoLivreLimiteApi) throw error;
+            const mensagem = error instanceof Error ? error.message : String(error);
+            if (mensagem.includes("HTTP 429")) throw error;
+            console.warn(`Mercado Livre: anuncio ${candidata.item_id} nao confirmado: ${mensagem}`);
           }
-          semDadosValidos += 1;
-          continue;
+          // Reclassificar até três anúncios pelo preço realmente confirmado.
+          // O próximo anúncio tem de passar pelas MESMAS regras. Não há
+          // construção de permalink nem reaproveitamento de preço inválido.
         }
         if (!detalhe) {
           semDadosValidos += 1;

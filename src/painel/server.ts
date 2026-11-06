@@ -105,6 +105,17 @@ let mercadoLivreMonitorUltimaBuscaEm = 0;
 let amazonMonitorUltimaBuscaEm = 0;
 let mercadoLivreBuscaLimitada = false;
 let mercadoLivreBloqueadoAte = 0;
+let mercadoLivreRetryAfterMs = 0;
+let mercadoLivreBuscaBloqueio: {
+  tipo: "permissao" | "limite";
+  ate: number;
+  mensagem: string;
+} | null = null;
+
+function bloqueioBuscaMercadoLivre() {
+  return mercadoLivreBuscaBloqueio && mercadoLivreBuscaBloqueio.ate > Date.now()
+    ? mercadoLivreBuscaBloqueio : null;
+}
 
 function monitorAlternadoSlotMs(): number {
   const segundos = Number(
@@ -541,6 +552,24 @@ function iniciar(
   aoFinal?: (codigo: number | null) => void
 ): boolean {
   if (processos.has(nome)) return false;
+  if (nome === "mercadolivre-buscar") {
+    if (bloqueioBuscaMercadoLivre()) return false;
+    mercadoLivreBuscaLimitada = false;
+    mercadoLivreRetryAfterMs = 0;
+    mercadoLivreBuscaBloqueio = null;
+  }
+  let diagnosticoBusca = "";
+  const observarErroBusca = (texto: string) => {
+    if (nome !== "mercadolivre-buscar") return;
+    diagnosticoBusca = (diagnosticoBusca + texto).slice(-1024);
+    if (/HTTP 429|MERCADOLIVRE_RATE_LIMIT|limite de requisicoes/.test(diagnosticoBusca)) {
+      mercadoLivreBuscaLimitada = true;
+    }
+    const retry = Number(diagnosticoBusca.match(/retry_after_ms=(\d+)/)?.[1] ?? 0);
+    if (Number.isSafeInteger(retry) && retry >= 0 && Number.isSafeInteger(Date.now() + retry)) {
+      mercadoLivreRetryAfterMs = Math.max(mercadoLivreRetryAfterMs, retry);
+    }
+  };
 
   const pesquisa = nome === "buscar" || nome === "mercadolivre-buscar";
   const ambienteBusca = pesquisa ? variaveisBusca(modoBusca) : {};
@@ -570,12 +599,7 @@ function iniciar(
     const texto = String(d);
     registrar(nome, texto);
 
-    if (
-      nome === "mercadolivre-buscar" &&
-      (texto.includes("limite de requisicoes") || texto.includes("HTTP 429"))
-    ) {
-      mercadoLivreBuscaLimitada = true;
-    }
+    observarErroBusca(texto);
 
     if (
       nome === "preparar" &&
@@ -643,12 +667,7 @@ function iniciar(
     const texto = String(d);
     registrar(nome, texto);
 
-    if (
-      nome === "mercadolivre-buscar" &&
-      (texto.includes("limite de requisicoes") || texto.includes("HTTP 429"))
-    ) {
-      mercadoLivreBuscaLimitada = true;
-    }
+    observarErroBusca(texto);
 
     if (nome === "preparar" && texto.includes("ENVIO_NAO_CONFIRMADO:")) {
       whatsappAutoEnvioEmAndamento = false;
@@ -668,6 +687,19 @@ function iniciar(
   child.on("close", async (codigo) => {
     registrar(nome, `Finalizado com código ${codigo ?? "?"}.`);
     processos.delete(nome);
+    if (nome === "mercadolivre-buscar" && (codigo === 4 || codigo === 5 || mercadoLivreBuscaLimitada)) {
+      const tipo = codigo === 4 ? "permissao" : "limite";
+      const espera = Math.max(mercadoLivreMonitorBackoffMs(), mercadoLivreRetryAfterMs);
+      mercadoLivreBloqueadoAte = Date.now() + espera;
+      mercadoLivreBuscaBloqueio = {
+        tipo, ate: mercadoLivreBloqueadoAte,
+        mensagem: tipo === "permissao"
+          ? "Mercado Livre: acesso negado (HTTP 403). Verifique as permissoes do aplicativo; nova tentativa temporariamente suspensa."
+          : "Mercado Livre: limite da API (HTTP 429). Aguardando o prazo de nova tentativa, sem repetir requisicoes."
+      };
+      mercadoLivreFluxoAutomatico = false;
+      atualizarFluxoMercadoLivre("error", mercadoLivreBuscaBloqueio.mensagem);
+    }
     aoFinal?.(codigo);
 
     if (nome !== "preparar") return;
@@ -996,6 +1028,8 @@ async function iniciarFluxoMercadoLivreAutomatico(
   ok: boolean;
   mensagem: string;
 }> {
+  const bloqueio = bloqueioBuscaMercadoLivre();
+  if (bloqueio) return { ok: false, mensagem: bloqueio.mensagem };
   if (modoMonitor && !monitorAlternadoAtivo) {
     return {
       ok: false,
@@ -1055,12 +1089,20 @@ async function iniciarFluxoMercadoLivreAutomatico(
           return;
         }
 
+        if ((codigo === 4 || codigo === 5) && bloqueioBuscaMercadoLivre()) {
+          if (modoMonitor && monitorAlternadoAtivo) {
+            agendarProximoTurnoAposRodada("amazon",
+              bloqueioBuscaMercadoLivre()!.mensagem + " Amazon continua no ciclo.");
+          }
+          return;
+        }
+
         if (modoMonitor && monitorAlternadoAtivo) {
           const limitado = mercadoLivreBuscaLimitada;
 
           if (limitado) {
             mercadoLivreBloqueadoAte =
-              Date.now() + mercadoLivreMonitorBackoffMs();
+              Math.max(mercadoLivreBloqueadoAte, Date.now() + mercadoLivreMonitorBackoffMs());
           }
 
           agendarProximoTurnoAposRodada(
@@ -1232,6 +1274,7 @@ async function estado() {
     mercadoLivreFluxoEtapa,
     mercadoLivreFluxoMensagem,
     mercadoLivreMonitorAtivo,
+    mercadoLivreBuscaBloqueio: bloqueioBuscaMercadoLivre(),
     monitorAlternadoAtivo,
     monitorAlternadoProximaPlataforma,
     monitorAlternadoUltimaPlataforma,
@@ -1308,6 +1351,9 @@ async function executarAcao(
   acao: string,
   dados: Record<string, unknown> = {}
 ): Promise<{ ok: boolean; mensagem: string }> {
+  if ((acao === "mercadolivre-buscar" || acao === "mercadolivre-fluxo") && bloqueioBuscaMercadoLivre()) {
+    return { ok: false, mensagem: bloqueioBuscaMercadoLivre()!.mensagem };
+  }
   if (acao === "mercadolivre-config-save") {
     const clientId = String(dados.clientId ?? "").trim();
     const clientSecret = String(dados.clientSecret ?? "").trim();

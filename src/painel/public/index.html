@@ -1406,12 +1406,16 @@
           : "Configurar Tracking ID";
         setDot("amazonDot", s.afiliadoConfigurado ? "ok" : "warn");
 
-        $("mercadoLivreStatus").textContent = s.mercadoLivreApiConfigurada
-          ? (s.mercadoLivreExtensionConectada ? "API + extensão prontas" : "API conectada · extensão offline")
-          : "Configuração pendente";
+        const bloqueioMeli = s.mercadoLivreBuscaBloqueio &&
+          Number(s.mercadoLivreBuscaBloqueio.ate) > Date.now();
+        $("mercadoLivreStatus").textContent = bloqueioMeli
+          ? (s.mercadoLivreBuscaBloqueio.tipo === "permissao" ? "Busca suspensa · acesso negado (403)" : "Busca suspensa · limite da API (429)")
+          : s.mercadoLivreApiConfigurada
+            ? (s.mercadoLivreExtensionConectada ? "API + extensão prontas" : "API conectada · extensão offline")
+            : "Configuração pendente";
         setDot(
           "meliDot",
-          s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada ? "ok" : "warn"
+          !bloqueioMeli && s.mercadoLivreApiConfigurada && s.mercadoLivreExtensionConectada ? "ok" : "warn"
         );
         $("mercadoLivreApi").textContent = s.mercadoLivreApiConfigurada ? "API conectada" : "API pendente";
 
@@ -1841,7 +1845,7 @@
               (!s.mercadoLivreApiConfigurada || !s.afiliadoConfigurado);
           } else if (acao === "mercadolivre-fluxo") {
             b.disabled =
-              s.monitorAlternadoAtivo ||
+              Boolean(bloqueioMeli) || s.monitorAlternadoAtivo ||
               fluxoMlAtivo ||
               mlBuscando ||
               mlPreparando ||
@@ -1849,7 +1853,7 @@
               !s.mercadoLivreApiConfigurada;
           } else if (acao === "mercadolivre-buscar") {
             b.disabled =
-              s.monitorAlternadoAtivo ||
+              Boolean(bloqueioMeli) || s.monitorAlternadoAtivo ||
               mlBuscando ||
               fluxoMlAtivo ||
               !s.mercadoLivreApiConfigurada;

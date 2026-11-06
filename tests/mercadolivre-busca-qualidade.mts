@@ -197,6 +197,7 @@ try{
 
   // Funil observável: um catálogo 404 e um detalhe 403 não são "sem estoque".
   const idDetalhe = "MLB700000";
+  let negarDetalhe = true;
   let linhaFunil = "";
   const logOriginal = console.log;
   globalThis.fetch = (async (input:string|URL|Request) => {
@@ -217,7 +218,10 @@ try{
       {status_code:200,body:{id:42,seller_reputation:{level_id:"5_green"}}}
     ]);
     if (url.pathname === "/items/"+idDetalhe) {
-      return resposta({error:"access_denied"},403);
+      return negarDetalhe ? resposta({error:"access_denied"},403) : resposta({
+        id:idDetalhe,seller_id:42,price:80,original_price:160,status:"active",condition:"new",
+        permalink:"https://produto.mercadolivre.com.br/MLB-700000-teste-_JM"
+      });
     }
     throw new Error("Endpoint não simulado: "+url.pathname);
   }) as typeof fetch;
@@ -227,16 +231,23 @@ try{
       if (linha.startsWith("Mercado Livre funil:")) linhaFunil = linha;
       logOriginal(...args);
     };
-    const semAcesso = await new MercadoLivreApiFonte("fone bluetooth",5,"token-falso").buscar();
-    assert.equal(semAcesso.length,0);
+    await assert.rejects(
+      new MercadoLivreApiFonte("fone bluetooth",5,"token-falso").buscar(),
+      (error:any)=>error.code === "MERCADOLIVRE_PERMISSION_REQUIRED",
+      "403 deve interromper com erro de acesso, nunca retornar uma busca vazia"
+    );
+    assert.equal(linhaFunil,"","Uma rodada interrompida nao pode parecer concluida");
+    negarDetalhe = false;
+    const permitidas = await new MercadoLivreApiFonte("fone bluetooth",5,"token-falso").buscar();
+    assert.equal(permitidas.length,1);
   } finally {
     console.log = logOriginal;
   }
   assert.match(linhaFunil,/catalogos_404=1/);
   assert.match(linhaFunil,/candidatas_tecnicas=1/);
   assert.match(linhaFunil,/estoque_nao_informado_competicao=1/);
-  assert.match(linhaFunil,/detalhe_http403=1/);
-  assert.match(linhaFunil,/validadas=0/);
+  assert.match(linhaFunil,/detalhe_http403=0/);
+  assert.match(linhaFunil,/validadas=1/);
 
   // Falha 429 precisa encerrar a busca, não ser tratada como "sem oferta".
   globalThis.fetch=(async (input:string|URL|Request)=>{
