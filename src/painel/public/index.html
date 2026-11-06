@@ -799,11 +799,57 @@
       .config-grid, .input-row { grid-template-columns: 1fr; }
       .monitor-grid { grid-template-columns: 1fr; }
     }
+    /* MELI-08: revisão assistida só com rascunhos, sem ligação com envio. */
+    body.cpv-ux03 .cpv-settings-page .tool-block.ml-assist-host {
+      grid-column: 1 / -1;
+    }
+    .ml-assist { margin-top: 16px; padding: 14px; border: 1px solid #cbd5e1;
+      border-radius: 12px; background: #f8fafc; }
+    .ml-assist > summary { cursor: pointer; font-size: 13px; font-weight: 800;
+      line-height: 1.45; color: #1b3c58; }
+    .ml-assist[open] > summary { margin-bottom: 10px; }
+    .ml-assist-help { font-size: 12px; color: #556579; line-height: 1.55;
+      margin: 8px 0; }
+    .ml-assist-official { display: inline-block; padding: 6px 0; font-weight: 700;
+      font-size: 12px; }
+    .ml-assist-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+      gap: 10px 12px; margin-top: 10px; }
+    .ml-assist-form > div { min-width: 0; }
+    .ml-assist-full { grid-column: 1 / -1; }
+    .ml-assist-form label:not(.ml-assist-checks label) { display:block; margin-bottom: 4px;
+      font-size: 12px; color: #344054; font-weight: 650; }
+    .ml-assist-form input:not([type="checkbox"]) { display: block; width: 100%;
+      min-width: 0; height: 39px; border: 1px solid #cbd5e1; background: #fff;
+      border-radius: 8px; padding: 8px 10px; font-size: 13px; color: #172b4d; }
+    .ml-assist-form input:focus-visible { outline: 3px solid #b9dbff; outline-offset: 1px; }
+    .ml-assist-checks { display:flex; flex-direction:column; gap:8px;
+      padding: 10px; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; }
+    .ml-assist-checks label { display:flex; gap: 7px; align-items:flex-start;
+      font-size: 11px; line-height: 1.45; color: #344054; }
+    .ml-assist-checks input { flex: 0 0 auto; margin:2px 0 0; width: 15px !important;
+      height:15px; }
+    .ml-assist-feedback { font-size: 12px; line-height: 1.4; margin: 10px 0;
+      color: #805500; min-height: 1em; }
+    .ml-assist-feedback.ok { color: #067647; }
+    .ml-assist-list { display:flex; flex-direction:column; gap:9px; min-width:0; }
+    .ml-assist-item { padding: 12px; border: 1px solid #dee5ed; border-radius: 10px;
+      background: #fff; overflow-wrap:anywhere; }
+    .ml-assist-item strong { display:block; font-size: 13px; color:#23384e; }
+    .ml-assist-item small { display:block; font-size: 11px; margin: 5px 0;
+      line-height:1.4; color:#526477; }
+    .ml-assist-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      margin-top: 8px; }
+    .ml-assist-actions button { font-size: 11px; }
+    @media(max-width:680px) {
+      .ml-assist-form { grid-template-columns:minmax(0,1fr); }
+      .ml-assist-full { grid-column: 1; }
+    }
   </style>
   <link rel="stylesheet" href="/central/assets/unified-nav.css">
   <link rel="stylesheet" href="/central/assets/ofertas-cockpit.css">
   <script src="/central/assets/unified-nav.js" defer></script>
   <script src="/central/assets/ofertas-cockpit.js" defer></script>
+  <script src="/central/assets/mercadolivre-assistido.js" defer></script>
 </head>
 <body>
   <header class="hero">
@@ -1044,7 +1090,7 @@
               </div>
             </div>
 
-            <div class="tool-block">
+            <div class="tool-block ml-assist-host">
               <h3>Mercado Livre · fallback manual</h3>
               <p>Se a automação falhar, você ainda pode buscar, gerar e salvar o link manualmente.</p>
               <div class="actions">
@@ -1074,6 +1120,44 @@
                 <a id="mlAffiliateSaved" target="_blank" rel="noreferrer"></a>
               </div>
               <button style="width:100%;margin-top:9px" class="dark" data-action="mercadolivre-preparar">Preparar ML no WhatsApp</button>
+
+              <details id="mlAssistDetails" class="ml-assist">
+                <summary>Seleção assistida — ofertas da Central de Afiliados</summary>
+                <p class="ml-assist-help">Quando a API negar o detalhamento (403), escolha um produto específico na Central de Afiliados do Mercado Livre e gere o link pelo portal oficial. Salve aqui para revisão; <strong>nenhum rascunho é enviado ao WhatsApp</strong>.</p>
+                <a href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noopener noreferrer" class="ml-assist-official">Abrir Central de Afiliados ↗</a>
+                <form id="mlAssistForm" class="ml-assist-form">
+                  <div class="ml-assist-full">
+                    <label for="mlAssistTitle">Nome do produto</label>
+                    <input id="mlAssistTitle" type="text" minlength="5" maxlength="160" required autocomplete="off" placeholder="Nome exatamente como aparece no anúncio">
+                  </div>
+                  <div class="ml-assist-full">
+                    <label for="mlAssistProduct">Página do produto específico</label>
+                    <input id="mlAssistProduct" type="url" maxlength="2048" required autocomplete="off" placeholder="https://www.mercadolivre.com.br/p/MLB...">
+                  </div>
+                  <div class="ml-assist-full">
+                    <label for="mlAssistAffiliate">Link gerado no seu portal de afiliado</label>
+                    <input id="mlAssistAffiliate" type="url" maxlength="2048" required autocomplete="off" placeholder="https://meli.la/...">
+                  </div>
+                  <div>
+                    <label for="mlAssistPrice">Preço atual (R$)</label>
+                    <input id="mlAssistPrice" type="text" inputmode="decimal" maxlength="10" required autocomplete="off" placeholder="149,90">
+                  </div>
+                  <div>
+                    <label for="mlAssistPrevious">Preço anterior confirmado (R$)</label>
+                    <input id="mlAssistPrevious" type="text" inputmode="decimal" maxlength="10" required autocomplete="off" placeholder="199,90">
+                  </div>
+                  <div class="ml-assist-full ml-assist-checks">
+                    <label><input id="mlAssistPriceCheck" type="checkbox" required> Conferi agora o preço e o desconto na página do produto.</label>
+                    <label><input id="mlAssistStockCheck" type="checkbox" required> O produto está disponível, sem aviso de estoque esgotado.</label>
+                    <label><input id="mlAssistSellerCheck" type="checkbox" required> O vendedor tem reputação verde.</label>
+                    <label><input id="mlAssistLinkCheck" type="checkbox" required> Gerei o link na minha conta de afiliado e confirmei o mesmo produto.</label>
+                  </div>
+                  <button id="mlAssistSave" class="success ml-assist-full" type="submit">Salvar rascunho para revisão</button>
+                </form>
+                <p id="mlAssistFeedback" role="status" aria-live="polite" class="ml-assist-feedback"></p>
+                <div id="mlAssistList" class="ml-assist-list" aria-live="polite">Carregando rascunhos locais...</div>
+                <p class="ml-assist-help">A conferência é declarada por você, não validada pela API. Preços e disponibilidade podem mudar. Reconfira antes de qualquer divulgação.</p>
+              </details>
             </div>
           </div>
         </div>

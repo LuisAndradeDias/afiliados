@@ -34,7 +34,8 @@
     "test:central-visual-integridade": "tsx tests/central-visual-integridade.mts",
     "test:ux-contrato": "tsx tests/ux-assets.mts && tsx tests/ux-contrato-visual.mts && tsx tests/ux-shell-pixel.mts && tsx tests/ux03-cockpit-terminal-settings.mts",
     "ux:auditar-local": "tsx scripts/ux/auditar-producao.mts",
-    "test:mercadolivre-recuperacao": "tsx tests/mercadolivre-recuperacao.mts && tsx tests/mercadolivre-preview-falhas.mts && tsx tests/mercadolivre-bloqueio.mts"
+    "test:mercadolivre-recuperacao": "tsx tests/mercadolivre-recuperacao.mts && tsx tests/mercadolivre-preview-falhas.mts && tsx tests/mercadolivre-bloqueio.mts",
+    "test:mercadolivre-assistido": "tsx tests/mercadolivre-assistido.mts && tsx tests/mercadolivre-assistido-http.mts && tsx tests/mercadolivre-assistido-ui.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
