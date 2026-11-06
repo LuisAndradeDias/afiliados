@@ -14,6 +14,7 @@ const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/central.tokens.css": "central.tokens.css",
   "/central/assets/ofertas-cockpit.css": "ofertas-cockpit.css",
   "/central/assets/ofertas-cockpit.js": "ofertas-cockpit.js",
+  "/central/assets/mercadolivre-assistido.js": "mercadolivre-assistido.js",
   "/central/assets/central.js": "central.js",
   "/central/assets/unified-nav.css": "unified-nav.css",
   "/central/assets/unified-nav.js": "unified-nav.js",
