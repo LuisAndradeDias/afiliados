@@ -2,10 +2,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import { criarRepositorioMeli, ErroRascunhoMeli } from "./mercadolivre-assistido.js";
+import {
+  avaliarCanalMeli, confirmarCanalMeli, revogarCanalMeli
+} from "./mercadolivre-canal.js";
 
-type Args={req:IncomingMessage;res:ServerResponse;pathname:string;raiz:string};
+type Args={req:IncomingMessage;res:ServerResponse;pathname:string;raiz:string;grupoAtual?:string};
 const repos=new Map<string,ReturnType<typeof criarRepositorioMeli>>();
 const base="/api/mercadolivre/rascunhos-assistidos";
+const canalBase="/api/mercadolivre/canal";
 function responder(res:ServerResponse,http:number,body:unknown){
   res.writeHead(http,{
     "content-type":"application/json; charset=utf-8",
@@ -42,11 +46,57 @@ async function corpoJson(req:IncomingMessage):Promise<unknown>{
   catch {throw new ErroRascunhoMeli("JSON inválido.");}
 }
 export async function responderRotaMeliAssistido({
-  req,res,pathname,raiz
+  req,res,pathname,raiz,grupoAtual
 }:Args):Promise<boolean>{
-  if(pathname!==base && !pathname.startsWith(base+"/"))return false;
+  if(pathname!==base && !pathname.startsWith(base+"/") &&
+     pathname!==canalBase)return false;
   if(!hostLocal(req)){
     responder(res,403,{ok:false,mensagem:"Acesse apenas pela Central local."});
+    return true;
+  }
+  if(pathname===canalBase){
+    const caminho=resolve(raiz,"data","mercadolivre-canal-publico.json");
+    const grupo=grupoAtual??process.env.WHATSAPP_GROUP_NAME;
+    if(req.method==="GET"){
+      responder(res,200,{ok:true,...avaliarCanalMeli(caminho,grupo)});
+      return true;
+    }
+    if(req.method==="POST"){
+      if(!origemValida(req)){
+        responder(res,403,{ok:false,mensagem:"Confirmação apenas pela Central local."});
+        return true;
+      }
+      try{
+        const data=await corpoJson(req) as Record<string,unknown>;
+        if(!data || typeof data!=="object" || Array.isArray(data)){
+          throw new ErroRascunhoMeli("Declaração inválida.");
+        }
+        if(data.acao==="confirmar"){
+          try{
+            await confirmarCanalMeli(caminho,grupo,{
+              grupoPublico:data.grupoPublico===true,
+              cadastradoNoPrograma:data.cadastradoNoPrograma===true,
+              semDivulgacaoPrivada:data.semDivulgacaoPrivada===true
+            });
+          }catch(error){
+            throw new ErroRascunhoMeli(
+              error instanceof Error?error.message:"Confirmação inválida."
+            );
+          }
+        }else if(data.acao==="revogar"){
+          await revogarCanalMeli(caminho);
+        }else{
+          throw new ErroRascunhoMeli("Ação de canal desconhecida.");
+        }
+        responder(res,200,{ok:true,...avaliarCanalMeli(caminho,grupo)});
+      }catch(error){
+        responder(res,error instanceof ErroRascunhoMeli?error.statusCode:500,{
+          ok:false,mensagem:error instanceof ErroRascunhoMeli?error.message:"Erro ao salvar confirmação do canal."
+        });
+      }
+      return true;
+    }
+    responder(res,405,{ok:false,mensagem:"Método não permitido."});
     return true;
   }
   const file=resolve(raiz,"data","mercadolivre-rascunhos-assistidos.json");

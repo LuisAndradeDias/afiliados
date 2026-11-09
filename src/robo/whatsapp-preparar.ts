@@ -24,6 +24,7 @@ import {
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
 import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
+import { podeEnviarPlataforma } from "../painel/mercadolivre-canal.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
 const pacotePath = resolve("data", "ultima-oferta-whatsapp.json");
@@ -61,6 +62,16 @@ interface PacotePreparar {
 const pacote: PacotePreparar = await readFile(pacotePath, "utf8")
   .then((texto) => JSON.parse(texto) as PacotePreparar)
   .catch(() => ({}));
+
+if (!modoTeste && !podeEnviarPlataforma(
+  pacote.plataforma,
+  resolve("data", "mercadolivre-canal-publico.json"),
+  nomeGrupo
+)) {
+  throw new Error(
+    "CANAL_NAO_PERMITIDO: oferta sem plataforma reconhecida ou Mercado Livre sem confirmação de canal público cadastrado. Nenhum WhatsApp foi aberto."
+  );
+}
 
 // Reconfere o histórico antes de abrir o navegador: um produto com outro
 // ASIN/código de anúncio não pode ser republicado só por isso.

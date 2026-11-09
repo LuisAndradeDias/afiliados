@@ -102,5 +102,58 @@
     }catch(error){notice(error.message);}
     finally{submit.disabled=false;submit.textContent=previous;}
   });
+  // MELI-09: confirmação manual de canal público, independente dos rascunhos.
+  const canalStatus=byId("mlCanalStatus");
+  const canalConfirmar=byId("mlCanalConfirmar");
+  const canalRevogar=byId("mlCanalRevogar");
+  const canalApi="/api/mercadolivre/canal";
+  async function carregarCanal(){
+    const state=await api(canalApi);
+    if(canalStatus){
+      canalStatus.textContent=state.permitido
+        ? "Canal público cadastrado declarado pelo operador. A confirmação não substitui a verificação das regras oficiais."
+        : "WhatsApp Mercado Livre bloqueado: "+String(state.mensagem||"canal não confirmado.");
+      canalStatus.style.color=state.permitido?"#067647":"#92400e";
+    }
+    if(canalRevogar)canalRevogar.disabled=!state.permitido;
+    return state;
+  }
+  if(canalConfirmar)canalConfirmar.addEventListener("click",async()=>{
+    if(canalConfirmar.disabled)return;
+    const ids=["mlCanalPublico","mlCanalCadastrado","mlCanalSemPrivado"];
+    if(!ids.every(id=>byId(id).checked)){
+      if(canalStatus)canalStatus.textContent="Marque as três confirmações verdadeiras antes de salvar.";
+      return;
+    }
+    canalConfirmar.disabled=true;
+    try {
+      await api(canalApi,{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          acao:"confirmar",grupoPublico:true,cadastradoNoPrograma:true,semDivulgacaoPrivada:true
+        })
+      });
+      await carregarCanal();
+    }catch(e){if(canalStatus)canalStatus.textContent=e.message;}
+    finally{canalConfirmar.disabled=false;}
+  });
+  if(canalRevogar)canalRevogar.addEventListener("click",async()=>{
+    if(!window.confirm("Revogar a confirmação do destino Mercado Livre? Os envios MELI ficarão bloqueados."))return;
+    canalRevogar.disabled=true;
+    try{
+      await api(canalApi,{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({acao:"revogar"})
+      });
+      for(const id of ["mlCanalPublico","mlCanalCadastrado","mlCanalSemPrivado"]){
+        byId(id).checked=false;
+      }
+      await carregarCanal();
+    }catch(e){if(canalStatus)canalStatus.textContent=e.message;}
+    finally{canalRevogar.disabled=false;}
+  });
+  if(canalStatus)carregarCanal().catch(()=>{
+    canalStatus.textContent="Não foi possível verificar o canal; envio Mercado Livre permanece bloqueado.";
+  });
   load().catch(()=>notice("Rascunhos assistidos indisponíveis. Atualize a Central."));
 })();

@@ -26,6 +26,7 @@ jobs:
       - run: npm run test:mercadolivre-qualidade
       - run: npm run test:mercadolivre-recuperacao
       - run: npm run test:mercadolivre-assistido
+      - run: npm run test:meli09
       - run: npm run test:painel-operacional
       - run: npm run test:modos-busca
       - run: npm run test:historico-antiduplicado
@@ -47,5 +48,6 @@ jobs:
             test-results/ux03/*.png
             test-results/meli/*.png
             test-results/meli07/*.png
+            test-results/meli09/*.png
           if-no-files-found: ignore
           retention-days: 7

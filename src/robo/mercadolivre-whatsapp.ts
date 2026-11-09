@@ -7,6 +7,17 @@ import { PublicadorArquivo } from "../publicadores/arquivo.js";
 import { salvarPacoteWhatsapp } from "../publicadores/pacote-whatsapp.js";
 import { revalidarCupomMercadoLivre } from "../afiliados/mercadolivre-cupons.js";
 import { DESCONTO_MINIMO_PERCENTUAL } from "../ofertas/regras-autorizadas.js";
+import { avaliarCanalMeli } from "../painel/mercadolivre-canal.js";
+import { resolve } from "node:path";
+
+if (!avaliarCanalMeli(
+  resolve("data", "mercadolivre-canal-publico.json"),
+  process.env.WHATSAPP_GROUP_NAME
+).permitido) {
+  throw new Error(
+    "MELI_CANAL_NAO_CONFIRMADO: destino WhatsApp Mercado Livre não confirmado como público e cadastrado. Nenhum pacote foi preparado."
+  );
+}
 
 let oferta = await lerOfertaMercadoLivre();
 

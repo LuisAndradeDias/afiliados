@@ -23,6 +23,7 @@ import { lerConfigAutoEnvio } from "../robo/whatsapp-auto-send.js";
 import { responderRotaVisual } from "./rotas-visuais.js";
 import { responderRotaShopee } from "./shopee-http.js";
 import { responderRotaMeliAssistido } from "./mercadolivre-assistido-http.js";
+import { avaliarCanalMeli } from "./mercadolivre-canal.js";
 import { responderRotaRevisao } from "./revisao-http.js";
 import {
   CONSULTAS_AMAZON_AUTORIZADAS,
@@ -45,6 +46,8 @@ const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
 const porta = Number(process.env.PAINEL_PORT ?? 3030);
 const modoBuscaPath = resolve(raiz, "data", "config-busca.json");
+const canalMeliPath = resolve(raiz, "data", "mercadolivre-canal-publico.json");
+const canalMeliAtual = () => avaliarCanalMeli(canalMeliPath, process.env.WHATSAPP_GROUP_NAME);
 let modoBusca: ModoBusca = lerModoBusca(modoBuscaPath);
 
 const processos = new Map<string, ChildProcess>();
@@ -836,6 +839,13 @@ function iniciarPreparacaoWhatsapp(
   origem: PlataformaMonitor
 ): boolean {
   if (processos.has("preparar")) return false;
+  if (origem === "mercado-livre" && !canalMeliAtual().permitido) {
+    registrar("mercadolivre",
+      "Envio Mercado Livre bloqueado: canal público cadastrado ainda não confirmado.");
+    atualizarFluxoMercadoLivre("error",
+      "Revise o destino de divulgação. O WhatsApp Mercado Livre só pode ser usado em canal público cadastrado.");
+    return false;
+  }
 
   origemPreparacaoAtual = origem;
   origemPreparacaoEmExecucao = origem;
@@ -965,6 +975,12 @@ async function criarPedidoLinkMercadoLivre(): Promise<MercadoLivreLinkJob> {
 }
 
 async function prepararMercadoLivreAutomaticamente(): Promise<boolean> {
+  if (!canalMeliAtual().permitido) {
+    mercadoLivreFluxoAutomatico = false;
+    atualizarFluxoMercadoLivre("error",
+      "Canal WhatsApp do Mercado Livre não confirmado como público e cadastrado. Não houve preparação ou envio.");
+    return false;
+  }
   if (whatsappOcupado() || processos.has("mercadolivre-whatsapp")) {
     atualizarFluxoMercadoLivre(
       "error",
@@ -1265,6 +1281,7 @@ async function estado() {
     mercadoLivreOauthPronto:
       appMercadoLivreConfigurada() && redirectMercadoLivreValido(),
     mercadoLivreApiConfigurada: Boolean(process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim()),
+    mercadoLivreCanal: canalMeliAtual(),
     mercadoLivreUserId: process.env.MERCADOLIVRE_USER_ID?.trim() ?? "",
     mercadoLivreClientId: process.env.MERCADOLIVRE_CLIENT_ID?.trim() ?? "",
     mercadoLivreRedirectUri: redirectMercadoLivre(),
@@ -1692,6 +1709,9 @@ async function executarAcao(
       .catch(() => ({} as { plataforma?: string }));
     const origem =
       plataformaDoValor(pacoteAtual.plataforma) ?? "amazon";
+    if(origem === "mercado-livre" && !canalMeliAtual().permitido){
+      return {ok:false,mensagem:"Envio Mercado Livre bloqueado: confirme canal público cadastrado nas Ferramentas."};
+    }
 
     const ok = iniciarPreparacaoWhatsapp(origem);
     return { ok, mensagem: ok ? "Preparando oferta no WhatsApp." : "A tarefa já está em andamento." };
@@ -1773,6 +1793,9 @@ async function executarAcao(
 
   if (acao === "preparar-send" || acao === "preparar-send-next") {
     const origemPacote = await plataformaDaOfertaAtual();
+    if(origemPacote === "mercado-livre" && !canalMeliAtual().permitido){
+      return {ok:false,mensagem:"Envio bloqueado: o destino do Mercado Livre precisa ser público e cadastrado no programa."};
+    }
     if (origemPacote) {
       origemPreparacaoAtual = origemPacote;
       if (processos.has("preparar")) {
