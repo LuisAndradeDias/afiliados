@@ -80,6 +80,10 @@ function isoDataBrasil(
     return undefined;
   }
 
+  const calendario = new Date(Date.UTC(ano, m - 1, d));
+  if (calendario.getUTCFullYear() !== ano || calendario.getUTCMonth() !== m - 1 ||
+      calendario.getUTCDate() !== d) return undefined;
+
   const horario = fimDoDia ? "23:59:59" : "00:00:00";
   return `${String(ano).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T${horario}-03:00`;
 }
@@ -198,13 +202,36 @@ export function extrairCuponsMercadoLivre(html: string): CupomMercadoLivre[] {
   return [...porCodigo.values()];
 }
 
-function cupomAtivo(cupom: CupomMercadoLivre, agora = Date.now()): boolean {
-  const inicio = cupom.validoDe ? new Date(cupom.validoDe).getTime() : Number.NaN;
-  const fim = cupom.validoAte ? new Date(cupom.validoAte).getTime() : Number.NaN;
+function dataCupom(valor: unknown): number {
+  if (typeof valor !== "string") return Number.NaN;
+  const partes = /^(\d{4})-(\d{2})-(\d{2})T.+(?:Z|[+-]\d{2}:\d{2})$/.exec(valor);
+  if (!partes) return Number.NaN;
+  const [ano, mes, dia] = partes.slice(1).map(Number);
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  if (d.getUTCFullYear() !== ano || d.getUTCMonth() !== mes - 1 ||
+      d.getUTCDate() !== dia) return Number.NaN;
+  return Date.parse(valor);
+}
 
-  if (Number.isFinite(inicio) && agora < inicio) return false;
-  if (Number.isFinite(fim) && agora > fim) return false;
-  return true;
+// Vigente no catálogo não significa aplicável a um produto/usuário.
+function cupomAtivo(cupom: CupomMercadoLivre, agora = Date.now()): boolean {
+  if (!cupom || typeof cupom !== "object") return false;
+  const inicio = cupom.validoDe === undefined ? -Infinity : dataCupom(cupom.validoDe);
+  const fim = dataCupom(cupom.validoAte);
+  const coletado = dataCupom(cupom.coletadoEm);
+  if (Number.isNaN(inicio) || !Number.isFinite(fim) || !Number.isFinite(coletado) ||
+      inicio > fim || agora < inicio || agora > fim ||
+      coletado > agora || agora - coletado > observedTtlMs()) return false;
+  const percentual = cupom.percentual;
+  const fixo = cupom.valorFixo;
+  if (percentual !== undefined && (!Number.isFinite(percentual) || percentual <= 0 || percentual > 100)) return false;
+  if (fixo !== undefined && (!Number.isFinite(fixo) || fixo <= 0)) return false;
+  if ((percentual === undefined) === (fixo === undefined)) return false;
+  if (cupom.compraMinima !== undefined &&
+      (!Number.isFinite(cupom.compraMinima) || cupom.compraMinima < 0)) return false;
+  if (cupom.descontoMaximo !== undefined &&
+      (!Number.isFinite(cupom.descontoMaximo) || cupom.descontoMaximo <= 0)) return false;
+  return typeof cupom.codigo === "string" && /^[A-Z0-9][A-Z0-9_-]{3,29}$/.test(cupom.codigo);
 }
 
 function refreshMs(): number {
@@ -271,6 +298,13 @@ export async function registrarCuponsObservadosMercadoLivre(
   blocos: string[],
   origem: string
 ): Promise<number> {
+  try {
+    const fonte = new URL(origem);
+    if (fonte.protocol !== "https:" || fonte.username || fonte.password || fonte.port ||
+        !(fonte.hostname === "mercadolivre.com.br" || fonte.hostname.endsWith(".mercadolivre.com.br"))) return 0;
+    // Não persistir query strings da conta do usuário.
+    origem = fonte.origin + fonte.pathname;
+  } catch { return 0; }
   const texto = blocos
     .filter((bloco) => bloco && bloco.length <= 4_000)
     .slice(0, 100)
@@ -350,12 +384,11 @@ export async function obterCuponsMercadoLivre(
     try {
       cupons = await baixarCupons();
     } catch (error) {
-      if (cupons.length === 0) throw error;
-
       const mensagem = error instanceof Error ? error.message : String(error);
       console.warn(
-        `Mercado Livre: usando cache de cupons porque a atualização falhou: ${mensagem}`
+        `Mercado Livre: catálogo não atualizado; somente observações recentes e com validade explícita poderão ser usadas: ${mensagem}`
       );
+      // Ainda consultar observações do navegador. Elas podem existir sem cache público.
     }
   }
 
@@ -469,6 +502,7 @@ function limparCupomOferta(oferta: Oferta): Oferta {
     cupomValidoAte: undefined,
     cupomValidacao: undefined,
     precoComCupomEstimado: undefined,
+    descontoComCupomEstimadoPercentual: undefined,
     descontoEfetivoPercentual: oferta.descontoPercentual ?? 0
   };
 }
@@ -479,7 +513,10 @@ function aplicarCupom(
 ): Oferta | null {
   const oferta = limparCupomOferta(ofertaOriginal);
 
-  if (exclusaoConhecida(oferta)) return null;
+  if (!cupomAtivo(cupom) || exclusaoConhecida(oferta) ||
+      !Number.isFinite(oferta.precoAtual) || oferta.precoAtual <= 0 ||
+      (oferta.precoAnterior !== undefined &&
+       (!Number.isFinite(oferta.precoAnterior) || oferta.precoAnterior <= 0))) return null;
 
   const precoReferencia =
     cupom.naoCumulativo &&
@@ -491,7 +528,7 @@ function aplicarCupom(
   const descontoValor = descontoCupom(precoReferencia, cupom);
   if (!descontoValor) return null;
 
-  const precoCupom = Math.max(0.01, precoReferencia - descontoValor);
+  const precoCupom = Math.max(0.01, Math.round((precoReferencia - descontoValor) * 100) / 100);
   const melhorPreco = Math.min(oferta.precoAtual, precoCupom);
   const referencia =
     oferta.precoAnterior && oferta.precoAnterior > melhorPreco
@@ -520,7 +557,9 @@ function aplicarCupom(
     cupomValidoAte: cupom.validoAte,
     cupomValidacao: "catalogo-oficial-estimado",
     precoComCupomEstimado: precoCupom,
-    descontoEfetivoPercentual: descontoEfetivo
+    descontoComCupomEstimadoPercentual: descontoEfetivo,
+    // Sem confirmação por produto, o cupom não satisfaz o filtro comercial.
+    descontoEfetivoPercentual: descontoBase
   };
 }
 
@@ -535,8 +574,8 @@ export function aplicarMelhorCupomMercadoLivre(
     if (!candidata) continue;
 
     if (
-      (candidata.descontoEfetivoPercentual ?? 0) >
-      (melhor.descontoEfetivoPercentual ?? 0)
+      (candidata.descontoComCupomEstimadoPercentual ?? 0) >
+      (melhor.descontoComCupomEstimadoPercentual ?? melhor.descontoPercentual ?? 0)
     ) {
       melhor = candidata;
     }
