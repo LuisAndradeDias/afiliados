@@ -19,7 +19,7 @@
     h1{font-size:clamp(27px,4vw,38px);margin:6px 0 8px;letter-spacing:-.03em}
     .rev-hero p{margin:0;color:#d4e1ef;max-width:760px;font-size:14px}
     .rev-shell{max-width:1120px;margin:-30px auto 0;padding:0 20px 50px}
-    .rev-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .rev-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
     .rev-panel{background:#fff;border:1px solid #e3eaf2;border-radius:15px;box-shadow:0 7px 22px rgba(16,24,40,.05)}
     .rev-stat{padding:19px 20px}.rev-stat span{display:block;font-size:12px;color:#64748b;font-weight:650}
     .rev-stat strong{display:block;font-size:30px;margin-top:6px;font-variant-numeric:tabular-nums}
@@ -33,6 +33,7 @@
     .rev-card{padding:19px 21px}
     .rev-card h3{margin:4px 0 8px;font-size:17px}
     .rev-chip{display:inline-flex;padding:4px 10px;border-radius:50px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:750}
+    .rev-chip-pending{margin-left:6px;background:#fffbeb;border:1px solid #f4d58d;color:#92400e}
     .rev-fields{display:flex;gap:15px;flex-wrap:wrap;color:#475569;font-size:12px;margin:12px 0}
     .rev-fields b{color:#1e293b}
     .rev-card details{border-top:1px solid #edf2f7;padding-top:10px}
@@ -54,7 +55,9 @@
   </header>
   <main class="rev-shell">
     <section class="rev-stats" aria-label="Indicadores de revisão">
-      <article class="rev-panel rev-stat"><span>Ofertas observadas</span><strong id="revObserved">—</strong><small>Registros locais atuais</small></article>
+      <article class="rev-panel rev-stat"><span>Ofertas observadas</span><strong id="revObserved">—</strong><small>Somente registros do motor</small></article>
+      <article class="rev-panel rev-stat"><span>Rascunhos MELI</span><strong id="revDrafts">—</strong><small>Manuais, não publicados</small></article>
+      <article class="rev-panel rev-stat"><span>Para reconferir</span><strong id="revRecheck">—</strong><small>Conferência com 120 min ou mais</small></article>
       <article class="rev-panel rev-stat"><span>Envios confirmados</span><strong id="revSent">—</strong><small>Somente histórico persistido</small></article>
       <article class="rev-panel rev-stat"><span>Autoenvio configurado</span><strong id="revAuto">—</strong><small>Consulta de status; não altera o motor</small></article>
     </section>
@@ -64,6 +67,7 @@
         <button class="rev-btn" type="button" data-rev-filter="todos" aria-pressed="true">Todos</button>
         <button class="rev-btn" type="button" data-rev-filter="oferta-preparada" aria-pressed="false">Preparados</button>
         <button class="rev-btn" type="button" data-rev-filter="observacao-mercado-livre" aria-pressed="false">Mercado Livre</button>
+        <button class="rev-btn" type="button" data-rev-filter="rascunho-assistido-meli" aria-pressed="false">Rascunhos MELI</button>
         <button class="rev-btn" type="button" id="revRefresh">Atualizar</button>
       </div>
     </div>
@@ -71,7 +75,7 @@
     <div id="revList" class="rev-list" aria-live="polite">
       <div class="rev-panel rev-empty">Consultando arquivos locais...</div>
     </div>
-    <p class="rev-foot">A publicação e a verificação de preço continuam sob responsabilidade do motor de ofertas atual. Dados ausentes não são inventados.</p>
+    <p class="rev-foot">Rascunhos assistidos são declarações manuais, não aprovação ou oferta pronta para envio. Preço, estoque, reputação e link precisam ser reconferidos antes da divulgação. O Mercado Livre permite links em canais públicos autorizados e veda grupos privados. <a href="https://www.mercadolivre.com.br/l/afiliados-onde-compartilhar-links" target="_blank" rel="noopener noreferrer">Consultar regras oficiais de compartilhamento</a>. Esta tela é somente leitura: nenhum WhatsApp é acionado.</p>
   </main>
 </body>
 </html>

@@ -5,6 +5,8 @@
 import { readFile, stat } from "node:fs/promises";
 import type { ServerResponse } from "node:http";
 import { resolve } from "node:path";
+import { urlProdutoIndividual } from "./mercadolivre-assistido.js";
+import { normalizarLinkAfiliadoMercadoLivre } from "../afiliados/mercadolivre.js";
 
 type JsonRecord = Record<string, unknown>;
 export interface FichaTecnica {
@@ -12,7 +14,9 @@ export interface FichaTecnica {
   titulo: string;
   plataforma: string;
   produtoId: string;
-  origem: "oferta-preparada" | "observacao-mercado-livre";
+  origem: "oferta-preparada" | "observacao-mercado-livre" | "rascunho-assistido-meli";
+  conferidoEm?: string;
+  revisaoNecessaria?: boolean;
   precoAtual: number | null;
   descontoPercentual: number | null;
   cupomCodigo: string | null;
@@ -22,7 +26,13 @@ export interface FichaTecnica {
 export interface RevisaoTecnica {
   modo: "somente-leitura";
   consultadoEm: string;
-  resumo: { ofertasObservadas: number; enviosConfirmados: number | null; ultimoEnvioEm: string | null };
+  resumo: {
+    ofertasObservadas: number;
+    enviosConfirmados: number | null;
+    ultimoEnvioEm: string | null;
+    rascunhosAssistidos: number;
+    rascunhosParaRever: number;
+  };
   fichas: FichaTecnica[];
   avisos: string[];
 }
@@ -90,13 +100,83 @@ function ficha(dado: unknown, origem: FichaTecnica["origem"]): FichaTecnica | nu
     precoAtual, descontoPercentual, cupomCodigo, link, verificacoes
   };
 }
-export async function consultarRevisaoTecnica(raiz: string): Promise<RevisaoTecnica> {
+const PRAZO_RECONFERENCIA_MINUTOS = 120;
+
+/**
+ * Registro manual é exibido como rascunho, nunca como oferta validada.
+ * Falha fechada ao detectar JSON adulterado ou URL não permitida.
+ */
+function fichaRascunhoAssistido(entrada: unknown, agoraMs: number): FichaTecnica | null {
+  const d = objeto(entrada);
+  if (!d || d.origem !== "conferencia-manual" ||
+      d.status !== "rascunho-nao-publicado" ||
+      typeof d.id !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.id)) {
+    return null;
+  }
+  const titulo = texto(d.titulo, 160);
+  const precoAtual = numero(d.precoAtual);
+  const precoAnterior = numero(d.precoAnterior);
+  const descontoPercentual = numero(d.descontoPercentual);
+  if (titulo.length < 5 || precoAtual === null || precoAtual <= 0 ||
+      precoAnterior === null || precoAnterior <= precoAtual ||
+      descontoPercentual === null || descontoPercentual < 20 ||
+      Math.abs((1 - precoAtual / precoAnterior) * 100 - descontoPercentual) > 0.03) {
+    return null;
+  }
+  let produto: string;
+  let afiliado: string;
+  try {
+    produto = urlProdutoIndividual(d.urlProduto);
+    afiliado = normalizarLinkAfiliadoMercadoLivre(String(d.urlAfiliado ?? ""));
+    const u = new URL(afiliado);
+    if (u.username || u.password || u.port) return null;
+    if (linkAparente(afiliado) !== afiliado) return null;
+  } catch { return null; }
+  const verificadoEm = typeof d.conferidoEm === "string"
+    ? Date.parse(d.conferidoEm) : NaN;
+  const diferencaMinutos = (agoraMs - verificadoEm) / 60000;
+  const revisaoNecessaria = !Number.isFinite(diferencaMinutos) ||
+    diferencaMinutos < 0 || diferencaMinutos >= PRAZO_RECONFERENCIA_MINUTOS;
+  const produtoId = /\/p\/(MLB[0-9]+)/i.exec(produto)?.[1] ??
+    /\/(MLB)-([0-9]+)/i.exec(produto)?.slice(1).join("") ?? "";
+  const observacao = revisaoNecessaria
+    ? "Conferência com mais de 120 minutos, futura ou inválida: revise preço, estoque, reputação e link."
+    : "Conferência declarada recentemente pelo usuário; NÃO validada pela API do Mercado Livre.";
+  return {
+    id: "rascunho-assistido-meli:" + d.id,
+    titulo,
+    plataforma: "Mercado Livre",
+    produtoId,
+    origem: "rascunho-assistido-meli",
+    precoAtual,
+    descontoPercentual,
+    cupomCodigo: null,
+    link: afiliado,
+    conferidoEm: Number.isFinite(verificadoEm)
+      ? new Date(verificadoEm).toISOString() : undefined,
+    revisaoNecessaria,
+    verificacoes: [
+      { nome: "Origem", observacao: "Rascunho criado manualmente; não publicado, não enviado e não aprovado automaticamente." },
+      { nome: "Frescor", observacao },
+      { nome: "Disponibilidade", observacao: "Estoque e reputação verde apenas declarados na criação; reabra o anúncio." },
+      { nome: "Canal", observacao: "Divulgue somente em canal público permitido e declarado ao Programa de Afiliados. Grupos privados não são permitidos." },
+      { nome: "Link", observacao: "Link oficial registrado pelo usuário; não houve verificação de atribuição pela API." }
+    ]
+  };
+}
+
+export async function consultarRevisaoTecnica(
+  raiz: string,
+  agoraMs: number = Date.now()
+): Promise<RevisaoTecnica> {
   const avisos: string[] = [];
   const base = resolve(raiz, "data");
-  const [pacote, observado, historico] = await Promise.all([
+  const [pacote, observado, historico, assistidos] = await Promise.all([
     lerJson(resolve(base, "ultima-oferta-whatsapp.json"), 128 * 1024, avisos, "Oferta preparada"),
     lerJson(resolve(base, "ultima-oferta-mercadolivre.json"), 128 * 1024, avisos, "Mercado Livre"),
-    lerJson(resolve(base, "historico-ofertas.json"), 1024 * 1024, avisos, "Histórico")
+    lerJson(resolve(base, "historico-ofertas.json"), 1024 * 1024, avisos, "Histórico"),
+    lerJson(resolve(base, "mercadolivre-rascunhos-assistidos.json"), 128 * 1024, avisos, "Rascunhos Mercado Livre")
   ]);
   const fichas = [
     ficha(pacote, "oferta-preparada"),
@@ -106,6 +186,24 @@ export async function consultarRevisaoTecnica(raiz: string): Promise<RevisaoTecn
   if (fichas.length === 2 && fichas[0].produtoId &&
       fichas[0].produtoId === fichas[1].produtoId &&
       fichas[0].plataforma.toLowerCase().includes("mercado")) fichas.pop();
+
+  let rascunhos: FichaTecnica[] = [];
+  if (assistidos !== null) {
+    const container = objeto(assistidos);
+    if (container?.versao === 1 && Array.isArray(container.rascunhos) &&
+        container.rascunhos.length <= 100) {
+      const itens = container.rascunhos.map((item: unknown) =>
+        fichaRascunhoAssistido(item, agoraMs)
+      );
+      if (itens.every((item): item is FichaTecnica => item !== null)) {
+        rascunhos = itens as FichaTecnica[];
+      } else {
+        avisos.push("Rascunhos Mercado Livre: dados inconsistentes; nenhum foi incorporado à revisão.");
+      }
+    } else {
+      avisos.push("Rascunhos Mercado Livre: arquivo inválido; nenhum registro incorporado.");
+    }
+  }
 
   let enviados: number | null = null;
   let ultimo: string | null = null;
@@ -123,8 +221,14 @@ export async function consultarRevisaoTecnica(raiz: string): Promise<RevisaoTecn
   return {
     modo: "somente-leitura",
     consultadoEm: new Date().toISOString(),
-    resumo: { ofertasObservadas: fichas.length, enviosConfirmados: enviados, ultimoEnvioEm: ultimo },
-    fichas,
+    resumo: {
+      ofertasObservadas: fichas.length,
+      enviosConfirmados: enviados,
+      ultimoEnvioEm: ultimo,
+      rascunhosAssistidos: rascunhos.length,
+      rascunhosParaRever: rascunhos.filter(f => f.revisaoNecessaria).length
+    },
+    fichas: [...fichas, ...rascunhos],
     avisos
   };
 }

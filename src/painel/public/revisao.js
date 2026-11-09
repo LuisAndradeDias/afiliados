@@ -25,7 +25,15 @@
     for (const f of active) {
       const card = document.createElement("article");
       card.className = "rev-panel rev-card";
-      par(card, "span", f.origem === "oferta-preparada" ? "Oferta preparada" : "Observação Mercado Livre", "rev-chip");
+      const identificacao = f.origem === "oferta-preparada"
+        ? "Oferta preparada"
+        : f.origem === "rascunho-assistido-meli"
+          ? "Rascunho assistido · não publicado"
+          : "Observação Mercado Livre";
+      par(card, "span", identificacao, "rev-chip");
+      if (f.origem === "rascunho-assistido-meli" && f.revisaoNecessaria) {
+        par(card, "span", "Reconfirmar preço, estoque e reputação", "rev-chip rev-chip-pending");
+      }
       par(card, "h3", String(f.titulo || "Produto sem título"));
       const line = document.createElement("div");
       line.className = "rev-fields";
@@ -34,7 +42,11 @@
         ["Produto", String(f.produtoId || "—")],
         ["Preço", "R$ " + valor(f.precoAtual)],
         ["Desconto observado", typeof f.descontoPercentual === "number" ? f.descontoPercentual + "%" : "Não registrado"],
-        ["Cupom", String(f.cupomCodigo || "Nenhum comprovado")]
+        ["Cupom", String(f.cupomCodigo || "Nenhum comprovado")],
+        ...(f.origem === "rascunho-assistido-meli" ? [[
+          "Última conferência manual",
+          f.conferidoEm ? new Date(f.conferidoEm).toLocaleString("pt-BR") : "Sem data válida"
+        ]] : [])
       ]) {
         const span = document.createElement("span");
         par(span, "b", name + ": ");
@@ -76,13 +88,18 @@
       fichas = Array.isArray(data.fichas) ? data.fichas : [];
       set("revObserved", Number.isSafeInteger(data.resumo?.ofertasObservadas)
         ? String(data.resumo.ofertasObservadas) : "—");
+      set("revDrafts", Number.isSafeInteger(data.resumo?.rascunhosAssistidos)
+        ? String(data.resumo.rascunhosAssistidos) : "—");
+      set("revRecheck", Number.isSafeInteger(data.resumo?.rascunhosParaRever)
+        ? String(data.resumo.rascunhosParaRever) : "—");
       set("revSent", Number.isSafeInteger(data.resumo?.enviosConfirmados)
         ? String(data.resumo.enviosConfirmados) : "—");
       set("revAuto", status.whatsappAutoEnvioAtivo ? "Ativo" : "Desativado");
       avisos(data.avisos); exibir();
     } catch {
       avisos(["Não foi possível consultar a revisão. Nenhum arquivo ou configuração foi alterado."]);
-      set("revObserved", "—"); set("revSent", "—"); set("revAuto", "—");
+      set("revObserved", "—"); set("revDrafts", "—"); set("revRecheck", "—");
+      set("revSent", "—"); set("revAuto", "—");
       fichas = []; exibir();
     }
   }

@@ -28,7 +28,7 @@ export interface RascunhoMeli extends DadosRascunhoMeli {
   conferidoEm: string;
 }
 
-function urlProdutoIndividual(input: unknown): string {
+export function urlProdutoIndividual(input: unknown): string {
   if (typeof input !== "string" || input.length > 2048) {
     throw new ErroRascunhoMeli("Informe o link HTTPS de um produto específico do Mercado Livre.");
   }
