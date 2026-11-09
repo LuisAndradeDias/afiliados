@@ -3,15 +3,16 @@ import { bonusComissao } from "./comissoes-amazon.js";
 
 export function calcularScorePromocao(oferta: Oferta): number {
   let score = 0;
-  const desconto =
-    oferta.descontoEfetivoPercentual ??
-    oferta.descontoPercentual ??
-    0;
+  const meli = /mercado[\s-]*livre/i.test(oferta.plataforma);
+  const cupomComprovado = !meli || oferta.cupomValidacao === "produto-confirmado";
+  const desconto = meli && !cupomComprovado
+    ? oferta.descontoPercentual ?? 0
+    : oferta.descontoEfetivoPercentual ?? oferta.descontoPercentual ?? 0;
 
   if (desconto >= 20) score += 20;
   if (desconto >= 30) score += 15;
   if (desconto >= 40) score += 15;
-  if (oferta.cupom) score += 15;
+  if (oferta.cupom && cupomComprovado) score += 15;
   if (oferta.precoAnterior && oferta.precoAtual < oferta.precoAnterior) {
     score += 15;
   }

@@ -14,6 +14,8 @@ export interface Oferta {
   cupomValidoAte?: string;
   cupomValidacao?: "catalogo-oficial-estimado" | "produto-confirmado";
   precoComCupomEstimado?: number;
+  /** Hipótese de catálogo: não comprova elegibilidade e não aprova oferta. */
+  descontoComCupomEstimadoPercentual?: number;
   descontoEfetivoPercentual?: number;
   imagem?: string;
   urlProduto: string;
