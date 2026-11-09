@@ -33,6 +33,7 @@ jobs:
       - run: npm run test:historico-antiduplicado
       - run: npm run test:amazon-preco-dom
       - run: npm run test:whatsapp-auto-send
+      - run: npm run test:whatsapp-busca
       - run: npm run test:whatsapp-pointer
       - run: npm run test:whatsapp-observer
       - run: npm run test:recuperacao-central

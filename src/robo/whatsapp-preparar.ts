@@ -24,6 +24,11 @@ import {
   lerConfigAutoEnvio
 } from "./whatsapp-auto-send.js";
 import { termoBuscaGrupoWhatsapp } from "./whatsapp-grupo.js";
+import {
+  localizarBuscaWhatsapp,
+  localizarGrupoWhatsapp,
+  confirmarGrupoAbertoWhatsapp
+} from "./whatsapp-busca.js";
 import { podeEnviarPlataforma } from "../painel/mercadolivre-canal.js";
 
 const mensagemPath = resolve("data", "ultima-mensagem-whatsapp.txt");
@@ -195,16 +200,9 @@ async function primeiroVisivel(
   throw new Error("Elemento esperado não foi encontrado no WhatsApp Web.");
 }
 
+// Busca da lista é carregada em ritmo diferente da página DOMContentLoaded.
 async function localizarBusca(page: Page): Promise<Locator> {
-  return primeiroVisivel(
-    [
-      page.getByRole("textbox", { name: /pesquisar|search/i }),
-      page.locator('#side div[contenteditable="true"][role="textbox"]'),
-      page.locator('div[contenteditable="true"][data-tab="3"]'),
-      page.locator('div[contenteditable="true"][aria-label*="Pesquisar"]')
-    ],
-    30_000
-  );
+  return localizarBuscaWhatsapp(page);
 }
 
 
@@ -586,12 +584,19 @@ if (!modoTeste) {
 
 if (modoTeste) {
   await page.setContent(`
-    <div contenteditable="true" role="textbox" data-tab="3" aria-label="Pesquisar"></div>
-    <div id="lista"><span title="${nomeGrupo}">${nomeGrupo}</span></div>
-    <footer>
-      <div contenteditable="true" role="textbox" data-tab="10"></div>
-      <button aria-label="Enviar" type="button">Enviar</button>
-    </footer>
+    <div id="side">
+      <div data-testid="chat-list-search-container">
+        <input role="textbox" type="text" data-tab="3" placeholder="Pesquisar ou começar uma nova conversa" aria-label="Pesquisar ou começar uma nova conversa">
+      </div>
+      <div id="lista"><span title="${nomeGrupo}">${nomeGrupo}</span></div>
+    </div>
+    <div id="main">
+      <header><span>${nomeGrupo}</span></header>
+      <footer>
+        <div contenteditable="true" role="textbox" data-tab="10"></div>
+        <button aria-label="Enviar" type="button">Enviar</button>
+      </footer>
+    </div>
   `);
 } else {
   console.log("Aguardando o WhatsApp Web ficar pronto...");
@@ -603,18 +608,13 @@ try {
   // Pesquise sem emojis, mas confira o destino pelo nome completo.
   const termoBusca = termoBuscaGrupoWhatsapp(nomeGrupo);
   await busca.fill(termoBusca);
-  if (modoTeste && (await busca.textContent())?.trim() !== termoBusca) {
+  if (modoTeste && (await busca.inputValue().catch(() => busca.textContent()))?.trim() !== termoBusca) {
     throw new Error("O termo de pesquisa do grupo foi preenchido incorretamente.");
   }
 
-  const resultadoGrupo = await primeiroVisivel(
-    [
-      page.getByTitle(nomeGrupo, { exact: true }),
-      page.locator("[title]").filter({ hasText: nomeGrupo })
-    ],
-    8_000
-  );
+  const resultadoGrupo = await localizarGrupoWhatsapp(page, nomeGrupo, modoTeste ? 1_500 : 12_000);
   await resultadoGrupo.click();
+  await confirmarGrupoAbertoWhatsapp(page, nomeGrupo, modoTeste ? 1_500 : 10_000);
 
   const compositorInicial = await localizarCompositor(page);
 
