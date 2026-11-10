@@ -38,6 +38,7 @@
     "test:mercadolivre-recuperacao": "tsx tests/mercadolivre-recuperacao.mts && tsx tests/mercadolivre-preview-falhas.mts && tsx tests/mercadolivre-bloqueio.mts",
     "test:mercadolivre-assistido": "tsx tests/mercadolivre-assistido.mts && tsx tests/mercadolivre-assistido-http.mts && tsx tests/mercadolivre-assistido-ui.mts",
     "test:meli10": "tsx tests/meli10-cupons.mts && tsx tests/meli10-preview-cupom.mts",
+    "test:meli10e": "node --import tsx --test tests/meli10e-historico-ficticio.mts",
     "test:meli09": "tsx tests/meli09-revisao-assistida.mts && tsx tests/meli09-revisao-visual.mts && tsx tests/meli09-canal.mts && tsx tests/meli09-canal-http.mts && tsx tests/meli09-canal-visual.mts && tsx tests/meli09-cli-bloqueio.mts"
   },
   "dependencies": {

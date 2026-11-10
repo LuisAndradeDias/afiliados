@@ -28,6 +28,7 @@ jobs:
       - run: npm run test:mercadolivre-assistido
       - run: npm run test:meli09
       - run: npm run test:meli10
+      - run: npm run test:meli10e
       - run: npm run test:painel-operacional
       - run: npm run test:modos-busca
       - run: npm run test:historico-antiduplicado
