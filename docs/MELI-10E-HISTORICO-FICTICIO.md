@@ -29,3 +29,14 @@ Data: 10/11/2026. Branch: feat/meli10e-historico-simulado-20261110.
 - Definir como confirmar disponibilidade e separar preco Pix/cartao, sem inventar promoções.
 - Implementar UX de historico somente-leitura, com ausencia de dados e causas explicitas.
 - Regressao e homologacao visual, backup SHA-256, codigo revisado, CI verde e nenhuma tarefa de envio pendente.
+
+## Registro da auditoria inicial preservado (10/11/2026)
+- Acer online; instalacao de producao em C:\projeto02 encontrada sem repositorio Git local.
+- Portas 3030 e 3040 sem listener na primeira vistoria; rotas da Central nao responderam.
+- Flags ALTERNATING_MONITOR_ENABLED, MERCADOLIVRE_MONITOR_ENABLED e WHATSAPP_AUTO_SEND_ENABLED habilitadas no .env; nao iniciar monitores automaticamente.
+- Arquivos de mensagem e pacote de oferta anteriores presentes. Nenhum conteudo de contatos ou credenciais foi copiado para o repositorio.
+- PRs #67 a #70 integrados, HEAD principal naquela vistoria 4b36a266; cinco arquivos criticos da instalacao correspondiam aos arquivos da branch local de origem.
+- Conector 02 na versao 0.4.6; backup previo ao PR #70 identificado.
+- Prototipos MELI-10B/C/D nao estavam incorporados a main nem localizados em zip sob Projeto04.
+- A entrega inicial da fase MELI-10E teve quatro testes ficticios aprovados e typecheck sem erros. A presente revisao amplia para sete testes e adiciona verificacoes de confiabilidade.
+- A recuperacao da Central, historico real e liberacao de consulta ao anuncio continuam independentes deste modulo experimental.
