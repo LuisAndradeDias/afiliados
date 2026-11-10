@@ -1,24 +1,31 @@
-# MELI-10E — Nucleo experimental de historico SQLite (10/11/2026)
+# MELI-10E: historico experimental SQLite, sem acesso real
+Data: 10/11/2026. Branch: feat/meli10e-historico-simulado-20261110.
 
-## Estado real encontrado
-- Acer online, caminho de producao C:\projeto02 existente e sem .git.
-- Portas 3030 e 3040 sem listener; nenhum GET da Central respondeu. Nao foram iniciadas.
-- Em .env de producao os indicadores ALTERNATING_MONITOR_ENABLED, MERCADOLIVRE_MONITOR_ENABLED e WHATSAPP_AUTO_SEND_ENABLED estavam true. Valores de credenciais nao foram lidos nem copiados.
-- Ha arquivos de mensagem e pacote de oferta anteriores. Nenhum conteudo pessoal foi acessado.
-- PRs #67-#70 merged; main 4b36a266; cinco arquivos criticos comparados com checkout anterior tinham hashes identicos.
-- Conector 02 manifest 0.4.6; backup do PR #70 presente.
-- MELI-10B/C/D nao estavam incorporados a main nem na instalacao. Pacotes zip nao localizados sob Projeto04.
+## Escopo
+- Modulo experimental: src/fontes/mercadolivre/historico-ficticio.ts.
+- Exclusivamente observacoes ficticias ("fixture"). Nao usa conta real, token, API, navegador, perfis, WhatsApp ou jobs da Central.
+- Nao substitui o historico-antiduplicado existente e nao esta conectado a nenhum painel.
+- O acesso a anuncios de terceiros continua negado pelo endpoint GET /items/{id} (403 confirmado em 10/11). Um chamado oficial foi respondido com a evidencia.
 
-## Mudanca isolada
-- src/fontes/mercadolivre/historico-ficticio.ts — apenas registros ficticios, fonte fixture obrigatoria, SQLite nativo de Node 24, imutabilidade, idempotencia por SHA-256, por identidade comercial e tipo de pagamento, resumos min/max/mediana 30 dias. Apenas exibe alerta habilitado com >=3 dias UTC distintos; NAO aprova oferta.
-- tests/meli10e-historico-ficticio.mts — testes exclusivamente ficticios, incluindo rejeicao de datas invalidas, separacao de contexto, falha fechada para fontes reais e ausencia de publicacao.
-- package.json e .github/workflows/validar-afiliados.yml — comandos de teste adicionados a CI.
-- Nenhuma rota, API, coletor, WhatsApp, extensao, cron, autoenvio ou arquivo de producao alterado. Nenhuma fonte real consumida.
-- Por seguranca, nenhum token ou dado pessoal foi incorporado ao git.
+## Regras de confianca testadas
+- Identidade comercial separa item, vendedor, variante, pagamento (Pix/cartao), moeda e contexto.
+- Dados com disponibilidade "indeterminada" ou "indisponivel" ficam registrados para auditoria, mas nao alteram preco minimo, maximo, mediana ou contagem de amostras confirmadas.
+- Uma observacao posterior sem disponibilidade confirmada invalida o campo "ultimoCentavos" e desabilita o indicador.
+- Sao necessarios >= 3 dias UTC distintos, observacoes confirmadas dentro de janela de 30 dias e registro mais recente confirmado ha no maximo 24 horas.
+- Esse indicador significa somente base estatistica suficiente para uma futura analise. Nao prova desconto, atribuição de afiliado, estoque, cupom, compra ou autorizacao de envio.
+- Observacoes repetidas (mesmo item/contexto/instante/preco/estado) sao idempotentes. Uma observacao com mesmo instante e preco/estado divergente gera conflito sem sobrescrever a amostra original.
+- Datas UTC impossiveis, observacoes no futuro, valores incorretos, contexto incompleto e qualquer fonte distinta de "fixture" sao recusados.
+- Persistencia entre fechar e reabrir SQLite foi testada usando exclusivamente arquivo temporario criado pelo teste.
 
-## Limitacoes e proximos criterios
-- Este modulo nao inclui interface, importacao real, permissao de API, retencao contratual, logs de fonte nem testes visuais.
-- Historico so podera operar com fontes e retencao expressamente autorizadas; API de terceiros continua bloqueada HTTP 403 observado em 09/11.
-- Antes do deploy: adicionar politica de retenção e migrations reversiveis, integridade/banco com arquivo, controle concorrente, interface read-only e validacao visual.
-- Nao reiniciar a Central ate conferir os flags de monitor, oferta pendente e politica de retomada, sem perder dados.
-- Os numeros de testes sao apenas do ambiente simulado; nao homologam ofertas reais.
+## Validacao
+- npm run test:meli10e (fixtures, armazenamento temporario; SEM API real).
+- npm run typecheck.
+- CI da branch em PR #71; revalidar apos alteracoes.
+- Nenhuma coleta automatica foi habilitada, nenhum dado real armazenado e nenhum deploy aplicado.
+
+## Antes de integrar qualquer dado de producao
+- Confirmar por documentacao/retorno oficial quais fontes de precos e condicoes de retencao sao autorizadas.
+- Projetar migrations e rollback de banco com backup; politica de retencao; auditoria de fonte/autenticidade, controles de concorrencia e limites.
+- Definir como confirmar disponibilidade e separar preco Pix/cartao, sem inventar promoções.
+- Implementar UX de historico somente-leitura, com ausencia de dados e causas explicitas.
+- Regressao e homologacao visual, backup SHA-256, codigo revisado, CI verde e nenhuma tarefa de envio pendente.
