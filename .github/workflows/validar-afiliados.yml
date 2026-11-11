@@ -33,6 +33,7 @@ jobs:
       - run: npm run test:meli11
       - run: npm run test:meli11-ui
       - run: npm run test:meli12
+      - run: npm run test:meli13
       - run: npm run test:painel-operacional
       - run: npm run test:modos-busca
       - run: npm run test:historico-antiduplicado
