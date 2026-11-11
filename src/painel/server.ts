@@ -23,6 +23,7 @@ import { lerConfigAutoEnvio } from "../robo/whatsapp-auto-send.js";
 import { responderRotaVisual } from "./rotas-visuais.js";
 import { PipelineMeli11 } from "../historico/meli11.js";
 import { responderRotaHistorico } from "./historico-http.js";
+import { responderRotaMarketplace } from "./historico-marketplace-http.js";
 import { responderRotaShopee } from "./shopee-http.js";
 import { responderRotaMeliAssistido } from "./mercadolivre-assistido-http.js";
 import { avaliarCanalMeli } from "./mercadolivre-canal.js";
@@ -1977,7 +1978,8 @@ const server = createServer(async (req, res) => {
 
     // Camada visual independente: não muda o motor, os controles ou o autoenvio.
     if (responderRotaHistorico(req.method, requestUrl.pathname, res, pipelineHistoricoMeli11)) return;
-if (await responderRotaVisual({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;
+    if (responderRotaMarketplace(req.method, requestUrl.pathname, res)) return;
+    if (await responderRotaVisual({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;
     if (await responderRotaShopee({ req, res, pathname: requestUrl.pathname, raiz })) return;
     if (await responderRotaMeliAssistido({ req, res, pathname: requestUrl.pathname, raiz })) return;
     if (await responderRotaRevisao({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;

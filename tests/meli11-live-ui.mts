@@ -5,6 +5,7 @@ import {join} from "node:path";
 import {chromium} from "playwright";
 import {PipelineMeli11,type Permissao,type Observacao} from "../src/historico/meli11.js";
 import {responderRotaHistorico} from "../src/painel/historico-http.js";
+import {responderRotaMarketplace} from "../src/painel/historico-marketplace-http.js";
 import {responderRotaVisual} from "../src/painel/rotas-visuais.js";
 
 const folder=join(process.cwd(),"test-results","meli11-ui");
@@ -15,6 +16,7 @@ const server=createServer(async(req,res)=>{
   try{
     const pathname=new URL(req.url??"/","http://127.0.0.1").pathname;
     if(responderRotaHistorico(req.method,pathname,res,pipeline))return;
+    if(responderRotaMarketplace(req.method,pathname,res))return;
     if(await responderRotaVisual({method:req.method,pathname,res,raiz:process.cwd()}))return;
     res.writeHead(404,{"content-type":"text/plain"});res.end("not found");
   }catch{if(!res.headersSent)res.writeHead(500);res.end("error");}
@@ -102,7 +104,7 @@ try {
     assert.equal(await page.locator("#currentPrice").innerText(),"R$ 99,90");
     assert.match(await page.locator("#priceDescription").innerText(),/fonte autorizada/);
     assert.match(await page.locator("#selectedDescription").innerText(),/observação autorizada/);
-    assert.doesNotMatch(await page.locator(".products-table").innerText(),/simulação/);
+    assert.doesNotMatch(await page.locator("#pixCartaoProducts .products-table").innerText(),/simulação/);
     assert.equal(await page.locator("#sourceStatusTitle").innerText(),"Fonte autorizada");
     assert.equal(await page.locator("#metricReady").innerText(),"01");
   }finally{await context.close();await fake.fechar();}
