@@ -40,3 +40,16 @@ Data: 10/11/2026. Branch: feat/meli10e-historico-simulado-20261110.
 - Prototipos MELI-10B/C/D nao estavam incorporados a main nem localizados em zip sob Projeto04.
 - A entrega inicial da fase MELI-10E teve quatro testes ficticios aprovados e typecheck sem erros. A presente revisao amplia para sete testes e adiciona verificacoes de confiabilidade.
 - A recuperacao da Central, historico real e liberacao de consulta ao anuncio continuam independentes deste modulo experimental.
+
+## Etapa de UX aprovada (11/11/2026)
+- Pagina demonstrativa em `GET /historico-precos`, integrada ao menu unificado da Central e ao atalho da pagina inicial.
+- Assets estaticos por allowlist: `/central/assets/historico-precos.css` e `/central/assets/historico-precos.js`.
+- Graficos e indicadores com somente quatro itens DEMO-ML ficticios, com data de referencia simulada 11/11/2026.
+- Filtros Pix/cartao e 7/30/90 dias, pesquisa local, selecao de item e apresentacao de dados insuficientes/indisponiveis.
+- Nenhuma chamada a /api/status, /api/action, /items/{id}, OAuth ou monitor para carregar a pagina.
+- Politica CSP sem conexoes de rede: `connect-src 'none'`; scripts e estilos apenas do proprio servidor.
+- Nenhum botao de enviar ou publicar, nunca aprova oferta, comissao, preco real ou disponibilidade comercial.
+- Teste visual automatizado: `npm run test:meli10e-ui`, nas larguras 1595, 768 e 390; screenshot com dados totalmente sinteticos em `test-results/meli10e-ui`.
+- A pagina usa objetos ficticios JavaScript para demonstracao; nao consulta o modulo SQLite e nao alimenta historico operacional.
+- O backend, os envios, as credenciais, os programas de afiliados e os bancos de producao permanecem sem alteracoes.
+- A integracao real dependera de fontes expressamente autorizadas e de homologacao de privacidade/retencao.

@@ -21,6 +21,8 @@ const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/shopee.css": "shopee.css",
   "/central/assets/shopee.js": "shopee.js",
   "/central/assets/revisao.js": "revisao.js",
+  "/central/assets/historico-precos.css": "historico-precos.css",
+  "/central/assets/historico-precos.js": "historico-precos.js",
 });
 
 type RotaVisual = {
@@ -58,6 +60,20 @@ export async function responderRotaVisual({
       "cache-control": "no-store",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
+    });
+    res.end(html);
+    return true;
+  }
+
+  if (pathname === "/historico-precos") {
+    const html = await readFile(resolve(publicDir, "historico-precos.html"), "utf8");
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer",
+      "content-security-policy": "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'none'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
     });
     res.end(html);
     return true;

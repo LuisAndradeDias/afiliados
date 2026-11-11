@@ -14,8 +14,8 @@ import { responderRotaVisual } from "../src/painel/rotas-visuais.js";
 import { responderRotaShopee } from "../src/painel/shopee-http.js";
 import { responderRotaRevisao } from "../src/painel/revisao-http.js";
 
-const rotas = ["/", "/central", "/ofertas", "/shopee", "/revisao"] as const;
-const modules = ["/central", "/ofertas", "/revisao", "/shopee"] as const;
+const rotas = ["/", "/central", "/ofertas", "/shopee", "/revisao", "/historico-precos"] as const;
+const modules = ["/central", "/ofertas", "/revisao", "/historico-precos", "/shopee"] as const;
 const widths = [1595, 1280, 768, 390] as const;
 const screenshots = join(process.cwd(), "test-results", "ux");
 const status = {
@@ -172,7 +172,7 @@ try {
   assert.equal(writes, 0, "Auditoria de UX não pode acionar POST/DELETE");
   const unknownAsset = await fetch(base + "/central/assets/arquivo-inexistente.css");
   assert.equal(unknownAsset.status, 404, "Arquivo não permitido não pode vazar");
-  console.log("UX_GATE_OK: 5 rotas, 4 larguras, 8 capturas sintéticas, sem escrita, sem recurso quebrado.");
+  console.log("UX_GATE_OK: 6 rotas, 4 larguras, 10 capturas sintéticas, sem escrita, sem recurso quebrado.");
 } finally {
   await browser?.close();
   server.closeAllConnections();

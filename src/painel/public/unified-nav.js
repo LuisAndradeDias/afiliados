@@ -10,6 +10,7 @@
     { path: "/central", label: "Visão geral", symbol: "⌂" },
     { path: "/ofertas", label: "Central de Ofertas", symbol: "◈" },
     { path: "/revisao", label: "Revisão técnica", symbol: "▣" },
+    { path: "/historico-precos", label: "Histórico inteligente", symbol: "⌁" },
     { path: "/shopee", label: "Shopee", symbol: "S" }
   ];
   const current = modules.find(item => item.path === route) || modules[0];

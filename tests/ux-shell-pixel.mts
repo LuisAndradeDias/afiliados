@@ -2,7 +2,7 @@
  * UX-02 — precisão da estrutura compartilhada.
  *
  * Posições e tamanhos CSS precisam coincidir EXATAMENTE, sem tolerância de 1px.
- * Propriedades CSS do menu precisam ser idênticas em todas as quatro páginas.
+ * Propriedades CSS do menu precisam ser idênticas em todas as cinco páginas.
  * Imagens PNG do Chrome são comparadas com 5% de tolerância APENAS para
  * rasterização de texto entre documentos; não se tolera desvio geométrico.
  * Uma simulação de deslocamento de 1px precisa ser detectada.
@@ -49,7 +49,7 @@ await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
 const address = server.address();
 assert.ok(address && typeof address !== "string");
 const base = "http://127.0.0.1:" + address.port;
-const routes = ["/central", "/ofertas", "/shopee", "/revisao"];
+const routes = ["/central", "/ofertas", "/shopee", "/revisao", "/historico-precos"];
 let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 try {
   browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -70,7 +70,7 @@ try {
       await page.evaluate(() => document.fonts.ready);
       await page.locator("#cpvUnifiedNav .cpv-nav-link").first().waitFor();
       assert.equal(await page.locator("#cpvUnifiedNav").count(), 1);
-      assert.equal(await page.locator("#cpvUnifiedNav a").count(), 4);
+      assert.equal(await page.locator("#cpvUnifiedNav a").count(), 5);
       const mobile = width <= 860;
       if (mobile) {
         await page.locator("#menuBtn").click();
@@ -185,7 +185,7 @@ try {
     await ctx.close();
   }
   assert.equal(writes,0,"Auditoria de UX não deve enviar formulários ou mensagens");
-  console.log("UX_SHELL_OK: 4 telas x 4 larguras; alinhamento CSS exato, mesmos estilos; diferença de 1px detectada; 0 escritas.");
+  console.log("UX_SHELL_OK: 5 telas x 4 larguras; alinhamento CSS exato, mesmos estilos; diferença de 1px detectada; 0 escritas.");
 } finally {
   await browser?.close();
   server.closeAllConnections();

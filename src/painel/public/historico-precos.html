@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Histórico inteligente de preços | Caça Promos VIP</title>
+  <link rel="stylesheet" href="/central/assets/unified-nav.css">
+  <link rel="stylesheet" href="/central/assets/historico-precos.css">
+  <script src="/central/assets/unified-nav.js" defer></script>
+  <script src="/central/assets/historico-precos.js" defer></script>
+</head>
+<body class="cpv-history-page">
+  <div id="scrim" class="cpv-nav-scrim" hidden></div>
+  <div class="app">
+    <aside id="sidebar" class="sidebar" aria-label="Menu principal"></aside>
+    <div class="workspace">
+      <header class="top">
+        <div class="top-left">
+          <button type="button" id="menuBtn" class="cpv-nav-toggle history-menu-button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar">☰</button>
+          <span class="breadcrumb">Central &nbsp;/&nbsp; Inteligência &nbsp;/&nbsp; <b>Histórico de preços</b></span>
+        </div>
+        <div class="top-right"><span class="top-chip">● DEMONSTRAÇÃO</span><span class="vip-chip">VIP</span></div>
+      </header>
+      <main class="history-content">
+        <section class="history-hero" aria-labelledby="historyTitle">
+          <div class="history-intro">
+            <span class="eyebrow">INTELIGÊNCIA COMERCIAL</span>
+            <h1 id="historyTitle">Histórico inteligente de preços</h1>
+            <p>Acompanhe variações, avalie a qualidade das observações e identifique quando ainda não existem dados suficientes para comparar.</p>
+          </div>
+          <div class="source-status">
+            <span>FONTE DE DADOS REAL</span>
+            <strong>Aguardando autorização</strong>
+            <small>Integração de anúncios do Mercado Livre sob análise técnica (HTTP 403).</small>
+          </div>
+        </section>
+        <div class="demo-warning" role="note">
+          <span class="warning-icon" aria-hidden="true">⚠</span>
+          <div><strong>DEMONSTRAÇÃO:</strong> produtos e valores totalmente fictícios. Não representam ofertas, estoque, comissão ou dados coletados.</div>
+          <strong class="demo-label">SEM PUBLICAÇÃO</strong>
+        </div>
+        <div class="section-heading">
+          <div><h2>Visão geral</h2><p>Acompanhamento da qualidade das observações demonstrativas</p></div>
+          <span class="section-caption">Dados simulados · protótipo</span>
+        </div>
+        <section class="history-metrics" aria-label="Indicadores fictícios">
+          <article class="metric"><div class="metric-label">Itens no histórico <span class="metric-icon">#</span></div><strong id="metricTotal">04</strong><small>Registros de demonstração</small></article>
+          <article class="metric"><div class="metric-label">Base suficiente <span class="metric-icon">✓</span></div><strong id="metricReady">02</strong><small>Pelo menos 3 dias confirmados</small></article>
+          <article class="metric"><div class="metric-label">Revisão necessária <span class="metric-icon">!</span></div><strong id="metricReview">02</strong><small>Falta evidência ou atualização</small></article>
+          <article class="metric"><div class="metric-label">Fonte autorizada <span class="metric-icon">·</span></div><strong class="pending">Pendente</strong><small class="attention">Nenhuma coleta real ativada</small></article>
+        </section>
+        <section class="history-filters" aria-label="Filtros do histórico">
+          <div class="filters-left">
+            <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="historySearch" placeholder="Buscar item demonstrativo ou ID..." autocomplete="off" aria-label="Buscar item demonstrativo"></label>
+            <span class="marketplace-chip"><span class="meli-dot"></span>Mercado Livre <span class="only-source">(demo)</span></span>
+          </div>
+          <div class="filters-right">
+            <fieldset class="filter-group"><legend>Pagamento</legend><div class="switch" id="paymentToggle">
+              <button type="button" class="selected" data-pay="pix" aria-pressed="true">Pix</button>
+              <button type="button" data-pay="cartao" aria-pressed="false">Cartão</button>
+            </div></fieldset>
+            <fieldset class="filter-group"><legend>Período</legend><div class="switch" id="periodToggle">
+              <button type="button" data-period="7" aria-pressed="false">7d</button>
+              <button type="button" class="selected" data-period="30" aria-pressed="true">30d</button>
+              <button type="button" data-period="90" aria-pressed="false">90d</button>
+            </div></fieldset>
+          </div>
+        </section>
+        <div class="analysis-grid">
+          <section class="history-panel analysis-chart" aria-label="Análise demonstrativa do produto">
+            <div class="panel-content">
+              <div class="panel-head">
+                <div><span class="panel-kicker">ANÁLISE POR PRODUTO</span><h2 id="selectedProduct">Produto fictício A</h2><p id="selectedDescription">DEMO-ML-001 · Mercado Livre · Pix (simulação)</p></div>
+                <span id="chartState" class="state-pill good">Base suficiente</span>
+              </div>
+              <div class="price-heading">
+                <div><strong id="currentPrice" class="current-price">R$ 289,90</strong><small id="priceDescription">Última observação confirmada (fictícia)</small></div>
+                <div class="legend"><span><i class="price-line"></i>Preço confirmado</span><span><i class="median-line"></i>Mediana</span></div>
+              </div>
+              <div class="chart-wrap" id="chartBox">
+                <svg id="priceChart" viewBox="0 0 650 240" role="img" aria-label="Gráfico fictício de evolução do preço" preserveAspectRatio="none"></svg>
+                <div class="chart-tooltip" id="chartTooltip" role="tooltip" hidden></div>
+              </div>
+              <div id="chartTextSummary" class="chart-text-summary" aria-live="polite"></div>
+              <div class="chart-stats"><span>Menor confirmado: <b id="lowest">—</b></span><span>Mediana 30d: <b id="median">—</b></span><span>Observações: <b id="points">—</b></span></div>
+            </div>
+          </section>
+          <section class="history-panel confidence-panel" aria-label="Confiabilidade do histórico">
+            <div class="panel-content">
+              <div class="panel-head">
+                <div><span class="panel-kicker">AVALIAÇÃO DAS EVIDÊNCIAS</span><h2>Confiabilidade do histórico</h2></div>
+                <span class="state-pill blue">Somente análise</span>
+              </div>
+              <div class="confidence-top">
+                <div id="confidenceDonut" class="donut" data-score="0"><span id="confidenceNumber">0/3</span></div>
+                <div><strong id="confidenceTitle">Analisando amostras</strong><p id="confidenceText">Indicador estatístico, nunca uma autorização de envio.</p></div>
+              </div>
+              <div class="checks">
+                <div><span>Dias distintos confirmados</span><strong id="checkDays">—</strong></div>
+                <div><span>Última disponibilidade</span><strong id="checkStock">—</strong></div>
+                <div><span>Atualização da referência</span><strong id="checkFresh">—</strong></div>
+                <div><span>Dados reais da API</span><strong class="attention">Não conectados</strong></div>
+              </div>
+              <div class="confidence-note"><strong>Proteção contra falsos descontos</strong>Preço sem disponibilidade confirmada não entra na referência. Ações comerciais continuam bloqueadas até a validação real.</div>
+            </div>
+          </section>
+        </div>
+        <section class="history-panel products-panel" aria-label="Produtos fictícios acompanhados">
+          <div class="products-heading"><div><h2>Produtos acompanhados</h2><p>Selecione um item fictício para visualizar seu comportamento no gráfico</p></div><span id="tableCount">4 itens demonstrativos</span></div>
+          <div class="products-table-wrap">
+            <table class="products-table"><thead><tr><th scope="col">ITEM / IDENTIFICAÇÃO</th><th scope="col">ÚLTIMO PREÇO</th><th scope="col">MENOR CONFIRMADO</th><th scope="col">DIAS / 30D</th><th scope="col">ESTADO DA COMPARAÇÃO</th></tr></thead><tbody id="productRows"></tbody></table>
+          </div>
+        </section>
+        <aside class="history-safety"><span aria-hidden="true">♢</span><div><strong>Regras de segurança preservadas</strong><p>Nenhum dado desta demonstração aprova postagem, cupom, estoque, vendedor ou link de afiliado. Uma futura integração usará somente fontes e condições de retenção autorizadas.</p></div></aside>
+        <footer class="history-footer"><span>Caça Promos VIP · Histórico inteligente (demonstração)</span><span>Protótipo isolado · Nenhuma coleta real ativada</span></footer>
+      </main>
+    </div>
+  </div>
+  <noscript>Esta página demonstrativa precisa de JavaScript para mostrar os gráficos e filtros. Nenhuma coleta real é realizada.</noscript>
+</body>
+</html>
