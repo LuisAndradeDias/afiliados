@@ -30,7 +30,7 @@
             <p>Acompanhe variações, avalie a qualidade das observações e identifique quando ainda não existem dados suficientes para comparar.</p>
           </div>
           <div class="source-status">
-            <span>FONTE DE DADOS REAL</span>
+            <span>ORIGEM DOS DADOS</span>
             <strong id="sourceStatusTitle">Aguardando autorização</strong>
             <small id="sourceStatusDetail">Integração de anúncios do Mercado Livre sob análise técnica (HTTP 403).</small>
             <a id="modeLink" class="history-mode-link" href="/historico-precos?demo=1">Ver demonstração fictícia</a>
@@ -45,21 +45,22 @@
           <div><h2>Visão geral</h2><p id="overviewDescription">Monitoramento de fontes autorizadas, sem preços inventados</p></div>
           <span class="section-caption" id="historySourceLabel">Fonte oficial: pendente</span>
         </div>
-        <section class="history-metrics" aria-label="Indicadores fictícios">
+        <section class="history-metrics" aria-label="Indicadores do histórico">
           <article class="metric"><div class="metric-label">Itens no histórico <span class="metric-icon">#</span></div><strong id="metricTotal">00</strong><small>Aguardando fonte autorizada</small></article>
-          <article class="metric"><div class="metric-label">Base suficiente <span class="metric-icon">✓</span></div><strong id="metricReady">00</strong><small>Pelo menos 3 dias confirmados</small></article>
-          <article class="metric"><div class="metric-label">Revisão necessária <span class="metric-icon">!</span></div><strong id="metricReview">00</strong><small>Falta evidência ou atualização</small></article>
+          <article class="metric"><div class="metric-label"><span id="metricReadyLabel">Base suficiente</span> <span class="metric-icon">✓</span></div><strong id="metricReady">00</strong><small id="metricReadyHelp">Pelo menos 3 dias confirmados</small></article>
+          <article class="metric"><div class="metric-label"><span id="metricReviewLabel">Revisão necessária</span> <span class="metric-icon">!</span></div><strong id="metricReview">00</strong><small id="metricReviewHelp">Falta evidência ou atualização</small></article>
           <article class="metric"><div class="metric-label">Fonte autorizada <span class="metric-icon">·</span></div><strong class="pending">Pendente</strong><small class="attention">Nenhuma coleta real ativada</small></article>
         </section>
         <section class="history-filters" aria-label="Filtros do histórico">
           <div class="filters-left">
-            <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="historySearch" placeholder="Buscar item ou ID..." autocomplete="off" aria-label="Buscar item demonstrativo"></label>
+            <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="historySearch" placeholder="Buscar item ou ID..." autocomplete="off" aria-label="Buscar produto ou identificador"></label>
             <span class="marketplace-chip"><span class="meli-dot"></span>Mercado Livre <span id="sourceChipSuffix" class="only-source">(fonte pendente)</span></span>
           </div>
           <div class="filters-right">
-            <fieldset class="filter-group"><legend>Pagamento</legend><div class="switch" id="paymentToggle">
+            <fieldset class="filter-group"><legend>Tipo de preço</legend><div class="switch" id="paymentToggle">
               <button type="button" class="selected" data-pay="pix" aria-pressed="true">Pix</button>
               <button type="button" data-pay="cartao" aria-pressed="false">Cartão</button>
+              <button type="button" data-pay="geral" aria-pressed="false" title="Preço geral por canal, sem modalidade de pagamento nem estoque confirmados">Geral</button>
             </div></fieldset>
             <fieldset class="filter-group"><legend>Período</legend><div class="switch" id="periodToggle">
               <button type="button" data-period="7" aria-pressed="false">7d</button>
@@ -68,7 +69,53 @@
             </div></fieldset>
           </div>
         </section>
-        <div class="analysis-grid">
+        <section id="generalView" class="market-overview" aria-label="Histórico de preços gerais de marketplace" hidden>
+          <div class="market-info">
+            <span class="panel-kicker">MELI-14 · MODALIDADE INDEPENDENTE</span>
+            <div class="market-info-heading"><h2>Preço geral do marketplace</h2><span class="state-pill warning">Estoque não confirmado</span></div>
+            <p>Valor observado no canal marketplace. <strong>Não é preço Pix, cartão ou desconto comprovado.</strong> Nenhuma observação aprova uma oferta ou envio de mensagem.</p>
+          </div>
+          <div class="analysis-grid">
+            <section class="history-panel analysis-chart" aria-label="Gráfico do preço geral de marketplace">
+              <div class="panel-content">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">HISTÓRICO POR CANAL</span><h2 id="generalProduct">Sem preços gerais autorizados</h2><p id="generalDescription">Aguardando fonte oficial de preços</p></div>
+                  <span id="generalState" class="state-pill neutral">Fonte pendente</span>
+                </div>
+                <div class="price-heading">
+                  <div><strong id="generalPrice" class="current-price missing">—</strong><small id="generalPriceNote">Sem observações verificáveis</small></div>
+                  <div class="legend"><span><i class="general-price-line"></i>Preço observado, não oferta</span></div>
+                </div>
+                <div class="chart-wrap"><svg id="generalChart" viewBox="0 0 650 240" role="img" aria-label="Histórico de preços gerais observados no marketplace" preserveAspectRatio="none"></svg></div>
+                <div id="generalChartSummary" class="chart-text-summary" aria-live="polite">Sem amostras autorizadas</div>
+                <div class="chart-stats">
+                  <span>Referência da fonte: <b id="generalReference">—</b></span>
+                  <span>Amostras na janela: <b id="generalSamples">0</b></span>
+                </div>
+              </div>
+            </section>
+            <section class="history-panel confidence-panel" aria-label="Restrições do preço geral">
+              <div class="panel-content">
+                <div class="panel-head"><div><span class="panel-kicker">RESTRIÇÕES COMERCIAIS</span><h2>O que os dados comprovam?</h2></div><span class="state-pill blue">Somente leitura</span></div>
+                <div class="market-constraints">
+                  <div><span>Fonte de preço</span><strong id="generalEvidenceSource">Aguardando autorização</strong></div>
+                  <div><span>Modalidade de pagamento</span><strong class="warning">Não informada</strong></div>
+                  <div><span>Disponibilidade de estoque</span><strong class="warning">Indeterminada</strong></div>
+                  <div><span>Desconto confirmado</span><strong class="warning">Não</strong></div>
+                  <div><span>Publicação automática</span><strong class="warning">Bloqueada</strong></div>
+                </div>
+                <div class="confidence-note"><strong>Prevenção de falsos descontos</strong>O preço geral pode ser acompanhado, mas não será convertido automaticamente em Pix, cartão, percentual promocional ou oferta publicável.</div>
+              </div>
+            </section>
+          </div>
+          <section class="history-panel products-panel" aria-label="Itens com preços gerais">
+            <div class="products-heading"><div><h2>Preços gerais acompanhados</h2><p id="generalItemsHint">Somente fonte oficial autorizada; nenhuma informação estimada</p></div><span id="generalCount">0 itens</span></div>
+            <div class="products-table-wrap">
+              <table class="products-table"><thead><tr><th scope="col">ITEM / IDENTIFICAÇÃO</th><th scope="col">ÚLTIMO PREÇO GERAL</th><th scope="col">AMOSTRAS / PERÍODO</th><th scope="col">DISPONIBILIDADE</th><th scope="col">AÇÃO COMERCIAL</th></tr></thead><tbody id="generalRows"></tbody></table>
+            </div>
+          </section>
+        </section>
+        <div class="analysis-grid" id="pixCartaoAnalysis">
           <section class="history-panel analysis-chart" aria-label="Análise demonstrativa do produto">
             <div class="panel-content">
               <div class="panel-head">
@@ -107,7 +154,7 @@
             </div>
           </section>
         </div>
-        <section class="history-panel products-panel" aria-label="Produtos fictícios acompanhados">
+        <section class="history-panel products-panel" id="pixCartaoProducts" aria-label="Produtos acompanhados por modalidade Pix ou cartão">
           <div class="products-heading"><div><h2>Produtos acompanhados</h2><p id="itemsHint">Itens rastreados por fontes de preços autorizadas</p></div><span id="tableCount">0 itens</span></div>
           <div class="products-table-wrap">
             <table class="products-table"><thead><tr><th scope="col">ITEM / IDENTIFICAÇÃO</th><th scope="col">ÚLTIMO PREÇO</th><th scope="col">MENOR CONFIRMADO</th><th scope="col">DIAS / 30D</th><th scope="col">ESTADO DA COMPARAÇÃO</th></tr></thead><tbody id="productRows"></tbody></table>

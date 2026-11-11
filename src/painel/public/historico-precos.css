@@ -190,3 +190,29 @@ body.cpv-history-page {
  .products-table td:not(:first-child)::before { content:attr(data-label);font-size:9px;color:#98a2b3;font-weight:800 }
  .history-footer { flex-direction:column;gap:4px }
 }
+
+/* MELI-14: visao separada de preco por canal, sem inferir oferta. */
+.cpv-history-page [hidden] { display:none!important; }
+.market-overview { min-width:0; }
+.market-info {
+  background:#f1f6ff;border:1px solid #d4e4ff;border-radius:12px;
+  padding:16px 19px;margin:2px 0 12px;
+}
+.market-info-heading { display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap; }
+.market-info h2 { margin:3px 0 4px;font-size:17px;line-height:1.25;letter-spacing:-.02em;color:#172333; }
+.market-info p { margin:0;max-width:900px;font-size:11px;color:#475467;line-height:1.65; }
+.market-info strong { color:#344054; }
+.market-overview .products-panel { margin-top:14px; }
+.market-constraints { margin:21px 0 12px;padding-top:12px;border-top:1px solid #e4e7ec;display:grid;gap:11px; }
+.market-constraints > div { display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px; }
+.market-constraints span { color:#475467; }
+.market-constraints strong { font-size:10.5px;text-align:right;color:#344054; }
+.market-constraints strong.warning { color:#b54708; }
+.legend .general-price-line { border-top-style:dashed;border-top-color:#2563eb; }
+.market-overview .state-pill { max-width:100%; }
+@media (max-width:600px) {
+ .market-info { padding:14px; }
+ .market-info h2 { font-size:16px; }
+ .market-info-heading .state-pill { white-space:normal; }
+ .market-constraints > div { align-items:flex-start; }
+}

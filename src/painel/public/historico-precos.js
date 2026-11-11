@@ -40,6 +40,20 @@
     }
   ];
   let products = demoMode ? fixtures : [];
+  // Amostras DEMO independentes; nem Pix nem cartao herdam preco geral.
+  const generalFixtures = [
+    {id:"DEMO-GERAL-001",identifier:"DEMO-GERAL-001",label:"Produto fictício A",
+      serie:[[-28,359.90],[-19,342.90],[-13,329.90],[-6,321.90],[-2,315.90],[0,309.90]]
+        .map(([day,price])=>({day,price,reference:dayIso(day)}))},
+    {id:"DEMO-GERAL-002",identifier:"DEMO-GERAL-002",label:"Produto fictício B",
+      serie:[[-19,219.90],[-9,209.90],[-4,199.90],[0,189.90]]
+        .map(([day,price])=>({day,price,reference:dayIso(day)}))}
+  ];
+  let generalProducts = demoMode ? generalFixtures : [];
+  let generalSelected = generalProducts[0]?.id ?? "";
+  let generalMode = false;
+  let generalSourceAuthorized = false;
+  let generalSourceError = false;
   const state = { selected:products[0]?.id ?? "", payment:"pix", period:30 };
 
   function analyze(product, payment=state.payment, period=state.period) {
@@ -127,6 +141,132 @@
     if(text!==undefined) el.textContent=text;
     return el;
   }
+  function generalPoints(item) {
+    return (item?.serie ?? []).filter(p=>p.day<=0 && p.day>=-state.period)
+      .slice().sort((a,b)=>a.day-b.day);
+  }
+  function plotGeneral(points) {
+    const chart=byId("generalChart");
+    chart.replaceChildren();
+    if(!points.length) {
+      chart.append(svgEl("text",{x:325,y:114,"text-anchor":"middle",
+        fill:"#667085","font-size":14,"font-weight":700},"Sem preços gerais na janela"));
+      chart.append(svgEl("text",{x:325,y:140,"text-anchor":"middle",
+        fill:"#98a2b3","font-size":11},"Aguardando fonte ou seleção de período"));
+      chart.setAttribute("aria-label","Sem histórico de preço geral no período");
+      return;
+    }
+    const left=54,right=626,top=18,bottom=187;
+    const prices=points.map(p=>p.price);
+    let min=Math.floor((Math.min(...prices)-12)/10)*10;
+    let max=Math.ceil((Math.max(...prices)+12)/10)*10;
+    if(max-min<20)max=min+20;
+    const x=d=>left+((d+state.period)/state.period)*(right-left);
+    const y=v=>bottom-((v-min)/(max-min))*(bottom-top);
+    for(let i=0;i<4;i++) {
+      const price=min+((3-i)/3)*(max-min);
+      const gy=y(price);
+      chart.append(svgEl("line",{x1:left,y1:gy,x2:right,y2:gy,stroke:"#e9edf3",
+        "stroke-dasharray":"3 5"}));
+      chart.append(svgEl("text",{x:left-8,y:gy+4,"text-anchor":"end",
+        fill:"#98a2b3","font-size":10},String(Math.round(price))));
+      const day=-state.period+i*state.period/3;
+      chart.append(svgEl("text",{x:x(day),y:221,"text-anchor":"middle",
+        fill:"#98a2b3","font-size":10},dateLabel(day)));
+    }
+    const path=points.map((p,i)=>(i?"L":"M")+x(p.day).toFixed(1)+" "+y(p.price).toFixed(1)).join(" ");
+    chart.append(svgEl("path",{d:path,fill:"none",stroke:"#2563eb",
+      "stroke-width":2.8,"stroke-dasharray":"7 5","stroke-linejoin":"round"}));
+    for(const p of points){
+      const circle=svgEl("circle",{cx:x(p.day),cy:y(p.price),r:4.5,
+        stroke:"#2563eb","stroke-width":2,fill:"#fff",tabindex:0,role:"img",
+        "aria-label":dateLabel(p.day)+": "+money(p.price)+" (preço geral observado; estoque indeterminado)"});
+      circle.append(svgEl("title",{},dateLabel(p.day)+" · "+money(p.price)+" · sem estoque confirmado"));
+      chart.append(circle);
+    }
+    chart.setAttribute("aria-label",points.length+
+      " preços gerais observados; nenhuma amostra confirma estoque ou desconto");
+  }
+  function renderGeneral() {
+    if(!generalMode)return;
+    const search=byId("historySearch").value.trim().toLocaleLowerCase("pt-BR");
+    const visible=generalProducts.filter(p=>
+      (p.identifier+" "+p.label).toLocaleLowerCase("pt-BR").includes(search));
+    setText("generalCount",visible.length+(demoMode?" itens fictícios":" itens autorizados"));
+    setText("metricReadyLabel","Ofertas liberadas");
+    setText("metricReadyHelp","Sem confirmação de estoque");
+    setText("metricReviewLabel","Sem validação comercial");
+    setText("metricReviewHelp","Preço geral não comprova desconto");
+    setText("metricTotal",String(generalProducts.length).padStart(2,"0"));
+    setText("metricReady","00");
+    setText("metricReview",String(generalProducts.length).padStart(2,"0"));
+    const rows=byId("generalRows");
+    rows.replaceChildren();
+    if(!visible.length) {
+      const tr=node("tr"),td=makeCell("",
+        search?"Nenhum produto corresponde à busca.":demoMode?
+          "Nenhum item fictício de preço geral.":"Nenhuma cotação geral autorizada disponível.",
+        "table-empty");
+      td.colSpan=5;tr.append(td);rows.append(tr);
+    }
+    for(const p of visible) {
+      const data=generalPoints(p),last=data.at(-1)??null;
+      const tr=node("tr");
+      tr.dataset.selected=String(p.id===generalSelected);
+      const item=makeCell("Item");
+      const button=node("button","product-select");
+      button.type="button";
+      button.setAttribute("aria-pressed",String(p.id===generalSelected));
+      button.setAttribute("aria-label","Selecionar preço geral de "+p.label);
+      button.append(node("span","product-avatar","G"));
+      const details=node("span","product-name");
+      details.append(node("strong","",p.label),node("small","",p.identifier));
+      button.append(details);
+      button.addEventListener("click",()=>{
+        generalSelected=p.id;renderGeneral();
+        if(window.matchMedia("(max-width: 600px)").matches)
+          byId("generalView").scrollIntoView({block:"nearest"});
+      });
+      item.append(button);
+      const price=makeCell("Preço por canal",last?money(last.price):"—","mono-value");
+      const days=makeCell("Observações",String(data.length)+" amostra(s)");
+      const stock=makeCell("Estoque","Indeterminado");
+      const action=makeCell("Ação comercial");
+      action.append(node("span","state-pill warning","Não publicar"));
+      tr.append(item,price,days,stock,action);
+      rows.append(tr);
+    }
+    const selected=generalProducts.find(p=>p.id===generalSelected)??generalProducts[0];
+    const points=generalPoints(selected);
+    const last=points.at(-1)??null;
+    setText("generalProduct",selected?.label??"Sem preços gerais autorizados");
+    setText("generalDescription",selected?.identifier??
+      "Aguardando preços oficiais de anúncios de terceiros");
+    setText("generalPrice",last?money(last.price):"—");
+    byId("generalPrice").classList.toggle("missing",!last);
+    setText("generalPriceNote",last?
+      "Preço geral observado no canal, sem estoque confirmado":
+      "Nenhuma observação autorizada pode ser exibida");
+    setText("generalState",selected?
+      (demoMode?"Exemplo fictício":"Somente observação"):
+      (generalSourceError?"Falha na leitura":"Fonte pendente"));
+    byId("generalState").className="state-pill "+(selected?"warning":"neutral");
+    setText("generalReference",last?dateLabel(last.day):"—");
+    setText("generalSamples",String(points.length));
+    setText("generalChartSummary",points.length?
+      points.length+" observação(ões) "+(demoMode?"fictícia(s)":"autorizada(s)")+
+      " em "+state.period+" dias. Nenhuma confirma disponibilidade ou desconto.":
+      generalSourceError?"Falha na API local; nenhuma cotação foi inferida.":
+        "Sem observações gerais em "+state.period+" dias. Nenhuma cotação foi inferida.");
+    setText("generalEvidenceSource",demoMode?"Dados fictícios":
+      generalSourceError?"Leitura indisponível":
+      generalSourceAuthorized?"Fonte autorizada":"Autorização pendente");
+    setText("generalItemsHint",demoMode?
+      "Preços fictícios para testar a interface; nenhuma oferta real":
+      generalSourceAuthorized?"Valores de fonte aprovada, sem confirmação de estoque":
+        "Aguardando acesso oficial de preços de terceiros");
+    plotGeneral(points);
+  }
   function plot(a) {
     const svg=byId("priceChart");
     const tip=byId("chartTooltip");
@@ -211,6 +351,11 @@
     updateTable();
   }
   function render() {
+    if(generalMode){renderGeneral();return;}
+    setText("metricReadyLabel","Base suficiente");
+    setText("metricReadyHelp","Pelo menos 3 dias confirmados");
+    setText("metricReviewLabel","Revisão necessária");
+    setText("metricReviewHelp","Falta evidência ou atualização");
     const p=products.find(v=>v.id===state.selected)??products[0];
     if(!p){renderEmpty();return;}
     const a=analyze(p);
@@ -248,7 +393,11 @@
   }
   for(const btn of byId("paymentToggle").querySelectorAll("button")) {
     btn.addEventListener("click",()=>{
-      state.payment=btn.dataset.pay;
+      generalMode=btn.dataset.pay==="geral";
+      if(!generalMode)state.payment=btn.dataset.pay;
+      byId("generalView").hidden=!generalMode;
+      byId("pixCartaoAnalysis").hidden=generalMode;
+      byId("pixCartaoProducts").hidden=generalMode;
       for(const b of byId("paymentToggle").querySelectorAll("button")) {
         const selected=b===btn;b.classList.toggle("selected",selected);b.setAttribute("aria-pressed",String(selected));
       }
@@ -264,7 +413,9 @@
       render();
     });
   }
-  byId("historySearch").addEventListener("input",updateTable);
+  byId("historySearch").addEventListener("input",()=>{
+    if(generalMode)renderGeneral();else updateTable();
+  });
   const sidebar=byId("sidebar"),scrim=byId("scrim"),menu=byId("menuBtn");
   function mobileMenu(open) {
     sidebar.classList.toggle("open",open);scrim.classList.toggle("open",open);scrim.hidden=!open;
@@ -340,9 +491,66 @@
       render();
     }
   }
+  function fromGeneralAuthorized(item) {
+    if(!item || typeof item!=="object" ||
+       !/^MLB\d{6,20}$/.test(item.itemId) ||
+       typeof item.chave!=="string" || item.chave.length>240 ||
+       typeof item.titulo!=="string" || !item.titulo.trim() || item.titulo.length>120 ||
+       item.contexto!=="channel_marketplace" ||
+       item.modalidadePagamento!=="nao_informada" ||
+       item.disponibilidade!=="indeterminada" ||
+       !Array.isArray(item.serie))return null;
+    const serie=item.serie.slice(0,100).flatMap(s=>{
+      if(!s || s.podePublicar!==false || s.podeCompararComoDesconto!==false ||
+         s.modalidadePagamento!=="nao_informada" ||
+         s.disponibilidade!=="indeterminada" ||
+         !Number.isSafeInteger(s.centavos) || s.centavos<=0 ||
+         s.centavos>100_000_000_000 ||
+         typeof s.observadoEmUtc!=="string" ||
+         typeof s.referenciaOficialUtc!=="string")return [];
+      const obs=Date.parse(s.observadoEmUtc),ref=Date.parse(s.referenciaOficialUtc);
+      if(!Number.isFinite(obs) || !Number.isFinite(ref) ||
+         obs>Date.now()+60_000 || ref>obs+60_000 ||
+         obs-ref>48*3600_000)return [];
+      const day=Math.round((Date.parse(s.observadoEmUtc.slice(0,10)+"T00:00:00Z")-referenceDate)/dayMs);
+      if(!Number.isFinite(day)||day>0||day< -90)return [];
+      return [{day,price:s.centavos/100,reference:s.referenciaOficialUtc.slice(0,10)}];
+    }).sort((a,b)=>a.day-b.day);
+    if(!serie.length)return null;
+    return {id:item.chave,identifier:item.itemId,label:item.titulo,serie};
+  }
+  async function carregarMarketplaceAutorizado() {
+    try{
+      const res=await fetch("/api/historico-precos/marketplace",{
+        method:"GET",credentials:"same-origin",cache:"no-store",
+        headers:{accept:"application/json"}
+      });
+      if(!res.ok)throw Error("Falha da API local");
+      const data=await res.json();
+      if(!data || data.ok!==true || data.modo!=="real" ||
+         data.categoria!=="preco_geral_marketplace" || !Array.isArray(data.itens))
+        throw Error("Contrato inválido");
+      generalSourceAuthorized=data.autorizacaoConfirmada===true &&
+        data.coletaHabilitada===true;
+      generalSourceError=false;
+      generalProducts=generalSourceAuthorized?
+        data.itens.slice(0,80).map(fromGeneralAuthorized).filter(Boolean):[];
+      if(!generalProducts.some(p=>p.id===generalSelected))
+        generalSelected=generalProducts[0]?.id??"";
+      if(generalMode)renderGeneral();
+    }catch{
+      generalProducts=[];generalSelected="";
+      generalSourceAuthorized=false;generalSourceError=true;
+      if(generalMode)renderGeneral();
+    }
+  }
   render();
   if(!demoMode){
     void carregarHistoricoAutorizado();
-    window.setInterval(()=>{void carregarHistoricoAutorizado();},60_000);
+    void carregarMarketplaceAutorizado();
+    window.setInterval(()=>{
+      void carregarHistoricoAutorizado();
+      void carregarMarketplaceAutorizado();
+    },60_000);
   }
 })();
