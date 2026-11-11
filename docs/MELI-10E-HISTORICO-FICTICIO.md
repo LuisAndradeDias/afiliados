@@ -53,3 +53,14 @@ Data: 10/11/2026. Branch: feat/meli10e-historico-simulado-20261110.
 - A pagina usa objetos ficticios JavaScript para demonstracao; nao consulta o modulo SQLite e nao alimenta historico operacional.
 - O backend, os envios, as credenciais, os programas de afiliados e os bancos de producao permanecem sem alteracoes.
 - A integracao real dependera de fontes expressamente autorizadas e de homologacao de privacidade/retencao.
+
+## UX-04: regressão de altura da sidebar corrigida (11/11/2026)
+- Falha identificada pela captura integral do operador: a sidebar fixa tinha altura limitada a 100vh e o restante do documento aparecia cinza claro em x=20 abaixo da janela.
+- Regressão reproduzida antes da correção: screenshot real do Chrome, pixel RGB (245, 247, 251), esperado RGB (23, 35, 51) na faixa lateral do rodape.
+- Correcao na casca visual compartilhada `unified-nav.css`: trilho navy e divisor de 1px pintados na altura inteira do documento; sidebar fixa e seu comportamento durante rolagem preservados.
+- Pagina `historico-precos.css`: o background foi alterado de shorthand para background-color, evitando sobrescrever o trilho em páginas que carregam CSS posteriormente.
+- Em resolucoes moveis ate 860px o trilho é explicitamente removido, mantendo o menu recolhivel.
+- `tests/meli10e-historico-ui.mts`: pixel real do PNG full-page nas larguras 1595 e 1280, verificando o fundo até o rodapé. Testes interativos e navegação continuam.
+- `tests/ux-shell-pixel.mts`: contrato expandido para checar background-image em todas as cinco telas, quatro larguras, além das geometrias e pixels existentes.
+- Regressoes visuais precisam ser inspecionadas com o PNG inteiro, não apenas no viewport inicial.
+- Produção `C:\projeto02` continua preservada; nenhuma ação em API, fila ou WhatsApp.

@@ -1,6 +1,7 @@
 /* MELI-10E UX. Página exclusivamente visual, dados sintéticos e nenhuma escrita. */
 body.cpv-history-page {
-  margin:0; background:#f5f7fb; color:#182230;
+  /* Nao sobrescrever background-image do shell compartilhado. */
+  margin:0; background-color:var(--cpv-bg); color:#182230;
   font:14px/1.5 Inter,"Segoe UI",ui-sans-serif,system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
 }

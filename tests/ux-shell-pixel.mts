@@ -72,6 +72,14 @@ try {
       assert.equal(await page.locator("#cpvUnifiedNav").count(), 1);
       assert.equal(await page.locator("#cpvUnifiedNav a").count(), 5);
       const mobile = width <= 860;
+      // Mesmo trilho de fundo em todas as telas de desktop; nenhum trilho
+      // escondido no celular. Protege a faixa alem do primeiro viewport.
+      const fundoDocumento = await page.evaluate(() =>
+        getComputedStyle(document.body).backgroundImage);
+      if (mobile) assert.equal(fundoDocumento, "none",
+        route + " manteve trilho escuro oculto na tela movel");
+      else assert.match(fundoDocumento, /linear-gradient/i,
+        route + " perdeu o fundo da barra lateral ao longo do documento");
       if (mobile) {
         await page.locator("#menuBtn").click();
         await page.locator("#sidebar.open").waitFor();

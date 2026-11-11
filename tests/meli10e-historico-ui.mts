@@ -33,7 +33,7 @@ try {
   assert.match(pageResponse.headers.get("content-security-policy")??"",/connect-src 'none'/);
   assert.match(pageResponse.headers.get("content-security-policy")??"",/script-src 'self'/);
 
-  for(const width of [1595,768,390]){
+  for(const width of [1595,1280,768,390]){
     const context=await browser.newContext({viewport:{width,height:900},
       deviceScaleFactor:1,reducedMotion:"reduce",locale:"pt-BR"});
     const requests:string[]=[];
@@ -61,8 +61,35 @@ try {
     assert.equal(await page.locator('#cpvUnifiedNav a[href="/historico-precos"]').getAttribute("aria-current"),"page");
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
     assert.ok(overflow<=2,"Rolagem horizontal em "+width+": "+overflow);
-    await page.screenshot({path:join(screenshotDir,"historico-"+width+".png"),
+    const screenshot=await page.screenshot({path:join(screenshotDir,"historico-"+width+".png"),
       fullPage:true,animations:"disabled"});
+    const documentHeight=await page.evaluate(()=>document.documentElement.scrollHeight);
+    // Regressao visual: a barra fixa ocupa a janela, mas seu fundo deve
+    // continuar ate o fim do documento em capturas de pagina inteira.
+    if(width===1595 || width===1280) {
+      assert.ok(documentHeight>1000,
+        "O teste precisa de uma pagina longa para detectar a falha original");
+      const inspector=await context.newPage();
+      try {
+        const pixel=await inspector.evaluate(async ({png,y})=>{
+          const img=new Image();
+          img.src="data:image/png;base64,"+png;
+          await img.decode();
+          const canvas=document.createElement("canvas");
+          canvas.width=canvas.height=1;
+          const ctx=canvas.getContext("2d");
+          if(!ctx)throw new Error("Canvas indisponivel no teste de pixel");
+          ctx.drawImage(img,-20,-y);
+          return Array.from(ctx.getImageData(0,0,1,1).data).slice(0,3);
+        }, {png:screenshot.toString("base64"),y:documentHeight-18});
+        assert.deepEqual(pixel,[23,35,51],
+          "A faixa lateral deve permanecer azul-marinho ate o rodape inteiro; nao pode terminar no viewport");
+      } finally { await inspector.close(); }
+    }
+    if(width<=768) {
+      const background=await page.evaluate(()=>getComputedStyle(document.body).backgroundImage);
+      assert.equal(background,"none","No celular nao pode existir faixa lateral escura escondida");
+    }
     await page.locator("#paymentToggle [data-pay='cartao']").click();
     assert.equal(await page.locator("#currentPrice").innerText(),"R$ 314,90");
     assert.equal(await page.locator("#paymentToggle [data-pay='cartao']").getAttribute("aria-pressed"),"true");
@@ -93,7 +120,7 @@ try {
     await context.close();
   }
   assert.equal(writes,0,"Página demonstrativa não pode escrever ou acionar motor");
-  console.log("MELI10E_UX_OK: 3 larguras, filtros, estados incertos, navegação, CSP, 3 capturas, 0 escritas/rede externa.");
+  console.log("MELI10E_UX_OK: 4 larguras, faixa lateral ate o rodape verificada por pixel, filtros, CSP, 4 capturas, 0 escritas/rede externa.");
 } finally {
   await browser.close();
   server.closeAllConnections();

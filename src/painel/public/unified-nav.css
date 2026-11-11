@@ -21,6 +21,15 @@ body.cpv-shell-unified {
   min-height: 100vh;
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   background-color: var(--cpv-bg);
+  /* A navegacao e fixa na janela. Este trilho de fundo acompanha
+     TODO o documento, inclusive em capturas fullPage e no rodape. */
+  background-image: linear-gradient(to right,
+    var(--cpv-navy) 0,
+    var(--cpv-navy) calc(var(--cpv-nav-width) - 1px),
+    #2b3b4e calc(var(--cpv-nav-width) - 1px),
+    #2b3b4e var(--cpv-nav-width),
+    var(--cpv-bg) var(--cpv-nav-width),
+    var(--cpv-bg) 100%);
 }
 body.cpv-shell-unified *,
 body.cpv-shell-unified *::before,
@@ -374,7 +383,8 @@ body.cpv-shell-unified .rev-panel { border-color: var(--cpv-line); border-radius
 /* Sobreposição móvel: a barra nunca muda de posição entre módulos. */
 body.cpv-shell-unified .cpv-nav-scrim { display: none; }
 @media (max-width: 860px) {
-  body.cpv-shell-unified { padding-left: 0; }
+  /* A faixa lateral nao aparece atras do conteudo em telas moveis. */
+  body.cpv-shell-unified { padding-left: 0; background-image: none; }
   body.cpv-shell-unified .sidebar.cpv-nav-sidebar {
     transform: translateX(-103%);
     transition: transform 190ms ease;
