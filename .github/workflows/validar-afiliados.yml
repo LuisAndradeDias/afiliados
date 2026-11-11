@@ -55,6 +55,7 @@ jobs:
             test-results/meli/*.png
             test-results/meli07/*.png
             test-results/meli10e-ui/*.png
+            test-results/meli11-ui/*.png
             test-results/meli09/*.png
           if-no-files-found: ignore
           retention-days: 7

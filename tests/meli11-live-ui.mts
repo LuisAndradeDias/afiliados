@@ -100,6 +100,9 @@ try {
     await page.goto(root+"/historico-precos",{waitUntil:"networkidle"});
     assert.equal(await page.locator("#metricTotal").innerText(),"01");
     assert.equal(await page.locator("#currentPrice").innerText(),"R$ 99,90");
+    assert.match(await page.locator("#priceDescription").innerText(),/fonte autorizada/);
+    assert.match(await page.locator("#selectedDescription").innerText(),/observação autorizada/);
+    assert.doesNotMatch(await page.locator(".products-table").innerText(),/simulação/);
     assert.equal(await page.locator("#sourceStatusTitle").innerText(),"Fonte autorizada");
     assert.equal(await page.locator("#metricReady").innerText(),"01");
   }finally{await context.close();await fake.fechar();}

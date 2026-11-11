@@ -109,7 +109,7 @@
       });
       select.append(node("span","product-avatar "+p.cls,p.letter));
       const details=node("span","product-name");
-      details.append(node("strong","",p.label),node("small","",p.id+" · Mercado Livre (simulação)"));
+      details.append(node("strong","",p.label),node("small","",p.id+(demoMode?" · Mercado Livre (simulação)":" · Mercado Livre (fonte autorizada)")));
       select.append(details);first.append(select);
       const latest=makeCell("Último preço",a.last?.confirmed?money(a.last.price):"—","mono-value");
       const lowest=makeCell("Menor confirmado",money(a.minimum),"mono-value");
@@ -170,10 +170,10 @@
     for(const p of points) {
       const circle=svgEl("circle",{cx:x(p.day),cy:y(p.price),r:4.5,fill:"#fff",
         stroke:"#2563eb","stroke-width":2.2,tabindex:0,role:"img",
-        "aria-label":dateLabel(p.day)+": "+money(p.price)+" (amostra fictícia)"});
+        "aria-label":dateLabel(p.day)+": "+money(p.price)+(demoMode?" (amostra fictícia)":" (amostra autorizada)")});
       const hide=()=>{tip.hidden=true};
       const show=()=>{
-        tip.textContent=money(p.price)+" · "+dateLabel(p.day)+" (ficção)";
+        tip.textContent=money(p.price)+" · "+dateLabel(p.day)+(demoMode?" (ficção)":" (fonte autorizada)");
         tip.hidden=false;
         const box=byId("chartBox").getBoundingClientRect();
         tip.style.left=Math.max(4,Math.min(box.width-150,(x(p.day)/650)*box.width-50))+"px";
@@ -185,7 +185,7 @@
       circle.addEventListener("blur",hide);
       svg.append(circle);
     }
-    setText("chartTextSummary",points.length+" amostra(s) fictícia(s) confirmada(s) no período de "+
+    setText("chartTextSummary",points.length+(demoMode?" amostra(s) fictícia(s)":" amostra(s) autorizada(s)")+" confirmada(s) no período de "+
       state.period+" dias. Fonte real não conectada.");
   }
 
@@ -216,25 +216,25 @@
     const a=analyze(p);
     const [label,kind]=labelFor(a);
     setText("selectedProduct",p.label);
-    setText("selectedDescription",p.id+" · Mercado Livre · "+(state.payment==="pix"?"Pix":"Cartão")+" (simulação)");
+    setText("selectedDescription",p.id+" · Mercado Livre · "+(state.payment==="pix"?"Pix":"Cartão")+(demoMode?" (simulação)":" (observação autorizada)"));
     const status=byId("chartState");
     status.className="state-pill "+kind;status.textContent=label;
     setText("currentPrice",a.last?.confirmed?money(a.last.price):"—");
     byId("currentPrice").classList.toggle("missing",!a.last?.confirmed);
     setText("priceDescription",a.last?.confirmed?
-      "Última observação confirmada (fictícia)":"Última observação sem confirmação de disponibilidade");
+      (demoMode?"Última observação confirmada (fictícia)":"Última observação confirmada (fonte autorizada)"):"Última observação sem confirmação de disponibilidade");
     setText("lowest",money(a.minimum));
     setText("median",money(a.median));
     setText("points",a.confirmedInWindow.length+" na janela");
     setText("checkDays",a.distinctDays+" dias (mín. 3)");
-    setText("checkStock",a.last?.confirmed?"Confirmada (teste)":"Não confirmada");
-    setText("checkFresh",a.last?.day>=-1?"Dentro de 24h (teste)":"Desatualizada");
+    setText("checkStock",a.last?.confirmed?(demoMode?"Confirmada (teste)":"Confirmada (fonte)"):"Não confirmada");
+    setText("checkFresh",a.last?.day>=-1?(demoMode?"Dentro de 24h (teste)":"Dentro de 24h (fonte)"):"Desatualizada");
     const score=(a.distinctDays>=3?1:0)+(a.last?.confirmed?1:0)+(a.last?.day>=-1?1:0);
     const donut=byId("confidenceDonut");donut.dataset.score=String(score);
     setText("confidenceNumber",score+"/3");
     setText("confidenceTitle",a.ready?"Critérios atendidos":"Comparação condicionada");
     setText("confidenceText",a.ready?
-      "Amostras fictícias suficientes para análise histórica. Não significa oferta aprovada.":
+      (demoMode?"Amostras fictícias suficientes para análise histórica.":"Amostras autorizadas suficientes para análise histórica.")+" Não significa oferta aprovada.":
       "Amostras insuficientes, antigas ou sem disponibilidade confirmada. Não recomendar desconto.");
     for(const [id,good] of [["checkDays",a.distinctDays>=3],
       ["checkStock",!!a.last?.confirmed],["checkFresh",a.last?.day>=-1]]) {
