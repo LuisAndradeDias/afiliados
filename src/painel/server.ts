@@ -21,6 +21,8 @@ import {
 } from "../afiliados/mercadolivre-cupons.js";
 import { lerConfigAutoEnvio } from "../robo/whatsapp-auto-send.js";
 import { responderRotaVisual } from "./rotas-visuais.js";
+import { PipelineMeli11 } from "../historico/meli11.js";
+import { responderRotaHistorico } from "./historico-http.js";
 import { responderRotaShopee } from "./shopee-http.js";
 import { responderRotaMeliAssistido } from "./mercadolivre-assistido-http.js";
 import { avaliarCanalMeli } from "./mercadolivre-canal.js";
@@ -45,6 +47,9 @@ const fecharWhatsappPath = resolve(raiz, "data", "fechar-whatsapp.signal");
 const enviarWhatsappPath = resolve(raiz, "data", "enviar-whatsapp.signal");
 const tsxCli = resolve(raiz, "node_modules", "tsx", "dist", "cli.mjs");
 const porta = Number(process.env.PAINEL_PORT ?? 3030);
+// Nenhum coletor real está registrado: a inicialização é sempre fail-closed.
+const pipelineHistoricoMeli11 = new PipelineMeli11();
+pipelineHistoricoMeli11.iniciar();
 const modoBuscaPath = resolve(raiz, "data", "config-busca.json");
 const canalMeliPath = resolve(raiz, "data", "mercadolivre-canal-publico.json");
 const canalMeliAtual = () => avaliarCanalMeli(canalMeliPath, process.env.WHATSAPP_GROUP_NAME);
@@ -1971,7 +1976,8 @@ const server = createServer(async (req, res) => {
     }
 
     // Camada visual independente: não muda o motor, os controles ou o autoenvio.
-    if (await responderRotaVisual({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;
+    if (responderRotaHistorico(req.method, requestUrl.pathname, res, pipelineHistoricoMeli11)) return;
+if (await responderRotaVisual({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;
     if (await responderRotaShopee({ req, res, pathname: requestUrl.pathname, raiz })) return;
     if (await responderRotaMeliAssistido({ req, res, pathname: requestUrl.pathname, raiz })) return;
     if (await responderRotaRevisao({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;

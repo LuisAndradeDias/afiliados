@@ -30,7 +30,7 @@ try {
   assert.equal(denied.status,404,"nenhum arquivo arbitrário pode ser servido");
   const pageResponse=await fetch(origin+"/historico-precos");
   assert.equal(pageResponse.status,200);
-  assert.match(pageResponse.headers.get("content-security-policy")??"",/connect-src 'none'/);
+  assert.match(pageResponse.headers.get("content-security-policy")??"",/connect-src 'self'/);
   assert.match(pageResponse.headers.get("content-security-policy")??"",/script-src 'self'/);
 
   for(const width of [1595,1280,768,390]){
@@ -49,7 +49,7 @@ try {
     const page=await context.newPage();
     page.on("pageerror",err=>errors.push(err.message));
     page.on("console",msg=>{if(msg.type()==="error")errors.push(msg.text())});
-    const res=await page.goto(origin+"/historico-precos",{waitUntil:"networkidle"});
+    const res=await page.goto(origin+"/historico-precos?demo=1",{waitUntil:"networkidle"});
     assert.equal(res?.status(),200);
     assert.equal(await page.locator("#historyTitle").innerText(),"Histórico inteligente de preços");
     assert.equal(await page.locator("#currentPrice").innerText(),"R$ 289,90");

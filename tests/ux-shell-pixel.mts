@@ -63,7 +63,7 @@ try {
     let baselineStyles: Record<string, Record<string, string>> | null = null;
     let baselineGeometry: Array<{ x:number;y:number;width:number;height:number }> | null = null;
     for (const route of routes) {
-      const response = await page.goto(base + route, { waitUntil: "networkidle" });
+      const response = await page.goto(base + route + (route === "/historico-precos" ? "?demo=1" : ""), { waitUntil: "networkidle" });
       assert.equal(response?.status(), 200, route + " HTTP");
       // CSS externo e fontes precisam estar concluídos antes de comparar pixels;
       // DOM pronto sozinho não garante estilos prontos em todos os runners.
