@@ -30,6 +30,8 @@ jobs:
       - run: npm run test:meli10
       - run: npm run test:meli10e
       - run: npm run test:meli10e-ui
+      - run: npm run test:meli11
+      - run: npm run test:meli11-ui
       - run: npm run test:painel-operacional
       - run: npm run test:modos-busca
       - run: npm run test:historico-antiduplicado
@@ -53,6 +55,7 @@ jobs:
             test-results/meli/*.png
             test-results/meli07/*.png
             test-results/meli10e-ui/*.png
+            test-results/meli11-ui/*.png
             test-results/meli09/*.png
           if-no-files-found: ignore
           retention-days: 7

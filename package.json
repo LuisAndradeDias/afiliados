@@ -40,6 +40,8 @@
     "test:meli10": "tsx tests/meli10-cupons.mts && tsx tests/meli10-preview-cupom.mts",
     "test:meli10e": "node --import tsx --test tests/meli10e-historico-ficticio.mts",
     "test:meli10e-ui": "tsx tests/meli10e-historico-ui.mts",
+    "test:meli11": "node --import tsx --test tests/meli11-pipeline.mts",
+    "test:meli11-ui": "tsx tests/meli11-live-ui.mts",
     "test:meli09": "tsx tests/meli09-revisao-assistida.mts && tsx tests/meli09-revisao-visual.mts && tsx tests/meli09-canal.mts && tsx tests/meli09-canal-http.mts && tsx tests/meli09-canal-visual.mts && tsx tests/meli09-cli-bloqueio.mts"
   },
   "dependencies": {

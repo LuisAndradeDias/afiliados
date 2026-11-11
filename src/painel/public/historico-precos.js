@@ -1,8 +1,10 @@
-/* MELI-10E | Apenas observacoes 100% sinteticas. Nenhuma rede, armazenamento ou envio. */
+/* MELI-11 | Somente GET do historico autorizado; demo opt-in. Sem escrita, tokens ou envio. */
 (() => {
   "use strict";
   const byId = id => document.getElementById(id);
-  const referenceDate = Date.parse("2026-11-11T00:00:00.000Z");
+  const demoMode = new URLSearchParams(location.search).get("demo") === "1";
+  const referenceDate = demoMode ? Date.parse("2026-11-11T00:00:00.000Z") :
+    Date.parse(new Date().toISOString().slice(0,10)+"T00:00:00.000Z");
   const dayMs = 86400000;
   const dayIso = offset => new Date(referenceDate + offset * dayMs).toISOString().slice(0, 10);
   const dateLabel = offset => new Date(referenceDate + offset * dayMs)
@@ -13,7 +15,7 @@
     day, price:prices[index], confirmed:!unknownDays.includes(day)
   }));
   // Os itens DEMO-ML nao representam anuncios do Mercado Livre.
-  const products = [
+  const fixtures = [
     { id:"DEMO-ML-001", label:"Produto fictício A", letter:"A", cls:"",
       pix:samples([-85,-72,-59,-46,-35,-28,-23,-18,-13,-9,-6,-3,0],
         [385,378,362,349,346,329.9,319.9,314.9,309.9,299.9,305.9,294.9,289.9],[-9]),
@@ -37,7 +39,8 @@
         [262,259,254,251,246,244,241,239,235,233,229,224])
     }
   ];
-  const state = { selected:products[0].id, payment:"pix", period:30 };
+  let products = demoMode ? fixtures : [];
+  const state = { selected:products[0]?.id ?? "", payment:"pix", period:30 };
 
   function analyze(product, payment=state.payment, period=state.period) {
     const all = product[payment].filter(s => s.day <= 0).sort((a,b)=>a.day-b.day);
@@ -80,12 +83,13 @@
   function updateTable() {
     const query = byId("historySearch").value.trim().toLocaleLowerCase("pt-BR");
     const visible = products.filter(p=>(p.id+" "+p.label).toLocaleLowerCase("pt-BR").includes(query));
-    setText("tableCount",visible.length+" itens demonstrativos");
+    setText("tableCount",visible.length+(demoMode?" itens demonstrativos":" itens autorizados"));
     const rows = byId("productRows");
     rows.replaceChildren();
     if(!visible.length) {
       const row=node("tr");
-      const cell=makeCell("","Nenhum item demonstrativo encontrado.","table-empty");
+      const cell=makeCell("",demoMode?"Nenhum item demonstrativo encontrado.":
+        products.length?"Nenhum item corresponde à pesquisa.":"Nenhuma cotação real disponível. Fonte autorizada ainda pendente.","table-empty");
       cell.colSpan=5;row.append(cell);rows.append(row);return;
     }
     for (const p of visible) {
@@ -105,7 +109,7 @@
       });
       select.append(node("span","product-avatar "+p.cls,p.letter));
       const details=node("span","product-name");
-      details.append(node("strong","",p.label),node("small","",p.id+" · Mercado Livre (simulação)"));
+      details.append(node("strong","",p.label),node("small","",p.id+(demoMode?" · Mercado Livre (simulação)":" · Mercado Livre (fonte autorizada)")));
       select.append(details);first.append(select);
       const latest=makeCell("Último preço",a.last?.confirmed?money(a.last.price):"—","mono-value");
       const lowest=makeCell("Menor confirmado",money(a.minimum),"mono-value");
@@ -166,10 +170,10 @@
     for(const p of points) {
       const circle=svgEl("circle",{cx:x(p.day),cy:y(p.price),r:4.5,fill:"#fff",
         stroke:"#2563eb","stroke-width":2.2,tabindex:0,role:"img",
-        "aria-label":dateLabel(p.day)+": "+money(p.price)+" (amostra fictícia)"});
+        "aria-label":dateLabel(p.day)+": "+money(p.price)+(demoMode?" (amostra fictícia)":" (amostra autorizada)")});
       const hide=()=>{tip.hidden=true};
       const show=()=>{
-        tip.textContent=money(p.price)+" · "+dateLabel(p.day)+" (ficção)";
+        tip.textContent=money(p.price)+" · "+dateLabel(p.day)+(demoMode?" (ficção)":" (fonte autorizada)");
         tip.hidden=false;
         const box=byId("chartBox").getBoundingClientRect();
         tip.style.left=Math.max(4,Math.min(box.width-150,(x(p.day)/650)*box.width-50))+"px";
@@ -181,34 +185,56 @@
       circle.addEventListener("blur",hide);
       svg.append(circle);
     }
-    setText("chartTextSummary",points.length+" amostra(s) fictícia(s) confirmada(s) no período de "+
+    setText("chartTextSummary",points.length+(demoMode?" amostra(s) fictícia(s)":" amostra(s) autorizada(s)")+" confirmada(s) no período de "+
       state.period+" dias. Fonte real não conectada.");
   }
 
+  function renderEmpty() {
+    setText("selectedProduct","Nenhuma cotação real disponível");
+    setText("selectedDescription","O histórico será alimentado apenas quando a fonte for autorizada");
+    setText("currentPrice","—");
+    byId("currentPrice").classList.add("missing");
+    setText("priceDescription","Sem observações verificadas");
+    byId("chartState").className="state-pill neutral";
+    setText("chartState","Aguardando fonte");
+    setText("lowest","—");setText("median","—");setText("points","0 na janela");
+    setText("checkDays","0 dias (mín. 3)");
+    setText("checkStock","Não verificada");
+    setText("checkFresh","Sem coleta");
+    for(const id of ["checkDays","checkStock","checkFresh"])byId(id).className="warning";
+    byId("confidenceDonut").dataset.score="0";
+    setText("confidenceNumber","0/3");
+    setText("confidenceTitle","Sem observações autorizadas");
+    setText("confidenceText","A coleta real não foi habilitada. Nenhuma promoção será inferida.");
+    setText("metricTotal","00");setText("metricReady","00");setText("metricReview","00");
+    plot({confirmedInWindow:[],median:null});
+    updateTable();
+  }
   function render() {
     const p=products.find(v=>v.id===state.selected)??products[0];
+    if(!p){renderEmpty();return;}
     const a=analyze(p);
     const [label,kind]=labelFor(a);
     setText("selectedProduct",p.label);
-    setText("selectedDescription",p.id+" · Mercado Livre · "+(state.payment==="pix"?"Pix":"Cartão")+" (simulação)");
+    setText("selectedDescription",p.id+" · Mercado Livre · "+(state.payment==="pix"?"Pix":"Cartão")+(demoMode?" (simulação)":" (observação autorizada)"));
     const status=byId("chartState");
     status.className="state-pill "+kind;status.textContent=label;
     setText("currentPrice",a.last?.confirmed?money(a.last.price):"—");
     byId("currentPrice").classList.toggle("missing",!a.last?.confirmed);
     setText("priceDescription",a.last?.confirmed?
-      "Última observação confirmada (fictícia)":"Última observação sem confirmação de disponibilidade");
+      (demoMode?"Última observação confirmada (fictícia)":"Última observação confirmada (fonte autorizada)"):"Última observação sem confirmação de disponibilidade");
     setText("lowest",money(a.minimum));
     setText("median",money(a.median));
     setText("points",a.confirmedInWindow.length+" na janela");
     setText("checkDays",a.distinctDays+" dias (mín. 3)");
-    setText("checkStock",a.last?.confirmed?"Confirmada (teste)":"Não confirmada");
-    setText("checkFresh",a.last?.day>=-1?"Dentro de 24h (teste)":"Desatualizada");
+    setText("checkStock",a.last?.confirmed?(demoMode?"Confirmada (teste)":"Confirmada (fonte)"):"Não confirmada");
+    setText("checkFresh",a.last?.day>=-1?(demoMode?"Dentro de 24h (teste)":"Dentro de 24h (fonte)"):"Desatualizada");
     const score=(a.distinctDays>=3?1:0)+(a.last?.confirmed?1:0)+(a.last?.day>=-1?1:0);
     const donut=byId("confidenceDonut");donut.dataset.score=String(score);
     setText("confidenceNumber",score+"/3");
     setText("confidenceTitle",a.ready?"Critérios atendidos":"Comparação condicionada");
     setText("confidenceText",a.ready?
-      "Amostras fictícias suficientes para análise histórica. Não significa oferta aprovada.":
+      (demoMode?"Amostras fictícias suficientes para análise histórica.":"Amostras autorizadas suficientes para análise histórica.")+" Não significa oferta aprovada.":
       "Amostras insuficientes, antigas ou sem disponibilidade confirmada. Não recomendar desconto.");
     for(const [id,good] of [["checkDays",a.distinctDays>=3],
       ["checkStock",!!a.last?.confirmed],["checkFresh",a.last?.day>=-1]]) {
@@ -247,5 +273,76 @@
   menu.addEventListener("click",()=>mobileMenu(!sidebar.classList.contains("open")));
   scrim.addEventListener("click",()=>mobileMenu(false));
   document.addEventListener("keydown",event=>{if(event.key==="Escape")mobileMenu(false)});
+  // A demonstração existe somente por escolha explícita (?demo=1).
+  if(demoMode){
+    setText("historyMode","● DEMONSTRAÇÃO");
+    setText("sourceChipSuffix","(demo)");
+    setText("sourceNotice","DEMONSTRAÇÃO: preços e produtos fictícios, sem vínculo com anúncios reais.");
+    setText("sourceStatusTitle","Dados fictícios");
+    setText("sourceStatusDetail","Nenhum preço deste modo é utilizado comercialmente.");
+    setText("historySourceLabel","Produtos e preços simulados");
+    setText("overviewDescription","Acompanhamento demonstrativo, sem coleta real");
+    setText("footerSourceStatus","Valores fictícios · nenhuma publicação");
+    setText("itemsHint","Selecione um produto fictício para testar o gráfico");
+    byId("modeLink").textContent="Voltar ao histórico real";
+    byId("modeLink").href="/historico-precos";
+  }
+  function fromAuthorized(item) {
+    if(!item||typeof item.itemId!=="string"||!/^MLB\d{6,20}$/.test(item.itemId)||
+       typeof item.titulo!=="string"||typeof item.id!=="string")return null;
+    const parseSerie = (serie) => {
+      if(!Array.isArray(serie))return [];
+      return serie.flatMap(s=>{
+        if(!s||typeof s.observadoEm!=="string"||!Number.isSafeInteger(s.centavos)||
+           s.centavos<=0||!["confirmada","indeterminada","indisponivel"].includes(s.disponibilidade))
+          return [];
+        const diaUtc=s.observadoEm.slice(0,10);
+        const ms=Date.parse(diaUtc+"T00:00:00.000Z");
+        if(!Number.isFinite(ms)||ms>referenceDate)return [];
+        return [{day:Math.round((ms-referenceDate)/dayMs),price:s.centavos/100,
+          confirmed:s.disponibilidade==="confirmada"}];
+      }).sort((a,b)=>a.day-b.day);
+    };
+    return {id:item.id,label:item.titulo,letter:"M",cls:"",
+      pix:parseSerie(item.pix),cartao:parseSerie(item.cartao)};
+  }
+  async function carregarHistoricoAutorizado() {
+    try {
+      const resposta=await fetch("/api/historico-precos",{
+        method:"GET",credentials:"same-origin",cache:"no-store",
+        headers:{"accept":"application/json"}
+      });
+      if(!resposta.ok)throw new Error("HTTP local indisponível");
+      const data=await resposta.json();
+      if(!data||data.ok!==true||data.modo!=="real"||!Array.isArray(data.itens))
+        throw new Error("Contrato inválido");
+      // Sem licença válida os itens não podem ser exibidos, mesmo se houver DB antigo.
+      products=data.autorizacaoConfirmada===true
+        ?data.itens.slice(0,80).map(fromAuthorized).filter(Boolean):[];
+      if(!products.some(p=>p.id===state.selected))state.selected=products[0]?.id??"";
+      const active=data.coletaHabilitada===true && data.autorizacaoConfirmada===true;
+      setText("sourceStatusTitle",active?"Fonte autorizada":"Aguardando autorização");
+      setText("sourceStatusDetail",typeof data.mensagem==="string"
+        ?data.mensagem.slice(0,180):"Nenhuma fonte autorizada conectada.");
+      setText("historySourceLabel",active?"Fonte autorizada · somente leitura":"Fonte oficial: pendente");
+      setText("sourceChipSuffix",active?"(autorizada)":"(fonte pendente)");
+      setText("sourceNotice",active?
+        "HISTÓRICO REAL: valores observados de fonte autorizada. Não é autorização para publicar ofertas.":
+        "SEM DADOS REAIS: ainda não existe fonte aprovada para o Programa de Afiliados.");
+      setText("footerSourceStatus",active?"Observações de fonte autorizada":"Aguardando permissão oficial de coleta");
+      render();
+    }catch{
+      products=[];state.selected="";
+      setText("sourceStatusTitle","Histórico indisponível");
+      setText("sourceStatusDetail","Não foi possível consultar a leitura local. Nenhuma informação estimada será exibida.");
+      setText("sourceNotice","ERRO DE LEITURA: sem preços confirmados. Não há ofertas autorizadas.");
+      setText("historySourceLabel","Sem comunicação com a fonte");
+      render();
+    }
+  }
   render();
+  if(!demoMode){
+    void carregarHistoricoAutorizado();
+    window.setInterval(()=>{void carregarHistoricoAutorizado();},60_000);
+  }
 })();

@@ -73,7 +73,7 @@ export async function responderRotaVisual({
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
       "referrer-policy": "no-referrer",
-      "content-security-policy": "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'none'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+      "content-security-policy": "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
     });
     res.end(html);
     return true;

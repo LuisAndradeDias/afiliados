@@ -29,6 +29,8 @@ body.cpv-history-page {
 .source-status span { display:block;font-size:10px;font-weight:850;letter-spacing:.07em;color:#bed6f5 }
 .source-status strong { display:block;margin:4px 0;font-size:13px }
 .source-status small { font-size:10px;color:#cfdded;line-height:1.5;display:block }
+.history-mode-link {display:inline-block;margin-top:8px;color:#dbeafe;font-size:11px;font-weight:800;text-decoration:underline;text-underline-offset:2px}
+.history-mode-link:focus-visible {outline:2px solid #fff;outline-offset:4px}
 .demo-warning { display:flex;align-items:center;gap:9px;margin:14px 0 17px;padding:10px 13px;border:1px solid #f0d79e;border-radius:10px;background:#fff9ea;color:#9a5c0e;font-size:11px;font-weight:640 }
 .demo-warning strong { font-weight:900 }
 .demo-warning .warning-icon { font-size:16px }

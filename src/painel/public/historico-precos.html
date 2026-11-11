@@ -20,7 +20,7 @@
           <button type="button" id="menuBtn" class="cpv-nav-toggle history-menu-button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar">☰</button>
           <span class="breadcrumb">Central &nbsp;/&nbsp; Inteligência &nbsp;/&nbsp; <b>Histórico de preços</b></span>
         </div>
-        <div class="top-right"><span class="top-chip">● DEMONSTRAÇÃO</span><span class="vip-chip">VIP</span></div>
+        <div class="top-right"><span id="historyMode" class="top-chip">● HISTÓRICO REAL</span><span class="vip-chip">VIP</span></div>
       </header>
       <main class="history-content">
         <section class="history-hero" aria-labelledby="historyTitle">
@@ -31,29 +31,30 @@
           </div>
           <div class="source-status">
             <span>FONTE DE DADOS REAL</span>
-            <strong>Aguardando autorização</strong>
-            <small>Integração de anúncios do Mercado Livre sob análise técnica (HTTP 403).</small>
+            <strong id="sourceStatusTitle">Aguardando autorização</strong>
+            <small id="sourceStatusDetail">Integração de anúncios do Mercado Livre sob análise técnica (HTTP 403).</small>
+            <a id="modeLink" class="history-mode-link" href="/historico-precos?demo=1">Ver demonstração fictícia</a>
           </div>
         </section>
         <div class="demo-warning" role="note">
           <span class="warning-icon" aria-hidden="true">⚠</span>
-          <div><strong>DEMONSTRAÇÃO:</strong> produtos e valores totalmente fictícios. Não representam ofertas, estoque, comissão ou dados coletados.</div>
+          <div id="sourceNotice">SEM DADOS REAIS: aguardando uma fonte oficial autorizada. Nenhum preço está sendo coletado ou anunciado.</div>
           <strong class="demo-label">SEM PUBLICAÇÃO</strong>
         </div>
         <div class="section-heading">
-          <div><h2>Visão geral</h2><p>Acompanhamento da qualidade das observações demonstrativas</p></div>
-          <span class="section-caption">Dados simulados · protótipo</span>
+          <div><h2>Visão geral</h2><p id="overviewDescription">Monitoramento de fontes autorizadas, sem preços inventados</p></div>
+          <span class="section-caption" id="historySourceLabel">Fonte oficial: pendente</span>
         </div>
         <section class="history-metrics" aria-label="Indicadores fictícios">
-          <article class="metric"><div class="metric-label">Itens no histórico <span class="metric-icon">#</span></div><strong id="metricTotal">04</strong><small>Registros de demonstração</small></article>
-          <article class="metric"><div class="metric-label">Base suficiente <span class="metric-icon">✓</span></div><strong id="metricReady">02</strong><small>Pelo menos 3 dias confirmados</small></article>
-          <article class="metric"><div class="metric-label">Revisão necessária <span class="metric-icon">!</span></div><strong id="metricReview">02</strong><small>Falta evidência ou atualização</small></article>
+          <article class="metric"><div class="metric-label">Itens no histórico <span class="metric-icon">#</span></div><strong id="metricTotal">00</strong><small>Aguardando fonte autorizada</small></article>
+          <article class="metric"><div class="metric-label">Base suficiente <span class="metric-icon">✓</span></div><strong id="metricReady">00</strong><small>Pelo menos 3 dias confirmados</small></article>
+          <article class="metric"><div class="metric-label">Revisão necessária <span class="metric-icon">!</span></div><strong id="metricReview">00</strong><small>Falta evidência ou atualização</small></article>
           <article class="metric"><div class="metric-label">Fonte autorizada <span class="metric-icon">·</span></div><strong class="pending">Pendente</strong><small class="attention">Nenhuma coleta real ativada</small></article>
         </section>
         <section class="history-filters" aria-label="Filtros do histórico">
           <div class="filters-left">
-            <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="historySearch" placeholder="Buscar item demonstrativo ou ID..." autocomplete="off" aria-label="Buscar item demonstrativo"></label>
-            <span class="marketplace-chip"><span class="meli-dot"></span>Mercado Livre <span class="only-source">(demo)</span></span>
+            <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="historySearch" placeholder="Buscar item ou ID..." autocomplete="off" aria-label="Buscar item demonstrativo"></label>
+            <span class="marketplace-chip"><span class="meli-dot"></span>Mercado Livre <span id="sourceChipSuffix" class="only-source">(fonte pendente)</span></span>
           </div>
           <div class="filters-right">
             <fieldset class="filter-group"><legend>Pagamento</legend><div class="switch" id="paymentToggle">
@@ -71,15 +72,15 @@
           <section class="history-panel analysis-chart" aria-label="Análise demonstrativa do produto">
             <div class="panel-content">
               <div class="panel-head">
-                <div><span class="panel-kicker">ANÁLISE POR PRODUTO</span><h2 id="selectedProduct">Produto fictício A</h2><p id="selectedDescription">DEMO-ML-001 · Mercado Livre · Pix (simulação)</p></div>
-                <span id="chartState" class="state-pill good">Base suficiente</span>
+                <div><span class="panel-kicker">ANÁLISE POR PRODUTO</span><h2 id="selectedProduct">Nenhuma cotação real disponível</h2><p id="selectedDescription">Aguardando dados de fonte oficial autorizada</p></div>
+                <span id="chartState" class="state-pill neutral">Aguardando fonte</span>
               </div>
               <div class="price-heading">
-                <div><strong id="currentPrice" class="current-price">R$ 289,90</strong><small id="priceDescription">Última observação confirmada (fictícia)</small></div>
+                <div><strong id="currentPrice" class="current-price missing">—</strong><small id="priceDescription">Sem observações verificadas</small></div>
                 <div class="legend"><span><i class="price-line"></i>Preço confirmado</span><span><i class="median-line"></i>Mediana</span></div>
               </div>
               <div class="chart-wrap" id="chartBox">
-                <svg id="priceChart" viewBox="0 0 650 240" role="img" aria-label="Gráfico fictício de evolução do preço" preserveAspectRatio="none"></svg>
+                <svg id="priceChart" viewBox="0 0 650 240" role="img" aria-label="Gráfico histórico sem dados reais disponíveis" preserveAspectRatio="none"></svg>
                 <div class="chart-tooltip" id="chartTooltip" role="tooltip" hidden></div>
               </div>
               <div id="chartTextSummary" class="chart-text-summary" aria-live="polite"></div>
@@ -107,13 +108,13 @@
           </section>
         </div>
         <section class="history-panel products-panel" aria-label="Produtos fictícios acompanhados">
-          <div class="products-heading"><div><h2>Produtos acompanhados</h2><p>Selecione um item fictício para visualizar seu comportamento no gráfico</p></div><span id="tableCount">4 itens demonstrativos</span></div>
+          <div class="products-heading"><div><h2>Produtos acompanhados</h2><p id="itemsHint">Itens rastreados por fontes de preços autorizadas</p></div><span id="tableCount">0 itens</span></div>
           <div class="products-table-wrap">
             <table class="products-table"><thead><tr><th scope="col">ITEM / IDENTIFICAÇÃO</th><th scope="col">ÚLTIMO PREÇO</th><th scope="col">MENOR CONFIRMADO</th><th scope="col">DIAS / 30D</th><th scope="col">ESTADO DA COMPARAÇÃO</th></tr></thead><tbody id="productRows"></tbody></table>
           </div>
         </section>
-        <aside class="history-safety"><span aria-hidden="true">♢</span><div><strong>Regras de segurança preservadas</strong><p>Nenhum dado desta demonstração aprova postagem, cupom, estoque, vendedor ou link de afiliado. Uma futura integração usará somente fontes e condições de retenção autorizadas.</p></div></aside>
-        <footer class="history-footer"><span>Caça Promos VIP · Histórico inteligente (demonstração)</span><span>Protótipo isolado · Nenhuma coleta real ativada</span></footer>
+        <aside class="history-safety"><span aria-hidden="true">♢</span><div><strong>Regras de segurança preservadas</strong><p>Nenhum registro do histórico aprova postagem, cupom, estoque, vendedor ou link de afiliado. Uma futura integração usará somente fontes e condições de retenção autorizadas.</p></div></aside>
+        <footer class="history-footer"><span>Caça Promos VIP · Histórico inteligente</span><span id="footerSourceStatus">Fontes oficiais sob validação técnica</span></footer>
       </main>
     </div>
   </div>

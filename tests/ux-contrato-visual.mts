@@ -106,7 +106,7 @@ try {
       }
     });
     for (const pathname of rotas) {
-      const response = await page.goto(base + pathname, { waitUntil: "domcontentloaded" });
+      const response = await page.goto(base + pathname + (pathname === "/historico-precos" ? "?demo=1" : ""), { waitUntil: "domcontentloaded" });
       assert.equal(response?.status(), 200, "Rota não disponível: " + pathname);
       await page.waitForTimeout(600);
       const measures = await page.evaluate(() => ({
