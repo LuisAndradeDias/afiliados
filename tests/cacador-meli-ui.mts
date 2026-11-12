@@ -103,6 +103,8 @@ try{
   assert.equal(await page.locator("#metricReview").innerText(),"01");
   assert.equal(await page.locator("#metricStale").innerText(),"02");
   assert.equal(await page.locator("#metricRequests").innerText(),"00");
+  assert.equal(await page.locator(".cac-hero-button").getAttribute("href"),"/ofertas#mlAssistDetails");
+  assert.equal(await page.locator(".cac-list-footer a").getAttribute("href"),"/ofertas#mlAssistDetails");
   assert.equal(await page.locator("#cacRows tr").count(),3);
   assert.match(await page.locator("#cacNotice").innerText(),/não disponibilizada/);
   assert.equal(await page.locator("#detailPrice").innerText(),"R$\u00a0219,90");

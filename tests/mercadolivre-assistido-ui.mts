@@ -53,6 +53,13 @@ try{
   const ctx=await browser.newContext({viewport:{width,height:900},locale:"pt-BR",reducedMotion:"reduce"});
   const page=await ctx.newPage(),errors:string[]=[];
   page.on("pageerror",e=>errors.push(e.message));
+  // Atalho do Caçador: abre Ferramentas e o formulário MELI sem enviar nada.
+  const shortcut=await ctx.newPage();
+  await shortcut.goto(base+"/ofertas#mlAssistDetails",{waitUntil:"domcontentloaded"});
+  await shortcut.locator("#cpvSettingsDialog").waitFor({state:"visible",timeout:5000});
+  assert.equal(await shortcut.locator("#cpvSettingsTab-ferramentas").getAttribute("aria-selected"),"true");
+  assert.equal(await shortcut.locator("#mlAssistDetails").evaluate((el:HTMLDetailsElement)=>el.open),true);
+  await shortcut.close();
   await page.goto(base+"/ofertas",{waitUntil:"domcontentloaded"});
   await page.locator("#cpvSettingsButton").click({timeout:5000});
   await page.locator("#cpvSettingsTab-ferramentas").click({timeout:5000});

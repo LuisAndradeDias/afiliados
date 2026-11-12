@@ -14,6 +14,7 @@ Não fazer scraping, rotacionar IP/proxy, automatizar página de produto sem lic
 - src/cacador/meli-revisao.ts: classifica rascunhos do repositório MELI-09, sem fabricar série histórica.
 - src/painel/cacador-meli-http.ts: API LOCAL GET /api/mercadolivre/cacador, somente leitura, no-store, sem dados de credenciais ou link de afiliado no resultado. 405 para outros métodos, 403 para acesso não local, 503 para arquivos corrompidos.
 - src/painel/public/cacador-meli.html, .css, .js: interface /cacador, sidebar compartilhada, análise e motivos, filtros, atalhos oficiais para navegação humana. A URL ?demo=1 exibe apenas produtos FICTÍCIOS.
+- O botão "Cadastrar produto no MELI" abre diretamente /ofertas#mlAssistDetails. O script existente mercadolivre-assistido.js abre Ferramentas + formulário no drawer da Central, sem enviar ou gerar ações automáticas. O teste Chrome MELI-08 cobre o atalho.
 - src/painel/server.ts e src/painel/rotas-visuais.ts: conectam só a rota de leitura e os assets visuais.
 - src/painel/public/unified-nav.js: menu do Caçador inserido no shell.
 - tests/cacador-meli-motor.mts e tests/cacador-meli-ui.mts: unidade, contrato HTTP, segurança e Chrome em três resoluções.
