@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-lab02",
+    "noEmit": true
+  },
+  "include": [
+    "labs/fonte-real/**/*.ts",
+    "labs/fonte-real/**/*.mts",
+    "tests/lab02-fonte-real.mts"
+  ]
+}
