@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="referrer" content="no-referrer">
+ <title>Caçador VIP | Mercado Livre</title>
+ <link rel="stylesheet" href="/central/assets/unified-nav.css">
+ <link rel="stylesheet" href="/central/assets/cacador-meli.css">
+ <script src="/central/assets/unified-nav.js" defer></script>
+ <script src="/central/assets/cacador-meli.js" defer></script>
+</head>
+<body class="cpv-cacador-page">
+ <div id="scrim" class="cpv-nav-scrim" hidden></div>
+ <div class="app">
+  <aside id="sidebar" class="sidebar" aria-label="Menu principal"></aside>
+  <div class="workspace">
+   <header class="cac-top">
+    <div class="cac-top-left">
+     <button type="button" id="menuBtn" class="cpv-nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar">☰</button>
+     <span class="cac-breadcrumb">Central &nbsp;/&nbsp; Inteligência &nbsp;/&nbsp; <strong>Caçador VIP</strong></span>
+    </div>
+    <div class="cac-top-right"><span class="cac-system-status" id="headerState">Aguardando fonte de busca</span><span class="cac-vip">VIP</span></div>
+   </header>
+
+   <main class="cac-main">
+    <section class="cac-hero" aria-labelledby="cacTitle">
+     <div class="cac-hero-copy">
+      <span class="cac-eyebrow">MELI-15C · INTELIGÊNCIA DE DESCOBERTA</span>
+      <h1 id="cacTitle">Caçador VIP <span>Mercado Livre</span></h1>
+      <p>Um radar que organiza oportunidades, reduz buscas repetidas e prioriza a revisão. A coleta externa só poderá funcionar com autorização específica da plataforma.</p>
+      <div class="cac-hero-actions">
+       <a class="cac-hero-button" href="/ofertas#mlAssistDetails">Cadastrar produto no MELI <span aria-hidden="true">›</span></a>
+       <a class="cac-demo-link" id="demoLink" href="/cacador?demo=1">Ver demonstração fictícia</a>
+      </div>
+     </div>
+     <div class="cac-hero-status" aria-label="Condição da fonte externa">
+      <div class="cac-hero-state"><span class="cac-status-dot" aria-hidden="true"></span><span>BUSCA AUTOMÁTICA</span></div>
+      <strong id="heroSourceStatus">Aguardando autorização</strong>
+      <small>Sem varredura do site, chamadas de API, postagem ou envio ao WhatsApp.</small>
+      <div class="cac-hero-foot"><span>Fonte</span><b id="heroSourceName">Mercado Livre · Afiliados</b></div>
+     </div>
+    </section>
+
+    <div class="cac-banner" role="note">
+     <span class="cac-banner-symbol" aria-hidden="true">⚠</span>
+     <div id="cacNotice">Não há feed de busca autorizado. O Caçador analisa somente rascunhos conferidos na Central.</div>
+     <strong id="cacBannerTag">SEM AUTOENVIO</strong>
+    </div>
+
+    <section class="cac-section-title">
+     <div><h2>Visão geral da caçada</h2><p id="cacOverviewDetail">Registros locais e decisões fundamentadas; nenhuma oferta publicada automaticamente.</p></div>
+     <span class="cac-secondary-label" id="lastCheck">Consulta local</span>
+    </section>
+    <section class="cac-metrics" aria-label="Indicadores da caçada">
+     <article class="cac-metric"><div class="cac-metric-label">Produtos acompanhados <span class="cac-metric-icon">#</span></div><strong id="metricItems">00</strong><small>Identidades no repositório assistido</small></article>
+     <article class="cac-metric good"><div class="cac-metric-label">Para revisão <span class="cac-metric-icon">✓</span></div><strong id="metricReview">00</strong><small>Exigem validação humana</small></article>
+     <article class="cac-metric warning"><div class="cac-metric-label">Revalidar / bloqueados <span class="cac-metric-icon">!</span></div><strong id="metricStale">00</strong><small>Dados incompletos ou vencidos</small></article>
+     <article class="cac-metric"><div class="cac-metric-label">Consultas externas <span class="cac-metric-icon">◎</span></div><strong id="metricRequests">00</strong><small>Robô de rede não ativado</small></article>
+    </section>
+
+    <section class="cac-section-title">
+     <div><h2>Fila inteligente de oportunidades</h2><p>Prioridade por atualidade e consistência. Queda informada não equivale a histórico comprovado.</p></div>
+    </section>
+    <div class="cac-analysis-grid">
+     <section class="cac-panel" aria-label="Fila de revisão">
+      <div class="cac-panel-header">
+       <div><span class="cac-panel-kicker">REGISTROS REAIS CONFERIDOS PELO OPERADOR</span><h3>Candidatos do Mercado Livre</h3><p>O Caçador organiza os rascunhos existentes; não encontra anúncios novos sem fonte autorizada.</p></div>
+       <span class="cac-smallbadge" id="itemsCount">0 itens</span>
+      </div>
+      <div class="cac-toolbar">
+       <label class="cac-search"><span aria-hidden="true">⌕</span><input type="search" id="cacSearch" placeholder="Produto ou identificador..." aria-label="Pesquisar produtos" autocomplete="off"></label>
+       <div class="cac-switch" role="group" aria-label="Filtrar por estado" id="cacFilters">
+        <button type="button" data-filter="todos" aria-pressed="true">Todos</button>
+        <button type="button" data-filter="revisar" aria-pressed="false">Revisar</button>
+        <button type="button" data-filter="revalidar" aria-pressed="false">Revalidar</button>
+        <button type="button" data-filter="bloqueado" aria-pressed="false">Bloqueados</button>
+       </div>
+      </div>
+      <div class="cac-table-wrap">
+       <table class="cac-table" aria-label="Candidatos à revisão">
+        <thead><tr><th scope="col">PRODUTO</th><th scope="col">PREÇO INFORMADO</th><th scope="col">IDADE</th><th scope="col">PRIORIDADE</th><th scope="col">ESTADO</th></tr></thead>
+        <tbody id="cacRows"><tr><td colspan="5" class="cac-empty">Carregando registros locais…</td></tr></tbody>
+       </table>
+      </div>
+      <div class="cac-list-footer">
+       <span id="cacFooter">Nenhum envio é disparado pelo Caçador.</span>
+       <a href="/ofertas#mlAssistDetails">Cadastrar produto <span aria-hidden="true">›</span></a>
+      </div>
+     </section>
+     <section class="cac-panel cac-detail" aria-label="Análise da seleção">
+      <div class="cac-panel-header">
+       <div><span class="cac-panel-kicker">AUDITOR DE CONFIABILIDADE</span><h3>Por que revisar?</h3><p>O motivo da decisão fica visível antes de qualquer divulgação.</p></div>
+       <span class="cac-smallbadge neutral" id="detailStatus">Sem seleção</span>
+      </div>
+      <div class="cac-detail-inner">
+       <h4 id="detailName">Nenhum produto selecionado</h4>
+       <p class="cac-muted" id="detailSubtitle">Selecione um registro na fila para conferir os dados disponíveis.</p>
+       <div class="cac-detail-stats">
+        <div><span>Preço conferido</span><strong id="detailPrice">—</strong></div>
+        <div><span>Anterior informado</span><strong id="detailPrev">—</strong></div>
+        <div><span>Diferença informada</span><strong id="detailDrop">—</strong></div>
+        <div><span>Histórico independente</span><strong id="detailHistory">Não comprovado</strong></div>
+       </div>
+       <h4 class="cac-why-title">Condições e bloqueios</h4>
+       <ul class="cac-why" id="detailReasons"><li>Sem evidências para análise.</li></ul>
+       <a class="cac-open-product" id="openProduct" href="/central" hidden target="_blank" rel="noopener noreferrer">Abrir anúncio específico <span aria-hidden="true">↗</span></a>
+       <div class="cac-caution"><strong>Publicação bloqueada</strong>O Caçador jamais libera uma oferta apenas com base no preço riscado ou em um cupom não validado.</div>
+      </div>
+     </section>
+    </div>
+
+    <section class="cac-section-title">
+     <div><h2>Como o Caçador trabalha</h2><p>Uma máquina de decisão local, preparada para um conector autorizado no futuro.</p></div>
+    </section>
+    <section class="cac-flow" aria-label="Etapas do Caçador">
+     <article><span class="cac-step-icon">01</span><b>Escolha inteligente</b><p>Prioriza pautas e produtos relevantes, reduzindo pesquisas redundantes.</p></article>
+     <article><span class="cac-step-icon">02</span><b>Tráfego controlado</b><p>Máximo de 1 consulta por vez, 12/h e 60/d no motor experimental.</p></article>
+     <article><span class="cac-step-icon">03</span><b>Memória e histórico</b><p>Distingue produto, vendedor, variante, pagamento e atualização verificável.</p></article>
+     <article><span class="cac-step-icon">04</span><b>Auditoria humana</b><p>Bloqueia informações vencidas, descontos incertos e envios não aprovados.</p></article>
+    </section>
+
+    <section class="cac-section-title">
+     <div><h2>Onde iniciar a pesquisa</h2><p>Atalhos oficiais para navegação humana; estas páginas não são coletadas pelo robô.</p></div>
+    </section>
+    <section class="cac-source-grid" aria-label="Fontes para seleção assistida">
+     <a href="https://www.mercadolivre.com.br/ofertas" target="_blank" rel="noopener noreferrer"><span class="cac-source-icon">%</span><b>Ofertas do Mercado Livre</b><small>Explore campanhas e selecione anúncios individuais.</small><span class="cac-external">Abrir página oficial ↗</span></a>
+     <a href="https://www.mercadolivre.com.br/mais-vendidos" target="_blank" rel="noopener noreferrer"><span class="cac-source-icon">★</span><b>Mais vendidos</b><small>Observe tendências de procura sem presumir desconto.</small><span class="cac-external">Abrir página oficial ↗</span></a>
+     <a href="https://www.mercadolivre.com.br/ofertas/cupons" target="_blank" rel="noopener noreferrer"><span class="cac-source-icon">◈</span><b>Cupons disponíveis</b><small>Confira regras e validade no canal oficial.</small><span class="cac-external">Abrir página oficial ↗</span></a>
+    </section>
+    <footer class="cac-footer">Caçador VIP MELI-15C — nenhuma API, scraping ou envio é executado por esta página. Registros de origem manual exigem confirmação antes de qualquer divulgação.</footer>
+   </main>
+  </div>
+ </div>
+</body>
+</html>

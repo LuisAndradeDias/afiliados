@@ -11,6 +11,7 @@
     { path: "/ofertas", label: "Central de Ofertas", symbol: "◈" },
     { path: "/revisao", label: "Revisão técnica", symbol: "▣" },
     { path: "/historico-precos", label: "Histórico inteligente", symbol: "⌁" },
+    { path: "/cacador", label: "Caçador VIP", symbol: "◎" },
     { path: "/shopee", label: "Shopee", symbol: "S" }
   ];
   const current = modules.find(item => item.path === route) || modules[0];
@@ -66,7 +67,9 @@
   const footTitle = document.createElement("strong");
   footTitle.textContent = "Operação local";
   const footNote = document.createElement("p");
-  footNote.textContent = "Amazon e Mercado Livre em um só painel. Shopee em preparação.";
+  footNote.textContent = route === "/cacador"
+    ? "Caçador Mercado Livre: fontes externas desligadas até autorização."
+    : "Amazon e Mercado Livre em um só painel. Shopee em preparação.";
   footer.append(footTitle, footNote);
   sidebar.replaceChildren(brand, section, nav, footer);
 

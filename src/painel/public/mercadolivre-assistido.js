@@ -5,6 +5,23 @@
   const feedback=document.getElementById("mlAssistFeedback");
   const submit=document.getElementById("mlAssistSave");
   if(!form||!list||!feedback||!submit)return;
+  // Caçador VIP: um clique leva ao cadastro MELI e expande a seção,
+  // sem disparar captura, requisição externa ou envio.
+  const assistDetails=document.getElementById("mlAssistDetails");
+  const abrirPeloAtalho=()=>{
+    if(!assistDetails||location.hash!=="#mlAssistDetails")return;
+    // O cadastro MELI está dentro da aba Ferramentas do drawer UX-03.
+    // Apenas abre controles existentes; jamais dispara uma ação comercial.
+    const settings=document.getElementById("cpvSettingsButton");
+    const tab=document.getElementById("cpvSettingsTab-ferramentas");
+    if(settings&&tab){
+      settings.click();
+      tab.click();
+    }
+    assistDetails.open=true;
+  };
+  abrirPeloAtalho();
+  window.addEventListener("hashchange",abrirPeloAtalho);
   const byId=(id)=>document.getElementById(id);
   const base="/api/mercadolivre/rascunhos-assistidos";
   const fmt=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});

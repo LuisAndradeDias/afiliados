@@ -45,6 +45,7 @@
     "test:meli12": "node --import tsx --test tests/meli12-sale-price.mts",
     "test:meli13": "node --import tsx --test tests/meli13-preco-geral.mts",
     "test:meli14-ui": "tsx tests/meli14-marketplace-ui.mts",
+    "test:cacador-meli": "node --import tsx --test tests/cacador-meli-motor.mts && tsx tests/cacador-meli-ui.mts",
     "lab:descoberta": "tsx labs/descoberta/executar.mts",
     "test:lab-descoberta": "node --import tsx --test tests/lab-descoberta.mts && npm run lab:descoberta && tsx tests/lab-descoberta-ui.mts",
     "test:meli09": "tsx tests/meli09-revisao-assistida.mts && tsx tests/meli09-revisao-visual.mts && tsx tests/meli09-canal.mts && tsx tests/meli09-canal-http.mts && tsx tests/meli09-canal-visual.mts && tsx tests/meli09-cli-bloqueio.mts"
