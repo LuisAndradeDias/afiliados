@@ -23,6 +23,8 @@ const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/revisao.js": "revisao.js",
   "/central/assets/historico-precos.css": "historico-precos.css",
   "/central/assets/historico-precos.js": "historico-precos.js",
+  "/central/assets/cacador-meli.css": "cacador-meli.css",
+  "/central/assets/cacador-meli.js": "cacador-meli.js",
 });
 
 type RotaVisual = {
@@ -60,6 +62,20 @@ export async function responderRotaVisual({
       "cache-control": "no-store",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
+    });
+    res.end(html);
+    return true;
+  }
+
+  if (pathname === "/cacador") {
+    const html = await readFile(resolve(publicDir, "cacador-meli.html"), "utf8");
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer",
+      "content-security-policy": "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
     });
     res.end(html);
     return true;

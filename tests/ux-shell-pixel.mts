@@ -70,7 +70,7 @@ try {
       await page.evaluate(() => document.fonts.ready);
       await page.locator("#cpvUnifiedNav .cpv-nav-link").first().waitFor();
       assert.equal(await page.locator("#cpvUnifiedNav").count(), 1);
-      assert.equal(await page.locator("#cpvUnifiedNav a").count(), 5);
+      assert.equal(await page.locator("#cpvUnifiedNav a").count(), 6);
       const mobile = width <= 860;
       // Mesmo trilho de fundo em todas as telas de desktop; nenhum trilho
       // escondido no celular. Protege a faixa alem do primeiro viewport.
