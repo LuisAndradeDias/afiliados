@@ -1,4 +1,5 @@
 node_modules/
+.env.lab02
 dist/
 .env
 data/*.db
