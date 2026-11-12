@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Laboratório de Descoberta — Caça Promos VIP</title>
+<style>
+:root{font-family:Inter,"Segoe UI",system-ui,sans-serif;color:#172333;background:#f3f5f9;font-size:14px}
+*{box-sizing:border-box}body{margin:0;min-width:320px}button{font:inherit;cursor:pointer}
+.layout{display:grid;grid-template-columns:210px minmax(0,1fr);min-height:100vh}
+.side{background:#172333;color:#dbe3ed;padding:22px 14px;display:flex;flex-direction:column;gap:18px;min-height:100%}
+.brand{display:flex;align-items:center;gap:9px;border-bottom:1px solid #314054;padding:1px 9px 22px}
+.logo{width:36px;height:36px;border:1px solid #6aa59a;background:#224d47;border-radius:10px;display:grid;place-items:center;color:#adf4d1;font-size:19px;font-weight:900}
+.brand b{font-size:13px;letter-spacing:.02em;line-height:1.2}.brand small{display:block;color:#a2b2c5;font-size:10px;margin-top:3px}
+.side-caption{font-size:9px;letter-spacing:.14em;font-weight:800;color:#8094ae;padding:4px 12px}
+.navitem{display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:8px;font-size:11px;color:#c4cdd9}
+.navitem.on{background:#205144;color:#edfff6;border:1px solid #367e68;font-weight:700}
+.navi{width:17px;text-align:center;color:#a7bbc9}.on .navi{color:#86e1b0}
+.side-spacer{flex:1}.side-note{border-top:1px solid #304052;padding:15px 10px 7px;font-size:10px;line-height:1.6;color:#8fa4b9}
+.side-note b{display:block;color:#dce5ed;font-size:11px;margin-bottom:4px}
+.content{min-width:0;padding:28px 28px 32px}.inner{max-width:1400px;margin:0 auto}
+.eyebrow{font-size:9px;text-transform:uppercase;font-weight:850;letter-spacing:.14em;color:#8bcad4}
+.hero{background:linear-gradient(117deg,#152437 11%,#223e65 62%,#305fa0 100%);border:1px solid #b6c7dc;border-radius:14px;padding:23px 27px;color:#fff;box-shadow:0 4px 14px rgba(17,39,72,.07);display:flex;gap:20px;justify-content:space-between;align-items:center}
+.hero h1{margin:8px 0 6px;font-size:27px;letter-spacing:-.035em;line-height:1.13}.hero p{margin:0;color:#d5e1f1;max-width:725px;font-size:12px;line-height:1.55}
+.hero-meta{text-align:right;min-width:180px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);padding:13px;border-radius:10px}
+.hero-meta b{display:block;font-size:22px;font-variant-numeric:tabular-nums}.hero-meta small{font-size:10px;color:#c5d8ed}
+.notice{margin:12px 0 20px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#fff8e8;border:1px solid #f1ddb4;padding:11px 15px;border-radius:9px;color:#955a13;font-size:11px;font-weight:650}
+.notice small{font-size:9px;letter-spacing:.08em}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:22px 0 12px}.section-head h2{font-size:15px;letter-spacing:-.02em;margin:0 0 4px}.section-head p{margin:0;color:#738094;font-size:11px;line-height:1.45}
+.cycle-controls{display:flex;gap:7px;flex-wrap:wrap}.cycle{border:1px solid #dbe3ee;color:#4d5e72;background:#fff;padding:9px 12px;border-radius:8px;font-size:10px;font-weight:750}.cycle[aria-pressed=true]{background:#172e4e;color:#fff;border-color:#172e4e}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:13px 0}
+.metric{background:#fff;border:1px solid #e5ebf2;border-radius:11px;padding:17px 17px 14px;min-height:106px;box-shadow:0 3px 12px rgba(38,56,88,.025)}
+.metric .head{display:flex;align-items:center;justify-content:space-between;gap:4px;color:#66758a;font-size:11px;font-weight:700}
+.metric .symbol{height:24px;width:24px;border-radius:7px;background:#edf3fc;display:grid;place-items:center;font-size:12px;color:#4471ab}
+.metric strong{font-size:27px;font-weight:850;letter-spacing:-.04em;display:block;margin:8px 0 2px;font-variant-numeric:tabular-nums}
+.metric small{font-size:10px;color:#8997a8}.metric.green strong{color:#1f865b}.metric.amber strong{color:#ad7116}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.flow-step{border:1px solid #e4eaf2;border-radius:9px;padding:13px;background:#fff;min-width:0}
+.flow-step b{display:block;font-size:10px;color:#2b3a4f}.flow-step span{display:block;color:#7c8997;font-size:10px;margin-top:5px;line-height:1.35}
+.flow-step i{display:inline-flex;align-items:center;justify-content:center;font-style:normal;width:21px;height:21px;border-radius:6px;background:#e6f0f5;color:#416981;margin-right:6px;font-size:10px}
+.main-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.93fr);gap:13px;align-items:stretch}
+.panel{background:#fff;border:1px solid #e4e9f0;border-radius:12px;min-width:0;box-shadow:0 3px 12px rgba(38,56,88,.025)}
+.panel-head{padding:17px 18px 11px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.panel-head .kicker{font-size:9px;letter-spacing:.12em;font-weight:850;color:#7086a0}
+.panel-head h3{font-size:14px;margin:4px 0;font-weight:780;letter-spacing:-.02em}
+.panel-head p{font-size:10.5px;line-height:1.5;color:#7a899b;margin:3px 0 0}
+.smallbadge{display:inline-block;border-radius:6px;padding:5px 8px;background:#eaf2fd;color:#3a6499;font-size:9px;white-space:nowrap;font-weight:800}
+.rows{overflow:auto;max-height:565px}
+.table{width:100%;border-collapse:collapse;text-align:left;min-width:510px}
+.table thead{background:#f7f9fc}.table th{font-size:9px;letter-spacing:.055em;color:#8390a0;padding:12px 14px;white-space:nowrap}
+.table td{padding:13px 14px;border-top:1px solid #edf0f5;font-size:10.5px;vertical-align:middle}
+.table tr[data-selected=true]{background:#f1f7ff}.table tbody tr:hover{background:#f6f9fc}
+.item-btn{border:0;background:none;text-align:left;color:#21344b;display:block;padding:0;max-width:240px;font-weight:750}
+.item-btn small{display:block;font-size:9px;color:#8390a0;font-weight:500;margin-top:3px}
+.money{font-size:11px;font-variant-numeric:tabular-nums;font-weight:800;white-space:nowrap}
+.down{color:#168660;font-weight:850}.empty{color:#96a1af}.reason{font-size:9.5px;color:#77869b;margin-top:4px}
+.tag{display:inline-block;font-size:9px;font-weight:850;padding:5px 8px;border-radius:6px;white-space:nowrap}
+.tag.revisar{background:#e4f7ed;color:#1f7d52}.tag.bloqueado{background:#fff3df;color:#a76814}.tag.acompanhar{background:#edf2f9;color:#58718e}
+.filters{display:flex;gap:5px;flex-wrap:wrap;padding:0 18px 13px}
+.filter{border:1px solid #e0e7ef;background:#fff;border-radius:7px;padding:6px 10px;font-weight:700;color:#657487;font-size:10px}
+.filter[aria-pressed=true]{background:#eff5fc;color:#225e91;border-color:#b6d1ee}
+.detail{padding:0 17px 17px}.detail-name{font-size:13px;font-weight:800;margin:2px 0 9px;line-height:1.45}
+.detail-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.pill{font-size:9px;border-radius:5px;background:#f1f5fa;color:#597087;padding:5px 7px;font-weight:700}
+.chart-wrap{border:1px solid #eef0f3;background:#fcfdff;border-radius:9px;padding:10px 9px 6px}
+.chart-wrap svg{display:block;width:100%;height:190px;max-height:190px;overflow:visible}
+.caption{font-size:10px;color:#8794a4;margin:8px 3px 12px}
+.split-info{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.data{padding:10px;border:1px solid #edf0f5;border-radius:7px}.data span{display:block;color:#8290a1;font-size:9px;margin-bottom:5px}
+.data strong{font-size:12px;display:block;color:#26384e;font-variant-numeric:tabular-nums}
+.checks{border-top:1px solid #edf0f5;margin-top:13px;padding-top:11px}
+.checks h4{font-size:11px;margin:0 0 6px}.checks ul{padding-left:17px;margin:0}.checks li{font-size:10px;line-height:1.6;color:#677589;margin-bottom:4px}
+.sources{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.source-card{padding:14px 16px;background:#fff;border:1px solid #e3e9f1;border-radius:10px;min-width:0}
+.source-card b{display:block;font-size:12px;margin-bottom:5px}.source-card p{font-size:10.5px;line-height:1.5;color:#738194;margin:0 0 8px}
+.source-card small{display:block;font-size:9px;color:#94621f;background:#fff5e1;padding:7px 8px;border-radius:6px}
+.foot{color:#8b97a8;font-size:10px;line-height:1.6;margin:22px 2px 0;padding-top:14px;border-top:1px solid #dde3eb}
+@media(max-width:1170px){.content{padding:22px 19px}.main-grid{grid-template-columns:1fr}.rows{max-height:450px}}
+@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.side{min-height:0;gap:0;padding:10px 15px}.brand{padding:0 0 11px}.side-caption,.side-spacer,.side-note{display:none}.side nav{display:flex;gap:5px;overflow-x:auto;white-space:nowrap;padding-top:7px}.navitem{padding:7px 10px;font-size:10px}.content{padding:14px 12px 26px}.hero{padding:18px 16px}.hero h1{font-size:22px}.hero-meta{min-width:95px;padding:9px}.hero-meta b{font-size:18px}.hero-meta small{font-size:9px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{padding:12px;min-height:95px}.flow{grid-template-columns:repeat(2,minmax(0,1fr))}.sources{grid-template-columns:1fr}.section-head{display:block}.cycle-controls{margin-top:9px}.panel-head{padding:14px}.main-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:760px){
+ .rows{max-height:none;overflow:visible}
+ .table{display:block;min-width:0;width:100%}
+ .table thead{display:none}
+ .table tbody{display:block}
+ .table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;
+  gap:5px 10px;padding:12px 14px;border-bottom:1px solid #edf0f5}
+ .table td{border:0;padding:0;min-width:0}
+ .table td:nth-child(1){grid-column:1;grid-row:1/3}
+ .table td:nth-child(2){grid-column:2;grid-row:1;text-align:right}
+ .table td:nth-child(3){grid-column:2;grid-row:2;text-align:right}
+ .table td:nth-child(4){grid-column:1/3;grid-row:3}
+ .table .item-btn{max-width:100%;white-space:normal}
+}
+@media(max-width:390px){.hero-meta{display:none}.metric strong{font-size:24px}.content{padding-left:10px;padding-right:10px}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="side">
+ <div class="brand"><span class="logo" aria-hidden="true">◈</span><div><b>CAÇA PROMOS VIP</b><small>Inteligência de ofertas</small></div></div>
+ <div class="side-caption">MÓDULOS</div>
+ <nav aria-label="Navegação do laboratório">
+  <div class="navitem"><span class="navi">◌</span>Visão geral</div>
+  <div class="navitem on"><span class="navi">◎</span>Radar experimental</div>
+  <div class="navitem"><span class="navi">▤</span>Histórico de preços</div>
+  <div class="navitem"><span class="navi">◈</span>Cupons VIP</div>
+ </nav>
+ <div class="side-spacer"></div>
+ <div class="side-note"><b>Laboratório isolado</b>Não há chamadas externas, autenticação, postagem ou envio pelo WhatsApp.</div>
+</aside>
+<main class="content"><div class="inner">
+ <header class="hero">
+  <div><span class="eyebrow">LAB-01 · DESCOBERTA MULTIFONTES</span>
+   <h1>Radar inteligente de promoções</h1>
+   <p>Simulação de buscas recorrentes, comparações históricas, cupons e filtros de qualidade. A seleção das ofertas só acontece depois da validação dos dados.</p></div>
+  <div class="hero-meta"><small>EXECUÇÃO LOCAL</small><b>100% offline</b><small>0 envios · 0 APIs reais</small></div>
+ </header>
+ <div class="notice"><span>⚠ DEMONSTRAÇÃO CONTROLADA — Todos os produtos, preços, cupons e resultados abaixo são fictícios.</span><small>SEM PUBLICAÇÃO</small></div>
+ <section class="section-head"><div><h2>Quatro ciclos de descoberta</h2><p>Selecione um ciclo para observar a evolução do histórico e a triagem das oportunidades.</p></div><div class="cycle-controls" id="cycle-controls" role="group" aria-label="Selecionar ciclo do laboratório"></div></section>
+ <section class="stats" aria-label="Indicadores do ciclo">
+  <div class="metric"><div class="head">Entradas analisadas<span class="symbol">↗</span></div><strong id="k-received">00</strong><small>Registros simulados recebidos</small></div>
+  <div class="metric green"><div class="head">Aptas à revisão<span class="symbol">✓</span></div><strong id="k-review">00</strong><small>Não liberadas para envio</small></div>
+  <div class="metric amber"><div class="head">Bloqueadas<span class="symbol">!</span></div><strong id="k-blocked">00</strong><small>Confiabilidade insuficiente</small></div>
+  <div class="metric"><div class="head">Duplicadas / rejeitadas<span class="symbol">≠</span></div><strong id="k-invalid">00</strong><small>Ignoradas com segurança</small></div>
+ </section>
+ <section class="flow" aria-label="Etapas da descoberta">
+  <div class="flow-step"><b><i>01</i>Fontes simuladas</b><span>Amazon e Shopee por API de laboratório; Mercado Livre assistido</span></div>
+  <div class="flow-step"><b><i>02</i>Normalização</b><span>Produto, vendedor, variante, frete, moeda, cupom e deduplicação</span></div>
+  <div class="flow-step"><b><i>03</i>Histórico confiável</b><span>Três datas comparáveis; preço + frete, sem preço riscado</span></div>
+  <div class="flow-step"><b><i>04</i>Revisão humana</b><span>Não publica nem envia. Desconto apenas quando comprovável</span></div>
+ </section>
+ <section class="section-head"><div><h2>Oportunidades e justificativas</h2><p>Resultados ordenados por prioridade, sempre dentro da simulação.</p></div><span class="smallbadge" id="cycle-date">12 NOV 2026</span></section>
+ <div class="main-grid">
+  <section class="panel" aria-label="Lista de produtos analisados">
+   <div class="panel-head"><div><span class="kicker">FILA DE ANÁLISE</span><h3>Produtos acompanhados</h3><p>Selecione um produto para inspecionar o histórico e os bloqueios.</p></div><span class="smallbadge" id="item-count">0 itens</span></div>
+   <div class="filters" role="group" aria-label="Filtrar resultados">
+    <button type="button" class="filter" data-filter="todos" aria-pressed="true">Todos</button>
+    <button type="button" class="filter" data-filter="revisar" aria-pressed="false">Revisão</button>
+    <button type="button" class="filter" data-filter="bloqueado" aria-pressed="false">Bloqueados</button>
+    <button type="button" class="filter" data-filter="acompanhar" aria-pressed="false">Acompanhar</button>
+   </div>
+   <div class="rows"><table class="table"><thead><tr><th>ITEM / ORIGEM</th><th>PREÇO + FRETE</th><th>QUEDA HIST.</th><th>ESTADO</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+  <section class="panel" aria-label="Detalhe do produto selecionado">
+   <div class="panel-head"><div><span class="kicker">ANÁLISE DE CONFIABILIDADE</span><h3>Histórico individual</h3><p>Somente observações comparáveis.</p></div><span class="smallbadge">Somente leitura</span></div>
+   <div class="detail">
+    <div id="detail-name" class="detail-name">Selecione um item</div>
+    <div id="detail-pills" class="detail-pills"></div>
+    <div class="chart-wrap"><svg id="chart" viewBox="0 0 430 190" role="img" aria-label="Histórico de preço e frete" preserveAspectRatio="none"></svg></div>
+    <div class="caption">Preço total observado (item + frete), sem descontos estimados de cupons.</div>
+    <div class="split-info">
+     <div class="data"><span>Referência histórica</span><strong id="baseline">—</strong></div>
+     <div class="data"><span>Preço atual + frete</span><strong id="total">—</strong></div>
+     <div class="data"><span>Queda calculada</span><strong id="drop">—</strong></div>
+     <div class="data"><span>Total com cupom (estimado)</span><strong id="coupon">—</strong></div>
+    </div>
+    <div class="checks"><h4>Por que esta classificação?</h4><ul id="reasons"></ul></div>
+   </div>
+  </section>
+ </div>
+ <section class="section-head"><div><h2>Fontes e situação real</h2><p>O laboratório simula resultados de APIs. Isso não substitui credenciais nem permissão comercial.</p></div></section>
+ <section class="sources">
+  <div class="source-card"><b>Amazon · Creators API</b><p><b id="count-amazon">0 produtos</b> Simulação de consulta por catálogo e variação de preços.</p><small>Acesso real: ainda sem credenciais configuradas</small></div>
+  <div class="source-card"><b>Shopee · Afiliados</b><p><b id="count-shopee">0 produtos</b> Simulação de feed de ofertas e regras de cupons.</p><small>Acesso real: sujeito à habilitação de API e credenciais</small></div>
+  <div class="source-card"><b>Mercado Livre · Curadoria</b><p><b id="count-meli">0 produtos</b> Entrada manual, sem consultar a API de terceiros.</p><small>API de descoberta: não disponibilizada ao Programa de Afiliados</small></div>
+ </section>
+ <footer class="foot"><b>Caça Promos VIP · LAB-01</b> — Ensaio sintético e isolado. Nenhuma promoção exibida é real. Nenhum link é gerado; nenhuma oferta é publicada; nenhuma mensagem é enviada. Apenas uma fonte oficialmente autorizada poderá habilitar uma futura coleta contínua.</footer>
+</div></main>
+</div>
+<script type="application/json" id="lab-data">__LAB_DATA_JSON__</script>
+<script>
+(function(){
+"use strict";
+const report=JSON.parse(document.getElementById("lab-data").textContent);
+const money=n=>n===null||n===undefined?"—":new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n/100);
+const $=id=>document.getElementById(id);
+let index=report.ciclos.length-1,filter="todos",selected=null;
+const titles={revisar:"Revisar",bloqueado:"Bloqueado",acompanhar:"Acompanhar"};
+const nodes={};
+function elt(tag,cls,text){
+ const v=document.createElement(tag);if(cls)v.className=cls;if(text!==undefined)v.textContent=text;return v;
+}
+function statusText(s){return titles[s]||s;}
+function drawChart(serie){
+ const svg=$("chart");svg.replaceChildren();
+ const clean=serie.filter(x=>Number.isFinite(x.precoTotalCentavos));
+ if(!clean.length){
+  const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+  t.setAttribute("x","215");t.setAttribute("y","98");t.setAttribute("text-anchor","middle");
+  t.setAttribute("fill","#8391a2");t.textContent="Sem observações comparáveis";svg.append(t);return;
+ }
+ const values=clean.map(x=>x.precoTotalCentavos);
+ let lo=Math.min(...values),hi=Math.max(...values);
+ const margin=Math.max(1000,Math.round((hi-lo)*.35));
+ lo=Math.max(0,lo-margin);hi+=margin;
+ const x=i=>40+i*(345/Math.max(1,clean.length-1));
+ const y=v=>154-(v-lo)/(hi-lo)*120;
+ const mk=(tag,attrs)=>{const a=document.createElementNS("http://www.w3.org/2000/svg",tag);
+  for(const k in attrs)a.setAttribute(k,String(attrs[k]));return a;};
+ for(let i=0;i<4;i++){
+  const gy=30+i*41;
+  svg.append(mk("line",{x1:40,x2:403,y1:gy,y2:gy,stroke:"#e9eef5","stroke-dasharray":"3 5"}));
+ }
+ if(clean.length>1)svg.append(mk("path",{d:clean.map((p,i)=>(i?"L":"M")+x(i)+" "+y(p.precoTotalCentavos)).join(" "),
+   fill:"none",stroke:"#2563eb","stroke-width":2.7,"stroke-linejoin":"round"}));
+ clean.forEach((p,i)=>{
+  const circle=mk("circle",{cx:x(i),cy:y(p.precoTotalCentavos),r:4.3,fill:"#fff",stroke:"#2563eb","stroke-width":2});
+  circle.append(mk("title",{}));circle.firstChild.textContent=p.instanteUtc.slice(0,10)+": "+money(p.precoTotalCentavos);
+  svg.append(circle);
+  const date=mk("text",{x:x(i),y:177,"text-anchor":"middle","font-size":9,fill:"#99a7b7"});
+  date.textContent=p.instanteUtc.slice(5,10).split("-").reverse().join("/");svg.append(date);
+ });
+}
+function renderDetail(c){
+ const e=c.avaliacoes.find(a=>a.chave===selected)??c.avaliacoes[0];
+ if(!e)return;
+ selected=e.chave;
+ $("detail-name").textContent=e.titulo;
+ const pills=$("detail-pills");pills.replaceChildren();
+ for(const label of [e.canal,e.variante,e.pagamento==="geral"?"Pagamento não informado":e.pagamento,
+   e.status==="revisar"?"Candidato, sem envio":statusText(e.status)])
+  pills.append(elt("span","pill",label));
+ $("baseline").textContent=money(e.precoReferenciaCentavos);
+ $("total").textContent=money(e.precoTotalCentavos);
+ $("drop").textContent=e.reducaoPercentual===null?"—":new Intl.NumberFormat("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}).format(e.reducaoPercentual)+"%";
+ $("coupon").textContent=e.cupomStatus==="simulado-valido"?
+  money(e.custoEstimadoComCupomCentavos)+" (ficção)":"Não calculado";
+ const list=$("reasons");list.replaceChildren();
+ for(const msg of e.razoes)list.append(elt("li","",msg));
+ if(e.razoes.length===0)list.append(elt("li","","Sem evidência para divulgação"));
+ drawChart(e.serie);
+}
+function renderRows(c){
+ const tbody=$("rows");tbody.replaceChildren();
+ const visible=c.avaliacoes.filter(a=>filter==="todos"||a.status===filter);
+ $("item-count").textContent=visible.length+" de "+c.avaliacoes.length+" itens";
+ for(const a of visible){
+  const tr=elt("tr");tr.dataset.selected=String(a.chave===selected);
+  const cell=elt("td");
+  const b=elt("button","item-btn",a.titulo);b.type="button";
+  b.setAttribute("aria-label","Analisar "+a.titulo);
+  b.append(elt("small","",a.canal+" · "+a.variante));
+  b.addEventListener("click",()=>{selected=a.chave;renderRows(c);renderDetail(c);});
+  cell.append(b);
+  const current=elt("td","money",money(a.precoTotalCentavos));
+  const drop=elt("td",a.reducaoPercentual!==null&&a.reducaoPercentual>=10?"down":"empty",
+    a.reducaoPercentual===null?"—":new Intl.NumberFormat("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}).format(a.reducaoPercentual)+"%");
+  const state=elt("td");state.append(elt("span","tag "+a.status,statusText(a.status)));
+  tr.append(cell,current,drop,state);tbody.append(tr);
+ }
+ if(!visible.length){const tr=elt("tr"),td=elt("td","","Nenhum resultado neste filtro.");
+  td.colSpan=4;tr.append(td);tbody.append(tr);}
+}
+function render(){
+ const c=report.ciclos[index];
+ const controls=$("cycle-controls");controls.replaceChildren();
+ report.ciclos.forEach((s,i)=>{
+  const b=elt("button","cycle",(i+1)+"º ciclo");
+  b.type="button";b.setAttribute("aria-pressed",String(index===i));
+  b.title=s.nome+" · "+s.instanteUtc.slice(0,10);
+  b.addEventListener("click",()=>{index=i;selected=null;render();});
+  controls.append(b);
+ });
+ $("cycle-date").textContent=c.instanteUtc.slice(0,10).split("-").reverse().join("/");
+ $("k-received").textContent=String(c.recebidas).padStart(2,"0");
+ $("k-review").textContent=String(c.revisao).padStart(2,"0");
+ $("k-blocked").textContent=String(c.bloqueadas).padStart(2,"0");
+ $("k-invalid").textContent=String(c.repetidas+c.rejeitadas).padStart(2,"0");
+ $("count-amazon").textContent=c.fontes.amazon+" entradas";
+ $("count-shopee").textContent=c.fontes.shopee+" entradas";
+ $("count-meli").textContent=c.fontes.meliAssistido+" entrada assistida";
+ if(!selected||!c.avaliacoes.some(a=>a.chave===selected))selected=c.avaliacoes[0]?.chave??null;
+ renderRows(c);renderDetail(c);
+ document.querySelectorAll("[data-filter]").forEach(b=>{
+  b.setAttribute("aria-pressed",String(b.getAttribute("data-filter")===filter));
+ });
+}
+document.querySelectorAll("[data-filter]").forEach(b=>{
+ b.addEventListener("click",()=>{
+  filter=b.getAttribute("data-filter");
+  const c=report.ciclos[index];selected=c.avaliacoes.find(a=>filter==="todos"||a.status===filter)?.chave??null;
+  render();
+ });
+});
+render();
+})();
+</script>
+</body></html>
