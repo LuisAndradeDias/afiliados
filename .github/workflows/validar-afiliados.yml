@@ -35,6 +35,7 @@ jobs:
       - run: npm run test:meli12
       - run: npm run test:meli13
       - run: npm run test:meli14-ui
+      - run: npm run test:lab-descoberta
       - run: npm run test:painel-operacional
       - run: npm run test:modos-busca
       - run: npm run test:historico-antiduplicado
@@ -60,6 +61,7 @@ jobs:
             test-results/meli10e-ui/*.png
             test-results/meli11-ui/*.png
             test-results/meli14-ui/*.png
+            test-results/lab-descoberta/radar-*.png
             test-results/meli09/*.png
           if-no-files-found: ignore
           retention-days: 7
