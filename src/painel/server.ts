@@ -28,6 +28,7 @@ import { responderRotaShopee } from "./shopee-http.js";
 import { responderRotaMeliAssistido } from "./mercadolivre-assistido-http.js";
 import { avaliarCanalMeli } from "./mercadolivre-canal.js";
 import { responderRotaRevisao } from "./revisao-http.js";
+import { responderRotaCacador } from "./cacador-http.js";
 import {
   CONSULTAS_AMAZON_AUTORIZADAS,
   DESCONTO_MINIMO_PERCENTUAL
@@ -1983,6 +1984,7 @@ const server = createServer(async (req, res) => {
     if (await responderRotaShopee({ req, res, pathname: requestUrl.pathname, raiz })) return;
     if (await responderRotaMeliAssistido({ req, res, pathname: requestUrl.pathname, raiz })) return;
     if (await responderRotaRevisao({ method: req.method, pathname: requestUrl.pathname, res, raiz })) return;
+    if (await responderRotaCacador({ req, res, pathname: requestUrl.pathname, raiz })) return;
 
     if (req.method === "GET" && requestUrl.pathname === "/") {
       const html = await readFile(paginaPath, "utf8");
