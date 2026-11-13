@@ -25,6 +25,7 @@ jobs:
       - run: npm run test:mercadolivre-auth
       - run: npm run test:mercadolivre-qualidade
       - run: npm run test:mercadolivre-recuperacao
+      - run: npm run test:meli403-diagnostico
       - run: npm run test:mercadolivre-assistido
       - run: npm run test:meli09
       - run: npm run test:meli10

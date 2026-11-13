@@ -1,5 +1,5 @@
 import type { Oferta } from "../types.js";
-import { MercadoLivreAcessoNegado, MercadoLivreLimiteApi, lerRetryAfterMs } from "./erros.js";
+import { MercadoLivreAcessoNegado, MercadoLivreLimiteApi, lerRetryAfterMs, diagnosticarNegacaoMeli403 } from "./erros.js";
 import {
   estoqueEsgotadoReportado, limiteInteiro, ordenarPublicacoes,
   resumirPublicacoes, textoDeIndisponibilidade, validarPermalinkOficial
@@ -149,8 +149,13 @@ export class MercadoLivreApiFonte {
       }
 
       if (resposta.status === 403) {
-        await resposta.body?.cancel();
-        throw new MercadoLivreAcessoNegado(new URL(url).pathname);
+        // Preserva somente codigos documentados e X-Request-ID; nunca imprime
+        // corpo bruto, credenciais, cookies ou cabecalhos de autorizacao.
+        const corpo = await resposta.text().catch(() => "");
+        const diagnostico = diagnosticarNegacaoMeli403(
+          corpo, resposta.headers.get("x-request-id")
+        );
+        throw new MercadoLivreAcessoNegado(new URL(url).pathname, diagnostico);
       }
       if (resposta.status === 429) {
         const retryAfterMs = lerRetryAfterMs(resposta.headers.get("retry-after"));
@@ -169,14 +174,6 @@ export class MercadoLivreApiFonte {
     const resposta = await this.requisicao(url);
     if (!resposta.ok) {
       const corpo = await resposta.text().catch(() => "");
-      if (
-        resposta.status === 403 &&
-        corpo.includes("PA_UNAUTHORIZED_RESULT_FROM_POLICIES")
-      ) {
-        throw new Error(
-          "Mercado Livre: recurso bloqueado pelas permissoes do aplicativo."
-        );
-      }
       throw new Error(
         `Mercado Livre API HTTP ${resposta.status}: ${corpo.slice(0, 300)}`
       );
