@@ -18,6 +18,7 @@ import { chromium } from "playwright";
 import { responderRotaVisual } from "../src/painel/rotas-visuais.js";
 import { responderRotaShopee } from "../src/painel/shopee-http.js";
 import { responderRotaRevisao } from "../src/painel/revisao-http.js";
+import { responderRotaCacador } from "../src/painel/cacador-http.js";
 
 const root = process.cwd(), data = await mkdtemp(join(tmpdir(), "cpv-ux-shell-"));
 await mkdir(join(data, "data"));
@@ -42,6 +43,7 @@ const server = createServer(async (req, res) => {
     if (await responderRotaVisual({ method: req.method, pathname, res, raiz: root })) return;
     if (await responderRotaShopee({ req, res, pathname, raiz: data })) return;
     if (await responderRotaRevisao({ method: req.method, pathname, res, raiz: data })) return;
+    if (await responderRotaCacador({req,res,pathname,raiz:data})) return;
     res.writeHead(404); res.end();
   } catch (error) { res.writeHead(500); res.end(String(error)); }
 });
@@ -49,7 +51,7 @@ await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
 const address = server.address();
 assert.ok(address && typeof address !== "string");
 const base = "http://127.0.0.1:" + address.port;
-const routes = ["/central", "/ofertas", "/shopee", "/revisao", "/historico-precos"];
+const routes = ["/central", "/ofertas", "/shopee", "/revisao", "/historico-precos", "/cacador"];
 let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 try {
   browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -70,7 +72,7 @@ try {
       await page.evaluate(() => document.fonts.ready);
       await page.locator("#cpvUnifiedNav .cpv-nav-link").first().waitFor();
       assert.equal(await page.locator("#cpvUnifiedNav").count(), 1);
-      assert.equal(await page.locator("#cpvUnifiedNav a").count(), 5);
+      assert.equal(await page.locator("#cpvUnifiedNav a").count(), 6);
       const mobile = width <= 860;
       // Mesmo trilho de fundo em todas as telas de desktop; nenhum trilho
       // escondido no celular. Protege a faixa alem do primeiro viewport.
@@ -193,7 +195,7 @@ try {
     await ctx.close();
   }
   assert.equal(writes,0,"Auditoria de UX não deve enviar formulários ou mensagens");
-  console.log("UX_SHELL_OK: 5 telas x 4 larguras; alinhamento CSS exato, mesmos estilos; diferença de 1px detectada; 0 escritas.");
+  console.log("UX_SHELL_OK: 6 telas x 4 larguras; alinhamento CSS exato, mesmos estilos; diferença de 1px detectada; 0 escritas.");
 } finally {
   await browser?.close();
   server.closeAllConnections();

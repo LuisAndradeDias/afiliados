@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Caçador inteligente | Caça Promos VIP</title>
+  <link rel="stylesheet" href="/central/assets/unified-nav.css">
+  <link rel="stylesheet" href="/central/assets/cacador.css">
+  <script src="/central/assets/unified-nav.js" defer></script>
+  <script src="/central/assets/cacador.js" defer></script>
+</head>
+<body>
+  <main class="hunt-page" id="huntPage">
+    <header class="hunt-hero">
+      <div>
+        <p class="hunt-overline">INTELIGÊNCIA DE OFERTAS · CAÇA PROMOS VIP</p>
+        <h1>Caçador inteligente</h1>
+        <p>As boas ideias do Caçador Claude, conectadas à nossa memória e aos rascunhos da Central. Compare preços, filtre oportunidades e revise antes de divulgar.</p>
+        <div class="hunt-hero-tags">
+          <span>Curadoria manual</span><span>Memória por vendedor e variante</span>
+          <span>Sem publicação automática</span>
+        </div>
+      </div>
+      <button type="button" class="hunt-button hunt-button-primary" id="huntShowForm" aria-controls="huntFormPanel" aria-expanded="false">+ Registrar observação</button>
+    </header>
+
+    <section class="hunt-kpis" aria-label="Indicadores do catálogo local">
+      <article class="hunt-kpi"><span>Produtos catalogados</span><strong id="huntTotal">—</strong><small>Identidades comerciais distintas</small></article>
+      <article class="hunt-kpi"><span>Para revisão</span><strong id="huntReview">—</strong><small>Candidatos, nunca aprovados</small></article>
+      <article class="hunt-kpi"><span>Em acompanhamento</span><strong id="huntWatch">—</strong><small>Histórico ou evidências insuficientes</small></article>
+      <article class="hunt-kpi"><span>Bloqueados</span><strong id="huntBlocked">—</strong><small>Desconto suspeito ou restrição</small></article>
+      <article class="hunt-kpi"><span>Cupons em análise</span><strong id="huntCoupon">—</strong><small>Códigos não verificados</small></article>
+      <article class="hunt-kpi"><span>Observações registradas</span><strong id="huntObservations">—</strong><small>Memória local, sem API real</small></article>
+    </section>
+
+    <section class="hunt-compose" id="huntFormPanel" hidden aria-label="Registrar observação manual">
+      <div class="hunt-section-head"><div><h2>Registrar uma observação</h2><p>Informe dados conferidos por você no anúncio. Não inicia buscas, gera links nem envia mensagens.</p></div><button type="button" id="huntCloseForm" class="hunt-button">Fechar</button></div>
+      <form id="huntForm">
+        <div class="hunt-form-grid">
+          <label>Plataforma<select name="canal" id="huntCanal" required><option>Mercado Livre</option><option>Amazon</option><option>Shopee</option></select></label>
+          <label>ID do produto<input name="produtoId" placeholder="MLB123456789" maxlength="70" required></label>
+          <label>Título<input name="titulo" maxlength="160" placeholder="Produto específico" required></label>
+          <label>Vendedor (ID ou apelido)<input name="vendedor" maxlength="60" placeholder="Seller123" required></label>
+          <label>Variante<input name="variante" maxlength="60" value="padrao" required></label>
+          <label>Pagamento<select name="pagamento"><option value="geral">Geral</option><option value="pix">Pix</option><option value="cartao">Cartão</option></select></label>
+          <label>Preço atual (R$)<input name="preco" placeholder="99,90" inputmode="decimal" required></label>
+          <label>Frete (R$)<input name="frete" placeholder="0,00 ou deixe vazio" inputmode="decimal"></label>
+          <label>Preço anterior anunciado (R$)<input name="precoAnterior" placeholder="Opcional" inputmode="decimal"></label>
+          <label>Disponibilidade<select name="disponibilidade"><option value="nao-confirmada">Ainda não confirmada</option><option value="declarada">Conferida por mim</option><option value="indisponivel">Indisponível</option></select></label>
+          <label>Avaliação (0–5)<input name="nota" placeholder="4,7" inputmode="decimal"></label>
+          <label>Número de avaliações<input name="avaliacoes" placeholder="Opcional" inputmode="numeric"></label>
+          <label>Vendas observadas<input name="vendidos" placeholder="Opcional" inputmode="numeric"></label>
+          <label>Comissão estimada (%)<input name="comissao" placeholder="Opcional, não confirmada" inputmode="decimal"></label>
+          <label>Cupom observado<input name="cupomCodigo" maxlength="32" placeholder="Sem validação automática"></label>
+          <label class="hunt-form-span">Link HTTPS do produto<input name="urlProduto" placeholder="https://..." required></label>
+          <label class="hunt-form-span">Link oficial de afiliado (opcional)<input name="urlAfiliado" placeholder="Cole somente o link gerado no portal de afiliados"></label>
+          <label class="hunt-form-span">URL pública de imagem (opcional)<input name="imagemUrl" placeholder="https://http2.mlstatic.com/..."></label>
+        </div>
+        <div class="hunt-toggles">
+          <label><input type="checkbox" name="freteGratis"> Frete grátis anunciado</label>
+          <label><input type="checkbox" name="full"> FULL anunciado</label>
+          <label><input type="checkbox" name="maisVendido"> Mais vendido</label>
+        </div>
+        <div class="hunt-consent">
+          <label><input type="checkbox" name="confirmadoManualmente" required> Confirmei que os dados vêm de uma observação manual. Sei que preço, cupom, estoque e atribuição do link deverão ser reconferidos antes de divulgar.</label>
+        </div>
+        <div class="hunt-form-actions"><button type="submit" class="hunt-button hunt-button-primary" id="huntSave">Salvar observação</button><span id="huntFormMsg" role="status" aria-live="polite"></span></div>
+      </form>
+    </section>
+
+    <section class="hunt-connections" aria-label="Módulos integrados">
+      <div class="hunt-connection"><span class="hunt-connection-icon">◈</span><div><b>Central de Ofertas</b><small id="huntOpStatus">Consultando situação...</small></div><a href="/ofertas">Abrir</a></div>
+      <div class="hunt-connection"><span class="hunt-connection-icon">▣</span><div><b>Revisão Mercado Livre</b><small id="huntMeliDrafts">Rascunhos do programa</small></div><a href="/revisao">Revisar</a></div>
+      <div class="hunt-connection"><span class="hunt-connection-icon">S</span><div><b>Shopee</b><small id="huntShopeeDrafts">Rascunhos locais</small></div><a href="/shopee">Abrir</a></div>
+    </section>
+
+    <section class="hunt-catalogue">
+      <div class="hunt-section-head">
+        <div><h2>Vitrine inteligente</h2><p>Quanto maior a nota, melhor o candidato para análise. Preço “de” não comprova queda real.</p></div>
+        <button type="button" class="hunt-button" id="huntRefresh">Atualizar</button>
+      </div>
+      <div class="hunt-filters">
+        <label class="hunt-search-label">Pesquisar<input type="search" id="huntSearch" placeholder="Nome, ID ou vendedor" autocomplete="off"></label>
+        <label>Canal<select id="huntFilterCanal"><option value="todos">Todas as plataformas</option><option>Mercado Livre</option><option>Amazon</option><option>Shopee</option></select></label>
+        <label>Veredito<select id="huntFilterSituacao"><option value="todos">Todos os estados</option><option value="revisar">Para revisão</option><option value="acompanhar">Acompanhando</option><option value="bloqueado">Bloqueados</option></select></label>
+      </div>
+      <div class="hunt-list" id="huntList" aria-live="polite"><div class="hunt-empty">Consultando o catálogo local...</div></div>
+      <p class="hunt-caption">Os dados do Caçador são registros locais; não substituem confirmação de preço, frete, elegibilidade do cupom, disponibilidade, autorização do canal nem link de afiliado. O WhatsApp não é acionado nesta página.</p>
+    </section>
+  </main>
+
+  <dialog id="huntDialog" class="hunt-dialog" aria-labelledby="huntDialogTitle">
+    <div class="hunt-dialog-head"><div><p class="hunt-overline">DETALHES DO PRODUTO</p><h2 id="huntDialogTitle">Produto</h2></div><button type="button" id="huntCloseDialog" class="hunt-button" aria-label="Fechar detalhes">Fechar</button></div>
+    <div id="huntDialogBody"></div>
+    <form id="huntForwardForm" hidden>
+      <div class="hunt-dialog-confirm">
+        <h3>Encaminhar como rascunho</h3>
+        <p>Confirme novamente no anúncio. Isto NÃO publica nem envia ao WhatsApp.</p>
+        <label><input type="checkbox" name="preco" required> Conferi o preço agora</label>
+        <label><input type="checkbox" name="disponibilidade" required> Conferi a disponibilidade no anúncio</label>
+        <label id="huntReputationLine"><input type="checkbox" name="reputacaoVerde"> Conferi reputação verde do vendedor</label>
+        <label><input type="checkbox" name="linkAfiliado" required> Conferi o link gerado pela minha conta de afiliado</label>
+        <button type="submit" class="hunt-button hunt-button-primary" id="huntForwardButton">Salvar rascunho para revisão</button>
+        <p id="huntForwardMsg" role="status" aria-live="polite"></p>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

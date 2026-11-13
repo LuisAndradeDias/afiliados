@@ -18,6 +18,8 @@ const ASSETS_PERMITIDOS: Readonly<Record<string, string>> = Object.freeze({
   "/central/assets/central.js": "central.js",
   "/central/assets/unified-nav.css": "unified-nav.css",
   "/central/assets/unified-nav.js": "unified-nav.js",
+  "/central/assets/cacador.css": "cacador.css",
+  "/central/assets/cacador.js": "cacador.js",
   "/central/assets/shopee.css": "shopee.css",
   "/central/assets/shopee.js": "shopee.js",
   "/central/assets/revisao.js": "revisao.js",
@@ -74,6 +76,20 @@ export async function responderRotaVisual({
       "x-frame-options": "DENY",
       "referrer-policy": "no-referrer",
       "content-security-policy": "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+    });
+    res.end(html);
+    return true;
+  }
+
+  if (pathname === "/cacador") {
+    const html = await readFile(resolve(publicDir, "cacador.html"), "utf8");
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer",
+      "content-security-policy": "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' https://http2.mlstatic.com https://m.media-amazon.com https://cf.shopee.com.br; base-uri 'none'; frame-ancestors 'none'"
     });
     res.end(html);
     return true;

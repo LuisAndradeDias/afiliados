@@ -13,9 +13,10 @@ import { chromium } from "playwright";
 import { responderRotaVisual } from "../src/painel/rotas-visuais.js";
 import { responderRotaShopee } from "../src/painel/shopee-http.js";
 import { responderRotaRevisao } from "../src/painel/revisao-http.js";
+import { responderRotaCacador } from "../src/painel/cacador-http.js";
 
-const rotas = ["/", "/central", "/ofertas", "/shopee", "/revisao", "/historico-precos"] as const;
-const modules = ["/central", "/ofertas", "/revisao", "/historico-precos", "/shopee"] as const;
+const rotas = ["/", "/central", "/ofertas", "/shopee", "/revisao", "/historico-precos", "/cacador"] as const;
+const modules = ["/central", "/ofertas", "/cacador", "/revisao", "/historico-precos", "/shopee"] as const;
 const widths = [1595, 1280, 768, 390] as const;
 const screenshots = join(process.cwd(), "test-results", "ux");
 const status = {
@@ -60,6 +61,7 @@ const server = createServer(async (req, res) => {
     if (await responderRotaRevisao({
       method: req.method, pathname, res, raiz: fixtureDir
     })) return;
+    if (await responderRotaCacador({req,res,pathname,raiz:fixtureDir})) return;
     res.writeHead(404); res.end("Não encontrado");
   } catch (error) {
     res.writeHead(500); res.end(String(error));
@@ -172,7 +174,7 @@ try {
   assert.equal(writes, 0, "Auditoria de UX não pode acionar POST/DELETE");
   const unknownAsset = await fetch(base + "/central/assets/arquivo-inexistente.css");
   assert.equal(unknownAsset.status, 404, "Arquivo não permitido não pode vazar");
-  console.log("UX_GATE_OK: 6 rotas, 4 larguras, 10 capturas sintéticas, sem escrita, sem recurso quebrado.");
+  console.log("UX_GATE_OK: 7 rotas, 4 larguras, 12 capturas sintéticas, sem escrita, sem recurso quebrado.");
 } finally {
   await browser?.close();
   server.closeAllConnections();
