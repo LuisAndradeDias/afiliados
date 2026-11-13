@@ -2,11 +2,13 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Caça Promos VIP — Painel lateral</title>
+  <title>Caça Promos VIP — Leitor de tela</title>
   <link rel="stylesheet" href="sidepanel.css">
+  <script src="ocr/tesseract.min.js" defer></script>
   <script src="extractor-core.js" defer></script>
+  <script src="screen-reader.js" defer></script>
   <script src="sidepanel.js" defer></script>
 </head>
 <body>
@@ -15,74 +17,75 @@
       <div class="logo" aria-hidden="true">CP</div>
       <div class="brand-copy">
         <div class="brand-name">CAÇA PROMOS <span>VIP 👑</span></div>
-        <div class="brand-sub"><span class="pill">Painel lateral</span> <span class="version">v0.2.1</span></div>
+        <div class="brand-sub"><span class="pill">Leitor de tela</span><span class="version">v0.4.1</span></div>
       </div>
-      <button class="close icon-button" type="button" id="close" aria-label="Fechar painel">×</button>
+      <button class="icon-button" id="close" type="button" aria-label="Fechar painel">×</button>
     </header>
     <main>
-      <section class="hero">
-        <div class="hero-icon" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="32" height="32" fill="none">
-            <circle cx="12" cy="10" r="5" fill="currentColor"/>
-            <path d="M3 27c0-6 3-9 9-9s9 3 9 9" fill="currentColor"/>
-            <circle cx="24" cy="11" r="4" fill="currentColor" opacity=".64"/>
-            <path d="M22 19c5 0 7 2.5 7 8h-5" fill="currentColor" opacity=".64"/>
-          </svg>
-        </div>
-        <div>
-          <div class="eyebrow">REVISÃO LOCAL · SEM ACESSO ÀS CONVERSAS</div>
-          <h1>Participantes <em>visíveis</em></h1>
-        </div>
-        <p>Abra as informações do grupo permitido no WhatsApp Web, copie os números que estiverem visíveis e cole abaixo. A extensão não varre a página automaticamente.</p>
-      </section>
+      <div class="eyebrow">OCR LOCAL · SOMENTE COM SUA AÇÃO</div>
+      <h1>Listar texto <em>visível</em></h1>
+      <p class="intro">No WhatsApp Web, abra <strong>Pesquisar membros</strong> e clique abaixo. A extensão identificará apenas o texto que está visível nesse popup, sem rolar a lista.</p>
 
-      <section class="steps panel" aria-labelledby="stepsTitle">
-        <div class="section-title" id="stepsTitle">Como funciona</div>
-        <ol>
-          <li><span class="number">1</span><span>Abra a lateral do grupo <small>No WhatsApp Web, clique no nome do grupo</small></span></li>
-          <li><span class="number">2</span><span>Copie os telefones <small>Cole abaixo apenas os números autorizados</small></span></li>
-          <li><span class="number">3</span><span>Confira e exporte <small>CSV local para a Central de Captação</small></span></li>
-        </ol>
-      </section>
-
-      <div class="paste-field"><label for="numbers">Números copiados do grupo</label><textarea id="numbers" rows="5" placeholder="+55 11 98888-7777&#10;+55 21 99999-7777" spellcheck="false"></textarea><small>Um por linha ou misturados com nomes. Nada é enviado para servidores.</small></div>
-      <label class="consent">
-        <input id="consent" type="checkbox">
-        <span>Confirmo que os participantes autorizam registrar os números para esta finalidade.</span>
-      </label>
-
-      <div class="buttons">
-        <button class="primary" id="start" type="button">
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-dasharray="4 3" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>
-          </svg>
-          <span>Conferir números copiados</span>
+      <section class="step" id="popupPanel">
+        <div class="step-head"><b>1</b><strong>Ler o popup aberto</strong></div>
+        <label class="consent"><input id="consent" type="checkbox">
+          <span>Confirmo que tenho autorização para registrar os dados que desejo listar.</span>
+        </label>
+        <button class="primary" type="button" id="readPopup">
+          <span aria-hidden="true">◎</span> Ler participantes visíveis
         </button>
-        <div class="secondary-actions">
-          <button class="secondary" type="button" id="demo">
-            <span aria-hidden="true">◉</span> Ver exemplo
-          </button>
-          <button class="secondary" type="button" id="export" disabled>
-            <span aria-hidden="true">↓</span> Exportar CSV
-          </button>
+        <p class="hint" style="margin-top:10px">Se rolar a lista manualmente, clique novamente para acrescentar o novo trecho.</p>
+      </section>
+
+      <details class="extra" id="ocrBackup">
+      <summary>Alternativa: usar captura de tela com OCR</summary>
+      <section class="step">
+        <div class="step-head"><b>2</b><strong>Escolher imagem</strong></div>
+        <button class="primary" id="capture" type="button"> <span aria-hidden="true">▣</span> Capturar tela visível</button>
+        <label class="file-label" for="imageFile">Ou selecionar uma imagem do computador</label>
+        <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp">
+      </section>
+
+      <section id="previewPanel" class="step" hidden>
+        <div class="step-head"><b>3</b><strong>Selecionar trecho</strong></div>
+        <p class="hint">Arraste sobre a imagem para selecionar apenas o texto desejado.</p>
+        <div id="preview" class="preview" tabindex="0" aria-label="Imagem e seleção de área">
+          <img id="screenshot" alt="Imagem da tela capturada" draggable="false">
+          <div id="selection" class="selection" hidden></div>
         </div>
-      </div>
+        <button class="primary" id="read" type="button" disabled>Ler texto selecionado</button>
+      </section>
+      </details>
 
-      <section id="resultPanel" class="results panel" aria-label="Resultado da seleção" hidden>
-        <div class="result-heading"><span>Resultado da seleção</span><button type="button" class="link-button" id="clear">Limpar</button></div>
-        <div class="result-metric"><strong id="count">0</strong><span>números distintos encontrados</span></div>
-        <p id="resultNote" class="fineprint"></p>
-        <ul id="resultItems" aria-label="Prévia dos números"></ul>
+      <section class="step" id="textPanel">
+        <div class="step-head"><b>2</b><strong>Texto encontrado</strong></div>
+        <label for="recognized" class="field-label">Confira e corrija o texto, se necessário</label>
+        <textarea id="recognized" rows="7" maxlength="30000" spellcheck="false"
+          placeholder="Os nomes e telefones visíveis aparecerão aqui. Confira e corrija antes de exportar."></textarea>
+        <div class="button-row">
+          <button class="secondary" id="copyText" type="button">Copiar texto</button>
+          <button class="secondary" id="analyze" type="button">Organizar contatos</button>
+        </div>
       </section>
 
-      <section class="status panel" aria-live="polite" aria-atomic="true">
-        <div class="status-heading"><span class="dot" id="statusDot"></span><strong>Status</strong></div>
-        <p id="statusText">Aguardando números copiados</p>
+      <details class="extra export-area">
+        <summary>Exportar lista autorizada em CSV (opcional)</summary>
+        <label class="field-label" for="group">Nome da origem</label>
+        <input id="group" type="text" maxlength="60" placeholder="Ex.: grupo autorizado">
+        <div class="result-line">
+          <span><strong id="count">0</strong> número(s) distintos</span>
+          <button id="clear" type="button" class="link-button">Limpar lista</button>
+        </div>
+        <p class="hint" id="resultNote">Use “Organizar contatos” depois de revisar o texto.</p>
+        <ul class="results" id="resultItems"></ul>
+        <button class="primary" id="export" type="button" disabled>Exportar CSV</button>
+      </details>
+
+      <section class="status" aria-live="polite" aria-atomic="true">
+        <strong><span id="statusDot" class="dot"></span> Status</strong>
+        <p id="statusText">Pronto. A leitura só começa quando você clicar.</p>
       </section>
-      <aside class="security">
-        <span aria-hidden="true">♢</span>
-        <p>Não lê conversas, não envia mensagens e não transmite dados automaticamente. Os números são processados somente depois que você os cola aqui.</p>
-      </aside>
+      <p class="privacy">A leitura só acontece após seu clique, apenas no popup aberto. Não lê conversas, não percorre outros grupos e não envia nada para servidores.</p>
     </main>
   </div>
 </body>
